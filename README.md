@@ -6,7 +6,7 @@ Agri-Sort AI membantu mencatat hasil panen cabai rawit hijau dan terung, mengkal
 
 Target pengguna: petani, pedagang pengumpul, dan penjual di pasar.
 
-Tech stack: HTML, CSS, JavaScript (SPA murni, tanpa backend/framework berat). Penyimpanan data berbasis `localStorage` browser.
+Tech stack: React (Vite), CSS, JavaScript (SPA tanpa backend). Penyimpanan data berbasis `localStorage` browser.
 
 ## Alur Inti
 
@@ -18,9 +18,9 @@ Tech stack: HTML, CSS, JavaScript (SPA murni, tanpa backend/framework berat). Pe
 
 ### Prasyarat
 
-- Browser modern (Chrome / Edge / Firefox terbaru).
+- Node.js LTS (>= 18) dan npm.
 - Git (untuk clone repositori).
-- Opsional: Node.js LTS (hanya untuk menjalankan unit test) dan ekstensi Live Server / `npx serve`.
+- Browser modern (Chrome / Edge / Firefox terbaru).
 
 ### Clone Repo
 
@@ -29,27 +29,26 @@ git clone https://github.com/rizitakanashi-dev/steampreneur-agri-sort-ai.git
 cd steampreneur-agri-sort-ai
 ```
 
-### Jalankan Aplikasi
-
-Pilih salah satu:
-
-**Opsi A — Buka langsung:**
+### Install Dependensi
 
 ```bash
-# Buka file berikut di browser:
-src/index.html
+npm install
 ```
 
-**Opsi B — Live Server lokal (disarankan):**
+### Jalankan Server Development
 
 ```bash
-# Dari root repositori:
-npx serve src
-# atau, jika memakai ekstensi Live Server VS Code:
-# klik kanan src/index.html > Open with Live Server
+npm run dev
 ```
 
-Lalu buka URL yang ditampilkan di terminal (umumnya `http://localhost:3000`).
+Lalu buka URL yang ditampilkan di terminal (umumnya `http://localhost:5173`).
+
+### Build Produksi (Opsional)
+
+```bash
+npm run build
+npm run preview
+```
 
 ## Tangkapan Layar Alur Inti
 
@@ -78,7 +77,7 @@ Perintah di atas menjalankan seluruh unit test di folder `tes/` menggunakan test
 - Estimasi harga per grade dan total nilai panen
 - Acuan harga pasar cabai rawit hijau & terung
 - Rekap dan riwayat data panen
-- SPA ringan tanpa backend, berjalan penuh di browser
+- SPA React tanpa backend, berjalan penuh di browser
 
 ### Batasan
 
@@ -94,15 +93,19 @@ Perintah di atas menjalankan seluruh unit test di folder `tes/` menggunakan test
 steampreneur-agri-sort-ai/
 ├── README.md
 ├── .gitignore
+├── package.json
+├── vite.config.js
+├── index.html
 ├── docs/
 │   └── bukti/
 │       ├── langkah-1.png
 │       ├── langkah-2.png
 │       └── langkah-3.png
 ├── src/
-│   ├── index.html
-│   ├── style.css
-│   └── app.js
+│   ├── main.jsx
+│   ├── App.jsx
+│   ├── App.css
+│   └── index.css
 ├── tes/
 │   └── kalkulasi.test.js
 └── bughunt-kasir/
@@ -112,7 +115,8 @@ steampreneur-agri-sort-ai/
 
 | Sumber | Lisensi |
 |--------|---------|
-| HTML / CSS / JavaScript (Web standar) | Standar terbuka |
+| React | MIT |
+| Vite | MIT |
 | Google Fonts (mis. Inter / Poppins) | SIL Open Font License 1.1 |
 | Ikon SVG bawaan / inline SVG | Milik proyek (bebas pakai) |
 
