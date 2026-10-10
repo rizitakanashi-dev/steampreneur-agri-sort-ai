@@ -1,9 +1,5 @@
 # Rencana Kerja
 
-Pecah pekerjaan menjadi langkah kecil. Mulai dari versi paling sederhana yang berfungsi, lalu tambahkan sedikit demi sedikit.
-Satu langkah sebaiknya bisa dikerjakan dan diperiksa dalam 30 sampai 60 menit.
-Tidak ada jadwal per jam, jadi rencana ini adalah jadwal tim kalian sendiri.
-
 **Waktu mulai:** 10 Oktober 2026
 **Batas akhir pengumpulan:** 15 Oktober 2026
 
