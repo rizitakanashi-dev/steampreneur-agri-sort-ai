@@ -1,14 +1,17 @@
 # Spesifikasi Produk
 
-**Nama tim:** Tim Agri-Sort AI (SMKN 4 Payakumbuh)
-**Nama produk:** Agri-Sort AI (versi challenge: aplikasi web client-side untuk QC dan pencatatan hasil panen)
-**Alur inti yang dibangun:** Pengguna mengisi data hasil panen (cabai rawit hijau, terung, atau tomat), aplikasi menghitung rasio Grade A, B, C beserta nilai pendapatannya dalam Rupiah, lalu pengguna menyimpan dan melihat kembali datanya di tabel rekap.
+**Nama tim:** Tim Agri-Sort AI (SMKN 4 Payakumbuh).
 
-> **Catatan hubungan dengan proposal.** Proposal Agri-Sort AI menggambarkan visi jangka panjang: klasifikasi mutu dengan computer vision (YOLO11), backend FastAPI, database Supabase, dan integrasi harga BAPANAS. Dokumen ini membatasi diri pada **prototipe yang dibangun dalam challenge**: grade dihitung dari data yang diinput pengguna dengan aturan bisnis yang jelas, berjalan sepenuhnya di browser. Bagian computer vision dan integrasi harga resmi adalah tahap pengembangan lanjutan (lihat Bagian 5).
+**Nama produk:** Agri-Sort AI (Web App Quality Control & Smart Pricing Berbasis Computer Vision).
+
+**Alur inti yang dibangun:** Pengguna mengambil/mengunggah foto keranjang hasil panen (cabai merah keriting, cabai rawit merah, atau tomat), sistem melakukan validasi kualitas citra di browser, melakukan inferensi AI (YOLOv8/11 via ONNX), menampilkan persentase distribusi grade (A, B, BS/Reject) serta rekomendasi harga pasar (integrasi Panel Harga BAPANAS), lalu menyimpan data transaksi secara privat.
+
+> **Catatan Hubungan dengan Proposal & Penyesuaian Komoditas:**
+> Dokumen ini menyelaraskan spesifikasi prototipe teknis dengan dokumen Proposal STEAMPreneur SMK 2026. Komoditas utama disesuaikan dengan fokus BPS & BAPANAS, yaitu **Cabai Merah Keriting, Cabai Rawit Merah, dan Tomat**.
 >
-> **Penyesuaian istilah dan komoditas.**
-> - **Grade C** di dokumen ini sama dengan **Reject / Tolak / Afkir** di proposal dan mockup Figma: buah cacat yang tidak layak dijual sebagai produk segar.
-> - Proposal menyebut cabai (cabai besar dan cabai rawit) serta tomat sebagai komoditas utama. Pada prototipe challenge ini, komoditas disesuaikan dengan hasil wawancara petani lokal Payakumbuh (narasumber N-01), yaitu **Cabai Rawit Hijau, Terung, dan Tomat**.
+> **Keamanan & Retensi Data:**
+> - **Autentikasi & RLS:** Mengakses akun via Supabase Auth (JWT/OTP). Data transaksi terisolasi secara mutlak per petani menggunakan kebijakan Row Level Security (RLS: `auth.uid() = user_id`).
+> - **Retensi Gambar (30 Hari):** Berkas foto bukti QC disimpan di Supabase Storage selama 30 hari untuk kebutuhan audit/re-evaluasi model sebelum dihapus otomatis oleh sistem, sedangkan metadata transaksi disimpan secara permanen.
 
 ---
 
@@ -111,6 +114,12 @@ Form berisi isian berikut. Tanggal panen ditambahkan karena rekap membutuhkan ur
 - Jika ada kesalahan, perhitungan tidak dijalankan dan tidak ada data yang tersimpan.
 
 **Pesan kesalahan (teks persis yang harus tampil)**
+
+Sebelum citra dikirim ke server AI, aplikasi menerapkan validasi dua lapis di tingkat klien (client-side):
+
+1. **K02 (Validasi Foto Blur):** Browser menghitung nilai Laplacian Variance pada HTML5 Canvas. Jika varians < 100, foto ditolak dengan pesan: "Gambar terlalu kabur/blur. Harap ambil ulang foto dengan fokus yang jelas."
+2. **K03 (Filter Objek Non-Komoditas):** Jika gambar tidak memuat komoditas pertanian yang didukung atau Confidence Score model < 50%, sistem memblokir kalkulasi dengan pesan: "Objek tidak dikenali sebagai komoditas pertanian yang didukung."
+3. **Kompresi Citra (WebP):** Gambar yang lolos validasi otomatis dikompresi di browser ke format WebP beresolusi maksimal 800x800 px (ukuran file < 200 KB) untuk menghemat kuota internet dan mempercepat inferensi.
 
 | Kondisi | Pesan |
 |---|---|
@@ -281,6 +290,9 @@ Total nilai panen (Rp) = Nilai A + Nilai B + Nilai C
 - Nilai C = 0,07 × 12.000 × 0,30 × 0,90 = 226,8, dibulatkan menjadi 227.
 - Total = 3.315 + 4.711 + 227 = **8.253**.
 
+1. **K17 (Offline Fallback Harga):** Jika jaringan internet terputus atau panggilan API Panel Harga BAPANAS mengalami kegagalan, sistem secara otomatis mengambil data harga acuan lokal terakhir (last known price) yang tersimpan pada localStorage (`agrisort.harga_cache.v1`).
+2. **Mode Manual Fallback:** Jika panggilan API inferensi model AI mengalami timeout (> 5 detik), sistem menyediakan opsi Mode Input Manual agar alur pencatatan panen di lapangan tetap dapat berjalan tanpa hambatan.
+
 ---
 
 ## 7. Data yang disimpan
@@ -355,12 +367,12 @@ Setiap baris hanya bisa dijawab **Ya** atau **Tidak**. Alur inti dianggap selesa
 | ID | Kriteria | Ya / Tidak |
 |---|---|---|
 | K01 | Form menampilkan isian tanggal, komoditas (3 pilihan), berat, kesegaran, ukuran (3 pilihan), cacat, dan catatan | [ ] Ya  [ ] Tidak |
-| K02 | Jika semua isian wajib dikosongkan lalu **Hitung** ditekan, semua pesan "wajib diisi" / "Pilih ... terlebih dahulu" tampil sekaligus dan tidak ada hasil yang ditampilkan | [ ] Ya  [ ] Tidak |
-| K03 | Berat `-5` ditolak dengan pesan persis "Berat panen tidak boleh negatif." | [ ] Ya  [ ] Tidak |
+| K02 | Validasi foto blur via Laplacian Variance (<100) bekerja dan menolak foto kabur dengan pesan peringatan. | [ ] Ya  [ ] Tidak |
+| K03 | Filter objek non-komoditas (<50% confidence score) bekerja dan menolak objek luar. | [ ] Ya  [ ] Tidak |
 | K04 | Berat `abc` ditolak dengan pesan persis "Berat panen harus berupa angka." | [ ] Ya  [ ] Tidak |
 | K05 | Kesegaran `101` dan cacat `-1` ditolak, sedangkan nilai `0` dan `100` diterima | [ ] Ya  [ ] Tidak |
 | K06 | Contoh 1 (Tomat, 100 kg, K 80, Sedang, C 10) menampilkan Grade 72% / 18% / 10% dan total **Rp946.080** | [ ] Ya  [ ] Tidak |
-| K07 | Contoh 2 (Cabai Rawit Hijau, 25,5 kg, K 90, Besar, C 20) menampilkan total **Rp639.540**, dan input `25,5` dengan koma diterima | [ ] Ya  [ ] Tidak |
+| K07 | Contoh 2 (Cabai Rawit Merah, 25,5 kg, K 90, Besar, C 20) menampilkan total **Rp639.540**, dan input `25,5` dengan koma diterima | [ ] Ya  [ ] Tidak |
 | K08 | Contoh 4 (uji pembulatan) menampilkan total **Rp8.253** | [ ] Ya  [ ] Tidak |
 | K09 | Contoh 5, 6, dan 7 (kasus batas) masing-masing menampilkan total Rp30.000, Rp120.000, dan Rp84.000 | [ ] Ya  [ ] Tidak |
 | K10 | Untuk ketujuh contoh di Bagian 6.4, Persen A + Persen B + Persen C sama dengan 100 | [ ] Ya  [ ] Tidak |
@@ -370,7 +382,7 @@ Setiap baris hanya bisa dijawab **Ya** atau **Tidak**. Alur inti dianggap selesa
 | K14 | Isi `localStorage` pada kunci `agrisort.panen.v1` adalah JSON Array yang valid dan berstruktur sesuai Bagian 7 | [ ] Ya  [ ] Tidak |
 | K15 | Rekap kosong menampilkan pesan persis "Belum ada data panen tersimpan." | [ ] Ya  [ ] Tidak |
 | K16 | Angka di baris total rekap sama dengan jumlah kolom berat dan kolom total nilai yang tampil | [ ] Ya  [ ] Tidak |
-| K17 | Jika isi kunci `agrisort.panen.v1` diganti teks sembarang (bukan JSON), aplikasi tetap terbuka dan menampilkan rekap kosong tanpa error | [ ] Ya  [ ] Tidak |
+| K17 | Saat offline atau API terputus, aplikasi mengambil cache harga acuan dari `localStorage` (`agrisort.harga_cache.v1`). | [ ] Ya  [ ] Tidak |
 | K18 | Aplikasi bisa dijalankan dengan mengikuti README, tanpa login dan tanpa server tambahan | [ ] Ya  [ ] Tidak |
 | K19 | Pada layar selebar 360 px, seluruh form dapat diisi dan tabel rekap dapat dilihat tanpa halaman bergeser ke samping | [ ] Ya  [ ] Tidak |
 | K20 | Satu setoran selesai dicatat, dari membuka form sampai tombol **Simpan ke Rekap** ditekan, dalam 120 detik atau kurang (diukur dengan stopwatch) | [ ] Ya  [ ] Tidak |
