@@ -6,9 +6,9 @@
 | No | Langkah | Penanggung jawab | Cara memeriksa bahwa langkah ini selesai | Estimasi waktu | Waktu sebenarnya | Status |
 |---|---|---|---|---|---|---|
 | 1 | Wawancara Pengguna & Rumusan Masalah | Hieray & Faris | Bagian 1–3 di `docs/01-spesifikasi.md` terisi | 60 menit | 60 menit | Selesai |
-| 2 | Menyusun Kasus Uji & Edge Cases | Ahmad | File `docs/04-kasus-uji.md` terisi lengkap | 45 menit | ... menit | Belum |
+| 2 | Menyusun Kasus Uji & Edge Cases | Ahmad | File `docs/04-kasus-uji.md` terisi lengkap | 45 menit | 40 menit | Selesai |
 | 3 | Menyusun Rencana Kerja & Estimasi | Faris & Hieray | File `docs/02-rencana.md` terisi lengkap | 30 menit | 30 menit | Selesai |
-| 4 | Push Commit Checkpoint 1 | Faris | Terbuat commit `checkpoint: spesifikasi, kasus uji, dan rencana selesai` | 15 menit | ... menit | Belum |
+| 4 | Push Commit Checkpoint 1 | Faris | Terbuat commit `checkpoint: spesifikasi, kasus uji, dan rencana selesai` | 15 menit | 13 menit | Selesai |
 | 5 | Setup Scaffolding React / Next.js + Tailwind | Hieray | Proyek di folder `src/` dapat dibuka di browser | 45 menit | ... menit | Belum |
 | 6 | Form Input Panen & Validasi Two-Tier (Blur & Objek Luar) | Hieray | Validasi *Laplacian Variance* (<100) & filter objek luar lulus | 50 menit | ... menit | Belum |
 | 7 | Fungsi Logika Kalkulasi Grade & Pricing | Faris | Perhitungan sampel matematika presisi & lulus pengujian acuan | 60 menit | ... menit | Belum |
