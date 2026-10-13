@@ -95,4 +95,20 @@ export function validateHarvestForm(form, today = todayAsInputValue()) {
   return { errors, isValid: Object.keys(errors).length === 0, values }
 }
 
+export function validateGradePercentages(gradeA, gradeB) {
+  const errors = {}
+  const parsedA = parseNumber(gradeA)
+  const parsedB = parseNumber(gradeB)
+
+  if (parsedA === null) errors.gradeA = 'Grade A harus berupa angka.'
+  else if (parsedA < 0 || parsedA > 100) errors.gradeA = 'Grade A harus antara 0 sampai 100.'
+  if (parsedB === null) errors.gradeB = 'Grade B harus berupa angka.'
+  else if (parsedB < 0 || parsedB > 100) errors.gradeB = 'Grade B harus antara 0 sampai 100.'
+  if (!errors.gradeA && !errors.gradeB && parsedA + parsedB > 100) {
+    errors.gradeB = 'Total Grade A dan Grade B tidak boleh melebihi 100%.'
+  }
+
+  return { errors, isValid: Object.keys(errors).length === 0 }
+}
+
 export { commodityOptions, sizeOptions, todayAsInputValue }
