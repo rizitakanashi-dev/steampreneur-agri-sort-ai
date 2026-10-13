@@ -24,6 +24,7 @@ import GrassRoundedIcon from '@mui/icons-material/GrassRounded'
 import LocalShippingRoundedIcon from '@mui/icons-material/LocalShippingRounded'
 import TrendingUpRoundedIcon from '@mui/icons-material/TrendingUpRounded'
 import { AppShell } from './components/AppShell.jsx'
+import { HarvestForm } from './components/HarvestForm.jsx'
 import { PageHeader } from './components/PageHeader.jsx'
 
 const pages = {
@@ -123,9 +124,10 @@ function DashboardPreview() {
   )
 }
 
-function FoundationPage({ activePage }) {
+function FoundationPage({ activePage, onHarvestConfirm }) {
   const page = pages[activePage]
   if (activePage === 'overview') return <DashboardPreview />
+  if (activePage === 'scanner') return <HarvestForm onSave={onHarvestConfirm} />
   return (
     <Card>
       <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
@@ -141,13 +143,24 @@ function FoundationPage({ activePage }) {
 
 function App() {
   const [activePage, setActivePage] = useState('overview')
+  const [harvestMessage, setHarvestMessage] = useState('')
   const page = pages[activePage]
 
+  const handleNavigate = (pageId) => {
+    setActivePage(pageId)
+    setHarvestMessage('')
+  }
+
+  const handleHarvestConfirm = () => {
+    setHarvestMessage('Input valid dan sudah dikonfirmasi. Kalkulasi serta penyimpanan rekap akan dihubungkan pada langkah berikutnya.')
+  }
+
   return (
-    <AppShell activePage={activePage} onNavigate={setActivePage}>
+    <AppShell activePage={activePage} onNavigate={handleNavigate}>
       <Container maxWidth="lg" sx={{ py: { xs: 2.5, sm: 3.5, md: 4.5 } }}>
         <PageHeader eyebrow="Agri-Sort AI / Precision Agriculture" title={page.title} description={page.description} />
-        <FoundationPage activePage={activePage} />
+        {harvestMessage && activePage === 'scanner' && <Alert onClose={() => setHarvestMessage('')} severity="success" sx={{ mb: 2 }}>{harvestMessage}</Alert>}
+        <FoundationPage activePage={activePage} onHarvestConfirm={handleHarvestConfirm} />
       </Container>
     </AppShell>
   )
