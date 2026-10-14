@@ -28,12 +28,14 @@ import { readBatches, saveBatch } from './business/harvestStorage.js'
 import { AppShell } from './components/AppShell.jsx'
 import { HarvestForm } from './components/HarvestForm.jsx'
 import { HarvestRecap } from './components/HarvestRecap.jsx'
+import { QCResults } from './components/QCResults.jsx'
 import { PageHeader } from './components/PageHeader.jsx'
 
 const pages = {
   overview: { title: 'Dashboard', description: 'Pantau kualitas panen dan peluang harga dalam satu tampilan.' },
   scanner: { title: 'Batch QC Scanner', description: 'Siapkan batch panen untuk pemeriksaan kualitas.' },
   results: { title: 'Hasil Analisis QC', description: 'Tinjau hasil pemeriksaan mutu dan rekomendasi tindakan.' },
+  'results-list': { title: 'Rekap Data Panen', description: 'Lihat seluruh batch panen yang tersimpan di browser.' },
   pricing: { title: 'Harga Pasar', description: 'Pantau acuan harga pasar untuk keputusan jual yang lebih tepat.' },
 }
 
@@ -127,11 +129,12 @@ function DashboardPreview() {
   )
 }
 
-function FoundationPage({ activePage, onHarvestConfirm, batches }) {
+function FoundationPage({ activePage, onHarvestConfirm, batches, selectedBatch, onBackToInput, onViewRecap }) {
   const page = pages[activePage]
   if (activePage === 'overview') return <DashboardPreview />
   if (activePage === 'scanner') return <HarvestForm onSave={onHarvestConfirm} />
-  if (activePage === 'results') return <HarvestRecap batches={batches} />
+  if (activePage === 'results') return <QCResults batch={selectedBatch} onBackToInput={onBackToInput} onViewRecap={onViewRecap} />
+  if (activePage === 'results-list') return <HarvestRecap batches={batches} />
   return (
     <Card>
       <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
@@ -148,16 +151,29 @@ function FoundationPage({ activePage, onHarvestConfirm, batches }) {
 function App() {
   const [activePage, setActivePage] = useState('overview')
   const [batches, setBatches] = useState([])
+  const [selectedBatch, setSelectedBatch] = useState(null)
   const [harvestMessage, setHarvestMessage] = useState('')
   const page = pages[activePage]
 
   useEffect(() => {
-    setBatches(readBatches())
+    const storedBatches = readBatches()
+    setBatches(storedBatches)
+    setSelectedBatch(storedBatches[storedBatches.length - 1] || null)
   }, [])
 
   const handleNavigate = (pageId) => {
     setActivePage(pageId)
     setHarvestMessage('')
+  }
+
+  const handleBackToInput = () => {
+    setHarvestMessage('')
+    setActivePage('scanner')
+  }
+
+  const handleViewRecap = () => {
+    setHarvestMessage('')
+    setActivePage('results-list')
   }
 
   const handleHarvestConfirm = (input) => {
@@ -183,6 +199,7 @@ function App() {
       dicatatPada: new Date().toISOString(),
     })
     setBatches((current) => [...current, savedBatch])
+    setSelectedBatch(savedBatch)
     setHarvestMessage(`Batch ${savedBatch.id} berhasil disimpan ke rekap.`)
     setActivePage('results')
   }
@@ -192,7 +209,7 @@ function App() {
       <Container maxWidth="lg" sx={{ py: { xs: 2.5, sm: 3.5, md: 4.5 } }}>
         <PageHeader eyebrow="Agri-Sort AI / Precision Agriculture" title={page.title} description={page.description} />
         {harvestMessage && <Alert onClose={() => setHarvestMessage('')} severity="success" sx={{ mb: 2 }}>{harvestMessage}</Alert>}
-        <FoundationPage activePage={activePage} batches={batches} onHarvestConfirm={handleHarvestConfirm} />
+        <FoundationPage activePage={activePage} batches={batches} onBackToInput={handleBackToInput} onHarvestConfirm={handleHarvestConfirm} onViewRecap={handleViewRecap} selectedBatch={selectedBatch} />
       </Container>
     </AppShell>
   )
