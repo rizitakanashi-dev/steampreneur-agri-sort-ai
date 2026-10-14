@@ -117,8 +117,10 @@ steampreneur-agri-sort-ai/
 |--------|---------|
 | React | MIT |
 | Vite | MIT |
-| Google Fonts (mis. Inter / Poppins) | SIL Open Font License 1.1 |
-| Ikon SVG bawaan / inline SVG | Milik proyek (bebas pakai) |
+| Material UI (`@mui/material`, `@mui/icons-material`) | MIT |
+| Emotion (`@emotion/react`, `@emotion/styled`) | MIT |
+| MUI X Charts (`@mui/x-charts`) — grafik tren harga | MIT |
+| Google Fonts (Inter) | SIL Open Font License 1.1 |
 
 Proyek ini dirilis di bawah lisensi MIT. Lihat file `LICENSE` bila tersedia.
 

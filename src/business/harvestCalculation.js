@@ -1,12 +1,8 @@
 import { validateGradePercentages } from './harvestValidation.js'
+import { REFERENCE_PRICES_PER_KG } from './priceReference.js'
 
 const GRADE_MULTIPLIERS = Object.freeze({ gradeA: 1, gradeB: 0.7, reject: 0.3 })
 const SIZE_MULTIPLIERS = Object.freeze({ Besar: 1, Sedang: 0.9, Kecil: 0.8 })
-const REFERENCE_PRICES_PER_KG = Object.freeze({
-  'Cabai Rawit Hijau': 30000,
-  Terung: 10000,
-  Tomat: 12000,
-})
 
 export function parseNumeric(rawValue) {
   if (typeof rawValue === 'number') return Number.isFinite(rawValue) ? rawValue : null

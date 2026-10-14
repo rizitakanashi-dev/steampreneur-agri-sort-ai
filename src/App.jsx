@@ -23,13 +23,15 @@ import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded'
 import GrassRoundedIcon from '@mui/icons-material/GrassRounded'
 import LocalShippingRoundedIcon from '@mui/icons-material/LocalShippingRounded'
 import TrendingUpRoundedIcon from '@mui/icons-material/TrendingUpRounded'
-import { calculateHarvest, calculateHarvestValue, REFERENCE_PRICES_PER_KG } from './business/harvestCalculation.js'
+import { calculateHarvest, calculateHarvestValue } from './business/harvestCalculation.js'
 import { readBatches, saveBatch } from './business/harvestStorage.js'
+import { COMMODITY_OPTIONS, PRICE_REFERENCE_SOURCE, REFERENCE_PRICES_PER_KG } from './business/priceReference.js'
 import { AppShell } from './components/AppShell.jsx'
 import { HarvestForm } from './components/HarvestForm.jsx'
 import { HarvestRecap } from './components/HarvestRecap.jsx'
 import { QCResults } from './components/QCResults.jsx'
 import { PageHeader } from './components/PageHeader.jsx'
+import { PricingDashboard } from './components/PricingDashboard.jsx'
 
 const pages = {
   overview: { title: 'Dashboard', description: 'Pantau kualitas panen dan peluang harga dalam satu tampilan.' },
@@ -40,10 +42,16 @@ const pages = {
 }
 
 const metrics = [
-  { label: 'Batch tersortir', value: '20k+', detail: 'total batch diproses', icon: LocalShippingRoundedIcon, color: '#036e45' },
-  { label: 'Akurasi model', value: '98.5%', detail: 'berdasarkan data terbaru', icon: AutoAwesomeRoundedIcon, color: '#2f7299' },
-  { label: 'Efisiensi QC', value: '98%', detail: 'lebih cepat dari manual', icon: TrendingUpRoundedIcon, color: '#b49262' },
+  { label: 'Batch tersimpan', value: 'Lokal', detail: 'tersimpan di browser ini', icon: LocalShippingRoundedIcon, color: '#036e45' },
+  { label: 'Komoditas terdaftar', value: String(COMMODITY_OPTIONS.length), detail: 'sesuai konfigurasi harga', icon: AutoAwesomeRoundedIcon, color: '#2f7299' },
+  { label: 'Sumber harga', value: 'Simulasi', detail: 'bukan data BAPANAS resmi', icon: TrendingUpRoundedIcon, color: '#b49262' },
 ]
+
+const rupiahFormatter = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 })
+
+function formatRupiah(value) {
+  return typeof value === 'number' && Number.isFinite(value) ? rupiahFormatter.format(value) : '-'
+}
 
 function MetricCard({ detail, icon: Icon, label, value, color }) {
   return (
@@ -101,14 +109,14 @@ function DashboardPreview() {
           <Card sx={{ height: '100%' }}>
             <CardContent sx={{ p: { xs: 2, sm: 2.5 } }}>
               <Stack direction="row" justifyContent="space-between" sx={{ mb: 2 }}>
-                <Box><Typography variant="h6">Harga acuan pasar</Typography><Typography color="text.secondary" variant="caption">Referensi untuk simulasi penilaian</Typography></Box>
-                <Chip color="success" label="Terbaru" size="small" variant="outlined" />
+                <Box><Typography variant="h6">Harga acuan pasar</Typography><Typography color="text.secondary" variant="caption">Sumber: simulasi, diperbarui {PRICE_REFERENCE_SOURCE.updatedAt}</Typography></Box>
+                <Chip color="warning" label="Simulasi" size="small" variant="outlined" />
               </Stack>
               <Stack spacing={1}>
-                {[['Tomat Merah', 'Rp 12.500', '+2.4%'], ['Cabai Rawit Merah', 'Rp 45.000', '+1.8%'], ['Terung', 'Rp 8.500', 'Stabil']].map(([name, price, change]) => (
-                  <Stack alignItems="center" direction="row" justifyContent="space-between" key={name} sx={{ borderBottom: '1px solid', borderColor: 'divider', py: 1.25 }}>
-                    <Stack direction="row" spacing={1.25} sx={{ alignItems: 'center' }}><Box sx={{ bgcolor: 'primary.light', borderRadius: '50%', height: 8, width: 8 }} /><Typography fontWeight={600} variant="body2">{name}</Typography></Stack>
-                    <Stack alignItems="flex-end"><Typography fontWeight={700} variant="body2">{price} <Typography color="success.main" component="span" variant="caption">{change}</Typography></Typography><Typography color="text.secondary" variant="caption">per kg</Typography></Stack>
+                {COMMODITY_OPTIONS.map((commodity) => (
+                  <Stack alignItems="center" direction="row" justifyContent="space-between" key={commodity} sx={{ borderBottom: '1px solid', borderColor: 'divider', py: 1.25 }}>
+                    <Stack direction="row" spacing={1.25} sx={{ alignItems: 'center' }}><Box sx={{ bgcolor: 'primary.light', borderRadius: '50%', height: 8, width: 8 }} /><Typography fontWeight={600} variant="body2">{commodity}</Typography></Stack>
+                    <Stack alignItems="flex-end"><Typography fontWeight={700} variant="body2">{formatRupiah(REFERENCE_PRICES_PER_KG[commodity])}</Typography><Typography color="text.secondary" variant="caption">per kg</Typography></Stack>
                   </Stack>
                 ))}
               </Stack>
@@ -135,6 +143,7 @@ function FoundationPage({ activePage, onHarvestConfirm, batches, selectedBatch, 
   if (activePage === 'scanner') return <HarvestForm onSave={onHarvestConfirm} />
   if (activePage === 'results') return <QCResults batch={selectedBatch} onBackToInput={onBackToInput} onViewRecap={onViewRecap} />
   if (activePage === 'results-list') return <HarvestRecap batches={batches} />
+  if (activePage === 'pricing') return <PricingDashboard />
   return (
     <Card>
       <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
