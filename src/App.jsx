@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
   Alert,
   Box,
@@ -23,8 +23,11 @@ import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded'
 import GrassRoundedIcon from '@mui/icons-material/GrassRounded'
 import LocalShippingRoundedIcon from '@mui/icons-material/LocalShippingRounded'
 import TrendingUpRoundedIcon from '@mui/icons-material/TrendingUpRounded'
+import { calculateHarvest, calculateHarvestValue, REFERENCE_PRICES_PER_KG } from './business/harvestCalculation.js'
+import { readBatches, saveBatch } from './business/harvestStorage.js'
 import { AppShell } from './components/AppShell.jsx'
 import { HarvestForm } from './components/HarvestForm.jsx'
+import { HarvestRecap } from './components/HarvestRecap.jsx'
 import { PageHeader } from './components/PageHeader.jsx'
 
 const pages = {
@@ -124,10 +127,11 @@ function DashboardPreview() {
   )
 }
 
-function FoundationPage({ activePage, onHarvestConfirm }) {
+function FoundationPage({ activePage, onHarvestConfirm, batches }) {
   const page = pages[activePage]
   if (activePage === 'overview') return <DashboardPreview />
   if (activePage === 'scanner') return <HarvestForm onSave={onHarvestConfirm} />
+  if (activePage === 'results') return <HarvestRecap batches={batches} />
   return (
     <Card>
       <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
@@ -143,24 +147,52 @@ function FoundationPage({ activePage, onHarvestConfirm }) {
 
 function App() {
   const [activePage, setActivePage] = useState('overview')
+  const [batches, setBatches] = useState([])
   const [harvestMessage, setHarvestMessage] = useState('')
   const page = pages[activePage]
+
+  useEffect(() => {
+    setBatches(readBatches())
+  }, [])
 
   const handleNavigate = (pageId) => {
     setActivePage(pageId)
     setHarvestMessage('')
   }
 
-  const handleHarvestConfirm = () => {
-    setHarvestMessage('Input valid dan sudah dikonfirmasi. Kalkulasi serta penyimpanan rekap akan dihubungkan pada langkah berikutnya.')
+  const handleHarvestConfirm = (input) => {
+    const calculation = calculateHarvest(input)
+    const valueCalculation = calculateHarvestValue({
+      ...input,
+      hargaAcuanPerKg: REFERENCE_PRICES_PER_KG[input.komoditas],
+    })
+    const savedBatch = saveBatch({
+      ...input,
+      hasil: {
+        persenA: calculation.persentase.gradeA,
+        persenB: calculation.persentase.gradeB,
+        persenC: calculation.persentase.reject,
+        beratA: calculation.beratKg.gradeA,
+        beratB: calculation.beratKg.gradeB,
+        beratC: calculation.beratKg.reject,
+        nilaiA: valueCalculation.nilai.gradeA,
+        nilaiB: valueCalculation.nilai.gradeB,
+        nilaiC: valueCalculation.nilai.reject,
+        totalNilai: valueCalculation.totalNilai,
+      },
+      dicatatPada: new Date().toISOString(),
+    })
+    setBatches((current) => [...current, savedBatch])
+    setHarvestMessage(`Batch ${savedBatch.id} berhasil disimpan ke rekap.`)
+    setActivePage('results')
   }
 
   return (
     <AppShell activePage={activePage} onNavigate={handleNavigate}>
       <Container maxWidth="lg" sx={{ py: { xs: 2.5, sm: 3.5, md: 4.5 } }}>
         <PageHeader eyebrow="Agri-Sort AI / Precision Agriculture" title={page.title} description={page.description} />
-        {harvestMessage && activePage === 'scanner' && <Alert onClose={() => setHarvestMessage('')} severity="success" sx={{ mb: 2 }}>{harvestMessage}</Alert>}
-        <FoundationPage activePage={activePage} onHarvestConfirm={handleHarvestConfirm} />
+        {harvestMessage && <Alert onClose={() => setHarvestMessage('')} severity="success" sx={{ mb: 2 }}>{harvestMessage}</Alert>}
+        <FoundationPage activePage={activePage} batches={batches} onHarvestConfirm={handleHarvestConfirm} />
       </Container>
     </AppShell>
   )
