@@ -102,8 +102,8 @@ export function PricingDashboard() {
               <Typography color="text.secondary" sx={{ mb: 2 }} variant="body2">
                 Diperbarui: {PRICE_REFERENCE_SOURCE.updatedAt}
               </Typography>
-              <TableContainer>
-                <Table size="small">
+              <TableContainer sx={{ overflowX: 'auto' }}>
+                <Table size="small" sx={{ minWidth: 360 }}>
                   <TableHead>
                     <TableRow sx={{ bgcolor: '#f2f4f6' }}>
                       <TableCell>Komoditas</TableCell>
@@ -158,7 +158,7 @@ export function PricingDashboard() {
                   size="small"
                   value={volumeKg}
                 />
-                <Stack direction="row" spacing={1.5}>
+                <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}>
                   <TextField
                     fullWidth
                     InputProps={{ endAdornment: <InputAdornment position="end">%</InputAdornment> }}
@@ -212,8 +212,8 @@ export function PricingDashboard() {
                         Harga rata-rata tertimbang: {formatRupiah(weightedPrice)} / kg
                       </Typography>
                     </Box>
-                    <TableContainer>
-                      <Table size="small">
+                    <TableContainer sx={{ overflowX: 'auto' }}>
+                      <Table size="small" sx={{ minWidth: 480 }}>
                         <TableHead>
                           <TableRow sx={{ bgcolor: '#f2f4f6' }}>
                             <TableCell>Grade</TableCell>
@@ -268,10 +268,11 @@ export function PricingDashboard() {
                 <Alert severity="warning" sx={{ mt: 2 }}>
                   Kebijakan margin/markup belum disetujui, sehingga rekomendasi harga minimum tidak ditampilkan.
                 </Alert>
-                <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} sx={{ mt: 2 }}>
+              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} sx={{ mt: 2 }}>
                   {[{ type: 'markup', percent: 20 }, { type: 'margin', percent: 20 }].map((policy) => (
                     <Button
                       key={policy.type}
+                      fullWidth
                       onClick={() => {
                         try {
                           setError(`Contoh ${policy.type} 20%: harga minimum ${formatRupiah(calculateMinimumPrice({ bppPerKg: bppInput, policy }))} / kg`)

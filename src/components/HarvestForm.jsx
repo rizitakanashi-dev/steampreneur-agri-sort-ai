@@ -12,6 +12,7 @@ import {
   FormControl,
   FormHelperText,
   FormLabel,
+  Grid,
   InputAdornment,
   MenuItem,
   Select,
@@ -97,26 +98,32 @@ export function HarvestForm({ onSave }) {
 
             <Stack spacing={2.25}>
               <Typography color="primary.dark" fontWeight={700} variant="subtitle2">Informasi panen</Typography>
-              <TextField
-                fullWidth
-                required
-                error={Boolean(touched.tanggal && errors.tanggal)}
-                helperText={(touched.tanggal && errors.tanggal) || 'Tanggal tidak boleh melebihi hari ini.'}
-                onBlur={handleBlur('tanggal')}
-                inputProps={{ max: todayAsInputValue() }}
-                label="Tanggal panen"
-                onChange={handleChange('tanggal')}
-                type="date"
-                value={form.tanggal}
-              />
-              <FormControl fullWidth required error={Boolean(touched.komoditas && errors.komoditas)}>
-                <FormLabel id="harvest-commodity-label">Komoditas</FormLabel>
-                <Select aria-labelledby="harvest-commodity-label" displayEmpty onBlur={handleBlur('komoditas')} onChange={handleChange('komoditas')} value={form.komoditas} sx={{ mt: 0.75 }}>
-                  <MenuItem disabled value="">Pilih komoditas</MenuItem>
-                  {commodityOptions.map((commodity) => <MenuItem key={commodity} value={commodity}>{commodity}</MenuItem>)}
-                </Select>
-                <FieldError>{touched.komoditas && errors.komoditas ? errors.komoditas : ''}</FieldError>
-              </FormControl>
+              <Grid container spacing={2}>
+                <Grid size={{ xs: 12, sm: 6 }}>
+                  <TextField
+                    fullWidth
+                    required
+                    error={Boolean(touched.tanggal && errors.tanggal)}
+                    helperText={(touched.tanggal && errors.tanggal) || 'Tanggal tidak boleh melebihi hari ini.'}
+                    onBlur={handleBlur('tanggal')}
+                    inputProps={{ max: todayAsInputValue() }}
+                    label="Tanggal panen"
+                    onChange={handleChange('tanggal')}
+                    type="date"
+                    value={form.tanggal}
+                  />
+                </Grid>
+                <Grid size={{ xs: 12, sm: 6 }}>
+                  <FormControl fullWidth required error={Boolean(touched.komoditas && errors.komoditas)}>
+                    <FormLabel id="harvest-commodity-label">Komoditas</FormLabel>
+                    <Select aria-labelledby="harvest-commodity-label" displayEmpty onBlur={handleBlur('komoditas')} onChange={handleChange('komoditas')} value={form.komoditas} sx={{ mt: 0.75 }}>
+                      <MenuItem disabled value="">Pilih komoditas</MenuItem>
+                      {commodityOptions.map((commodity) => <MenuItem key={commodity} value={commodity}>{commodity}</MenuItem>)}
+                    </Select>
+                    <FieldError>{touched.komoditas && errors.komoditas ? errors.komoditas : ''}</FieldError>
+                  </FormControl>
+                </Grid>
+              </Grid>
               <TextField
                 fullWidth
                 required
@@ -135,28 +142,34 @@ export function HarvestForm({ onSave }) {
 
             <Stack spacing={2.25}>
               <Typography color="primary.dark" fontWeight={700} variant="subtitle2">Parameter mutu</Typography>
-              <TextField
-                fullWidth
-                required
-                error={Boolean(touched.kesegaranPersen && errors.kesegaranPersen)}
-                helperText={(touched.kesegaranPersen && errors.kesegaranPersen) || 'Nilai 0 sampai 100.'}
-                onBlur={handleBlur('kesegaranPersen')}
-                InputProps={{ endAdornment: <InputAdornment position="end">%</InputAdornment> }}
-                inputMode="decimal"
-                label="Kesegaran"
-                onChange={handleChange('kesegaranPersen')}
-                placeholder="Contoh: 80"
-                type="text"
-                value={form.kesegaranPersen}
-              />
-              <FormControl fullWidth required error={Boolean(touched.ukuran && errors.ukuran)}>
-                <FormLabel id="harvest-size-label">Ukuran</FormLabel>
-                <Select aria-labelledby="harvest-size-label" displayEmpty onBlur={handleBlur('ukuran')} onChange={handleChange('ukuran')} value={form.ukuran} sx={{ mt: 0.75 }}>
-                  <MenuItem disabled value="">Pilih ukuran</MenuItem>
-                  {sizeOptions.map((size) => <MenuItem key={size} value={size}>{size}</MenuItem>)}
-                </Select>
-                <FieldError>{touched.ukuran && errors.ukuran ? errors.ukuran : ''}</FieldError>
-              </FormControl>
+              <Grid container spacing={2}>
+                <Grid size={{ xs: 12, sm: 6 }}>
+                  <TextField
+                    fullWidth
+                    required
+                    error={Boolean(touched.kesegaranPersen && errors.kesegaranPersen)}
+                    helperText={(touched.kesegaranPersen && errors.kesegaranPersen) || 'Nilai 0 sampai 100.'}
+                    onBlur={handleBlur('kesegaranPersen')}
+                    InputProps={{ endAdornment: <InputAdornment position="end">%</InputAdornment> }}
+                    inputMode="decimal"
+                    label="Kesegaran"
+                    onChange={handleChange('kesegaranPersen')}
+                    placeholder="Contoh: 80"
+                    type="text"
+                    value={form.kesegaranPersen}
+                  />
+                </Grid>
+                <Grid size={{ xs: 12, sm: 6 }}>
+                  <FormControl fullWidth required error={Boolean(touched.ukuran && errors.ukuran)}>
+                    <FormLabel id="harvest-size-label">Ukuran</FormLabel>
+                    <Select aria-labelledby="harvest-size-label" displayEmpty onBlur={handleBlur('ukuran')} onChange={handleChange('ukuran')} value={form.ukuran} sx={{ mt: 0.75 }}>
+                      <MenuItem disabled value="">Pilih ukuran</MenuItem>
+                      {sizeOptions.map((size) => <MenuItem key={size} value={size}>{size}</MenuItem>)}
+                    </Select>
+                    <FieldError>{touched.ukuran && errors.ukuran ? errors.ukuran : ''}</FieldError>
+                  </FormControl>
+                </Grid>
+              </Grid>
               <TextField
                 fullWidth
                 required

@@ -77,8 +77,8 @@ function DashboardPreview() {
     <>
       <Card sx={{ background: 'linear-gradient(135deg, #036e45 0%, #0b8a5a 100%)', color: 'common.white', mb: 2.5, overflow: 'hidden', position: 'relative' }}>
         <CardContent sx={{ p: { xs: 2.5, sm: 3.5 }, position: 'relative', zIndex: 1 }}>
-          <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" spacing={3}>
-            <Box sx={{ maxWidth: 560 }}>
+      <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" spacing={2}>
+            <Box sx={{ maxWidth: { xs: '100%', sm: 560 } }}>
               <Chip icon={<CheckCircleRoundedIcon />} label="Sistem siap digunakan" size="small" sx={{ bgcolor: 'rgba(255,255,255,.16)', color: 'common.white', mb: 2, '& .MuiChip-icon': { color: '#b8e7d5' } }} />
               <Typography sx={{ fontSize: { xs: 26, sm: 34 }, fontWeight: 800, letterSpacing: '-0.035em', lineHeight: 1.1 }} variant="h4">
                 Sortir cerdas, panen maksimal.
@@ -86,7 +86,7 @@ function DashboardPreview() {
               <Typography sx={{ color: 'rgba(255,255,255,.78)', mt: 1.5, maxWidth: 480 }} variant="body1">
                 Ubah data panen menjadi keputusan QC dan harga yang lebih jelas untuk tim lapangan.
               </Typography>
-              <Button color="inherit" endIcon={<ArrowForwardRoundedIcon />} onClick={() => {}} sx={{ bgcolor: 'common.white', color: 'primary.dark', mt: 2.5, '&:hover': { bgcolor: '#e8f5ee' } }} variant="contained">
+              <Button color="inherit" endIcon={<ArrowForwardRoundedIcon />} fullWidth onClick={() => {}} sx={{ bgcolor: 'common.white', color: 'primary.dark', mt: 2.5, maxWidth: { sm: 200 }, '&:hover': { bgcolor: '#e8f5ee' } }} variant="contained">
                 Mulai scan batch
               </Button>
             </Box>
@@ -215,7 +215,7 @@ function App() {
 
   return (
     <AppShell activePage={activePage} onNavigate={handleNavigate}>
-      <Container maxWidth="lg" sx={{ py: { xs: 2.5, sm: 3.5, md: 4.5 } }}>
+      <Container maxWidth="lg" sx={{ px: { xs: 1.5, sm: 2, md: 3 }, py: { xs: 2.5, sm: 3.5, md: 4.5 } }}>
         <PageHeader eyebrow="Agri-Sort AI / Precision Agriculture" title={page.title} description={page.description} />
         {harvestMessage && <Alert onClose={() => setHarvestMessage('')} severity="success" sx={{ mb: 2 }}>{harvestMessage}</Alert>}
         <FoundationPage activePage={activePage} batches={batches} onBackToInput={handleBackToInput} onHarvestConfirm={handleHarvestConfirm} onViewRecap={handleViewRecap} selectedBatch={selectedBatch} />

@@ -132,7 +132,7 @@ export function QCResults({ batch, onBackToInput, onViewRecap }) {
                 <Box><Typography variant="h6">Distribusi kualitas</Typography><Typography color="text.secondary" variant="body2">Berat total: {formatNumber(batch.beratKg)} kg</Typography></Box>
                 <Inventory2RoundedIcon color="primary" />
               </Stack>
-              <Stack direction="row" flexWrap="wrap" spacing={2}>
+              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
                 <QualityIndicator color="#289d67" icon={AssessmentRoundedIcon} label="Grade A" percentage={hasil.persenA} weight={hasil.beratA} />
                 <QualityIndicator color="#c68f2f" icon={AssessmentRoundedIcon} label="Grade B" percentage={hasil.persenB} weight={hasil.beratB} />
                 <QualityIndicator color="#a94f46" icon={RecyclingRoundedIcon} label="Reject" percentage={hasil.persenC} weight={hasil.beratC} />
@@ -159,8 +159,8 @@ export function QCResults({ batch, onBackToInput, onViewRecap }) {
       </Card>
 
       <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" spacing={1.5}>
-        <Button onClick={onBackToInput} startIcon={<ArrowBackRoundedIcon />} variant="outlined">Kembali ke input</Button>
-        <Button onClick={onViewRecap} variant="outlined">Lihat semua rekap</Button>
+        <Button fullWidth onClick={onBackToInput} startIcon={<ArrowBackRoundedIcon />} variant="outlined" sx={{ maxWidth: { sm: 220 } }}>Kembali ke input</Button>
+        <Button fullWidth onClick={onViewRecap} variant="outlined" sx={{ maxWidth: { sm: 220 } }}>Lihat semua rekap</Button>
       </Stack>
     </Stack>
   )

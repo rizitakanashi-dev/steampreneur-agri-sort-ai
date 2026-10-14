@@ -2,7 +2,7 @@ import { Divider, Stack, Typography } from '@mui/material'
 
 export function PageHeader({ eyebrow, title, description }) {
   return (
-    <Stack spacing={1.25} sx={{ mb: 3 }}>
+    <Stack spacing={1.25} sx={{ mb: { xs: 2, sm: 3 } }}>
       {eyebrow && (
         <Typography color="primary" variant="overline">
           {eyebrow}

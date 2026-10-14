@@ -145,7 +145,7 @@ export function HarvestRecap({ batches = [] }) {
             />
           </Grid>
           <Grid size={{ xs: 12, sm: 12, md: 2 }}>
-            <Stack direction="row" spacing={1} sx={{ height: '100%' }}>
+            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} sx={{ alignItems: 'center', height: '100%' }}>
               <Tooltip title="Reset filter">
                 <span>
                   <IconButton aria-label="Reset filter" disabled={!filterActive} onClick={handleResetFilter}>
@@ -159,6 +159,7 @@ export function HarvestRecap({ batches = [] }) {
                 onClick={handleExport}
                 startIcon={<DownloadRoundedIcon />}
                 variant="outlined"
+                sx={{ maxWidth: { sm: 200 } }}
               >
                 Ekspor CSV
               </Button>
@@ -170,7 +171,8 @@ export function HarvestRecap({ batches = [] }) {
         )}
       </Paper>
 
-      <TableContainer component={Paper} sx={{ border: '1px solid', borderColor: 'divider', overflowX: 'auto' }}>
+      <Paper sx={{ border: '1px solid', borderColor: 'divider' }}>
+        <TableContainer sx={{ overflowX: 'auto' }}>
         <Table aria-label="Rekap data panen" size="small" sx={{ minWidth: 900 }}>
           <TableHead>
             <TableRow sx={{ bgcolor: '#f2f4f6' }}>
@@ -220,6 +222,7 @@ export function HarvestRecap({ batches = [] }) {
             })}
           </TableBody>
         </Table>
+        </TableContainer>
         <TablePagination
           component="div"
           count={sortedBatches.length}
@@ -230,8 +233,9 @@ export function HarvestRecap({ batches = [] }) {
           page={page}
           rowsPerPage={rowsPerPage}
           rowsPerPageOptions={[5, 10, 25]}
+          sx={{ borderBottom: 'none' }}
         />
-      </TableContainer>
+      </Paper>
       <Dialog fullWidth maxWidth="sm" onClose={() => setSelectedBatch(null)} open={Boolean(selectedBatch)}>
         <DialogTitle>Detail batch panen</DialogTitle>
         <DialogContent dividers>
