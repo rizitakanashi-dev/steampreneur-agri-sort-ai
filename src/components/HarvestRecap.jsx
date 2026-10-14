@@ -1,13 +1,20 @@
 import { useMemo, useState } from 'react'
 import {
   Box,
+  Button,
   Chip,
   Dialog,
   DialogActions,
   DialogContent,
   DialogTitle,
+  FormControl,
+  Grid,
   IconButton,
+  InputAdornment,
+  InputLabel,
+  MenuItem,
   Paper,
+  Select,
   Stack,
   Table,
   TableBody,
@@ -16,11 +23,19 @@ import {
   TableHead,
   TablePagination,
   TableRow,
+  TextField,
   Tooltip,
   Typography,
-  Button,
 } from '@mui/material'
+import DownloadRoundedIcon from '@mui/icons-material/DownloadRounded'
+import FilterAltOffRoundedIcon from '@mui/icons-material/FilterAltOffRounded'
+import SearchRoundedIcon from '@mui/icons-material/SearchRounded'
 import VisibilityRoundedIcon from '@mui/icons-material/VisibilityRounded'
+import { EMPTY_RECAP_FILTER, filterBatches, isFilterEmpty, listCommodities, sortBatchesByNewest } from '../business/harvestFilter.js'
+import { downloadCsv } from '../utils/csvExporter.js'
+
+/** Jumlah kolom tabel; dipakai untuk colSpan pada baris empty state. */
+const COLUMN_COUNT = 6
 
 const rupiahFormatter = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 })
 const numberFormatter = new Intl.NumberFormat('id-ID', { maximumFractionDigits: 2 })
@@ -41,12 +56,28 @@ export function HarvestRecap({ batches = [] }) {
   const [page, setPage] = useState(0)
   const [rowsPerPage, setRowsPerPage] = useState(5)
   const [selectedBatch, setSelectedBatch] = useState(null)
+  const [filter, setFilter] = useState(EMPTY_RECAP_FILTER)
+  const [exportStatus, setExportStatus] = useState('')
 
-  const sortedBatches = useMemo(() => [...batches].sort((a, b) => {
-    const dateDifference = String(b.tanggal).localeCompare(String(a.tanggal))
-    return dateDifference || String(b.dicatatPada || '').localeCompare(String(a.dicatatPada || ''))
-  }), [batches])
+  const commodities = useMemo(() => listCommodities(batches), [batches])
+  const sortedBatches = useMemo(() => sortBatchesByNewest(filterBatches(batches, filter)), [batches, filter])
   const visibleBatches = sortedBatches.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
+  const filterActive = !isFilterEmpty(filter)
+
+  const handleFilterChange = (field) => (event) => {
+    setFilter((current) => ({ ...current, [field]: event.target.value }))
+    setPage(0)
+  }
+
+  const handleResetFilter = () => {
+    setFilter(EMPTY_RECAP_FILTER)
+    setPage(0)
+  }
+
+  const handleExport = () => {
+    downloadCsv(sortedBatches)
+    setExportStatus(`${sortedBatches.length} baris yang tampil berhasil diunduh sebagai CSV.`)
+  }
 
   if (batches.length === 0) {
     return (
@@ -58,6 +89,87 @@ export function HarvestRecap({ batches = [] }) {
 
   return (
     <>
+      <Paper sx={{ border: '1px solid', borderColor: 'divider', mb: 2, p: { xs: 2, sm: 2.5 } }}>
+        <Grid container spacing={2}>
+          <Grid size={{ xs: 12, md: 4 }}>
+            <TextField
+              fullWidth
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <SearchRoundedIcon fontSize="small" />
+                  </InputAdornment>
+                ),
+              }}
+              label="Cari ID batch atau komoditas"
+              onChange={handleFilterChange('search')}
+              size="small"
+              value={filter.search}
+            />
+          </Grid>
+          <Grid size={{ xs: 12, sm: 6, md: 2.5 }}>
+            <FormControl fullWidth size="small">
+              <InputLabel id="recap-commodity-label">Komoditas</InputLabel>
+              <Select
+                displayEmpty
+                label="Komoditas"
+                labelId="recap-commodity-label"
+                onChange={handleFilterChange('komoditas')}
+                value={filter.komoditas}
+              >
+                <MenuItem value="">Semua komoditas</MenuItem>
+                {commodities.map((commodity) => <MenuItem key={commodity} value={commodity}>{commodity}</MenuItem>)}
+              </Select>
+            </FormControl>
+          </Grid>
+          <Grid size={{ xs: 6, sm: 3, md: 1.75 }}>
+            <TextField
+              fullWidth
+              InputLabelProps={{ shrink: true }}
+              label="Dari"
+              onChange={handleFilterChange('tanggalDari')}
+              size="small"
+              type="date"
+              value={filter.tanggalDari}
+            />
+          </Grid>
+          <Grid size={{ xs: 6, sm: 3, md: 1.75 }}>
+            <TextField
+              fullWidth
+              InputLabelProps={{ shrink: true }}
+              label="Sampai"
+              onChange={handleFilterChange('tanggalSampai')}
+              size="small"
+              type="date"
+              value={filter.tanggalSampai}
+            />
+          </Grid>
+          <Grid size={{ xs: 12, sm: 12, md: 2 }}>
+            <Stack direction="row" spacing={1} sx={{ height: '100%' }}>
+              <Tooltip title="Reset filter">
+                <span>
+                  <IconButton aria-label="Reset filter" disabled={!filterActive} onClick={handleResetFilter}>
+                    <FilterAltOffRoundedIcon />
+                  </IconButton>
+                </span>
+              </Tooltip>
+              <Button
+                disabled={sortedBatches.length === 0}
+                fullWidth
+                onClick={handleExport}
+                startIcon={<DownloadRoundedIcon />}
+                variant="outlined"
+              >
+                Ekspor CSV
+              </Button>
+            </Stack>
+          </Grid>
+        </Grid>
+        {exportStatus && (
+          <Typography color="text.secondary" sx={{ mt: 1.5 }} variant="caption">{exportStatus}</Typography>
+        )}
+      </Paper>
+
       <TableContainer component={Paper} sx={{ border: '1px solid', borderColor: 'divider', overflowX: 'auto' }}>
         <Table aria-label="Rekap data panen" size="small" sx={{ minWidth: 900 }}>
           <TableHead>
@@ -71,6 +183,15 @@ export function HarvestRecap({ batches = [] }) {
             </TableRow>
           </TableHead>
           <TableBody>
+            {visibleBatches.length === 0 && (
+              <TableRow>
+                <TableCell colSpan={COLUMN_COUNT}>
+                  <Typography align="center" color="text.secondary" sx={{ py: 3 }} variant="body2">
+                    Data tidak ditemukan
+                  </Typography>
+                </TableCell>
+              </TableRow>
+            )}
             {visibleBatches.map((batch) => {
               const result = batch.hasil || {}
               return (
@@ -111,7 +232,6 @@ export function HarvestRecap({ batches = [] }) {
           rowsPerPageOptions={[5, 10, 25]}
         />
       </TableContainer>
-
       <Dialog fullWidth maxWidth="sm" onClose={() => setSelectedBatch(null)} open={Boolean(selectedBatch)}>
         <DialogTitle>Detail batch panen</DialogTitle>
         <DialogContent dividers>
