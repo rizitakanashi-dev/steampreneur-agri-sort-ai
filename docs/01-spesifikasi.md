@@ -177,6 +177,23 @@ Aturan tampilan rekap:
 - Data tetap tampil setelah halaman dimuat ulang.
 - Tabel dapat digulir ke samping di layar HP tanpa merusak tata letak halaman.
 
+### Langkah 3b. Pencarian, filter, dan ekspor CSV (Change Request Tugas 3)
+
+Fitur ini ditambahkan setelah Checkpoint 2 sebagai pemenuhan Change Request. Ketentuannya:
+
+| Fitur | Aturan |
+|---|---|
+| **Pencarian real-time** | Mencari berdasarkan **ID batch atau komoditas**. Tidak membedakan huruf besar/kecil. Hasil tersaring langsung saat pengguna mengetik, tanpa menekan tombol. |
+| **Filter komoditas** | Pilihan komoditas diambil dari data yang tersimpan. Nilai kosong berarti "semua komoditas". |
+| **Filter rentang tanggal** | Dua isian tanggal (`Dari` dan `Sampai`) dengan batas **inklusif**. Isian yang kosong diabaikan. |
+| **Kombinasi filter** | Pencarian dan kedua filter dapat dipakai **bersamaan**; semua kondisi harus terpenuhi (AND). |
+| **Reset filter** | Tombol reset mengembalikan seluruh filter ke keadaan awal dan mengembalikan halaman ke urutan 1. |
+| **Empty state** | Jika tidak ada data yang cocok, tabel menampilkan pesan persis **"Data tidak ditemukan"** pada satu baris dengan `colSpan` penuh. Pesan ini berbeda dari pesan rekap kosong "Belum ada data panen tersimpan." |
+| **Ekspor CSV** | Mengunduh **data yang sedang tampil** (hasil pencarian + filter aktif), bukan seluruh data. Baris pertama berisi nama kolom. |
+| **Format angka CSV** | Angka ditulis **murni**: tanpa simbol `Rp` dan tanpa pemisah ribuan (contoh: `15000`). Nilai yang mengandung koma, tanda kutip, atau baris baru dibungkus tanda kutip ganda agar aman dibuka di Excel. |
+
+Catatan cakupan: analisis dampak fitur ini ada di `docs/analisis-change-request.md`, dan kasus ujinya di `docs/04-kasus-uji.md` (K21–K25).
+
 ---
 
 ## 5. Di luar cakupan (tidak dikerjakan dalam challenge ini)
@@ -192,7 +209,7 @@ Aplikasi berjalan sepenuhnya di sisi pengguna (client-side) di browser dan menyi
 - **Edit dan hapus per baris data.** Data yang sudah disimpan tidak diubah satu per satu pada versi pertama.
 - **Hosting online.** Tidak diwajibkan oleh challenge.
 
-**Catatan urutan kerja:** pencarian, filter, dan ekspor CSV pada halaman rekap **bukan bagian dari spesifikasi ini**. Fitur tersebut adalah Change Request (Tugas 3) yang baru dikerjakan setelah Checkpoint 2, dimulai dari dokumen `analisis-change-request.md`.
+**Catatan urutan kerja:** pencarian, filter, dan ekspor CSV pada halaman rekap **bukan bagian dari spesifikasi alur inti ini**. Fitur tersebut adalah Change Request (Tugas 3) yang dikerjakan setelah Checkpoint 2, dimulai dari dokumen `analisis-change-request.md`. Setelah Change Request selesai, aturan perilakunya dicatat di **Bagian 4, Langkah 3b**.
 
 ---
 

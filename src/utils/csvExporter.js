@@ -59,8 +59,15 @@ const CSV_HEADERS = [
   'Catatan',
 ]
 
+/**
+ * Menyiapkan sel angka untuk CSV.
+ * Angka dibulatkan maksimal 4 desimal agar sisa floating-point
+ * (misalnya 4.305600000000001) tidak ikut tertulis ke berkas.
+ * Bilangan bulat dan nilai Rupiah tidak berubah.
+ */
 function numericCell(value) {
-  return typeof value === 'number' && Number.isFinite(value) ? value : ''
+  if (typeof value !== 'number' || !Number.isFinite(value)) return ''
+  return Number(value.toFixed(4))
 }
 
 /** Mengubah daftar batch menjadi matriks baris CSV (header + data). */

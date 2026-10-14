@@ -66,3 +66,52 @@ test('CSV kosong hanya berisi header ketika tidak ada data', () => {
   assert.equal(csv.split('\r\n').length, 1)
   assert.match(csv, /^ID Batch/)
 })
+
+test('berat hasil hitung tidak menuliskan artefak floating-point', () => {
+  // Angka nyata dari hasil pengujian: 144 kg, kesegaran 77, cacat 87.
+  // Berat B seharusnya 4.3056, bukan 4.305600000000001.
+  const batch = {
+    id: 'panen-1791964591110',
+    tanggal: '2026-10-14',
+    komoditas: 'Cabai Rawit Hijau',
+    beratKg: 144,
+    kesegaranPersen: 77,
+    ukuran: 'Besar',
+    cacatPersen: 87,
+    hasil: {
+      persenA: 10.01, persenB: 2.99, persenC: 87,
+      beratA: 14.4144, beratB: 4.305600000000001, beratC: 125.28,
+      nilaiA: 432432, nilaiB: 90418, nilaiC: 1127520, totalNilai: 1650370,
+    },
+  }
+  const csv = buildHarvestCsv([batch])
+  assert.ok(csv.includes('4.3056'), 'berat B harus ditulis 4.3056')
+  assert.ok(!csv.includes('4.305600000000001'), 'artefak floating-point tidak boleh muncul')
+  assert.ok(!/\d\.\d{6,}/.test(csv), 'tidak boleh ada angka dengan 6+ desimal')
+})
+
+test('angka desimal panjang dibulatkan maksimal 4 angka di belakang koma', () => {
+  const batch = {
+    id: 'panen-x', tanggal: '2026-10-14', komoditas: 'Tomat', beratKg: 144,
+    ukuran: 'Besar', cacatPersen: 87, kesegaranPersen: 77,
+    hasil: { beratA: 14.41444444, beratB: 4.30555555, beratC: 125.28000001 },
+  }
+  const csv = buildHarvestCsv([batch])
+  const dataRow = csv.split('\r\n')[1]
+  for (const cell of dataRow.split(',')) {
+    const match = cell.match(/^-?\d+\.(\d+)$/)
+    if (match) assert.ok(match[1].length <= 4, `sel "${cell}" punya lebih dari 4 desimal`)
+  }
+})
+
+test('angka bulat dan nilai Rupiah tidak berubah oleh pembulatan desimal', () => {
+  const batch = {
+    id: 'panen-y', tanggal: '2026-10-14', komoditas: 'Tomat', beratKg: 100,
+    ukuran: 'Sedang', cacatPersen: 10, kesegaranPersen: 80,
+    hasil: { beratA: 72, beratB: 18, beratC: 10, nilaiA: 777600, nilaiB: 136080, nilaiC: 32400, totalNilai: 946080 },
+  }
+  const csv = buildHarvestCsv([batch])
+  assert.ok(csv.includes('946080'), 'total nilai harus tetap bilangan bulat')
+  assert.ok(!csv.includes('946080.0'), 'bilangan bulat tidak boleh diberi desimal')
+  assert.ok(csv.includes(',72,'), 'berat bulat harus tetap 72')
+})

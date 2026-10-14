@@ -63,10 +63,23 @@ npm run preview
 ## Cara Menjalankan Pengujian
 
 ```bash
-node --test
+npm test
 ```
 
 Perintah di atas menjalankan seluruh unit test di folder `tes/` menggunakan test runner bawaan Node.js (tanpa framework tambahan).
+
+Hasil yang diharapkan: **49 test lulus, 0 gagal**.
+
+| Berkas test | Cakupan |
+|-------------|---------|
+| `tes/harvestCalculation.test.js` | Kalkulasi distribusi grade, harga, pembulatan Rupiah |
+| `tes/harvestValidation.test.js` | Validasi field form input panen |
+| `tes/gradeValidation.test.js` | Validasi persentase Grade A/B |
+| `tes/harvestStorage.test.js` | Penyimpanan `localStorage` (data kosong, JSON rusak, ID unik) |
+| `tes/harvestProjection.test.js` | Proyeksi pendapatan pada Pricing Dashboard |
+| `tes/harvestRecapChangeRequest.test.js` | Pencarian, filter kombinasi, ekspor data tersaring |
+| `tes/csvExporter.test.js` | Header CSV, angka murni, escape koma/kutip/newline |
+| `tes/initialState.test.js` | State awal aplikasi |
 
 ## Fitur dan Batasan
 
@@ -77,7 +90,21 @@ Perintah di atas menjalankan seluruh unit test di folder `tes/` menggunakan test
 - Estimasi harga per grade dan total nilai panen
 - Acuan harga pasar cabai rawit hijau & terung
 - Rekap dan riwayat data panen
+- **Pencarian real-time** pada halaman Rekap (berdasarkan ID batch atau komoditas, tidak membedakan huruf besar/kecil)
+- **Filter komoditas dan rentang tanggal** yang dapat dikombinasikan dengan pencarian
+- **Ekspor CSV** data yang sedang tampil (hasil pencarian + filter aktif)
 - SPA React tanpa backend, berjalan penuh di browser
+
+### Halaman Rekap Data Panen
+
+Halaman **Hasil Analisis QC → Lihat semua rekap** menampilkan seluruh batch yang tersimpan di browser.
+
+1. **Mencari** — ketik ID batch atau nama komoditas pada kotak pencarian. Tabel tersaring langsung saat mengetik dan tidak membedakan huruf besar/kecil.
+2. **Memfilter** — pilih **Komoditas** pada dropdown, dan/atau isi rentang tanggal pada kolom **Dari** dan **Sampai** (batas tanggal ikut dihitung). Pencarian dan filter dapat dipakai bersamaan.
+3. **Mereset** — klik ikon **Reset filter** untuk mengembalikan semua filter ke keadaan awal.
+4. **Mengekspor CSV** — klik **Ekspor CSV** untuk mengunduh **hanya baris yang sedang tampil**. Berkas dapat dibuka di Excel; baris pertama berisi nama kolom dan angka ditulis murni tanpa simbol `Rp` maupun pemisah ribuan (contoh: `15000`).
+
+Jika tidak ada data yang cocok, tabel menampilkan pesan **"Data tidak ditemukan"**.
 
 ### Batasan
 
@@ -97,19 +124,36 @@ steampreneur-agri-sort-ai/
 ├── vite.config.js
 ├── index.html
 ├── docs/
-│   └── bukti/
-│       ├── langkah-1.png
-│       ├── langkah-2.png
-│       └── langkah-3.png
+│   ├── 01-spesifikasi.md … 08-penjelasan-kode.md
+│   ├── analisis-change-request.md
+│   └── bukti/                    (tangkapan layar hasil uji)
 ├── src/
 │   ├── main.jsx
 │   ├── App.jsx
-│   ├── App.css
-│   └── index.css
-├── tes/
-│   └── kalkulasi.test.js
-└── bughunt-kasir/
+│   ├── theme.js                  (tema MUI)
+│   ├── index.css
+│   ├── business/                 (logika bisnis, tanpa React)
+│   │   ├── harvestCalculation.js
+│   │   ├── harvestValidation.js
+│   │   ├── harvestStorage.js
+│   │   ├── harvestFilter.js      (pencarian & filter rekap)
+│   │   ├── harvestProjection.js
+│   │   └── priceReference.js
+│   ├── components/               (komponen UI MUI)
+│   │   ├── AppShell.jsx
+│   │   ├── HarvestForm.jsx
+│   │   ├── HarvestRecap.jsx
+│   │   ├── QCResults.jsx
+│   │   ├── PricingDashboard.jsx
+│   │   ├── PriceTrendChart.jsx
+│   │   └── PageHeader.jsx
+│   └── utils/
+│       └── csvExporter.js        (pembangun & pengunduh CSV)
+├── tes/                          (unit test, dijalankan dengan `npm test`)
+└── bughunt-kasir/                (kode Bug Hunt Tugas 2)
 ```
+
+Catatan: struktur folder mengikuti konvensi Vite, sesuai izin pada lembar challenge. Logika bisnis dipisahkan dari komponen React agar dapat diuji tanpa render.
 
 ## Sumber dan Lisensi
 

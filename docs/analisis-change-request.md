@@ -16,8 +16,8 @@ Isi bagian ini **sebelum** mengubah kode, lalu commit dan push (contoh pesan: `d
 | Bagian yang terdampak | File / fungsi | Perubahan yang diperlukan |
 |---|---|---|
 | Spesifikasi | `docs/01-spesifikasi.md` | Menambahkan aturan perilaku fitur Search, Filter komoditas/tanggal, dan syarat format data Ekspor CSV. |
-| Kode | `src/components/HarvestRecap.jsx`, `src/utils/csvExporter.js` | Menambahkan state search/filter, UI input MUI, logika penyaringan data `useMemo`, pesan empty state, serta utilitas pembuat CSV. |
-| Kasus uji / test | `tes/harvestRecap.test.js`, `tes/csvExporter.test.js` | Menambahkan unit test untuk pencarian case-insensitive, filter kombinasi, teks "Data tidak ditemukan", dan validasi format angka CSV murni. |
+| Kode | `src/components/HarvestRecap.jsx`, `src/utils/csvExporter.js`, `src/business/harvestFilter.js` | Menambahkan state search/filter, UI input MUI, logika penyaringan data `useMemo`, pesan empty state, serta utilitas pembuat CSV. |
+| Kasus uji / test | `tes/harvestRecapChangeRequest.test.js`, `tes/csvExporter.test.js` | Menambahkan unit test untuk pencarian case-insensitive, filter kombinasi, teks "Data tidak ditemukan", dan validasi format angka CSV murni. |
 | README | `README.md` | Memperbarui daftar fitur utama dan menyertakan panduan penggunaan pencarian, pemfilteran, serta ekspor CSV. |
 
 ## 2. Kasus uji baru
@@ -30,7 +30,19 @@ Isi bagian ini **sebelum** mengubah kode, lalu commit dan push (contoh pesan: `d
 | TC-CR-05 | Buka file CSV hasil unduhan di editor teks/Excel | Baris pertama adalah header, dan nilai angka ditulis tanpa simbol `Rp` atau pemisah ribuan (contoh: `15000`). |
 
 ## 3. Setelah selesai
-- [ ] Kasus uji lama tetap lulus
-- [ ] Kasus uji baru lulus
-- [ ] Spesifikasi diperbarui
-- [ ] README diperbarui
+- [x] Kasus uji lama tetap lulus
+- [x] Kasus uji baru lulus
+- [x] Spesifikasi diperbarui
+- [x] README diperbarui
+
+## 4. Hasil aktual (diisi setelah implementasi)
+
+| Item | Keterangan |
+|---|---|
+| Berkas kode | `src/business/harvestFilter.js` (logika filter, dipisah dari komponen), `src/utils/csvExporter.js` (pembangun CSV), `src/components/HarvestRecap.jsx` (UI filter + empty state + tombol ekspor) |
+| Berkas test | `tes/harvestRecapChangeRequest.test.js` (12 test), `tes/csvExporter.test.js` (7 test) |
+| Hasil `npm test` | **49 lulus dari 49** (30 test alur inti + 19 test Change Request) |
+| Hasil `npm run build` | Berhasil |
+| Commit kode | `c1b1389 fitur: tambah pencarian real-time, filter komoditas, dan ekspor csv` |
+
+Catatan jujur mengenai urutan commit: commit analisis pertama (`b8b043a`) sempat ter-commit dalam keadaan berkas **kosong (0 baris)**, dan isi analisis baru dilengkapi pada commit `83016a4` setelah commit kode. Urutan yang benar adalah analisis terisi **sebelum** kode. Tim tidak menulis ulang riwayat commit karena aturan challenge melarangnya; kejadian ini dicatat di `docs/07-refleksi.md` sebagai bahan perbaikan cara kerja.
