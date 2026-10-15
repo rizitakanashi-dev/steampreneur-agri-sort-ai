@@ -96,12 +96,14 @@ export function HarvestRecap({ batches = [] }) {
           <Grid size={{ xs: 12, md: 4 }}>
             <TextField
               fullWidth
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <SearchRoundedIcon fontSize="small" />
-                  </InputAdornment>
-                ),
+              slotProps={{
+                input: {
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <SearchRoundedIcon fontSize="small" />
+                    </InputAdornment>
+                  ),
+                },
               }}
               label="Cari ID batch atau komoditas"
               onChange={handleFilterChange('search')}
@@ -127,7 +129,7 @@ export function HarvestRecap({ batches = [] }) {
           <Grid size={{ xs: 6, sm: 3, md: 1.75 }}>
             <TextField
               fullWidth
-              InputLabelProps={{ shrink: true }}
+              slotProps={{ inputLabel: { shrink: true } }}
               label="Dari"
               onChange={handleFilterChange('tanggalDari')}
               size="small"
@@ -138,7 +140,7 @@ export function HarvestRecap({ batches = [] }) {
           <Grid size={{ xs: 6, sm: 3, md: 1.75 }}>
             <TextField
               fullWidth
-              InputLabelProps={{ shrink: true }}
+              slotProps={{ inputLabel: { shrink: true } }}
               label="Sampai"
               onChange={handleFilterChange('tanggalSampai')}
               size="small"

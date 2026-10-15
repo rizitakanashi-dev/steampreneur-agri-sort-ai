@@ -106,7 +106,7 @@ export function HarvestForm({ onSave }) {
                     error={Boolean(touched.tanggal && errors.tanggal)}
                     helperText={(touched.tanggal && errors.tanggal) || 'Tanggal tidak boleh melebihi hari ini.'}
                     onBlur={handleBlur('tanggal')}
-                    inputProps={{ max: todayAsInputValue() }}
+                    slotProps={{ htmlInput: { max: todayAsInputValue() } }}
                     label="Tanggal panen"
                     onChange={handleChange('tanggal')}
                     type="date"
@@ -130,7 +130,7 @@ export function HarvestForm({ onSave }) {
                 error={Boolean(touched.beratKg && errors.beratKg)}
                 helperText={(touched.beratKg && errors.beratKg) || 'Maksimal 10.000 kg; boleh menggunakan koma desimal.'}
                 onBlur={handleBlur('beratKg')}
-                InputProps={{ endAdornment: <InputAdornment position="end">kg</InputAdornment> }}
+                slotProps={{ input: { endAdornment: <InputAdornment position="end">kg</InputAdornment> } }}
                 inputMode="decimal"
                 label="Berat total"
                 onChange={handleChange('beratKg')}
@@ -150,7 +150,7 @@ export function HarvestForm({ onSave }) {
                     error={Boolean(touched.kesegaranPersen && errors.kesegaranPersen)}
                     helperText={(touched.kesegaranPersen && errors.kesegaranPersen) || 'Nilai 0 sampai 100.'}
                     onBlur={handleBlur('kesegaranPersen')}
-                    InputProps={{ endAdornment: <InputAdornment position="end">%</InputAdornment> }}
+                    slotProps={{ input: { endAdornment: <InputAdornment position="end">%</InputAdornment> } }}
                     inputMode="decimal"
                     label="Kesegaran"
                     onChange={handleChange('kesegaranPersen')}
@@ -176,7 +176,7 @@ export function HarvestForm({ onSave }) {
                 error={Boolean(touched.cacatPersen && errors.cacatPersen)}
                 helperText={(touched.cacatPersen && errors.cacatPersen) || 'Nilai 0 sampai 100.'}
                 onBlur={handleBlur('cacatPersen')}
-                InputProps={{ endAdornment: <InputAdornment position="end">%</InputAdornment> }}
+                slotProps={{ input: { endAdornment: <InputAdornment position="end">%</InputAdornment> } }}
                 inputMode="decimal"
                 label="Cacat"
                 onChange={handleChange('cacatPersen')}

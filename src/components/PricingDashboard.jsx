@@ -150,7 +150,7 @@ export function PricingDashboard() {
                 <TextField
                   fullWidth
                   helperText={`Harga acuan: ${formatRupiah(referencePrice)} / kg`}
-                  InputProps={{ endAdornment: <InputAdornment position="end">kg</InputAdornment> }}
+                  slotProps={{ input: { endAdornment: <InputAdornment position="end">kg</InputAdornment> } }}
                   inputMode="decimal"
                   label="Volume panen"
                   onChange={(event) => setVolumeKg(event.target.value)}
@@ -160,7 +160,7 @@ export function PricingDashboard() {
                 <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}>
                   <TextField
                     fullWidth
-                    InputProps={{ endAdornment: <InputAdornment position="end">%</InputAdornment> }}
+                    slotProps={{ input: { endAdornment: <InputAdornment position="end">%</InputAdornment> } }}
                     inputMode="decimal"
                     label="Grade A"
                     onChange={(event) => setPersenA(event.target.value)}
@@ -169,7 +169,7 @@ export function PricingDashboard() {
                   />
                   <TextField
                     fullWidth
-                    InputProps={{ endAdornment: <InputAdornment position="end">%</InputAdornment> }}
+                    slotProps={{ input: { endAdornment: <InputAdornment position="end">%</InputAdornment> } }}
                     inputMode="decimal"
                     label="Grade B"
                     onChange={(event) => setPersenB(event.target.value)}
@@ -181,7 +181,7 @@ export function PricingDashboard() {
                   fullWidth
                   disabled
                   helperText="Reject = 100% - Grade A - Grade B"
-                  InputProps={{ endAdornment: <InputAdornment position="end">%</InputAdornment> }}
+                  slotProps={{ input: { endAdornment: <InputAdornment position="end">%</InputAdornment> } }}
                   label="Reject"
                   size="small"
                   value={projection ? formatNumber(projection.persentase.reject) : '-'}

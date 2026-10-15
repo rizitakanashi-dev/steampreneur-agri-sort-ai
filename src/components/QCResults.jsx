@@ -85,7 +85,7 @@ function ActionRecommendation({ result }) {
 export function QCResults({ batch, onBackToInput, onViewRecap }) {
   if (!batch?.hasil) {
     return (
-      <Box alignItems="center" display="flex" flexDirection="column" justifyContent="center" minHeight="50vh" sx={{ textAlign: 'center', px: 2 }}>
+      <Box sx={{ alignItems: 'center', display: 'flex', flexDirection: 'column', justifyContent: 'center', minHeight: '50vh', textAlign: 'center', px: 2 }}>
         <AssessmentRoundedIcon color="disabled" sx={{ fontSize: 56, mb: 2 }} />
         <Typography gutterBottom variant="h5">Belum ada hasil QC</Typography>
         <Typography color="text.secondary" sx={{ mb: 3, maxWidth: 420 }} variant="body2">

@@ -62,7 +62,7 @@ export function AppShell({ activePage, onNavigate, children }) {
           <AgricultureRoundedIcon fontSize="small" />
         </Box>
         <Box>
-          <Typography color="text.primary" fontWeight={800} lineHeight={1} variant="subtitle1">
+          <Typography color="text.primary" fontWeight={800} sx={{ lineHeight: 1 }} variant="subtitle1">
             Agri-Sort AI
           </Typography>
           <Typography color="text.secondary" sx={{ mt: 0.4 }} variant="caption">
@@ -99,7 +99,7 @@ export function AppShell({ activePage, onNavigate, children }) {
               <ListItemIcon sx={{ color: activePage === id ? 'primary.main' : 'text.secondary', minWidth: 36 }}>
                 <Icon fontSize="small" />
               </ListItemIcon>
-              <ListItemText primary={label} primaryTypographyProps={{ fontSize: 13, fontWeight: activePage === id ? 700 : 500 }} />
+              <ListItemText primary={label} slotProps={{ primary: { sx: { fontSize: 13, fontWeight: activePage === id ? 700 : 500 } } }} />
             </ListItemButton>
           ))}
         </List>
@@ -112,7 +112,7 @@ export function AppShell({ activePage, onNavigate, children }) {
         <List disablePadding>
           <ListItemButton sx={{ borderRadius: 1.75, minHeight: 44, px: 1.5 }}>
             <ListItemIcon sx={{ color: 'text.secondary', minWidth: 36 }}><SettingsRoundedIcon fontSize="small" /></ListItemIcon>
-            <ListItemText primary="Pengaturan" primaryTypographyProps={{ fontSize: 13, fontWeight: 500 }} />
+            <ListItemText primary="Pengaturan" slotProps={{ primary: { sx: { fontSize: 13, fontWeight: 500 } } }} />
           </ListItemButton>
         </List>
       </Box>
