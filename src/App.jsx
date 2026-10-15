@@ -72,7 +72,7 @@ function MetricCard({ detail, icon: Icon, label, value, color }) {
   )
 }
 
-function DashboardPreview() {
+function DashboardPreview({ onNavigate }) {
   return (
     <>
       <Card sx={{ background: 'linear-gradient(135deg, #036e45 0%, #0b8a5a 100%)', color: 'common.white', mb: 2.5, overflow: 'hidden', position: 'relative' }}>
@@ -86,7 +86,7 @@ function DashboardPreview() {
               <Typography sx={{ color: 'rgba(255,255,255,.78)', mt: 1.5, maxWidth: 480 }} variant="body1">
                 Ubah data panen menjadi keputusan QC dan harga yang lebih jelas untuk tim lapangan.
               </Typography>
-              <Button color="inherit" endIcon={<ArrowForwardRoundedIcon />} fullWidth onClick={() => {}} sx={{ bgcolor: 'common.white', color: 'primary.dark', mt: 2.5, maxWidth: { sm: 200 }, '&:hover': { bgcolor: '#e8f5ee' } }} variant="contained">
+              <Button color="inherit" endIcon={<ArrowForwardRoundedIcon />} fullWidth onClick={() => onNavigate('scanner')} sx={{ bgcolor: 'common.white', color: 'primary.dark', mt: 2.5, maxWidth: { sm: 200 }, '&:hover': { bgcolor: '#e8f5ee' } }} variant="contained">
                 Mulai scan batch
               </Button>
             </Box>
@@ -128,7 +128,7 @@ function DashboardPreview() {
             <CardContent sx={{ p: { xs: 2, sm: 2.5 } }}>
               <Stack direction="row" spacing={1.25} sx={{ alignItems: 'center', mb: 1 }}><CameraAltRoundedIcon color="primary" fontSize="small" /><Typography variant="h6">Alur berikutnya</Typography></Stack>
               <Typography color="text.secondary" variant="body2">Masukkan data batch untuk melihat distribusi Grade A, B, dan Reject.</Typography>
-              <Button endIcon={<ArrowForwardRoundedIcon />} fullWidth sx={{ mt: 2 }} variant="outlined">Buka QC Scanner</Button>
+              <Button endIcon={<ArrowForwardRoundedIcon />} fullWidth onClick={() => onNavigate('scanner')} sx={{ mt: 2 }} variant="outlined">Buka QC Scanner</Button>
             </CardContent>
           </Card>
         </Grid>
@@ -137,9 +137,9 @@ function DashboardPreview() {
   )
 }
 
-function FoundationPage({ activePage, onHarvestConfirm, batches, selectedBatch, onBackToInput, onViewRecap }) {
+function FoundationPage({ activePage, onHarvestConfirm, onNavigate, batches, selectedBatch, onBackToInput, onViewRecap }) {
   const page = pages[activePage]
-  if (activePage === 'overview') return <DashboardPreview />
+  if (activePage === 'overview') return <DashboardPreview onNavigate={onNavigate} />
   if (activePage === 'scanner') return <HarvestForm onSave={onHarvestConfirm} />
   if (activePage === 'results') return <QCResults batch={selectedBatch} onBackToInput={onBackToInput} onViewRecap={onViewRecap} />
   if (activePage === 'results-list') return <HarvestRecap batches={batches} />
@@ -218,7 +218,7 @@ function App() {
       <Container maxWidth="lg" sx={{ px: { xs: 1.5, sm: 2, md: 3 }, py: { xs: 2.5, sm: 3.5, md: 4.5 } }}>
         <PageHeader eyebrow="Agri-Sort AI / Precision Agriculture" title={page.title} description={page.description} />
         {harvestMessage && <Alert onClose={() => setHarvestMessage('')} severity="success" sx={{ mb: 2 }}>{harvestMessage}</Alert>}
-        <FoundationPage activePage={activePage} batches={batches} onBackToInput={handleBackToInput} onHarvestConfirm={handleHarvestConfirm} onViewRecap={handleViewRecap} selectedBatch={selectedBatch} />
+        <FoundationPage activePage={activePage} batches={batches} onBackToInput={handleBackToInput} onHarvestConfirm={handleHarvestConfirm} onNavigate={handleNavigate} onViewRecap={handleViewRecap} selectedBatch={selectedBatch} />
       </Container>
     </AppShell>
   )

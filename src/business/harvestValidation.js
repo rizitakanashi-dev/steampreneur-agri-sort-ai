@@ -66,7 +66,11 @@ export function validateHarvestForm(form, today = todayAsInputValue()) {
     negative: 'Berat panen tidak boleh negatif.',
     max: 'Berat panen maksimal 10.000 kg.',
   }, { max: 10000, label: 'Berat panen' })
-  if (String(form.beratKg ?? '').trim() === '0') errors.beratKg = 'Berat panen harus lebih dari 0 kg.'
+  // Cek numerik, bukan perbandingan string: '0.0', '0,00', dan varian nol lain
+  // harus ditolak sama seperti '0' (spesifikasi: berat harus lebih dari 0 kg).
+  if (parseNumber(String(form.beratKg ?? '').trim()) === 0) {
+    errors.beratKg = 'Berat panen harus lebih dari 0 kg.'
+  }
 
   validateNumberField(errors, form, 'kesegaranPersen', {
     empty: 'Kesegaran wajib diisi.',

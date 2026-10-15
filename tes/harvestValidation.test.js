@@ -60,3 +60,33 @@ test('validateHarvestForm menerima koma dan batas 0 serta 100', () => {
     catatan: 'Setoran pagi',
   })
 })
+
+test('validateHarvestForm menolak berat bernilai nol walau ditulis dalam format desimal', () => {
+  for (const nilai of ['0', '0.0', '0.00', '0,0', '0,00']) {
+    const result = validateHarvestForm({
+      tanggal: '2026-10-14',
+      komoditas: 'Tomat',
+      beratKg: nilai,
+      kesegaranPersen: '80',
+      ukuran: 'Besar',
+      cacatPersen: '10',
+    }, '2026-10-14')
+
+    assert.equal(result.isValid, false, `berat "${nilai}" seharusnya ditolak`)
+    assert.equal(result.errors.beratKg, 'Berat panen harus lebih dari 0 kg.', `pesan untuk berat "${nilai}" salah`)
+  }
+})
+
+test('validateHarvestForm tetap menerima berat desimal kecil yang lebih dari nol', () => {
+  const result = validateHarvestForm({
+    tanggal: '2026-10-14',
+    komoditas: 'Tomat',
+    beratKg: '0,5',
+    kesegaranPersen: '80',
+    ukuran: 'Besar',
+    cacatPersen: '10',
+  }, '2026-10-14')
+
+  assert.equal(result.isValid, true)
+  assert.equal(result.values.beratKg, 0.5)
+})
