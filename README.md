@@ -6,7 +6,21 @@ Agri-Sort AI membantu mencatat hasil panen cabai rawit hijau, terung, dan tomat,
 
 Target pengguna: petani, pedagang pengumpul, dan penjual di pasar.
 
-Tech stack: React (Vite), Material UI (`@mui/material`, `@mui/icons-material`) sebagai library komponen UI, JavaScript (SPA tanpa backend). Penyimpanan data berbasis `localStorage` browser.
+## Tech Stack
+
+| Komponen | Teknologi | Versi |
+|----------|-----------|-------|
+| Framework UI | React | 19.3 |
+| Bundler / Dev server | Vite | 8.3 |
+| Library komponen UI | Material UI (`@mui/material`, `@mui/icons-material`) | 9.5 |
+| Styling engine | Emotion (`@emotion/react`, `@emotion/styled`) | 11.14 |
+| Grafik tren harga | MUI X Charts (`@mui/x-charts`) | 9.15 |
+| Bahasa | JavaScript (ES modules, tanpa TypeScript) | — |
+| Penyimpanan data | `localStorage` browser (tanpa backend) | — |
+| Test runner | Node.js built-in (`node --test`) | Node 26+ |
+| Font | Google Fonts (Inter) | SIL OFL 1.1 |
+
+Tidak menggunakan Next.js, Tailwind, Supabase, atau framework test tambahan.
 
 ## Alur Inti
 
@@ -58,15 +72,13 @@ npm run preview
 | 2 | Kalkulasi distribusi grade & harga | ![Langkah 2](docs/bukti/langkah-2.png) |
 | 3 | Rekap data panen | ![Langkah 3](docs/bukti/langkah-3.png) |
 
-> Catatan: simpan tangkapan layar di folder `docs/bukti/` dengan nama `langkah-1.png`, `langkah-2.png`, `langkah-3.png`.
-
 ## Cara Menjalankan Pengujian
 
 ```bash
 npm test
 ```
 
-Perintah di atas menjalankan seluruh unit test di folder `tes/` menggunakan test runner bawaan Node.js (tanpa framework tambahan).
+Perintah di atas menjalankan seluruh unit test di folder `tes/` menggunakan test runner bawaan Node.js (`node --test`), tanpa framework tambahan.
 
 Hasil yang diharapkan: **57 test lulus, 0 gagal**.
 
@@ -82,6 +94,15 @@ Hasil yang diharapkan: **57 test lulus, 0 gagal**.
 | `tes/initialState.test.js` | 1 | State awal aplikasi |
 | **Total** | **57** | 32 test alur inti + 25 test Change Request |
 
+Pengujian Bug Hunt Kasir Kantin (Tugas 2) berada di folder `bughunt-kasir/tes/` dan dijalankan terpisah:
+
+```bash
+cd bughunt-kasir
+node --test tes/*.test.js
+```
+
+Hasil: **24 test lulus, 0 gagal** (4 bug diperbaiki: validasi jumlah, batas gabungan 99, tipe jumlah numerik, diskon member eksklusif).
+
 ## Fitur dan Batasan
 
 ### Fitur
@@ -94,6 +115,8 @@ Hasil yang diharapkan: **57 test lulus, 0 gagal**.
 - **Pencarian real-time** pada halaman Rekap (berdasarkan ID batch atau komoditas, tidak membedakan huruf besar/kecil)
 - **Filter komoditas dan rentang tanggal** yang dapat dikombinasikan dengan pencarian
 - **Ekspor CSV** data yang sedang tampil (hasil pencarian + filter aktif)
+- **Baris total rekap** (jumlah berat + jumlah nilai dari baris yang tampil)
+- **Pricing Dashboard** dengan grafik tren harga dan proyeksi pendapatan
 - SPA React tanpa backend, berjalan penuh di browser
 
 ### Halaman Rekap Data Panen
@@ -122,10 +145,18 @@ steampreneur-agri-sort-ai/
 ├── README.md
 ├── .gitignore
 ├── package.json
+├── package-lock.json
 ├── vite.config.js
 ├── index.html
 ├── docs/
-│   ├── 01-spesifikasi.md … 08-penjelasan-kode.md
+│   ├── 01-spesifikasi.md
+│   ├── 02-rencana.md
+│   ├── 03-log-prompt.md
+│   ├── 04-kasus-uji.md
+│   ├── 05-kesalahan-ai.md
+│   ├── 06-catatan-review.md
+│   ├── 07-refleksi.md
+│   ├── 08-penjelasan-kode.md
 │   ├── analisis-change-request.md
 │   └── bukti/                    (tangkapan layar hasil uji)
 ├── src/
@@ -137,9 +168,10 @@ steampreneur-agri-sort-ai/
 │   │   ├── harvestCalculation.js
 │   │   ├── harvestValidation.js
 │   │   ├── harvestStorage.js
-│   │   ├── harvestFilter.js      (pencarian & filter rekap)
+│   │   ├── harvestFilter.js      (pencarian, filter, & total rekap)
 │   │   ├── harvestProjection.js
-│   │   └── priceReference.js
+│   │   ├── priceReference.js
+│   │   └── initialState.js
 │   ├── components/               (komponen UI MUI)
 │   │   ├── AppShell.jsx
 │   │   ├── HarvestForm.jsx
@@ -150,36 +182,70 @@ steampreneur-agri-sort-ai/
 │   │   └── PageHeader.jsx
 │   └── utils/
 │       └── csvExporter.js        (pembangun & pengunduh CSV)
-├── tes/                          (unit test, dijalankan dengan `npm test`)
+├── tes/                          (unit test aplikasi utama)
+│   ├── harvestCalculation.test.js
+│   ├── harvestValidation.test.js
+│   ├── gradeValidation.test.js
+│   ├── harvestStorage.test.js
+│   ├── harvestProjection.test.js
+│   ├── harvestRecapChangeRequest.test.js
+│   ├── csvExporter.test.js
+│   └── initialState.test.js
+└── bughunt-kasir/                (Bug Hunt Tugas 2 — Kasir Kantin STEAM)
+    ├── app.js
+    ├── kasir.js
+    ├── index.html
+    ├── package.json              (konfigurasi "type": "commonjs" untuk node --test)
+    ├── catatan-bug.md
+    └── tes/
+        ├── validasiJumlah.test.js
+        ├── batasGabungan.test.js
+        ├── tipeJumlah.test.js
+        ├── diskonMember.test.js
+        └── contoh.test.js
 ```
 
 Catatan: struktur folder mengikuti konvensi Vite, sesuai izin pada lembar challenge. Logika bisnis dipisahkan dari komponen React agar dapat diuji tanpa render.
 
 ### Catatan Cakupan: fitur proposal vs implementasi challenge
 
-Beberapa berkas dan kasus uji yang berasal dari proposal awal **tidak berada di repositori utama ini** karena berada di luar cakupan challenge (lihat `docs/01-spesifikasi.md` Bagian 5):
+Beberapa fitur yang berasal dari proposal awal **tidak diimplementasikan** karena berada di luar cakupan challenge (lihat `docs/01-spesifikasi.md` Bagian 5):
 
 | Item | Status | Alasan |
 |------|--------|--------|
-| `bughunt-kasir/` (kode Bug Hunt Tugas 2) | Tidak ada di repo ini | Dikerjakan terpisah dari repositori utama aplikasi Agri-Sort AI. Rencana langkah 19 di `docs/02-rencana.md` masih berstatus Belum. |
 | Kasus uji U07 (validasi foto blur / Laplacian Variance) | Tidak diuji | Fitur AI vision tidak diimplementasikan dalam versi challenge (frontend-only, tanpa unggah foto atau model YOLO/ONNX). |
-| Kasus uji U08 (filter objek non-komoditas / confidence score) | Tidak diuji | Sama seperti U07 — inferensi model tidak tersedia di versi challenge. |
+| Kasus uji U08 (filter objek non-komoditas / confidence score) Tidak diuji | Sama seperti U07 — inferensi model tidak tersedia di versi challenge. |
 | Kasus uji U12 / kriteria K17 (`agrisort.harga_cache.v1`) | Tidak diimplementasikan | Tidak ada integrasi API harga BAPANAS, sehingga tidak ada cache offline yang perlu dibaca. Harga acuan adalah tabel tetap di `src/business/priceReference.js`. |
+| Cetak Sertifikat PDF | Tidak dikerjakan | Di luar kriteria Change Request; tidak ada pustaka PDF yang ditambahkan. |
 
 Semua nilai BPP (biaya pokok produksi) dan harga acuan di aplikasi ini adalah **data bawaan/simulasi (mock)** yang ditulis di dalam kode, bukan hasil pengambilan data nyata dari API mana pun.
 
+## Dokumentasi
+
+| Berkas | Isi |
+|--------|-----|
+| `docs/01-spesifikasi.md` | Spesifikasi lengkap: masalah, solusi, aturan bisnis, rumus, field form, pesan error |
+| `docs/02-rencana.md` | Rencana kerja: 21 langkah, estimasi vs aktual, pembagian peran |
+| `docs/03-log-prompt.md` | Log prompt AI: setiap interaksi, hasil, dan keputusan tim |
+| `docs/04-kasus-uji.md` | Kasus uji K01–K25 dengan status Pass/Fail |
+| `docs/05-kesalahan-ai.md` | 7 kesalahan AI yang ditemukan dan diperbaiki tim |
+| `docs/06-catatan-review.md` | Code review: 6 temuan (R01–R06) dengan keputusan diterima/ditunda/ditolak |
+| `docs/07-refleksi.md` | Refleksi tim: 6 pertanyaan, diisi jujur termasuk kesalahan urutan commit |
+| `docs/08-penjelasan-kode.md` | Penjelasan kode per anggota (7 bagian: Ahmad 2, Faris 3, Hieray 2) |
+| `docs/analisis-change-request.md` | Analisis dampak change request sebelum eksekusi |
+
 ## Sumber dan Lisensi
 
-| Sumber | Lisensi |
-|--------|---------|
-| React | MIT |
-| Vite | MIT |
-| Material UI (`@mui/material`, `@mui/icons-material`) | MIT |
-| Emotion (`@emotion/react`, `@emotion/styled`) | MIT |
-| MUI X Charts (`@mui/x-charts`) — grafik tren harga | MIT |
-| Google Fonts (Inter) | SIL Open Font License 1.1 |
+| Sumber | Versi | Lisensi |
+|--------|-------|---------|
+| React | 19.3 | MIT |
+| Vite | 8.3 | MIT |
+| Material UI (`@mui/material`, `@mui/icons-material`) | 9.5 | MIT |
+| Emotion (`@emotion/react`, `@emotion/styled`) | 11.14 | MIT |
+| MUI X Charts (`@mui/x-charts`) | 9.15 | MIT |
+| Google Fonts (Inter) | — | SIL Open Font License 1.1 |
 
-Proyek ini dirilis di bawah lisensi MIT. Lihat file `LICENSE` bila tersedia.
+Proyek ini dirilis di bawah lisensi MIT.
 
 ## Informasi Tim
 
