@@ -65,3 +65,32 @@ Buat satu entri untuk setiap bug yang ditemukan. Simpan file ini di folder `bugh
   - **Catatan cakupan:** seluruh test memakai angka murni, bukan string, supaya bug B3 (`"2"` + `"3"` → `"23"`) tidak ikut tercampur. Setelah perbaikan B2, B3 masih terverifikasi belum diperbaiki.
 - **Commit perbaikan** (pesan commit): `perbaikan: batasi total jumlah per produk maksimal 99`
 - **Ditemukan oleh:** AI (diverifikasi lewat eksekusi nyata oleh tim)
+
+## Bug 3 — Jumlah berupa teks digabung, bukan dijumlahkan (`"2"` + `"3"` menjadi `"23"`)
+- **Gejala** (apa yang terlihat salah): Saat pengguna menambahkan produk yang sama dua kali lewat halaman kasir, jumlahnya digabung seperti teks, bukan dijumlahkan. Contoh: Es Teh dengan jumlah `2` lalu tambah lagi `3` menghasilkan jumlah `23` (bukan `5`), sehingga subtotal membengkak menjadi Rp92.000 padahal seharusnya Rp20.000.
+- **Langkah untuk memunculkan bug:**
+  1. Buka `index.html` di browser.
+  2. Pada form "Tambah Pesanan", pilih **Es Teh**, isi Jumlah `2`, klik **Tambah**.
+  3. Pilih **Es Teh** lagi, isi Jumlah `3`, klik **Tambah**.
+  4. Baris keranjang menampilkan Es Teh dengan jumlah `23`, dan subtotal Rp92.000 (seharusnya jumlah `5`, subtotal Rp20.000).
+  - Cara cepat tanpa browser (dari folder `bughunt-kasir`):
+    ```
+    node -e "const k=require('./kasir.js'); const c=[]; k.tambahItem(c,'K04','2'); k.tambahItem(c,'K04','3'); console.log(c, k.hitungSubtotal(c));"
+    ```
+    Keluaran lama: `[ { kode: 'K04', nama: 'Es Teh', harga: 4000, qty: '23' } ] 92000` — seharusnya `qty: 5` dan subtotal `20000`.
+- **Aturan bisnis yang dilanggar** (nomor aturan di README): **Aturan 2** ("jumlahnya dijumlahkan") dan **Aturan 3** (subtotal = harga × jumlah). Karena jumlahnya menjadi `"23"`, hasil kali harga × jumlah ikut salah.
+- **Penyebab** (file, fungsi, dan penjelasan):
+  - **File:** `kasir.js` fungsi `tambahItem()` (baris penjumlahan), dipicu oleh `app.js` baris 65.
+  - **Penjelasan:** Halaman web mengirim isi kolom Jumlah lewat `elQty.value` di `app.js`, dan nilai `value` dari elemen `<input>` **selalu berupa teks (string)** — jadi yang sampai ke `tambahItem` adalah `"2"`, bukan angka `2`. Sebelum perbaikan, fungsi menyimpan nilai itu apa adanya (`qty: qty`) dan menjumlahkannya dengan `itemLama.qty += qty`. Operator `+` di JavaScript bersifat **overload**: kalau salah satu operand berupa teks, ia **menggabungkan** teks, bukan menjumlahkan angka. Maka `"2" + "3"` menghasilkan `"23"`, dan `hitungSubtotal` yang mengalikan `harga * qty` menerima `4000 * "23"` = 92.000. Akar masalahnya: **nilai jumlah tidak pernah dikonversi menjadi angka sebelum disimpan dan dijumlahkan**, padahal konversi itu sudah dihitung (variabel `jumlah`) tetapi tidak dipakai untuk menyimpan.
+  - **[x] Pengguna sudah menulis ulang penyebab dengan bahasa sendiri** (diisi setelah sesi penjelasan).
+- **Perbaikan** (apa yang diubah): Memakai nilai numerik yang sudah divalidasi (`jumlah`) pada saat menyimpan dan menjumlahkan, bukan nilai mentah dari input: `itemLama.qty = Number(itemLama.qty) + jumlah` dan `qty: jumlah`. Dengan begitu jumlah selalu tersimpan sebagai angka, sehingga penjumlahan benar dan subtotal benar. Validasi B1 dan batas gabungan B2 tidak diubah.
+- **Test yang membuktikan** (nama test): `tes/tipeJumlah.test.js` — 4 test:
+  - `B3: contoh Aturan 2 dengan string, Es Teh "2" lalu "3" menjadi 5`
+  - `B3: subtotal setelah gabungan string dihitung dari 5 x harga Es Teh`
+  - `B3: gabungan string lain juga numerik, bukan kebetulan`
+  - `B3: qty tersimpan sebagai angka, bukan string, pada item baru`
+  - **Bukti RED:** pada kode sebelum perbaikan (commit `c6a0a1c`, kondisi setelah B1+B2) → `tests 18, pass 14, fail 4` (4 test B3 gagal pada assertion nilai jumlah/subtotal).
+  - **Bukti GREEN:** setelah perbaikan → `tests 18, pass 18, fail 0`. Regression suite induk `agri-sort-ai`: `tests 57, pass 57, fail 0`.
+  - **Catatan cakupan:** test memakai jumlah string saja dan tidak menyinggung batas gabungan 99 milik B2; B1 dan B2 diverifikasi ulang tetap benar setelah perbaikan.
+- **Commit perbaikan** (pesan commit): `perbaikan: jumlahkan qty secara numerik agar tidak digabung sebagai teks`
+- **Ditemukan oleh:** AI (diverifikasi lewat eksekusi nyata oleh tim)

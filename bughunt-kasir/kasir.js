@@ -40,13 +40,13 @@ function tambahItem(keranjang, kode, qty) {
     if (Number(itemLama.qty) + jumlah > 99) {
       throw new Error("Total jumlah per produk tidak boleh melebihi 99");
     }
-    itemLama.qty += qty;
+    itemLama.qty = Number(itemLama.qty) + jumlah;
   } else {
     keranjang.push({
       kode: produk.kode,
       nama: produk.nama,
       harga: produk.harga,
-      qty: qty,
+      qty: jumlah,
     });
   }
   return keranjang;
