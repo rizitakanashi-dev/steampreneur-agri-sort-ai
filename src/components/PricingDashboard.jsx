@@ -52,30 +52,29 @@ export function PricingDashboard() {
   const history = PRICE_HISTORY[commodity] || []
   const referencePrice = getReferencePricePerKg(commodity)
 
-  const projection = useMemo(() => {
-    setError('')
+  const { projection, validationError } = useMemo(() => {
     const parsedA = parseNumeric(persenA)
     const parsedB = parseNumeric(persenB)
     if (parsedA === null || parsedB === null) {
-      setError('Persentase Grade A dan Grade B harus berupa angka.')
-      return null
+      return { projection: null, validationError: 'Persentase Grade A dan Grade B harus berupa angka.' }
     }
     if (parsedA + parsedB > 100) {
-      setError('Total Grade A dan Grade B tidak boleh melebihi 100%.')
-      return null
+      return { projection: null, validationError: 'Total Grade A dan Grade B tidak boleh melebihi 100%.' }
     }
     try {
-      return calculateRevenueProjection({
-        komoditas: commodity,
-        volumeKg,
-        persenA: parsedA,
-        persenB: parsedB,
-        persenC: 100 - parsedA - parsedB,
-        includeReject,
-      })
+      return {
+        projection: calculateRevenueProjection({
+          komoditas: commodity,
+          volumeKg,
+          persenA: parsedA,
+          persenB: parsedB,
+          persenC: 100 - parsedA - parsedB,
+          includeReject,
+        }),
+        validationError: '',
+      }
     } catch (calculationError) {
-      setError(calculationError.message)
-      return null
+      return { projection: null, validationError: calculationError.message }
     }
   }, [commodity, volumeKg, persenA, persenB, includeReject])
 
@@ -202,7 +201,7 @@ export function PricingDashboard() {
             <Card>
               <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
                 <Typography gutterBottom variant="h6">Ringkasan proyeksi pendapatan</Typography>
-                {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+                {validationError && <Alert severity="error" sx={{ mb: 2 }}>{validationError}</Alert>}
                 {projection ? (
                   <Stack spacing={2}>
                     <Box>
