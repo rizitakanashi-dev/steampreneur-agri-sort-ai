@@ -22,10 +22,10 @@
 | 15 | Pengujian Manual K01–K20 & Bukti Foto | Ahmad & Faris| Tabel `04-kasus-uji.md` terisi (Pass/Fail) & bukti di `docs/bukti/` | 45 menit | 30 menit | selesai |
 | 16 | Pembuatan Unit Test & Log Kesalahan AI | Faris & Ahmad | File di folder `tes/` lulus & `docs/05-kesalahan-ai.md` terisi | 45 menit | 45 menit | Selesai |
 | 17 | AI Code Review & Refactor Kode | Faris & Hieray | Catatan review di `docs/06-catatan-review.md` & refactor selesai | 30 menit | 40 menit | Selesai |
-| 18 | Penjelasan Kode per Anggota & Pertanyaan | Seluruh Tim | `docs/08-penjelasan-kode.md` terisi oleh masing-masing anggota | 60 menit | ... menit | Belum |
-| 19 | Bug Hunt & Testing Integrasi | Ahmad | Catatan bug di `bughunt-kasir/catatan-bug.md` selesai | 60 menit | ... menit | Belum |
+| 18 | Penjelasan Kode per Anggota & Pertanyaan | Seluruh Tim | `docs/08-penjelasan-kode.md` terisi oleh masing-masing anggota | 60 menit | 60 menit | Selesai |
+| 19 | Bug Hunt & Testing Integrasi | Ahmad | Catatan bug di `bughunt-kasir/catatan-bug.md` selesai | 60 menit | 60 menit | Selesai |
 | 20 | Eksekusi Fitur Change Request | Hieray | Semua kasus uji lama dan baru di fitur Change Request lulus | 120 menit | 105 menit | Selesai |
-| 21 | Dokumentasi Final & Refleksi | Seluruh Tim | `README.md` lengkap & `07-refleksi.md` terisi penuh | 60 menit | ... menit | Belum |
+| 21 | Dokumentasi Final & Refleksi | Seluruh Tim | `README.md` lengkap & `07-refleksi.md` terisi penuh | 60 menit | 60 menit | Selesai |
 
 ---
 
