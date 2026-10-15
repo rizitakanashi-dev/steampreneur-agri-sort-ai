@@ -2,6 +2,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import {
   EMPTY_RECAP_FILTER,
+  calculateBatchTotals,
   filterBatches,
   isFilterEmpty,
   listCommodities,
@@ -82,4 +83,26 @@ test('CSV mengekspor hanya baris yang sedang tersaring', () => {
   assert.equal(lines.length, 2, 'satu header + satu baris data')
   assert.ok(lines[1].startsWith('panen-2'))
   assert.ok(!csv.includes('panen-1'), 'baris yang tersaring tidak boleh ikut terekspor')
+})
+
+test('calculateBatchTotals mengembalikan nol untuk daftar kosong', () => {
+  assert.deepEqual(calculateBatchTotals([]), { totalBeratKg: 0, totalNilai: 0 })
+  assert.deepEqual(calculateBatchTotals(), { totalBeratKg: 0, totalNilai: 0 })
+})
+
+test('calculateBatchTotals menjumlahkan berat dan nilai dari beberapa batch', () => {
+  const result = calculateBatchTotals(batches)
+  assert.equal(result.totalBeratKg, 225)
+  assert.equal(result.totalNilai, 1746080)
+})
+
+test('calculateBatchTotals menangani batch tanpa hasil', () => {
+  const partial = [
+    { id: 'a', beratKg: 10, hasil: { totalNilai: 50000 } },
+    { id: 'b', beratKg: 20, hasil: null },
+    { id: 'c', beratKg: 5 },
+  ]
+  const result = calculateBatchTotals(partial)
+  assert.equal(result.totalBeratKg, 35)
+  assert.equal(result.totalNilai, 50000)
 })

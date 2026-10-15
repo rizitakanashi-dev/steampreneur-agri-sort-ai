@@ -71,3 +71,18 @@ export function sortBatchesByNewest(batches = []) {
 export function listCommodities(batches = []) {
   return [...new Set(batches.map((batch) => batch?.komoditas).filter(Boolean))].sort((a, b) => a.localeCompare(b))
 }
+
+/**
+ * Menghitung total berat (kg) dan total nilai (Rp) dari sekumpulan batch.
+ * Dipakai oleh baris total di tabel rekap.
+ * Batch tanpa `hasil` dianggap memiliki nilai 0.
+ */
+export function calculateBatchTotals(batches = []) {
+  return batches.reduce(
+    (acc, batch) => ({
+      totalBeratKg: acc.totalBeratKg + (Number(batch?.beratKg) || 0),
+      totalNilai: acc.totalNilai + (Number(batch?.hasil?.totalNilai) || 0),
+    }),
+    { totalBeratKg: 0, totalNilai: 0 },
+  )
+}

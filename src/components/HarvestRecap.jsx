@@ -20,6 +20,7 @@ import {
   TableBody,
   TableCell,
   TableContainer,
+  TableFooter,
   TableHead,
   TablePagination,
   TableRow,
@@ -31,7 +32,7 @@ import DownloadRoundedIcon from '@mui/icons-material/DownloadRounded'
 import FilterAltOffRoundedIcon from '@mui/icons-material/FilterAltOffRounded'
 import SearchRoundedIcon from '@mui/icons-material/SearchRounded'
 import VisibilityRoundedIcon from '@mui/icons-material/VisibilityRounded'
-import { EMPTY_RECAP_FILTER, filterBatches, isFilterEmpty, listCommodities, sortBatchesByNewest } from '../business/harvestFilter.js'
+import { EMPTY_RECAP_FILTER, calculateBatchTotals, filterBatches, isFilterEmpty, listCommodities, sortBatchesByNewest } from '../business/harvestFilter.js'
 import { downloadCsv } from '../utils/csvExporter.js'
 
 /** Jumlah kolom tabel; dipakai untuk colSpan pada baris empty state. */
@@ -62,6 +63,7 @@ export function HarvestRecap({ batches = [] }) {
   const commodities = useMemo(() => listCommodities(batches), [batches])
   const sortedBatches = useMemo(() => sortBatchesByNewest(filterBatches(batches, filter)), [batches, filter])
   const visibleBatches = sortedBatches.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
+  const totals = calculateBatchTotals(visibleBatches)
   const filterActive = !isFilterEmpty(filter)
 
   const handleFilterChange = (field) => (event) => {
@@ -221,6 +223,19 @@ export function HarvestRecap({ batches = [] }) {
               )
             })}
           </TableBody>
+          <TableFooter>
+            <TableRow sx={{ bgcolor: '#f2f4f6' }}>
+              <TableCell colSpan={2} />
+              <TableCell align="right" sx={{ fontWeight: 700 }}>
+                {formatNumber(totals.totalBeratKg)} kg
+              </TableCell>
+              <TableCell />
+              <TableCell align="right" sx={{ fontWeight: 700 }}>
+                {formatRupiah(totals.totalNilai)}
+              </TableCell>
+              <TableCell />
+            </TableRow>
+          </TableFooter>
         </Table>
         </TableContainer>
         <TablePagination
