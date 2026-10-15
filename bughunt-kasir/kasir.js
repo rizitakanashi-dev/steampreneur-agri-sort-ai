@@ -36,6 +36,10 @@ function tambahItem(keranjang, kode, qty) {
 
   const itemLama = keranjang.find((i) => i.kode === kode);
   if (itemLama) {
+    // Aturan 2: total jumlah per produk tidak boleh melebihi 99.
+    if (Number(itemLama.qty) + jumlah > 99) {
+      throw new Error("Total jumlah per produk tidak boleh melebihi 99");
+    }
     itemLama.qty += qty;
   } else {
     keranjang.push({

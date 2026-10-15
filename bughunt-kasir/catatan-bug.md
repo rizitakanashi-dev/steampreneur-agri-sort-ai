@@ -35,12 +35,33 @@ Buat satu entri untuk setiap bug yang ditemukan. Simpan file ini di folder `bugh
 - **Commit perbaikan** (pesan commit): `perbaikan: tolak jumlah pesanan yang bukan bilangan bulat 1-99`
 - **Ditemukan oleh:** AI (diverifikasi lewat eksekusi nyata oleh tim)
 
-## Bug 2
-- **Gejala:**
+## Bug 2 — Total jumlah gabungan satu produk bisa melebihi 99
+- **Gejala** (apa yang terlihat salah): Jika produk yang sama ditambahkan dua kali dan totalnya melebihi 99, aplikasi tetap menerimanya. Contoh: Es Teh 60 lalu tambah Es Teh 60 lagi menghasilkan satu baris keranjang dengan jumlah `120`, padahal jumlah per produk dibatasi 99.
 - **Langkah untuk memunculkan bug:**
-- **Aturan bisnis yang dilanggar:**
-- **Penyebab:**
-- **Perbaikan:**
-- **Test yang membuktikan:**
-- **Commit perbaikan:**
-- **Ditemukan oleh:**
+  1. Buka `index.html` di browser.
+  2. Pada form "Tambah Pesanan", pilih **Es Teh**, isi Jumlah `60`, klik **Tambah**.
+  3. Pilih **Es Teh** lagi, isi Jumlah `60`, klik **Tambah**.
+  4. Baris keranjang menampilkan Es Teh dengan jumlah `120` tanpa pesan kesalahan.
+  - Cara cepat tanpa browser (dari folder `bughunt-kasir`):
+    ```
+    node -e "const k=require('./kasir.js'); const c=[]; k.tambahItem(c,'K04',60); k.tambahItem(c,'K04',60); console.log(c);"
+    ```
+    Keluaran lama: `[ { kode: 'K04', nama: 'Es Teh', harga: 4000, qty: 120 } ]` — seharusnya penambahan kedua ditolak.
+- **Aturan bisnis yang dilanggar** (nomor aturan di README): **Aturan 2** — "Jika produk yang sudah ada di keranjang ditambahkan lagi, jumlahnya dijumlahkan. Contoh: Es Teh 2, lalu tambah Es Teh 3, maka di keranjang tertulis Es Teh 5. **Total jumlah per produk tetap tidak boleh lebih dari 99.**"
+- **Penyebab** (file, fungsi, dan penjelasan):
+  - **File:** `kasir.js`, fungsi `tambahItem(keranjang, kode, qty)`.
+  - **penjelasan:** Fungsi `tambahItem` sudah punya pemeriksaan Aturan 1 yang membatasi **jumlah yang baru dimasukkan** agar berada di rentang 1–99. Tetapi pemeriksaan itu hanya melihat `qty` yang baru, bukan hasil gabungannya. Jadi ketika produk sudah ada di keranjang, baris `itemLama.qty += qty` langsung menjumlahkan tanpa memeriksa apakah total barunya melewati 99. Akibatnya masing-masing penambahan sah (60 sah, 60 sah), tetapi gabungannya menjadi 120 — melewati batas. Batas 99 harus diperiksa pada **total setelah dijumlahkan**, bukan hanya pada angka yang baru dimasukkan.
+  - **[x] Pengguna sudah menulis ulang penyebab dengan bahasa sendiri** (diisi setelah sesi penjelasan).
+- **Perbaikan** (apa yang diubah): Menambahkan pemeriksaan di dalam cabang `if (itemLama)` pada `tambahItem`, tepat sebelum penjumlahan: jika `Number(itemLama.qty) + jumlah` melebihi 99, lempar pesan kesalahan dan batalkan penambahan sehingga isi keranjang tidak berubah. Tidak ada perubahan pada cara penyimpanan jumlah dan tidak ada perubahan pada cabang produk baru, sehingga cakupan perbaikan tetap hanya Aturan 2.
+- **Test yang membuktikan** (nama test): `tes/batasGabungan.test.js` — 6 test:
+  - `B2: contoh README, Es Teh 2 lalu 3 menjadi 5`
+  - `B2: Es Teh 60 lalu 60 ditolak karena total 120 melebihi 99`
+  - `B2: Es Teh 50 lalu 49 diterima karena total tepat 99`
+  - `B2: Es Teh 50 lalu 50 ditolak karena total 100 melebihi 99`
+  - `B2: Es Teh 99 lalu 1 ditolak karena total 100 melebihi 99`
+  - `B2: batas 99 berlaku per produk, bukan per keranjang`
+  - **Bukti RED:** pada kode sebelum perbaikan B2 (commit `b783066`, kondisi setelah B1) → `tests 14, pass 11, fail 3` (3 test penolakan gabungan gagal dengan "Missing expected exception").
+  - **Bukti GREEN:** setelah perbaikan → `tests 14, pass 14, fail 0`. Regression suite induk `agri-sort-ai`: `tests 57, pass 57, fail 0`.
+  - **Catatan cakupan:** seluruh test memakai angka murni, bukan string, supaya bug B3 (`"2"` + `"3"` → `"23"`) tidak ikut tercampur. Setelah perbaikan B2, B3 masih terverifikasi belum diperbaiki.
+- **Commit perbaikan** (pesan commit): `perbaikan: batasi total jumlah per produk maksimal 99`
+- **Ditemukan oleh:** AI (diverifikasi lewat eksekusi nyata oleh tim)
