@@ -19,9 +19,9 @@
 | 12 | Analisis Dampak Change Request | Hieray & Faris | File `docs/analisis-change-request.md` terisi & di-commit | 30 menit | 35 menit | Selesai |
 | 13 | Fitur Pencarian & Filter Kategori/Tanggal | Hieray | Pencarian & filter tabel rekap berfungsi secara interaktif | 45 menit | 45 menit | Selesai |
 | 14 | Fitur Ekspor CSV & Cetak Sertifikat PDF | Hieray | Tombol Unduh CSV & Cetak PDF berfungsi rapi | 45 menit | 40 menit | **Selesai sebagian** — Ekspor CSV selesai; Cetak Sertifikat PDF tidak dikerjakan (di luar kriteria Change Request, dan tidak ada pustaka PDF yang ditambahkan) |
-| 15 | Pengujian Manual K01–K20 & Bukti Foto | Ahmad | Tabel `04-kasus-uji.md` terisi (Pass/Fail) & bukti di `docs/bukti/` | 45 menit | ... menit | Belum |
-| 16 | Pembuatan Unit Test & Log Kesalahan AI | Faris & Ahmad | File di folder `tes/` lulus & `docs/05-kesalahan-ai.md` terisi | 45 menit | ... menit | Belum |
-| 17 | AI Code Review & Refactor Kode | Faris & Hieray | Catatan review di `docs/06-catatan-review.md` & refactor selesai | 30 menit | ... menit | Belum |
+| 15 | Pengujian Manual K01–K20 & Bukti Foto | Ahmad & Faris| Tabel `04-kasus-uji.md` terisi (Pass/Fail) & bukti di `docs/bukti/` | 45 menit | 30 menit | selesai |
+| 16 | Pembuatan Unit Test & Log Kesalahan AI | Faris & Ahmad | File di folder `tes/` lulus & `docs/05-kesalahan-ai.md` terisi | 45 menit | 45 menit | Selesai |
+| 17 | AI Code Review & Refactor Kode | Faris & Hieray | Catatan review di `docs/06-catatan-review.md` & refactor selesai | 30 menit | 40 menit | Selesai |
 | 18 | Penjelasan Kode per Anggota & Pertanyaan | Seluruh Tim | `docs/08-penjelasan-kode.md` terisi oleh masing-masing anggota | 60 menit | ... menit | Belum |
 | 19 | Bug Hunt & Testing Integrasi | Ahmad | Catatan bug di `bughunt-kasir/catatan-bug.md` selesai | 60 menit | ... menit | Belum |
 | 20 | Eksekusi Fitur Change Request | Hieray | Semua kasus uji lama dan baru di fitur Change Request lulus | 120 menit | 105 menit | Selesai |
