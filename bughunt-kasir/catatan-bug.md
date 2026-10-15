@@ -94,3 +94,34 @@ Buat satu entri untuk setiap bug yang ditemukan. Simpan file ini di folder `bugh
   - **Catatan cakupan:** test memakai jumlah string saja dan tidak menyinggung batas gabungan 99 milik B2; B1 dan B2 diverifikasi ulang tetap benar setelah perbaikan.
 - **Commit perbaikan** (pesan commit): `perbaikan: jumlahkan qty secara numerik agar tidak digabung sebagai teks`
 - **Ditemukan oleh:** AI (diverifikasi lewat eksekusi nyata oleh tim)
+
+## Bug 4 — Diskon member dan non-member terhitung bersamaan
+- **Gejala** (apa yang terlihat salah): Pelanggan **member** dengan belanja besar mendapat diskon terlalu besar karena diskon 5% (non-member) dan 10% (member) dijumlahkan. Contoh: subtotal Rp150.000 sebagai member menghasilkan diskon **Rp22.500** (15%), padahal seharusnya **Rp15.000** (10%). Karena diskon salah, dasar pengenaan PPN ikut salah sehingga total pembayaran juga salah.
+- **Langkah untuk memunculkan bug:**
+  1. Buka `index.html` di browser.
+  2. Tambahkan **Nasi Goreng** (Rp15.000) dengan Jumlah `10` → subtotal Rp150.000.
+  3. Centang **Pelanggan member**.
+  4. Baris "Diskon" menampilkan **-Rp22.500** (seharusnya **-Rp15.000**).
+  - Cara cepat tanpa browser (dari folder `bughunt-kasir`):
+    ```
+    node -e "const k=require('./kasir.js'); console.log(k.hitungDiskon(150000, true));"
+    ```
+    Keluaran lama: `22500` — seharusnya `15000`.
+- **Aturan bisnis yang dilanggar** (nomor aturan di README): **Aturan 4** — "Diskon tidak boleh digabung, hanya satu yang berlaku: member 10% dari subtotal; bukan member dengan subtotal minimal Rp100.000 mendapat 5%; selain itu tidak ada diskon."
+- **Penyebab** (file, fungsi, dan penjelasan):
+  - **File:** `kasir.js`, fungsi `hitungDiskon(subtotal, member)`.
+  - **Draf penjelasan (ditulis AI, menunggu ditulis ulang oleh pengguna):** Fungsi ini memakai **dua `if` terpisah**, bukan `if / else if`. Akibatnya kedua kondisi bisa bernilai benar pada saat yang sama. Untuk member dengan subtotal di atas Rp100.000, `if (subtotal > 100000)` terpenuhi **dan** `if (member)` juga terpenuhi — jadi kedua blok berjalan dan diskonnya **dijumlahkan** (`+=`), menghasilkan 5% + 10% = 15%. Padahal Aturan 4 menyatakan hanya **satu** diskon yang boleh berlaku, sehingga pilihan diskon harus saling eksklusif. Karena hasil `hitungDiskon` dipakai `hitungRingkasan` untuk menghitung `dasarPajak = subtotal - diskon`, diskon yang terlalu besar juga membuat PPN dan total ikut salah.
+  - **[ ] Pengguna sudah menulis ulang penyebab dengan bahasa sendiri** (diisi setelah sesi penjelasan).
+- **Perbaikan** (apa yang diubah): Mengubah dua `if` terpisah menjadi `if (member) { ... } else if (subtotal > 100000) { ... }` sehingga kondisi member dan non-member **saling eksklusif** — member selalu mendapat 10%, dan diskon 5% hanya diberikan kepada non-member. Ditambahkan komentar Aturan 4. Pembulatan `Math.round(diskon)` dipertahankan. Ambang `> 100000` (kasus batas B5), rumus PPN (B6), dan validasi pembayaran (B7) **tidak diubah**.
+- **Test yang membuktikan** (nama test): `tes/diskonMember.test.js` — 6 test:
+  - `B4: member subtotal 150.000 mendapat diskon 15.000, bukan 22.500`
+  - `B4: member subtotal 120.000 mendapat diskon 12.000, bukan 18.000`
+  - `B4: non-member subtotal 150.000 mendapat diskon 7.500 (5% saja)`
+  - `B4: non-member subtotal di bawah 100.000 tidak mendapat diskon`
+  - `B4: member di bawah 100.000 tetap mendapat 10% (tidak terpengaruh ambang)`
+  - `B4: diskon pada hitungRingkasan juga tunggal, bukan gabungan`
+  - **Bukti RED:** pada kode sebelum perbaikan (commit `830c70d`) → `tests 24, pass 21, fail 3` (3 test gagal tepat pada nilai diskon member: 22.500 ≠ 15.000, 18.000 ≠ 12.000, dan `r.diskon` pada ringkasan).
+  - **Bukti GREEN:** setelah perbaikan → `tests 24, pass 24, fail 0`. Regression suite induk `agri-sort-ai`: `tests 57, pass 57, fail 0`. B1 (6/6 ditolak), B2 (60+60 ditolak), B3 (`"2"`+`"3"` → 5) diverifikasi tidak regresi.
+  - **Catatan cakupan:** test memakai subtotal non-member 150.000 (jauh di atas ambang) dan 50.000 (jauh di bawah ambang) supaya kasus batas Rp100.000 milik B5 tidak tercampur. Setelah perbaikan B4, B5 (`hitungDiskon(100000,false)` → 0), B6 (`hitungPPN(3150)` → 346), dan B7 (kembalian negatif) terverifikasi **masih bug** — belum diperbaiki.
+- **Commit perbaikan** (pesan commit): `perbaikan: jadikan diskon member dan non-member saling eksklusif`
+- **Ditemukan oleh:** AI (diverifikasi lewat eksekusi nyata oleh tim)
