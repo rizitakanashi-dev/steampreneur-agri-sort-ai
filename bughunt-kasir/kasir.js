@@ -28,6 +28,12 @@ function tambahItem(keranjang, kode, qty) {
     throw new Error("Produk tidak ditemukan");
   }
 
+  // Aturan 1: jumlah harus bilangan bulat dari 1 sampai 99.
+  const jumlah = Number(qty);
+  if (!Number.isInteger(jumlah) || jumlah < 1 || jumlah > 99) {
+    throw new Error("Jumlah harus bilangan bulat antara 1 sampai 99");
+  }
+
   const itemLama = keranjang.find((i) => i.kode === kode);
   if (itemLama) {
     itemLama.qty += qty;
