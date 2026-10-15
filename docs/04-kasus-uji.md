@@ -38,6 +38,22 @@ Wajib ada[cite: 1]:
 
 ## Unit test otomatis (jika ada)[cite: 1]
 Nama file test: `tes/` (8 berkas: `harvestCalculation.test.js`, `harvestStorage.test.js`, `harvestProjection.test.js`, `harvestValidation.test.js`, `gradeValidation.test.js`, `harvestRecapChangeRequest.test.js`, `csvExporter.test.js`, `initialState.test.js`)[cite: 1]
-Jumlah test: 49 lulus dari 49 (`npm test`)[cite: 1]
+Jumlah test: 57 lulus dari 57 (`npm test`)[cite: 1]
 
-Perincian: 30 test alur inti (kalkulasi, penyimpanan, validasi, proyeksi harga) + 19 test Change Request (12 test pencarian/filter/ekspor CSV dan 7 test utilitas CSV).
+Perincian: 32 test alur inti (kalkulasi, penyimpanan, validasi, proyeksi harga) + 25 test Change Request (15 test pencarian/filter/ekspor CSV/total rekap dan 10 test utilitas CSV).
+
+Jumlah test bertambah dari 52 menjadi 57:
+- 2 test di `tes/harvestValidation.test.js` menutup bug validasi berat bernilai nol yang ditulis dalam format desimal (`0.0`, `0.00`, `0,0`, `0,00`).
+- 3 test di `tes/harvestRecapChangeRequest.test.js` menguji `calculateBatchTotals` untuk daftar kosong, beberapa batch, dan batch tanpa `hasil`.
+
+### Catatan cakupan kasus uji
+
+Tiga kasus uji di Bagian A menguji fitur yang **berada di luar cakupan challenge** (lihat `docs/01-spesifikasi.md` Bagian 5), sehingga tidak dapat dijalankan pada versi aplikasi ini:
+
+| ID | Alasan tidak diuji |
+|---|---|
+| U07 (validasi foto blur / Laplacian Variance) | Tidak ada unggah foto maupun model computer vision di versi challenge. |
+| U08 (filter objek non-komoditas / confidence score) | Sama seperti U07 — inferensi model tidak tersedia. |
+| U12 (offline fallback `agrisort.harga_cache.v1`) | Tidak ada integrasi API harga BAPANAS, sehingga tidak ada cache offline. Harga acuan adalah tabel tetap di `src/business/priceReference.js`. |
+
+Referensi `bughunt-kasir/` pada rencana langkah 19 juga tidak berada di repositori utama ini.
