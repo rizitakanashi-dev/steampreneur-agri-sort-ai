@@ -45,6 +45,15 @@ test('filter rentang tanggal memakai batas inklusif', () => {
   assert.deepEqual(result.map((batch) => batch.id), ['panen-2', 'panen-3'])
 })
 
+test('filter rentang tanggal mengabaikan batch tanpa tanggal ketika filter aktif', () => {
+  const batchesWithMissingDate = [
+    { id: 'panen-valid', tanggal: '2026-10-12', komoditas: 'Tomat', beratKg: 10 },
+    { id: 'panen-no-date', tanggal: '', komoditas: 'Tomat', beratKg: 10 },
+  ]
+  const result = filterBatches(batchesWithMissingDate, { ...EMPTY_RECAP_FILTER, tanggalDari: '2026-10-10' })
+  assert.deepEqual(result.map((batch) => batch.id), ['panen-valid'])
+})
+
 test('pencarian dan filter dapat dipakai bersamaan', () => {
   const result = filterBatches(batches, { search: 'tomat', komoditas: 'Tomat', tanggalDari: '2026-10-12', tanggalSampai: '' })
   assert.deepEqual(result.map((batch) => batch.id), ['panen-3'])

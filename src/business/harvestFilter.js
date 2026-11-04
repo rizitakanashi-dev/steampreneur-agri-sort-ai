@@ -38,10 +38,11 @@ function matchesCommodity(batch, commodity) {
 }
 
 function matchesDateRange(batch, from, to) {
-  const date = String(batch?.tanggal ?? '')
-  if (!date) return true
   const start = String(from ?? '').trim()
   const end = String(to ?? '').trim()
+  if (!start && !end) return true
+  const date = String(batch?.tanggal ?? '').trim()
+  if (!date) return false
   if (start && date < start) return false
   if (end && date > end) return false
   return true

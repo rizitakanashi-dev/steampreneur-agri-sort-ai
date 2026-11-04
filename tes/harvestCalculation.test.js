@@ -44,7 +44,7 @@ test('validateCalculationInput menolak input invalid dan persentase Grade A+B di
   assert.match(result.errors.beratKg, /lebih dari 0/)
   assert.match(result.errors.gradeB, /tidak boleh melebihi 100/)
 })
-
+https://www.figma.com/design/N6OXw3ysox6rdQaYLRlEQh/Untitled?node-id=0-1&t=I88CYRelcj6qUfDW-1
 test('persentase batas menghasilkan berat yang benar', () => {
   assert.deepEqual(calculateHarvest({ beratKg: 10, kesegaranPersen: 100, cacatPersen: 0 }).beratKg, {
     gradeA: 10,
@@ -114,4 +114,11 @@ test('calculateHarvest menolak input persentase campuran yang melanggar kontrak'
     () => calculateHarvest({ beratKg: 100, gradeA: 70, gradeB: 20, cacatPersen: 5 }),
     /gunakan kesegaran dan cacat|tidak boleh dicampur/,
   )
+})
+
+test('calculateGradeWeights menangani desimal floating-point IEEE-754 yang berjumlah 100 tanpa RangeError', () => {
+  const result = calculateGradeWeights(100, { gradeA: 70.1, gradeB: 20.1, reject: 9.8 })
+  assert.equal(Number(result.gradeA.toFixed(1)), 70.1)
+  assert.equal(Number(result.gradeB.toFixed(1)), 20.1)
+  assert.equal(Number(result.reject.toFixed(1)), 9.8)
 })

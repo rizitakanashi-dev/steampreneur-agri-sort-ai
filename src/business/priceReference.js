@@ -18,6 +18,8 @@ export const PRICE_REFERENCE_SOURCE = Object.freeze({
 /** Harga acuan Grade A per kg (Rp). Disetujui di docs/01-spesifikasi.md Bagian 6.2. */
 export const REFERENCE_PRICES_PER_KG = Object.freeze({
   'Cabai Rawit Hijau': 30000,
+  'Cabai Merah Keriting': 45000,
+  'Cabai Rawit Merah': 42000,
   Terung: 10000,
   Tomat: 12000,
 })
@@ -34,6 +36,18 @@ export const PRICE_HISTORY = Object.freeze({
     { label: '29 Sep', pricePerKg: 28200 },
     { label: '06 Okt', pricePerKg: 29400 },
     { label: '13 Okt', pricePerKg: 30000 },
+  ]),
+  'Cabai Merah Keriting': Object.freeze([
+    { label: '22 Sep', pricePerKg: 41000 },
+    { label: '29 Sep', pricePerKg: 42500 },
+    { label: '06 Okt', pricePerKg: 43800 },
+    { label: '13 Okt', pricePerKg: 45000 },
+  ]),
+  'Cabai Rawit Merah': Object.freeze([
+    { label: '22 Sep', pricePerKg: 38000 },
+    { label: '29 Sep', pricePerKg: 39500 },
+    { label: '06 Okt', pricePerKg: 40800 },
+    { label: '13 Okt', pricePerKg: 42000 },
   ]),
   Terung: Object.freeze([
     { label: '22 Sep', pricePerKg: 9200 },

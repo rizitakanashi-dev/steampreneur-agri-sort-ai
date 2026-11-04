@@ -90,3 +90,19 @@ test('validateHarvestForm tetap menerima berat desimal kecil yang lebih dari nol
   assert.equal(result.isValid, true)
   assert.equal(result.values.beratKg, 0.5)
 })
+
+test('validateHarvestForm menerima komoditas nasional proposal BPS: Cabai Merah Keriting dan Cabai Rawit Merah', () => {
+  for (const komoditas of ['Cabai Merah Keriting', 'Cabai Rawit Merah']) {
+    const result = validateHarvestForm({
+      tanggal: '2026-10-14',
+      komoditas,
+      beratKg: '10',
+      kesegaranPersen: '85',
+      ukuran: 'Sedang',
+      cacatPersen: '5',
+    }, '2026-10-14')
+
+    assert.equal(result.isValid, true, `komoditas "${komoditas}" seharusnya valid`)
+    assert.equal(result.values.komoditas, komoditas)
+  }
+})

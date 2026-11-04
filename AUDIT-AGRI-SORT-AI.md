@@ -9,9 +9,9 @@
 | Acuan Kompetisi | Sayembara STEAMPreneur SMK Tingkat Nasional Tahun 2026 ("Solusi Nyata untuk Indonesia") |
 | Dokumen Acuan | `Proposal STEAMPreneur SMK Tahun 2026.docx.pdf` & `docs/01-spesifikasi.md` |
 | Scope Audit | **Full-Stack & Sistem AI** (Kesesuaian Proposal vs Kode Nyata, Logika Bisnis, Keamanan, Performa) |
-| Tanggal Review | 3 November 2026 |
-| Versi Terakhir Dianalisis | commit `cffd294` |
-| Status Audit | **Inventarisasi Kritis & Rencana Aksi Penyelarasan Menuju Lomba Nasional** |
+| Tanggal Review | 3 November 2026 (Diperbarui: 4 November 2026) |
+| Versi Terakhir Dianalisis | Main (Sprint 1: Perbaikan Bug Fondasi P0) |
+| Status Audit | **Bug Fondasi P0 Teratasi — 60/60 Tests Lulus (Menuju Integrasi AI)** |
 
 ---
 
@@ -19,9 +19,9 @@
 
 Audit ini disusun secara independen dan obyektif untuk mengevaluasi kondisi kode saat ini (`steampreneur-agri-sort-ai`) terhadap janji inovasi pada **Proposal STEAMPreneur SMK Tingkat Nasional Tahun 2026** serta arahan penugasan mentor.
 
-Saat ini repositori berada pada fase **Fondasi Antarmuka & Logika Kalkulasi Klien (Client-Side MVP)**. Sebagian besar fitur inti kalkulasi matematika, filter rekap panen, dan ekspor CSV telah diimplementasikan dengan sangat rapi dan memiliki 57 pengujian otomatis (`node --test`). Namun demikian, terdapat **gap substansial** antara janji proposal (Computer Vision YOLO11, Inferensi ONNX <500ms, Backend FastAPI, Supabase Cloud BaaS, dan Live API BAPANAS) dengan kondisi kode saat ini yang masih murni berjalan di browser dengan penyimpanan `localStorage`.
+Pada review awal (3 Nov 2026), repositori berada pada fase fondasi klien dengan 57 pengujian. Pada pembaruan **4 November 2026**, seluruh temuan **Prioritas P0** (bug presisi floating-point `Number.EPSILON`, kebocoran tanggal kosong pada filter, penguncian dependensi `package.json`, dan penambahan komoditas proposal BPS) telah **selesai diperbaiki dan diverifikasi** dengan total **60 pengujian otomatis lulus 100% (`node --test`)**.
 
-Selain kesenjangan arsitektur, audit ini berhasil mendeteksi **1 bug floating-point kritis** pada modul kalkulasi yang menyebabkan aplikasi *crash* seketika pada kombinasi desimal tertentu, serta beberapa kerentanan pada manajemen paket dependency.
+Fokus pengembangan berikutnya bergeser ke **Prioritas P1**: membangun antarmuka pemindaian kamera (*Batch QC Scanner UI*) dan mengintegrasikan model AI `model-export/weights/best.onnx` sesuai panduan [`docs/workflow.md`](docs/workflow.md).
 
 ---
 
@@ -58,52 +58,28 @@ Proposal lomba resmi mengajukan inovasi Web App Quality Control & Smart Pricing 
 
 ## B. Bug Kritis & Logika Bisnis (Dengan `file:baris`)
 
-### B1. [KRITIS] Bug Presisi Floating-Point `Number.EPSILON` Menyebabkan Crash
+### B1. [TERATASI 4 NOV 2026] Bug Presisi Floating-Point `Number.EPSILON` Menyebabkan Crash
 
-- **Lokasi Kode:** [`src/business/harvestCalculation.js:53`](src/business/harvestCalculation.js#L53)
-  ```javascript
-  if (values.some((value) => value < 0 || value > 100) || Math.abs(values.reduce((sum, value) => sum + value, 0) - 100) > Number.EPSILON) {
-    throw new RangeError('Persentase grade harus berjumlah 100% dan berada pada rentang 0 sampai 100.')
-  }
-  ```
-- **Gejala Masalah:**
-  Fungsi `calculateGradeWeights` (dan turunannya seperti `calculateRevenueProjection`) akan melempar `RangeError` dan mematikan eksekusi ketika menerima kombinasi desimal yang secara matematika tepat berjumlah 100%, misalnya:
-  - Grade A = `70.1%`, Grade B = `20.1%`, Reject = `9.8%`.
-  - Penjumlahan IEEE-754: `70.1 + 20.1 + 9.8 = 99.99999999999999`.
-  - Nilai selisih terhadap 100 adalah `1.4210854715202004e-14`.
-  - Nilai konstanta `Number.EPSILON` dalam JavaScript adalah `2.220446049250313e-16`.
-  - Karena `1.42e-14 > 2.22e-16`, pengecekan bernilai `true` dan melempar *crash* `RangeError`!
-- **Dampak:**
-  Pengguna yang menginput persentase dengan 1 desimal (sangat umum dalam hasil inferensi Computer Vision) akan mendapati aplikasi macet dan memunculkan error tak terduga. Terlebih lagi di [`src/business/harvestProjection.js:36`](src/business/harvestProjection.js#L36), developer lain telah menyadari masalah ini dan memakai toleransi `1e-9`, namun di baris 39 saat memanggil `calculateGradeWeights`, fungsi tetap *crash* karena validasi di `harvestCalculation.js` masih memakai `Number.EPSILON`.
-- **Rekomendasi Perbaikan:**
-  Ubah batas toleransi dari `Number.EPSILON` menjadi `1e-9` (atau `0.0001`):
+- **Lokasi Kode Asal:** [`src/business/harvestCalculation.js:53`](src/business/harvestCalculation.js#L53)
+- **Status Perbaikan:** ✅ **Selesai Diperbaiki & Lulus Uji.**
+- **Solusi yang Diterapkan:**
+  Toleransi presisi diubah dari `Number.EPSILON` menjadi `1e-9`:
   ```javascript
   const sumPercentages = values.reduce((sum, value) => sum + value, 0)
   if (values.some((value) => value < 0 || value > 100) || Math.abs(sumPercentages - 100) > 1e-9) {
     throw new RangeError('Persentase grade harus berjumlah 100% dan berada pada rentang 0 sampai 100.')
   }
   ```
+  Diverifikasi dengan unit test baru: `tes/harvestCalculation.test.js` (`calculateGradeWeights menangani desimal floating-point IEEE-754 yang berjumlah 100 tanpa RangeError`).
 
 ---
 
-### B2. [SEDANG] Pencocokan Tanggal pada Filter Rentang Tanggal Melewati Batch Tanpa Tanggal
+### B2. [TERATASI 4 NOV 2026] Pencocokan Tanggal pada Filter Rentang Tanggal Melewati Batch Tanpa Tanggal
 
-- **Lokasi Kode:** [`src/business/harvestFilter.js:36-43`](src/business/harvestFilter.js#L36-L43)
-  ```javascript
-  function matchesDateRange(batch, from, to) {
-    const date = String(batch?.tanggal ?? '')
-    if (!date) return true
-    const start = String(from ?? '').trim()
-    const end = String(to ?? '').trim()
-    if (start && date < start) return false
-    if (end && date > end) return false
-    return true
-  }
-  ```
-- **Gejala Masalah:**
-  Jika ada data batch panen yang kolom `tanggal`-nya kosong (atau corrupt), kondisi `if (!date) return true` akan selalu mengembalikan `true`. Akibatnya, saat pengguna memfilter rekap panen khusus bulan tertentu (misal: "1 Okt 2026 s/d 15 Okt 2026"), data tanpa tanggal tetap ikut tampil di dalam hasil filter.
-- **Rekomendasi Perbaikan:**
-  Jika filter `from` atau `to` sedang aktif dan data tidak memiliki `tanggal`, seharusnya dievaluasi sebagai `false` (tidak lolos saring):
+- **Lokasi Kode Asal:** [`src/business/harvestFilter.js:36-43`](src/business/harvestFilter.js#L36-L43)
+- **Status Perbaikan:** ✅ **Selesai Diperbaiki & Lulus Uji.**
+- **Solusi yang Diterapkan:**
+  Jika filter rentang tanggal `from` atau `to` aktif dan sebuah batch tidak memiliki tanggal, dievaluasi menjadi `false`:
   ```javascript
   function matchesDateRange(batch, from, to) {
     const start = String(from ?? '').trim()
@@ -116,6 +92,7 @@ Proposal lomba resmi mengajukan inovasi Web App Quality Control & Smart Pricing 
     return true
   }
   ```
+  Diverifikasi dengan unit test baru: `tes/harvestRecapChangeRequest.test.js` (`filter rentang tanggal mengabaikan batch tanpa tanggal ketika filter aktif`).
 
 ---
 
@@ -143,32 +120,16 @@ Proposal lomba resmi mengajukan inovasi Web App Quality Control & Smart Pricing 
 
 ## C. Kualitas Kode, Tooling, & Dependensi
 
-### C1. Versi Dependensi Menggunakan Tag `"latest"` di `package.json`
+### C1. [TERATASI 4 NOV 2026] Versi Dependensi Menggunakan Tag `"latest"` di `package.json`
 
-- **Lokasi Kode:** [`package.json:13-24`](package.json#L13-L24)
-  ```json
-  "dependencies": {
-    "@emotion/react": "latest",
-    "@emotion/styled": "latest",
-    "@mui/icons-material": "latest",
-    "@mui/material": "latest",
-    "@mui/x-charts": "^9.15.0",
-    "react": "latest",
-    "react-dom": "latest"
-  },
-  "devDependencies": {
-    "@vitejs/plugin-react": "latest",
-    "vite": "latest"
-  }
-  ```
-- **Analisis Dampak:**
-  Penggunaan tag `"latest"` pada `dependencies` merupakan *bad practice* dalam industri perangkat lunak. Ketika tim atau juri kloning repo di masa depan dan menjalankan `npm install`, npm akan menarik rilis major terbaru (misal React 20 atau MUI v10) yang sangat berisiko mematahkan kompatibilitas (*breaking changes*).
-- **Rekomendasi Perbaikan:**
-  Kunci (*pin*) nomor versi sesuai yang terpasang di `package-lock.json`:
+- **Lokasi Kode Asal:** [`package.json:13-24`](package.json#L13-L24)
+- **Status Perbaikan:** ✅ **Selesai Dikunci Sesuai `package-lock.json`.**
+- **Solusi yang Diterapkan:**
+  Seluruh dependensi telah di-pin ke versi semantik eksplisit:
   ```json
   "dependencies": {
     "@emotion/react": "^11.14.0",
-    "@emotion/styled": "^11.14.0",
+    "@emotion/styled": "^11.14.1",
     "@mui/icons-material": "^9.5.0",
     "@mui/material": "^9.5.0",
     "@mui/x-charts": "^9.15.0",
@@ -176,8 +137,8 @@ Proposal lomba resmi mengajukan inovasi Web App Quality Control & Smart Pricing 
     "react-dom": "^19.3.0"
   },
   "devDependencies": {
-    "@vitejs/plugin-react": "^4.3.4",
-    "vite": "^8.3.0"
+    "@vitejs/plugin-react": "^6.1.2",
+    "vite": "^8.3.4"
   }
   ```
 
@@ -241,18 +202,18 @@ Proposal STEAMPreneur SMK mewajibkan integrasi nyata dari 5 pilar:
 
 ## G. Checklist Penyelesaian & Rekomendasi Bertahap
 
-### Prioritas P0 (Harus Dibereskan Segera — Kestabilan Kode Saat Ini)
-- [ ] Perbaiki toleransi floating-point di [`src/business/harvestCalculation.js:53`](src/business/harvestCalculation.js#L53) dari `Number.EPSILON` menjadi `1e-9`.
-- [ ] Perbaiki logika pencocokan tanggal kosong di [`src/business/harvestFilter.js:38`](src/business/harvestFilter.js#L38).
-- [ ] Kunci versi dependensi di `package.json` (hindari penggunaan tag `"latest"`).
-- [ ] Tambahkan unit test khusus untuk kasus desimal `70.1 + 20.1 + 9.8` di `tes/kalkulasiPanen.test.js` untuk memastikan tidak ada regresi.
+### Prioritas P0 (Fondasi & Kestabilan Kode — SELESAI 4 NOV 2026)
+- [x] **Perbaiki toleransi floating-point di [`src/business/harvestCalculation.js:53`](src/business/harvestCalculation.js#L53):** Diubah dari `Number.EPSILON` menjadi `1e-9`.
+- [x] **Perbaiki logika pencocokan tanggal kosong di [`src/business/harvestFilter.js:38`](src/business/harvestFilter.js#L38):** Tanggal kosong ditolak saat filter tanggal aktif.
+- [x] **Kunci versi dependensi di `package.json`:** Semua dependensi menggunakan versi semantik pasti (`^19.3.0`, `^9.5.0`, `^8.3.4`).
+- [x] **Sinkronisasi komoditas nasional proposal BPS:** Menambahkan `Cabai Merah Keriting` dan `Cabai Rawit Merah` ke dalam `priceReference.js` dan `harvestValidation.js`.
+- [x] **Tambahkan unit test verifikasi:** 3 unit test baru ditambahkan di folder `tes/` (total 60 tests, 100% pass).
 
 ### Prioritas P1 (Penyelarasan Janji Proposal Menuju Prototype Lomba Nasional)
 - [ ] **Modul Upload/Kamera Keranjang Panen:** Tambahkan komponen input foto keranjang di tab QC Scanner (bisa upload file atau ambil foto langsung lewat kamera HP).
 - [ ] **Service Inferensi AI Sederhana (FastAPI / Mock AI Worker):**
   - Buat folder `backend/` dengan framework FastAPI atau Cloudflare Worker.
-  - Sediakan endpoint `POST /api/predict-qc` yang menerima gambar dan mengembalikan persentase `gradeA`, `gradeB`, `reject`, dan bounding boxes.
-- [ ] **Sinkronisasi Komoditas Proposal:** Tambahkan pilihan komoditas `Cabai Merah Keriting / Cabai Besar` agar selaras dengan data BPS di Proposal.
+  - Sediakan endpoint `POST /api/v1/qc/scan` yang menerima gambar dan menjalankan `model-export/weights/best.onnx` untuk mengembalikan persentase `gradeA`, `gradeB`, `reject`, dan bounding boxes.
 - [ ] **Integrasi API Harga BAPANAS:** Buat endpoint integrasi atau service scraper harga harian pangan nasional untuk wilayah Sumatera Barat / Payakumbuh dengan fallback ke cache lokal.
 
 ### Prioritas P2 (Penyempurnaan Skalabilitas & Presentasi Juri)
@@ -267,10 +228,16 @@ Proposal STEAMPreneur SMK mewajibkan integrasi nyata dari 5 pilar:
 Jalankan perintah-perintah berikut di terminal untuk memverifikasi kondisi sistem:
 
 ```bash
-# 1. Jalankan seluruh unit test logika bisnis (57 tests)
+# 1. Jalankan seluruh unit test logika bisnis (60 tests, 100% PASS)
 npm test
 
-# 2. Uji keberadaan bug floating-point EPSILON
+# 2. Uji keberadaan bug floating-point EPSILON (Sudah lulus/PASS)
+node -e "import('./src/business/harvestCalculation.js').then(m => m.calculateGradeWeights(100, { gradeA: 70.1, gradeB: 20.1, reject: 9.8 })).then(() => console.log('PASS')).catch(e => console.error('FAIL:', e.message))"
+
+# 3. Periksa status git dan riwayat commit
+git status
+git log -n 5 --oneline
+```
 node -e "import('./src/business/harvestCalculation.js').then(m => m.calculateGradeWeights(100, { gradeA: 70.1, gradeB: 20.1, reject: 9.8 })).then(() => console.log('PASS')).catch(e => console.error('FAIL:', e.message))"
 
 # 3. Periksa status git dan riwayat commit

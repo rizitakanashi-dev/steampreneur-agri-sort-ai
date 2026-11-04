@@ -1,4 +1,10 @@
-const commodityOptions = ['Cabai Rawit Hijau', 'Terung', 'Tomat']
+const commodityOptions = [
+  'Cabai Rawit Hijau',
+  'Cabai Merah Keriting',
+  'Cabai Rawit Merah',
+  'Terung',
+  'Tomat',
+]
 const sizeOptions = ['Besar', 'Sedang', 'Kecil']
 
 function todayAsInputValue() {

@@ -57,7 +57,8 @@ export function calculateGradeWeights(beratTotal, percentages) {
   const parsedWeight = requiredNumber(beratTotal, 'Berat total')
   assertNonNegativeNumber(parsedWeight, 'Berat total')
   const values = [percentages?.gradeA, percentages?.gradeB, percentages?.reject].map((value) => requiredNumber(value, 'Persentase grade'))
-  if (values.some((value) => value < 0 || value > 100) || Math.abs(values.reduce((sum, value) => sum + value, 0) - 100) > Number.EPSILON) {
+  const sumPercentages = values.reduce((sum, value) => sum + value, 0)
+  if (values.some((value) => value < 0 || value > 100) || Math.abs(sumPercentages - 100) > 1e-9) {
     throw new RangeError('Persentase grade harus berjumlah 100% dan berada pada rentang 0 sampai 100.')
   }
   return {

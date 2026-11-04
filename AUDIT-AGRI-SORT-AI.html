@@ -253,15 +253,15 @@ footer {
   </div>
   <div class="meta-item">
     <span class="meta-label">Versi Terakhir</span>
-    <span class="meta-val">Commit <code>cffd294</code> (Main)</span>
+    <span class="meta-val">Main (Sprint 1: P0 Selesai)</span>
   </div>
   <div class="meta-item">
     <span class="meta-label">Status Suite Uji</span>
-    <span class="meta-val" style="color:var(--success);">57 / 57 Tests Lulus (100%)</span>
+    <span class="meta-val" style="color:var(--success);">60 / 60 Tests Lulus (100%)</span>
   </div>
   <div class="meta-item">
     <span class="meta-label">Taraf Kesiapan Proposal</span>
-    <span class="meta-val" style="color:var(--warning);">Client-Side MVP (Perlu AI & Cloud)</span>
+    <span class="meta-val" style="color:var(--primary);">P0 Tuntas &bull; Menuju P1 (AI Scan)</span>
   </div>
 </div>
 
@@ -328,26 +328,19 @@ footer {
 <section>
   <h2>2. Temuan Bug & Kerentanan Teknis</h2>
 
-  <div class="callout callout-danger">
-    <h3 style="margin-top:0; color:var(--danger);">[KRITIS] Bug Presisi Floating-Point <code>Number.EPSILON</code> Memicu Crash</h3>
-    <p><strong>Lokasi Kode:</strong> <code>src/business/harvestCalculation.js:53</code></p>
-    <pre><code>if (values.some((v) => v &lt; 0 || v &gt; 100) || Math.abs(values.reduce((s, v) =&gt; s + v, 0) - 100) &gt; Number.EPSILON) {
-  throw new RangeError('Persentase grade harus berjumlah 100% dan berada pada rentang 0 sampai 100.')
-}</code></pre>
-    <p><strong>Penyebab:</strong> Nilai <code>Number.EPSILON</code> (~2.22e-16) terlalu ketat untuk operasi desimal floating-point IEEE-754. Contoh: persentase <code>70.1% + 20.1% + 9.8% = 99.99999999999999</code> memiliki selisih <code>1.42e-14</code>. Karena <code>1.42e-14 &gt; Number.EPSILON</code>, sistem melempar crash <code>RangeError</code> meskipun total matematisnya tepat 100%.</p>
-    <p><strong>Solusi:</strong> Ganti toleransi perbandingan menjadi <code>1e-9</code> (seperti yang sudah dipakai di <code>harvestProjection.js:36</code>).</p>
+  <div class="callout callout-success">
+    <h3 style="margin-top:0; color:var(--success);">[TERATASI] Bug Presisi Floating-Point <code>Number.EPSILON</code></h3>
+    <p><strong>Status:</strong> Diperbaiki pada 4 Nov 2026. Toleransi perbandingan di <code>src/business/harvestCalculation.js:53</code> diubah dari <code>Number.EPSILON</code> menjadi <code>1e-9</code>. Kasus desimal <code>70.1% + 20.1% + 9.8%</code> kini diproses dengan sempurna tanpa <em>crash</em> dan diverifikasi lewat unit test baru.</p>
   </div>
 
-  <div class="callout callout-warning">
-    <h3 style="margin-top:0; color:var(--warning);">[SEDANG] Tag Dependensi <code>"latest"</code> pada <code>package.json</code></h3>
-    <p><strong>Lokasi Kode:</strong> <code>package.json:14-23</code></p>
-    <p>Dependensi inti seperti <code>react</code>, <code>@mui/material</code>, dan <code>vite</code> menggunakan tag <code>"latest"</code>. Hal ini sangat berisiko merusak sistem sewaktu dewan juri atau tim melakukan instalasi ulang (<code>npm install</code>) di komputer baru akibat rilis pembaruan yang tidak kompatibel. Selalu kunci dengan versi semantik pasti (misal <code>^19.3.0</code>).</p>
+  <div class="callout callout-success">
+    <h3 style="margin-top:0; color:var(--success);">[TERATASI] Penguncian Dependensi <code>package.json</code></h3>
+    <p><strong>Status:</strong> Diperbaiki pada 4 Nov 2026. Seluruh tag <code>"latest"</code> telah digantikan dengan versi semantik pasti (<code>^19.3.0</code>, <code>^9.5.0</code>, <code>^8.3.4</code>) sesuai <code>package-lock.json</code>.</p>
   </div>
 
-  <div class="callout callout-warning">
-    <h3 style="margin-top:0; color:var(--warning);">[SEDANG] Filter Rentang Tanggal Melewati Batch Tanpa Tanggal</h3>
-    <p><strong>Lokasi Kode:</strong> <code>src/business/harvestFilter.js:38</code></p>
-    <p>Pengecekan <code>if (!date) return true</code> meloloskan data tanpa tanggal ke dalam tabel hasil filter rentang tanggal tertentu, menyebabkan kebocoran data pada laporan periode spesifik.</p>
+  <div class="callout callout-success">
+    <h3 style="margin-top:0; color:var(--success);">[TERATASI] Filter Rentang Tanggal Data Kosong</h3>
+    <p><strong>Status:</strong> Diperbaiki pada 4 Nov 2026. Di <code>src/business/harvestFilter.js:38</code>, data tanpa tanggal kini secara tepat ditolak saat filter tanggal aktif.</p>
   </div>
 </section>
 
@@ -394,12 +387,13 @@ footer {
 <section>
   <h2>4. Rencana Kerja Bertahap Menuju Lomba Nasional</h2>
 
-  <h3>Sprint 1 — Stabilisasi Fondasi (P0)</h3>
+  <h3>Sprint 1 — Stabilisasi Fondasi (P0) &bull; <span style="color:var(--success); font-size:0.85em;">SELESAI 4 NOV 2026</span></h3>
   <ul class="checklist">
-    <li><input type="checkbox"> Perbaiki bug floating-point <code>Number.EPSILON</code> di <code>src/business/harvestCalculation.js:53</code>.</li>
-    <li><input type="checkbox"> Perbaiki filter tanggal kosong di <code>src/business/harvestFilter.js:38</code>.</li>
-    <li><input type="checkbox"> Kunci nomor versi paket dependensi di <code>package.json</code>.</li>
-    <li><input type="checkbox"> Tambahkan pengujian otomatis untuk kasus desimal <code>70.1 + 20.1 + 9.8</code>.</li>
+    <li><input type="checkbox" checked disabled> <strong>Perbaiki bug floating-point <code>Number.EPSILON</code>:</strong> Toleransi diganti <code>1e-9</code> di <code>src/business/harvestCalculation.js:53</code>.</li>
+    <li><input type="checkbox" checked disabled> <strong>Perbaiki filter tanggal kosong:</strong> Tanggal kosong ditolak saat filter aktif di <code>src/business/harvestFilter.js:38</code>.</li>
+    <li><input type="checkbox" checked disabled> <strong>Kunci dependensi:</strong> Semua dependensi di <code>package.json</code> dikunci ke versi semantik pasti.</li>
+    <li><input type="checkbox" checked disabled> <strong>Sinkronisasi komoditas proposal BPS:</strong> Menambahkan Cabai Merah Keriting & Cabai Rawit Merah.</li>
+    <li><input type="checkbox" checked disabled> <strong>Suite Uji Otomatis:</strong> 3 skenario tes baru ditambahkan (total 60/60 tests LULUS 100%).</li>
   </ul>
 
   <h3>Sprint 2 — Fitur Inti Proposal Lomba (P1)</h3>
