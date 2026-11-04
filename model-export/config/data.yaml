@@ -1,0 +1,13 @@
+train: ../train/images
+val: ../valid/images
+test: ../test/images
+
+nc: 2
+names: ['fresh-tomato', 'rotten-tomato']
+
+roboflow:
+  workspace: rizi-takanashi
+  project: agri-sort
+  version: 2
+  license: Private
+  url: https://app.roboflow.com/rizi-takanashi/agri-sort/2
