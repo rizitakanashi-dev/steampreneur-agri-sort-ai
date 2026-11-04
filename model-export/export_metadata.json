@@ -1,0 +1,12 @@
+{
+    "project": "Agri-Sort AI",
+    "exported_at": "2026-11-02T06:40:51.760315",
+    "training_directory": "/content/runs/detect/train",
+    "model_files": [
+        "weights/best.onnx",
+        "weights/best.pt",
+        "weights/last.pt"
+    ],
+    "framework": "Ultralytics YOLO",
+    "inference_format": "ONNX"
+}
