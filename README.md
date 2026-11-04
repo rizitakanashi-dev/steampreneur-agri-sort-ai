@@ -224,6 +224,9 @@ Semua nilai BPP (biaya pokok produksi) dan harga acuan di aplikasi ini adalah **
 
 | Berkas | Isi |
 |--------|-----|
+| [`AUDIT-AGRI-SORT-AI.md`](AUDIT-AGRI-SORT-AI.md) | **Audit & Evaluasi Teknis:** Analisis kesenjangan Proposal STEAMPreneur 2026 vs kode, deteksi bug kritis, evaluasi 5 pilar STEAM, dan rekomendasi perbaikan |
+| [`PRD-AGRI-SORT-AI.md`](PRD-AGRI-SORT-AI.md) | **Product Requirements Document (PRD):** Visi produk, target pengguna, kebutuhan fungsional/non-fungsional, arsitektur AI + Cloud, skema DB Supabase, kontrak API, dan roadmap |
+| [`AUDIT-AGRI-SORT-AI.html`](AUDIT-AGRI-SORT-AI.html) | Versi web/cetak visual dokumen audit dengan tema visual Agri-Sort AI |
 | `docs/01-spesifikasi.md` | Spesifikasi lengkap: masalah, solusi, aturan bisnis, rumus, field form, pesan error |
 | `docs/02-rencana.md` | Rencana kerja: 21 langkah, estimasi vs aktual, pembagian peran |
 | `docs/03-log-prompt.md` | Log prompt AI: setiap interaksi, hasil, dan keputusan tim |

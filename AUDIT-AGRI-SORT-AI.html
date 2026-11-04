@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Audit & Evaluasi — Agri-Sort AI (STEAMPreneur SMK 2026)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap">
+<style>
+:root {
+  --bg-main: #f8faf9;
+  --surface: #ffffff;
+  --surface-subtle: #f1f5f2;
+  --text-main: #132219;
+  --text-muted: #4e6155;
+  --border: #dbe4dd;
+  --border-strong: #bacdc0;
+  --primary: #036e45;
+  --primary-light: #e8f5ee;
+  --primary-dark: #024a2f;
+  --accent: #2f7299;
+  --warning: #b45309;
+  --warning-bg: #fef3c7;
+  --danger: #b91c1c;
+  --danger-bg: #fee2e2;
+  --success: #047857;
+  --success-bg: #d1fae5;
+  --font-sans: "Plus Jakarta Sans", system-ui, -apple-system, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background-color: var(--bg-main);
+  color: var(--text-main);
+  font-family: var(--font-sans);
+  line-height: 1.65;
+  padding: 2.5rem 1rem;
+}
+
+.container {
+  max-width: 960px;
+  margin: 0 auto;
+}
+
+header {
+  background: linear-gradient(135deg, #036e45 0%, #0b8a5a 100%);
+  color: #ffffff;
+  padding: 2.5rem 2rem;
+  border-radius: 1rem;
+  margin-bottom: 2rem;
+  box-shadow: 0 10px 25px -5px rgba(3, 110, 69, 0.2);
+}
+
+.badge {
+  display: inline-block;
+  padding: 0.25rem 0.75rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border-radius: 9999px;
+  margin-bottom: 1rem;
+  background: rgba(255, 255, 255, 0.2);
+  color: #e8f5ee;
+}
+
+h1 {
+  font-size: 2.2rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1.2;
+  margin-bottom: 0.75rem;
+}
+
+.subtitle {
+  font-size: 1.05rem;
+  opacity: 0.9;
+  max-width: 720px;
+}
+
+.metadata-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 0.75rem;
+  padding: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.meta-item {
+  display: flex;
+  flex-direction: column;
+}
+
+.meta-label {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-weight: 600;
+}
+
+.meta-val {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-main);
+  margin-top: 0.2rem;
+}
+
+section {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 0.75rem;
+  padding: 2rem;
+  margin-bottom: 2rem;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.03);
+}
+
+h2 {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: var(--primary-dark);
+  margin-bottom: 1.25rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 2px solid var(--primary-light);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+h3 {
+  font-size: 1.15rem;
+  font-weight: 700;
+  margin: 1.5rem 0 0.75rem 0;
+  color: var(--text-main);
+}
+
+p { margin-bottom: 1rem; font-size: 0.95rem; }
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1rem 0 1.5rem 0;
+  font-size: 0.9rem;
+}
+
+th, td {
+  padding: 0.75rem 1rem;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+}
+
+th {
+  background-color: var(--surface-subtle);
+  font-weight: 700;
+  color: var(--text-main);
+}
+
+tr:hover td {
+  background-color: #fafcfb;
+}
+
+code {
+  font-family: var(--font-mono);
+  font-size: 0.85em;
+  background: var(--surface-subtle);
+  padding: 0.15rem 0.4rem;
+  border-radius: 0.3rem;
+  color: #0b5e39;
+  border: 1px solid var(--border);
+}
+
+pre {
+  background: #17231c;
+  color: #e2ede6;
+  font-family: var(--font-mono);
+  font-size: 0.88rem;
+  padding: 1.25rem;
+  border-radius: 0.5rem;
+  overflow-x: auto;
+  margin: 1rem 0;
+  line-height: 1.5;
+}
+
+.pill-danger { background: var(--danger-bg); color: var(--danger); font-weight: 700; padding: 0.2rem 0.5rem; border-radius: 0.25rem; font-size: 0.78rem; display: inline-block; }
+.pill-warning { background: var(--warning-bg); color: var(--warning); font-weight: 700; padding: 0.2rem 0.5rem; border-radius: 0.25rem; font-size: 0.78rem; display: inline-block; }
+.pill-success { background: var(--success-bg); color: var(--success); font-weight: 700; padding: 0.2rem 0.5rem; border-radius: 0.25rem; font-size: 0.78rem; display: inline-block; }
+
+.callout {
+  padding: 1.25rem;
+  border-radius: 0.5rem;
+  margin: 1.25rem 0;
+  border-left: 4px solid;
+}
+.callout-danger { background: var(--danger-bg); border-color: var(--danger); }
+.callout-warning { background: var(--warning-bg); border-color: var(--warning); }
+.callout-success { background: var(--success-bg); border-color: var(--success); }
+
+.checklist {
+  list-style: none;
+  margin: 1rem 0;
+}
+.checklist li {
+  padding: 0.6rem 0;
+  border-bottom: 1px dashed var(--border);
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  font-size: 0.93rem;
+}
+.checklist input[type="checkbox"] {
+  margin-top: 0.3rem;
+  accent-color: var(--primary);
+  width: 1.1rem;
+  height: 1.1rem;
+}
+
+footer {
+  text-align: center;
+  padding: 2rem 0;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+</style>
+</head>
+<body>
+
+<div class="container">
+
+<header>
+  <div class="badge">Audit & Evaluasi Teknis — STEAMPreneur SMK 2026</div>
+  <h1>Agri-Sort AI: Evaluasi Kode & Penyelarasan Proposal</h1>
+  <div class="subtitle">Analisis Kritis Kepatuhan Proposal Lomba Nasional vs Realisasi Kode Repositori, Bug Detection, dan Peta Jalan Eksekusi.</div>
+</header>
+
+<div class="metadata-grid">
+  <div class="meta-item">
+    <span class="meta-label">Institusi</span>
+    <span class="meta-val">SMKN 4 Payakumbuh (RPL)</span>
+  </div>
+  <div class="meta-item">
+    <span class="meta-label">Tim Siswa</span>
+    <span class="meta-val">Faris, Hieray, Ahmad</span>
+  </div>
+  <div class="meta-item">
+    <span class="meta-label">Guru Pembimbing</span>
+    <span class="meta-val">Rogi Auvi, S.Pd</span>
+  </div>
+  <div class="meta-item">
+    <span class="meta-label">Versi Terakhir</span>
+    <span class="meta-val">Commit <code>cffd294</code> (Main)</span>
+  </div>
+  <div class="meta-item">
+    <span class="meta-label">Status Suite Uji</span>
+    <span class="meta-val" style="color:var(--success);">57 / 57 Tests Lulus (100%)</span>
+  </div>
+  <div class="meta-item">
+    <span class="meta-label">Taraf Kesiapan Proposal</span>
+    <span class="meta-val" style="color:var(--warning);">Client-Side MVP (Perlu AI & Cloud)</span>
+  </div>
+</div>
+
+<section>
+  <h2>1. Gap Analisis: Janji Proposal vs Realisasi Kode Saat Ini</h2>
+  <p>Proposal resmi <strong>STEAMPreneur Jenjang SMK Tingkat Nasional 2026</strong> menjanjikan sistem deteksi mutu otomatis berbasis Computer Vision. Tabel berikut menguraikan kesenjangan antara janji proposal dan kondisi repositori terkini:</p>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Fitur / Komponen</th>
+        <th>Janji Proposal STEAMPreneur 2026</th>
+        <th>Kondisi Kode Terkini</th>
+        <th>Status Kesenjangan</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>AI Computer Vision</strong></td>
+        <td>Model YOLO11 ONNX/OpenVINO inferensi CPU &lt; 500 ms mendeteksi Grade A, B, Reject.</td>
+        <td>Belum ada AI; mutu dimasukkan lewat form/slider manual.</td>
+        <td><span class="pill-danger">GAP KRITIS</span></td>
+      </tr>
+      <tr>
+        <td><strong>Batch Camera Scanner</strong></td>
+        <td>Kamera smartphone/laptop memindai foto keranjang panen langsung di kebun/gudang.</td>
+        <td>Hanya formulir manual; belum ada pemrosesan berkas citra.</td>
+        <td><span class="pill-danger">GAP KRITIS</span></td>
+      </tr>
+      <tr>
+        <td><strong>Harga Pasar BAPANAS</strong></td>
+        <td>Integrasi API live feed Panel Harga Harian Badan Pangan Nasional.</td>
+        <td>Tabel konstanta simulasi statis di <code>priceReference.js</code>.</td>
+        <td><span class="pill-warning">GAP DATA</span></td>
+      </tr>
+      <tr>
+        <td><strong>Backend REST API</strong></td>
+        <td>Python FastAPI di DigitalOcean CPU Droplet untuk inferensi ONNX.</td>
+        <td>Arsitektur Single Page Application (SPA) murni tanpa backend.</td>
+        <td><span class="pill-warning">GAP ARSITEKTUR</span></td>
+      </tr>
+      <tr>
+        <td><strong>Penyimpanan Cloud</strong></td>
+        <td>Supabase BaaS (Database PostgreSQL, Auth RLS, Storage foto 30 hari).</td>
+        <td>Penyimpanan lokal di browser via <code>localStorage</code> (<code>agrisort.panen.v1</code>).</td>
+        <td><span class="pill-warning">GAP ARSITEKTUR</span></td>
+      </tr>
+      <tr>
+        <td><strong>Penyelarasan Komoditas</strong></td>
+        <td>Fokus komoditas BPS: Cabai Besar, Cabai Rawit Merah, Tomat.</td>
+        <td>Terdaftar: Cabai Rawit Hijau, Terung, Tomat.</td>
+        <td><span class="pill-warning">PENYESUAIAN</span></td>
+      </tr>
+      <tr>
+        <td><strong>Arsitektur Frontend</strong></td>
+        <td>Next.js & Tailwind CSS (tercantum di Bab 3.2 proposal).</td>
+        <td>React 19 + Vite + Material UI (MUI v9.5).</td>
+        <td><span class="pill-success">DITERIMA (SOLID)</span></td>
+      </tr>
+    </tbody>
+  </table>
+</section>
+
+<section>
+  <h2>2. Temuan Bug & Kerentanan Teknis</h2>
+
+  <div class="callout callout-danger">
+    <h3 style="margin-top:0; color:var(--danger);">[KRITIS] Bug Presisi Floating-Point <code>Number.EPSILON</code> Memicu Crash</h3>
+    <p><strong>Lokasi Kode:</strong> <code>src/business/harvestCalculation.js:53</code></p>
+    <pre><code>if (values.some((v) => v &lt; 0 || v &gt; 100) || Math.abs(values.reduce((s, v) =&gt; s + v, 0) - 100) &gt; Number.EPSILON) {
+  throw new RangeError('Persentase grade harus berjumlah 100% dan berada pada rentang 0 sampai 100.')
+}</code></pre>
+    <p><strong>Penyebab:</strong> Nilai <code>Number.EPSILON</code> (~2.22e-16) terlalu ketat untuk operasi desimal floating-point IEEE-754. Contoh: persentase <code>70.1% + 20.1% + 9.8% = 99.99999999999999</code> memiliki selisih <code>1.42e-14</code>. Karena <code>1.42e-14 &gt; Number.EPSILON</code>, sistem melempar crash <code>RangeError</code> meskipun total matematisnya tepat 100%.</p>
+    <p><strong>Solusi:</strong> Ganti toleransi perbandingan menjadi <code>1e-9</code> (seperti yang sudah dipakai di <code>harvestProjection.js:36</code>).</p>
+  </div>
+
+  <div class="callout callout-warning">
+    <h3 style="margin-top:0; color:var(--warning);">[SEDANG] Tag Dependensi <code>"latest"</code> pada <code>package.json</code></h3>
+    <p><strong>Lokasi Kode:</strong> <code>package.json:14-23</code></p>
+    <p>Dependensi inti seperti <code>react</code>, <code>@mui/material</code>, dan <code>vite</code> menggunakan tag <code>"latest"</code>. Hal ini sangat berisiko merusak sistem sewaktu dewan juri atau tim melakukan instalasi ulang (<code>npm install</code>) di komputer baru akibat rilis pembaruan yang tidak kompatibel. Selalu kunci dengan versi semantik pasti (misal <code>^19.3.0</code>).</p>
+  </div>
+
+  <div class="callout callout-warning">
+    <h3 style="margin-top:0; color:var(--warning);">[SEDANG] Filter Rentang Tanggal Melewati Batch Tanpa Tanggal</h3>
+    <p><strong>Lokasi Kode:</strong> <code>src/business/harvestFilter.js:38</code></p>
+    <p>Pengecekan <code>if (!date) return true</code> meloloskan data tanpa tanggal ke dalam tabel hasil filter rentang tanggal tertentu, menyebabkan kebocoran data pada laporan periode spesifik.</p>
+  </div>
+</section>
+
+<section>
+  <h2>3. Penilaian Integrasi 5 Pilar STEAM</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Pilar</th>
+        <th>Rancangan pada Proposal</th>
+        <th>Realisasi di Lapangan & Rekomendasi Lomba</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Science</strong></td>
+        <td>Fisiologi pasca-panen (pigmen warna, susut kadar air, jamur patek antraknosa).</td>
+        <td>Perlu ditambahkan kartu edukasi visual mengenai tanda infeksi jamur pada buah di layar QC.</td>
+      </tr>
+      <tr>
+        <td><strong>Technology</strong></td>
+        <td>Model YOLO11 ONNX, FastAPI di DigitalOcean, Supabase Cloud BaaS.</td>
+        <td>Pondasi frontend React sangat cepat; segera hubungkan ke endpoint inferensi FastAPI.</td>
+      </tr>
+      <tr>
+        <td><strong>Engineering</strong></td>
+        <td>Pipeline otomatis: Foto keranjang &rarr; Ekstraksi fitur citra &rarr; Inferensi &lt;500ms &rarr; Harga wajar.</td>
+        <td>Logika pipeline form manual sudah bekerja mulus; perlu menambahkan modul integrasi kamera web.</td>
+      </tr>
+      <tr>
+        <td><strong>Arts</strong></td>
+        <td>Desain antarmuka human-centered di Figma dengan tema warna alami tanah/daun.</td>
+        <td><strong>Sangat Bagus:</strong> Palet warna <code>#036e45</code> konsisten, layout bersih, dan ramah petani.</td>
+      </tr>
+      <tr>
+        <td><strong>Mathematics</strong></td>
+        <td>Statistik distribusi mutu, pengali grade, deviasi harga harian, HPP, BEP.</td>
+        <td><strong>Sangat Bagus:</strong> Modul kalkulasi bobot dan nominal Rupiah teruji presisi di 57 tests.</td>
+      </tr>
+    </tbody>
+  </table>
+</section>
+
+<section>
+  <h2>4. Rencana Kerja Bertahap Menuju Lomba Nasional</h2>
+
+  <h3>Sprint 1 — Stabilisasi Fondasi (P0)</h3>
+  <ul class="checklist">
+    <li><input type="checkbox"> Perbaiki bug floating-point <code>Number.EPSILON</code> di <code>src/business/harvestCalculation.js:53</code>.</li>
+    <li><input type="checkbox"> Perbaiki filter tanggal kosong di <code>src/business/harvestFilter.js:38</code>.</li>
+    <li><input type="checkbox"> Kunci nomor versi paket dependensi di <code>package.json</code>.</li>
+    <li><input type="checkbox"> Tambahkan pengujian otomatis untuk kasus desimal <code>70.1 + 20.1 + 9.8</code>.</li>
+  </ul>
+
+  <h3>Sprint 2 — Fitur Inti Proposal Lomba (P1)</h3>
+  <ul class="checklist">
+    <li><input type="checkbox"> Tambahkan komponen Kamera / Upload Foto Keranjang di Tab QC Scanner.</li>
+    <li><input type="checkbox"> Bangun backend Python FastAPI sederhana dengan ONNX Runtime untuk inferensi YOLO11 (&lt; 500 ms).</li>
+    <li><input type="checkbox"> Sinkronkan pilihan komoditas nasional (Cabai Merah Keriting, Cabai Rawit Merah, Tomat).</li>
+    <li><input type="checkbox"> Hubungkan harga acuan ke feed scraper Panel Harga Harian BAPANAS wilayah Sumatera Barat.</li>
+  </ul>
+
+  <h3>Sprint 3 — Skalabilitas & Presentasi Juri (P2)</h3>
+  <ul class="checklist">
+    <li><input type="checkbox"> Migrasikan penyimpanan riwayat dari <code>localStorage</code> ke Supabase Cloud (PostgreSQL + RLS).</li>
+    <li><input type="checkbox"> Buat fitur Ekspor Sertifikat / Resi QC Panen Digital (PDF dengan QR Code).</li>
+    <li><input type="checkbox"> Siapkan video demonstrasi pemindaian keranjang panen nyata untuk penjurian STEAMPreneur.</li>
+  </ul>
+</section>
+
+<footer>
+  Dokumen Evaluasi Independen &copy; 2026 Tim Agri-Sort AI &bull; SMKN 4 Payakumbuh &bull; Solusi Nyata untuk Indonesia
+</footer>
+
+</div>
+
+</body>
+</html>
+
