@@ -45,11 +45,11 @@ Proposal lomba resmi mengajukan inovasi Web App Quality Control & Smart Pricing 
 | No | Komponen Inovasi | Janji Proposal STEAMPreneur 2026 | Realisasi Kode Repositori Saat Ini | Status Kesenjangan |
 |---|---|---|---|---|
 | **A1** | **Computer Vision / AI Core** | Deteksi buah Grade A, Grade B, Reject secara otomatis berbasis model **YOLO11** (ekspor ONNX / OpenVINO), latensi < 500 ms di droplet CPU. | **Belum ada inferensi AI.** Mutu ditentukan lewat input manual form / slider (persentase kesegaran & cacat) di [`src/components/HarvestForm.jsx:130`](src/components/HarvestForm.jsx#L130). | ⚠️ **GAP UTAMA** (Wajib dikerjakan untuk lomba) |
-| **A2** | **Kamera / Batch Scanner** | Pemindaian foto keranjang panen langsung via kamera smartphone/laptop pengguna. | Input murni berbasis form formulir teks dan angka. Belum ada tombol upload berkas gambar atau akses kamera web (`<input type="file" capture>` atau WebRTC). | ⚠️ **GAP UTAMA** |
+| **A2** | **Kamera / Batch Scanner** | Pemindaian foto keranjang panen langsung via kamera smartphone/laptop pengguna. | **Selesai diimplementasikan.** Komponen Batch Camera & Upload Foto Keranjang aktif di [`src/components/HarvestForm.jsx`](src/components/HarvestForm.jsx) (kamera HP `capture="environment"`, galeri, drag-and-drop, validasi 10 MB, dan pratinjau). | ✅ **SELESAI (Sprint 2)** |
 | **A3** | **Integrasi Harga BAPANAS** | Mengambil data harga harian resmi secara otomatis via API Panel Harga Badan Pangan Nasional untuk wilayah lokal/provinsi. | Menggunakan tabel konstanta simulasi statis di [`src/business/priceReference.js:15-30`](src/business/priceReference.js#L15-L30). Komponen eksplisit menyatakan "Bukan data resmi BAPANAS". | ⚠️ **GAP UTAMA** |
 | **A4** | **Backend & API Service** | Python (FastAPI) REST API yang di-deploy pada DigitalOcean CPU Droplet untuk menangani inferensi ONNX dan kalkulasi harga cerdas. | Belum ada folder/kode backend Python sama sekali. Seluruh aplikasi berupa Single Page Application (SPA) client-side. | ⚠️ **GAP ARSITEKTUR** |
 | **A5** | **Basis Data & Cloud Storage** | Supabase Cloud BaaS (Database PostgreSQL, Otentikasi Pengguna, Row-Level Security / RLS, dan penyimpanan berkas gambar 30 hari). | Data disimpan di `localStorage` peramban dengan key `agrisort.panen.v1` ([`src/business/harvestStorage.js:1`](src/business/harvestStorage.js#L1)). Tanpa autentikasi, tanpa RLS, tanpa backup cloud. | ⚠️ **GAP ARSITEKTUR** |
-| **A6** | **Penyelarasan Komoditas** | Cabai Besar (1.720.000 ton), Cabai Rawit (1.743.125 ton), dan Tomat (1.227.949 ton) sesuai data statistik BPS hortikultura nasional. | Terdaftar 3 komoditas: `'Cabai Rawit Hijau'`, `'Terung'`, `'Tomat'` ([`src/business/priceReference.js:23-25`](src/business/priceReference.js#L23-L25)). Cabai Besar/Merah belum ada; Terung tidak tercantum di proposal BPS. | ℹ️ **GAP PENYELARASAN DATA** |
+| **A6** | **Penyelarasan Komoditas** | Cabai Besar (1.720.000 ton), Cabai Rawit (1.743.125 ton), dan Tomat (1.227.949 ton) sesuai data statistik BPS hortikultura nasional. | **Selesai diselaraskan.** Ditambahkan `Cabai Merah Keriting` (Rp45.000/kg) dan `Cabai Rawit Merah` (Rp42.000/kg) di [`src/business/priceReference.js`](src/business/priceReference.js) dan [`src/business/harvestValidation.js`](src/business/harvestValidation.js). | ✅ **SELESAI (Sprint 1)** |
 | **A7** | **Framework Frontend** | Proposal Bagian 3.2 & 5.2 menuliskan Next.js & Tailwind CSS. | Menggunakan React 19.3 + Vite 8.3 + Material UI (MUI) v9.5 + Emotion. Sesuai kesepakatan arahan mentor (Stack Lock). | ✅ **DITERIMA** (Stack React + Vite + MUI sudah sangat solid dan performan). |
 
 > **Catatan Kontekstual Mentor:** Sesuai penjelasan pengguna, kode saat ini baru mencakup instruksi tahap awal mentor (membangun pondasi logika kalkulasi lokal yang kokoh sebelum menghubungkannya ke model machine learning dan backend cloud). Oleh karena itu, gap ini bukan kegagalan, melainkan peta jalan pengembangan berikutnya.
@@ -173,14 +173,14 @@ Proposal STEAMPreneur SMK mewajibkan integrasi nyata dari 5 pilar:
 |---|---|---|---|
 | Shell Navigasi | [`src/components/AppShell.jsx`](src/components/AppShell.jsx) | Drawer menu navigasi samping, AppBar, status responsive mobile 360px | ✅ Berfungsi |
 | Header Halaman | [`src/components/PageHeader.jsx`](src/components/PageHeader.jsx) | Judul dan breadcrumb sub-aplikasi | ✅ Berfungsi |
-| Form Input Panen | [`src/components/HarvestForm.jsx`](src/components/HarvestForm.jsx) | Form pencatatan komoditas, bobot, mutu, dan dialog konfirmasi | ✅ Berfungsi |
+| Batch QC Scanner & Form Panen | [`src/components/HarvestForm.jsx`](src/components/HarvestForm.jsx) | Pengambilan foto keranjang (kamera HP/upload berkas/drag-drop), pratinjau citra, form komoditas, bobot, mutu, dan dialog konfirmasi | ✅ Berfungsi |
 | Tampilan Hasil QC | [`src/components/QCResults.jsx`](src/components/QCResults.jsx) | Visualisasi kartu distribusi Grade A/B/Reject, estimasi berat & nilai | ✅ Berfungsi |
 | Rekap Panen & Filter | [`src/components/HarvestRecap.jsx`](src/components/HarvestRecap.jsx) | Tabel riwayat panen, paginasi, pencarian, filter tanggal, baris total | ✅ Berfungsi |
 | Dashboard Harga | [`src/components/PricingDashboard.jsx`](src/components/PricingDashboard.jsx) | Proyeksi pendapatan petani berdasarkan variasi mutu & volume | ✅ Berfungsi |
 | Grafik Tren Harga | [`src/components/PriceTrendChart.jsx`](src/components/PriceTrendChart.jsx) | Grafik garis tren harga komoditas via `@mui/x-charts` | ✅ Berfungsi (Data simulasi) |
-| Kalkulasi Panen | [`src/business/harvestCalculation.js`](src/business/harvestCalculation.js) | Logika pembagian grade, bobot, dan nominal Rupiah | ⚠️ Ada bug floating-point (B1) |
+| Kalkulasi Panen | [`src/business/harvestCalculation.js`](src/business/harvestCalculation.js) | Logika pembagian grade, bobot, dan nominal Rupiah | ✅ Berfungsi (Bug floating-point teratasi) |
 | Validasi Form | [`src/business/harvestValidation.js`](src/business/harvestValidation.js) | Pemeriksaan batas bobot (max 10.000 kg), koma desimal, batas tanggal | ✅ Berfungsi |
-| Filter & Urutan | [`src/business/harvestFilter.js`](src/business/harvestFilter.js) | Penyaringan kata kunci, komoditas, tanggal, dan pengurutan terbaru | ⚠️ Tanggal kosong lolos filter (B2) |
+| Filter & Urutan | [`src/business/harvestFilter.js`](src/business/harvestFilter.js) | Penyaringan kata kunci, komoditas, tanggal, dan pengurutan terbaru | ✅ Berfungsi (Filter tanggal kosong teratasi) |
 | Utilitas Ekspor CSV | [`src/utils/csvExporter.js`](src/utils/csvExporter.js) | Konversi data batch panen ke file CSV sesuai standar RFC 4180 + BOM UTF-8 | ✅ Berfungsi |
 | AI Inference Service | *Belum ada* | Menerima gambar keranjang dan mengekstrak proporsi grade | ❌ Belum dibuat |
 | BAPANAS Scraper/API | *Belum ada* | Mengambil live feed harga pangan harian BAPANAS | ❌ Belum dibuat |
@@ -210,7 +210,7 @@ Proposal STEAMPreneur SMK mewajibkan integrasi nyata dari 5 pilar:
 - [x] **Tambahkan unit test verifikasi:** 3 unit test baru ditambahkan di folder `tes/` (total 60 tests, 100% pass).
 
 ### Prioritas P1 (Penyelarasan Janji Proposal Menuju Prototype Lomba Nasional)
-- [ ] **Modul Upload/Kamera Keranjang Panen:** Tambahkan komponen input foto keranjang di tab QC Scanner (bisa upload file atau ambil foto langsung lewat kamera HP).
+- [x] **Modul Upload/Kamera Keranjang Panen:** Tambahkan komponen input foto keranjang di tab QC Scanner (bisa upload file atau ambil foto langsung lewat kamera HP) — **Selesai (4 Nov 2026)**.
 - [ ] **Service Inferensi AI Sederhana (FastAPI / Mock AI Worker):**
   - Buat folder `backend/` dengan framework FastAPI atau Cloudflare Worker.
   - Sediakan endpoint `POST /api/v1/qc/scan` yang menerima gambar dan menjalankan `model-export/weights/best.onnx` untuk mengembalikan persentase `gradeA`, `gradeB`, `reject`, dan bounding boxes.

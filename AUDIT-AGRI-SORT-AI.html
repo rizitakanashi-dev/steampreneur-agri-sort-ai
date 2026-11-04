@@ -288,8 +288,8 @@ footer {
       <tr>
         <td><strong>Batch Camera Scanner</strong></td>
         <td>Kamera smartphone/laptop memindai foto keranjang panen langsung di kebun/gudang.</td>
-        <td>Hanya formulir manual; belum ada pemrosesan berkas citra.</td>
-        <td><span class="pill-danger">GAP KRITIS</span></td>
+        <td>Komponen Batch Camera & Upload Foto Keranjang aktif di <code>HarvestForm.jsx</code> (kamera HP <code>capture="environment"</code>, galeri, drag-and-drop, validasi 10 MB, dan pratinjau).</td>
+        <td><span class="pill-success">SELESAI (SPRINT 2)</span></td>
       </tr>
       <tr>
         <td><strong>Harga Pasar BAPANAS</strong></td>
@@ -312,8 +312,8 @@ footer {
       <tr>
         <td><strong>Penyelarasan Komoditas</strong></td>
         <td>Fokus komoditas BPS: Cabai Besar, Cabai Rawit Merah, Tomat.</td>
-        <td>Terdaftar: Cabai Rawit Hijau, Terung, Tomat.</td>
-        <td><span class="pill-warning">PENYESUAIAN</span></td>
+        <td>Ditambahkan <code>Cabai Merah Keriting</code> (Rp45.000/kg) dan <code>Cabai Rawit Merah</code> (Rp42.000/kg) di <code>priceReference.js</code> & <code>harvestValidation.js</code>.</td>
+        <td><span class="pill-success">SELESAI (SPRINT 1)</span></td>
       </tr>
       <tr>
         <td><strong>Arsitektur Frontend</strong></td>
@@ -398,9 +398,8 @@ footer {
 
   <h3>Sprint 2 — Fitur Inti Proposal Lomba (P1)</h3>
   <ul class="checklist">
-    <li><input type="checkbox"> Tambahkan komponen Kamera / Upload Foto Keranjang di Tab QC Scanner.</li>
+    <li><input type="checkbox" checked disabled> <strong>Modul Kamera / Upload Foto Keranjang Panen:</strong> Selesai diimplementasikan di <code>HarvestForm.jsx</code> dengan kamera HP <code>capture="environment"</code>, galeri, drag &amp; drop, dan pratinjau (4 Nov 2026).</li>
     <li><input type="checkbox"> Bangun backend Python FastAPI sederhana dengan ONNX Runtime untuk inferensi YOLO11 (&lt; 500 ms).</li>
-    <li><input type="checkbox"> Sinkronkan pilihan komoditas nasional (Cabai Merah Keriting, Cabai Rawit Merah, Tomat).</li>
     <li><input type="checkbox"> Hubungkan harga acuan ke feed scraper Panel Harga Harian BAPANAS wilayah Sumatera Barat.</li>
   </ul>
 
