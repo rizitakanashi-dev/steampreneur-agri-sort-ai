@@ -12,18 +12,10 @@ from fastapi import APIRouter, File, Form, HTTPException, UploadFile, status
 from fastapi.responses import JSONResponse
 
 from server.services.mock_engine import predict_harvest_image_mock
+from server.services.pricing_service import calculate_economic_projection, get_commodity_pricing
 from server.utils.security import ImageValidationError, validate_upload_image
 
 router = APIRouter(prefix="/api/v1/qc", tags=["Quality Control"])
-
-# Acuan harga simulasi lokal transparan (sesuai kontrak Ground-Truth)
-REFERENCE_PRICES = {
-    "tomat": 12000,
-    "cabai rawit hijau": 30000,
-    "cabai merah keriting": 45000,
-    "cabai rawit merah": 42000,
-    "terung": 10000,
-}
 
 
 @router.post("/scan")
@@ -72,11 +64,21 @@ async def scan_harvest_batch(
 
         scan_id = f"scan_{datetime.now(timezone.utc).strftime('%Y%m%d')}_{uuid.uuid4().hex[:6]}"
         timestamp = datetime.now(timezone.utc).isoformat()
-        ref_price = REFERENCE_PRICES.get(comm_key, 12000)
 
         # 4. Cabang Deteksi: Model saat ini hanya melatih deteksi Tomat
         if not is_tomato:
-            # Komoditas non-tomat: kembalikan transparansi batas model AI
+            # Komoditas non-tomat: kembalikan transparansi batas model AI & smart pricing manual
+            pricing_info = calculate_economic_projection(
+                commodity_name=commodity,
+                weight_kg=weight_kg,
+                fresh_ratio_percent=100.0,
+                rotten_count=0,
+                fresh_count=0,
+            )
+            pricing_info["recommendation_note"] = (
+                "Komoditas ini belum didukung deteksi citra otomatis. "
+                "Gunakan slider mutu manual untuk memproyeksikan estimasi nilai ekonomis."
+            )
             return {
                 "status": "success",
                 "data": {
@@ -88,18 +90,7 @@ async def scan_harvest_batch(
                     "actual_weight_kg": weight_kg,
                     "message": "Model AI Computer Vision saat ini khusus dilatih untuk komoditas Tomat. Komoditas ini menggunakan pencatatan mutu manual.",
                     "inference_result": None,
-                    "smart_pricing": {
-                        "commodity": commodity,
-                        "reference_price_per_kg": ref_price,
-                        "currency": "IDR",
-                        "price_unit": "kg",
-                        "region": "Sumatera Barat",
-                        "price_source": "Tabel Tetap Lokal (Simulasi)",
-                        "data_date": "2026-10-13",
-                        "data_status": "simulasi",
-                        "estimated_economic_value": round(weight_kg * ref_price) if weight_kg else None,
-                        "recommendation_note": "Gunakan slider mutu manual untuk memproyeksikan harga komoditas ini.",
-                    },
+                    "smart_pricing": pricing_info,
                 },
             }
 
@@ -120,29 +111,14 @@ async def scan_harvest_batch(
         fresh_ratio = round((fresh_count / total_objs) * 100, 2) if total_objs > 0 else 0.0
         rotten_ratio = round((rotten_count / total_objs) * 100, 2) if total_objs > 0 else 0.0
 
-        # Perhitungan estimasi nilai ekonomi (STEAM Math)
-        estimated_val = None
-        if weight_kg and weight_kg > 0:
-            # Nilai ekonomi = berat total x harga acuan x rasio buah segar
-            estimated_val = round(weight_kg * ref_price * (fresh_ratio / 100))
-
-        if total_objs == 0:
-            rec_note = (
-                "Tidak ada objek tomat yang terdeteksi dengan ambang batas keyakinan saat ini. "
-                "Pastikan foto keranjang cukup terang dan fokus, atau turunkan nilai ambang batas keyakinan."
-            )
-        elif fresh_count == 0:
-            rec_note = (
-                f"Peringatan Mutu Kritis: Seluruh sampel ({rotten_count} butir) terdeteksi rusak/busuk. "
-                "Seluruh keranjang perlu disortir ulang secara ketat sebelum dipasarkan."
-            )
-        elif rotten_count > 0:
-            rec_note = (
-                f"Mutu Baik: {fresh_ratio}% tomat segar dari sampel terdeteksi. "
-                f"Pisahkan {rotten_count} butir tomat rusak untuk mencegah penularan pembusukan."
-            )
-        else:
-            rec_note = f"Mutu Prima: Seluruh sampel ({fresh_count} butir) terdeteksi segar tanpa tanda pembusukan."
+        # 6. Kalkulasi Smart Pricing & Estimasi Nilai Ekonomi (Task FS-BE-04)
+        pricing_info = calculate_economic_projection(
+            commodity_name=commodity,
+            weight_kg=weight_kg,
+            fresh_ratio_percent=fresh_ratio,
+            rotten_count=rotten_count,
+            fresh_count=fresh_count,
+        )
 
         return {
             "status": "success",
@@ -168,19 +144,7 @@ async def scan_harvest_batch(
                         "rotten_ratio_percent": rotten_ratio,
                     },
                 },
-                "smart_pricing": {
-                    "commodity": commodity,
-                    "reference_price_per_kg": ref_price,
-                    "currency": "IDR",
-                    "price_unit": "kg",
-                    "region": "Sumatera Barat",
-                    "price_source": "Tabel Tetap Lokal (Simulasi)",
-                    "data_date": "2026-10-13",
-                    "data_status": "simulasi",
-                    "estimated_economic_value": estimated_val,
-                    "value_calculation_method": "Berdasarkan berat aktual input pengguna dan rasio sampel segar terdeteksi",
-                    "recommendation_note": rec_note,
-                },
+                "smart_pricing": pricing_info,
             },
         }
 
