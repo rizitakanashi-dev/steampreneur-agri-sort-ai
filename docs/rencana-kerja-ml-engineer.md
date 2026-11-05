@@ -1,192 +1,277 @@
 # Rencana Kerja Teknis: Machine Learning (ML) Engineer
 
-> **Proyek:** Agri-Sort AI — STEAMPreneur SMK Tingkat Nasional 2026  
-> **Peran:** Machine Learning (ML) Engineer  
-> **Fokus Utama:** Persiapan dependensi, pipeline preprocessing, inferensi model YOLO11 ONNX runtime, postprocessing (NMS), kalkulasi pembagian mutu (*grading*), dan pengemasan modul inferensi Python berlatensi rendah ($< 500\text{ ms}$).  
-> **Artefak Model Sumber:** `model-export/weights/best.onnx` (10,66 MB, YOLO11 Nano, Opset 18)
+> **Proyek:** Agri-Sort AI — Quality Control & Smart Pricing Hortikultura  
+> **Dokumen:** Pedoman Implementasi Teknis Machine Learning Engineer  
+> **Status:** HASIL AUDIT & REVISI TEKNIS (Ground Truth Baseline)  
+> **Penanggung Jawab:** Machine Learning (ML) Engineer  
+> **Tanggal Pembaruan:** 5 November 2026  
 
 ---
 
-## 1. Sasaran Teknis & Spesifikasi Model
+## 1. Informasi Proyek & Konteks Teknis
 
-| Parameter | Spesifikasi Target |
-|---|---|
-| **Model Arsitektur** | Ultralytics YOLO11 Nano (`yolo11n`) hasil latih Google Colab GPU |
-| **Format Bobot** | ONNX Runtime (`model-export/weights/best.onnx`) |
-| **Dimensi Input** | $1 \times 3 \times 640 \times 640$ (Tensor Float32, kanal RGB, ter-normalisasi $0.0 - 1.0$) |
-| **Dimensi Output** | $1 \times 6 \times 8400$ ($x_{center}, y_{center}, w, h, \text{score}_{\text{fresh}}, \text{score}_{\text{rotten}}$) |
-| **Target Latensi** | $< 500\text{ ms}$ per batch foto di CPU server |
-| **Target Akurasi** | $mAP@50 \ge 85\%$ pada data uji keranjang panen |
-| **Kelas Deteksi** | `fresh-tomato` (Kelas 0), `rotten-tomato` (Kelas 1) $\rightarrow$ dipetakan ke Grade A, Grade B, Reject |
+Agri-Sort AI memanfaatkan teknologi *Computer Vision* berbasis deteksi objek untuk mengotomatiskan identifikasi visual komoditas hortikultura pada keranjang hasil panen petani.
+
+### Ringkasan Kondisi Model Aktual `[VERIFIED]`
+Berdasarkan hasil audit langsung terhadap artefak di direktori `model-export/`:
+- **Framework & Arsitektur:** Ultralytics YOLO11 Nano (`yolo11n.pt`)
+- **Tugas Model (*Task*):** `detect` (*Object Detection* dengan *bounding box*)
+- **Dataset Asal:** Roboflow `agri-sort/2`
+- **Jumlah Kelas (`nc`):** 2 Kelas
+- **Daftar Label Kelas (`names`):**
+  1. `0`: `fresh-tomato` (Tomat Segar)
+  2. `1`: `rotten-tomato` (Tomat Busuk/Cacat)
+- **Ukuran Input Model (`imgsz`):** $640 \times 640$ piksel (3 kanal warna RGB)
+- **Total Epoch Pelatihan:** 50 Epoch
+- **Berkas Bobot Tersedia:**
+  - `model-export/weights/best.onnx` (10,66 MB / 10.663.419 bytes)
+  - `model-export/weights/best.pt` (5,51 MB / 5.505.562 bytes)
+  - `model-export/weights/last.pt` (5,51 MB / 5.505.562 bytes)
 
 ---
 
-## 2. Alur Pipeline Inferensi AI
+## 2. Batas Kemampuan Model yang Wajib Dipatuhi
+
+ML Engineer wajib mematuhi batas-batas teknis berikut dalam implementasi dan dokumentasi:
+
+1. **Model TIDAK Menghasilkan Grade A, Grade B, dan Reject:**
+   Model dilatih khusus mendeteksi tomat segar (`fresh-tomato`) dan tomat busuk (`rotten-tomato`). Model **tidak memiliki dasar data** untuk mengklasifikasikan mutu ke dalam tiga tingkatan grade komersial.
+2. **Confidence Score BUKAN Indikator Kualitas Produk:**
+   Nilai *confidence* ($0.0 - 1.0$) semata-mata mengukur tingkat keyakinan probabilitas model bahwa suatu fitur visual adalah objek tomat. Nilai confidence **TIDAK BOLEH** digunakan untuk membagi kualitas buah (misalnya menganggap confidence $95\%$ sebagai Grade A dan $60\%$ sebagai Grade B). Hal tersebut keliru secara ilmiah dan metodologis.
+3. **Ambang Batas (*Confidence Threshold*) untuk Eliminasi False Positive:**
+   Confidence threshold murni digunakan sebagai filter kepastian deteksi (apakah suatu prediksi diterima atau dibuang sebagai *background noise*), bukan penentu kelas mutu.
+4. **Model BELUM Mendukung Cabai Rawit Hijau dan Terung:**
+   Meskipun target aplikasi hortikultura mencakup cabai dan terung, model yang ada saat ini hanya mengenali tomat. Jangan membuat klaim bahwa model mampu mendeteksi komoditas selain tomat.
+5. **Model TIDAK Mengukur Berat atau Nilai Finansial:**
+   Model computer vision hanya menghasilkan koordinat kotak dan kelas. Logika perhitungan bobot riil dan harga adalah tanggung jawab domain bisnis backend, bukan output model AI.
+
+---
+
+## 3. Hasil Evaluasi Performa Model Aktual `[VERIFIED]`
+
+Berdasarkan analisis berkas log pelatihan `model-export/config/results.csv`:
+
+| Metrik Evaluasi | Nilai Terbaik (*Best*) | Nilai Epoch Terakhir (50) | Keterangan & Penafsiran |
+|---|:---:|:---:|---|
+| **mAP@50 (Mean Average Precision @ IoU 0.50)** | **0.9712** (Epoch 48) | **0.9643** | Kemampuan lokalisasi dan klasifikasi objek sangat tinggi pada batas tumpang-tindih 50%. |
+| **mAP@50-95 (mAP All IoU Thresholds)** | **0.8912** (Epoch 50) | **0.8912** | Akurasi ketat pada berbagai ambang batas IoU (0.50 hingga 0.95). |
+| **Precision (B)** | **0.9814** (Epoch 50) | **0.9814** | Tingkat ketepatan deteksi positif: 98.1% objek yang dideteksi memang benar tomat. |
+| **Recall (B)** | **0.9351** (Epoch 48) | **0.9254** | Tingkat sensitivitas temuan: 92.5% buah tomat pada data validasi berhasil ditemukan. |
+| **Validation Box Loss** | **0.3683** (Epoch 50) | **0.3683** | Kesalahan penempatan kotak deteksi konvergen stabil. |
+| **Validation Class Loss** | **0.2860** (Epoch 50) | **0.2860** | Kesalahan penentuan kelas biner konvergen sangat baik. |
+
+---
+
+## 4. Alur Pipeline Inferensi Machine Learning
 
 ```mermaid
 flowchart TD
-    A["Raw Image Bytes (Upload dari Backend)"] --> B["1. Preprocessing:<br/>- Decode bytes ke PIL Image RGB<br/>- Letterbox Resize ke 640x640 (Padding)<br/>- Normalisasi FP32 [0.0, 1.0]<br/>- Transpose ke format (1, 3, 640, 640)"]
-    B --> C["2. ONNX Runtime Engine:<br/>- session.run() dengan CPU Execution Provider<br/>- Output tensor: (1, 6, 8400)"]
-    C --> D["3. Postprocessing & Filtering:<br/>- Transpose ke (8400, 6)<br/>- Confidence Thresholding (score >= 0.35)<br/>- Non-Maximum Suppression (NMS IoU 0.45)"]
-    D --> E["4. Bounding Box Rescaling:<br/>- Unpad & kembalikan koordinat (x1, y1, x2, y2)<br/>  ke ukuran dimensi foto keranjang asli"]
-    E --> F["5. Grading & Agregasi Mutu:<br/>- Klasifikasi objek ke Grade A, Grade B, Reject<br/>- Hitung persentase mutu total (harus 100%)"]
-    F --> G["Return Data JSON Terstandarisasi ke Backend Router"]
+    A["Raw Image Bytes dari Backend Handler"] --> B["1. Preprocessing Pipeline:<br/>- Decode bytes ke PIL Image RGB<br/>- Aspect-Ratio Preserved Letterbox ke 640x640<br/>- Normalisasi Piksel FP32 [0.0, 1.0]<br/>- Format Tensor NCHW: (1, 3, 640, 640)"]
+    B --> C["2. ONNX Runtime Engine:<br/>- session.run() dengan CPU Execution Provider<br/>- Tensor Output: (1, 6, 8400)"]
+    C --> D["3. Postprocessing Pipeline:<br/>- Transpose ke (8400, 6)<br/>- Confidence Thresholding (score >= 0.35)<br/>- Non-Maximum Suppression (IoU >= 0.45)"]
+    D --> E["4. Bounding Box Rescaling:<br/>- Unpad & kembalikan koordinat (x1, y1, x2, y2)<br/>  ke dimensi piksel foto asli"]
+    E --> F["5. Agregasi Deteksi Mentah:<br/>- Hitung total objek terdeteksi<br/>- Hitung jumlah per kelas ('fresh-tomato', 'rotten-tomato')<br/>- Ukur latency eksekusi (ms)"]
+    F --> G["Return Raw Detection JSON sesuai Kontrak Integrasi"]
 ```
 
 ---
 
-## 3. Rincian Langkah Kerja (Step-by-Step Task)
+## 5. Kontrak Integrasi Output (Antar-Role)
 
-### Langkah 1: Setup Lingkungan & Pustaka Dependensi
-- Memastikan dependensi Python terpasang di sistem:
-  ```bash
-  pip install onnxruntime pillow numpy
-  ```
-- Memverifikasi keberadaan dan integritas file bobot:
-  - Berkas model: `model-export/weights/best.onnx`
-  - Metadata: `model-export/export_metadata.json`
-  - Konfigurasi kelas: `model-export/config/data.yaml`
+ML Engineer bertanggung jawab menghasilkan **Raw Detection Result** murni tanpa beban logika bisnis harga atau penetapan grade fiktif.
 
-### Langkah 2: Pembuatan Modul Preprocessing Citra (`server/ml_engine/preprocessor.py`)
-Membangun fungsi preprocessing yang mempertahankan rasio aspek gambar (*Aspect Ratio Preserved Letterbox*):
-1. **Fungsi `letterbox_image(image, target_size=(640, 640))`:**
-   - Menghitung rasio skala: $r = \min(640 / W, 640 / H)$.
-   - Menghitung ukuran baru: $W_{new} = \text{round}(W \times r)$, $H_{new} = \text{round}(H \times r)$.
-   - Menghitung padding: $\text{pad}_w = (640 - W_{new}) / 2$, $\text{pad}_h = (640 - H_{new}) / 2$.
-   - Mengisi area tepi dengan warna abu-abu standar YOLO `(114, 114, 114)`.
-   - Mengembalikan citra ter-padding beserta metadata skala `(scale_ratio, pad_w, pad_h)` untuk keperluan postprocessing.
-2. **Fungsi `image_to_tensor(image)`:**
-   - Mengonversi citra PIL ke array NumPy `float32`.
-   - Membagi nilai piksel dengan $255.0$ untuk normalisasi rentang $[0.0, 1.0]$.
-   - Mengubah urutan sumbu dari HWC `(640, 640, 3)` menjadi CHW `(3, 640, 640)`.
-   - Menambahkan dimensi batch: `np.expand_dims(tensor, axis=0)` $\rightarrow$ `(1, 3, 640, 640)`.
-
-### Langkah 3: Pembuatan Engine Inferensi ONNX Runtime (`server/ml_engine/inferencer.py`)
-Membangun kelas singleton `YOLOInferenceEngine` agar model hanya dimuat satu kali ke memori (*warm start*):
-1. **Inisialisasi `__init__(model_path)`:**
-   - Memuat `onnxruntime.InferenceSession` dengan `CPUExecutionProvider`.
-   - Mengonfigurasi `session_options.intra_op_num_threads` sesuai jumlah inti CPU untuk eksekusi paralel maksimal.
-   - Mengambil nama input tensor (`session.get_inputs()[0].name`) dan output tensor (`session.get_outputs()[0].name`).
-2. **Metode `infer(input_tensor)`:**
-   - Menjalankan `session.run([output_name], {input_name: input_tensor})`.
-   - Mengukur waktu inferensi murni dalam milidetik menggunakan `time.perf_counter()`.
-
-### Langkah 4: Pembuatan Modul Postprocessing & NMS (`server/ml_engine/postprocessor.py`)
-Memproses keluaran mentah model YOLO11:
-1. **Parsing Tensor Output `(1, 6, 8400)`:**
-   - Menghapus dimensi batch dan transpose menjadi bentuk matriks `(8400, 6)`.
-   - Tiap baris memuat: `[x_center, y_center, width, height, prob_fresh, prob_rotten]`.
-2. **Filtering Berdasarkan Confidence:**
-   - Menentukan kelas dengan probabilitas tertinggi untuk tiap baris: $\text{class\_id} = \arg\max(\text{prob\_fresh}, \text{prob\_rotten})$.
-   - Mengambil nilai kepercayaan: $\text{confidence} = \max(\text{prob\_fresh}, \text{prob\_rotten})$.
-   - Membuang deteksi dengan $\text{confidence} < \text{confidence\_threshold}$ (default: $0.35$).
-3. **Penerapan Algoritma Non-Maximum Suppression (NMS):**
-   - Mengonversi koordinat pusat ke format $(x_1, y_1, x_2, y_2)$:
-     $$x_1 = x_c - w/2, \quad y_1 = y_c - h/2, \quad x_2 = x_c + w/2, \quad y_2 = y_c + h/2$$
-   - Mengeliminasi kotak-kotak tumpang tindih (*overlapping*) menggunakan ambang batas Intersection over Union ($\text{IoU} \ge 0.45$).
-4. **Rescaling Koordinat ke Resolusi Foto Asli:**
-   - Mengurangkan offset padding: $x - \text{pad}_w$, $y - \text{pad}_h$.
-   - Membagi dengan faktor skala rasio: $x / \text{scale\_ratio}$, $y / \text{scale\_ratio}$.
-   - Membatasi koordinat (*clamping*) agar tetap berada dalam batas lebar dan tinggi gambar asli $[0, W_{\text{orig}}]$ dan $[0, H_{\text{orig}}]$.
-
-### Langkah 5: Pemetaan Mutu (*Grading Logic*) (`server/ml_engine/grading.py`)
-Menerapkan aturan bisnis kontrol kualitas hortikultura STEAM:
-1. **Aturan Penentuan Grade Tiap Objek:**
-   - `class_id == 0` (*fresh-tomato*) dengan $\text{confidence} \ge 0.70$ $\rightarrow$ **Grade A** (Mutu Super / Segar Prima).
-   - `class_id == 0` (*fresh-tomato*) dengan $0.35 \le \text{confidence} < 0.70$ $\rightarrow$ **Grade B** (Mutu Standar / Sedikit Cacat).
-   - `class_id == 1` (*rotten-tomato*) $\rightarrow$ **Reject** (Busuk / Cacat Berat / Terinfeksi).
-2. **Kalkulasi Agregasi Persentase Mutu:**
-   - Menghitung total objek terdeteksi: $N = N_A + N_B + N_{Reject}$.
-   - Jika $N = 0$, kembalikan status deteksi kosong dengan pesan edukatif.
-   - Menghitung persentase:
-     $$\%A = \frac{N_A}{N} \times 100\%, \quad \%B = \frac{N_B}{N} \times 100\%, \quad \%Reject = 100\% - (\%A + \%B)$$
-     *(Menjamin total persentase selalu tepat $100.0\%$)*.
-
-### Langkah 6: Pembuatan Antarmuka Utama ML Engine (`server/ml_engine/__init__.py`)
-Menyediakan satu fungsi pintu masuk utama yang bersih untuk dipanggil oleh Backend FastAPI:
+Format keluaran fungsi inferensi Python:
 ```python
-def predict_harvest_batch(image_bytes: bytes, confidence_threshold: float = 0.35) -> dict:
-    """
-    Fungsi entry-point inferensi gambar panen.
-    Menerima raw image bytes dan mengembalikan dictionary hasil deteksi
-    lengkap dengan koordinat bounding box, klasifikasi grade, dan ringkasan distribusi mutu.
-    """
-    pass
+def predict_harvest_image(
+    image_bytes: bytes, 
+    confidence_threshold: float = 0.35
+) -> dict:
 ```
 
-### Langkah 7: Pengujian Mandiri & Benchmarking (`server/tests/test_ml_engine.py`)
-1. Membuat pengujian otomatis untuk memverifikasi:
-   - Waktu inferensi pada 10 citra uji berturut-turut stabil di bawah $500\text{ ms}$.
-   - Respon deteksi memiliki format JSON sesuai kontrak.
-   - Koordinat bounding box tidak bernilai negatif dan tidak melebihi dimensi citra asli.
-
----
-
-## 4. Struktur Direktori Kerja ML Engineer
-
-```
-server/
-├── ml_engine/
-│   ├── __init__.py           # Ekspor fungsi utama predict_harvest_batch()
-│   ├── inferencer.py         # Singleton YOLOInferenceEngine (ONNX Runtime)
-│   ├── preprocessor.py       # Aspect ratio letterboxing & normalisasi tensor FP32
-│   ├── postprocessor.py      # Transposisi, filtering confidence, NMS, & rescaling koordinat
-│   └── grading.py            # Pemetaan kelas deteksi ke Grade A, Grade B, dan Reject
-└── tests/
-    └── test_ml_engine.py     # Unit test dan pengujian benchmark latensi inferensi
-```
-
----
-
-## 5. Kontrak Format Keluaran (Output Dictionary)
-
-Fungsi `predict_harvest_batch()` harus mengembalikan data dengan skema Python dictionary berikut:
-
-```python
+### Skema Dictionary Respon:
+```json
 {
-    "inference_time_ms": 315,
-    "image_width": 1280,
-    "image_height": 720,
-    "detections": [
-        {
-            "id": 1,
-            "class_id": 0,
-            "class_name": "fresh-tomato",
-            "grade": "GRADE_A",
-            "confidence": 0.94,
-            "box": { "x1": 145, "y1": 90, "x2": 280, "y2": 230 }
-        },
-        {
-            "id": 2,
-            "class_id": 1,
-            "class_name": "rotten-tomato",
-            "grade": "REJECT",
-            "confidence": 0.87,
-            "box": { "x1": 340, "y1": 150, "x2": 460, "y2": 275 }
-        }
-    ],
-    "summary": {
-        "total_count": 25,
-        "counts": {
-            "grade_a": 18,
-            "grade_b": 5,
-            "reject": 2
-        },
-        "percentages": {
-            "grade_a": 72.0,
-            "grade_b": 20.0,
-            "reject": 8.0
-        }
+  "contract_version": "1.0.0",
+  "model_name": "yolo11n-agrisort",
+  "model_version": "2026.11.02",
+  "inference_time_ms": 312.4,
+  "image_dimensions": {
+    "width": 1280,
+    "height": 720
+  },
+  "detections": [
+    {
+      "id": 1,
+      "class_id": 0,
+      "class_name": "fresh-tomato",
+      "confidence": 0.942,
+      "box": {
+        "x1": 120.5,
+        "y1": 85.0,
+        "x2": 240.2,
+        "y2": 210.8
+      }
+    },
+    {
+      "id": 2,
+      "class_id": 1,
+      "class_name": "rotten-tomato",
+      "confidence": 0.887,
+      "box": {
+        "x1": 310.0,
+        "y1": 140.2,
+        "x2": 430.5,
+        "y2": 265.0
+      }
     }
+  ],
+  "detection_summary": {
+    "total_objects": 2,
+    "class_counts": {
+      "fresh-tomato": 1,
+      "rotten-tomato": 1
+    }
+  }
 }
 ```
 
 ---
 
-## 6. Kriteria Selesai (Definition of Done — ML Engineer)
+## 6. Rencana Kerja ML Engineer Berdasarkan Fase
 
-- [ ] Model `model-export/weights/best.onnx` berhasil di-*load* ke memori menggunakan `onnxruntime`.
-- [ ] Pipeline *preprocessing letterbox* menghasilkan tensor $(1, 3, 640, 640)$ tanpa distorsi rasio aspek.
-- [ ] Postprocessing NMS berhasil membuang kotak deteksi ganda dan mengembalikan koordinat asli.
-- [ ] Waktu inferensi rata-rata pada CPU tercatat $< 500\text{ ms}$ per pemanggilan.
-- [ ] Skrip uji `server/tests/test_ml_engine.py` lulus $100\%$ tanpa *error*.
+```mermaid
+gantt
+    title Roadmap Teknis Machine Learning Engineer
+    dateFormat  YYYY-MM-DD
+    section Fase 1: Validasi Artefak
+    Verifikasi Dependensi & File ONNX     :active, ml1, 2026-11-06, 1d
+    Parity Check Model (.pt vs .onnx)     :ml2, after ml1, 2d
+    section Fase 2: Pipeline Pre & Post
+    Modul Preprocessing (Letterbox 640)   :ml3, after ml2, 2d
+    Modul Postprocessing & NMS Python     :ml4, after ml3, 2d
+    section Fase 3: Engine & Benchmark
+    Inference Engine (ONNX Session Cache) :ml5, after ml4, 2d
+    Benchmark Latensi CPU (<500ms)        :ml6, after ml5, 2d
+    section Fase 4: Handoff & Validasi
+    Packaging Modul server/ml_engine/     :ml7, after ml6, 1d
+    Uji Integrasi dengan Backend Router   :ml8, after ml7, 2d
+```
+
+---
+
+### Fase 1: Validasi Model & Verifikasi Konversi
+
+#### Task ML-01: Verifikasi Lingkungan & Dependensi Runtime
+- **Tujuan:** Memastikan pustaka eksekusi inferensi siap digunakan tanpa dependensi berat (tidak memerlukan CUDA di CPU).
+- **Langkah:**
+  1. Menyiapkan dependensi minimal: `onnxruntime>=1.19.0`, `pillow>=10.4.0`, `numpy>=1.26.0`.
+  2. Memverifikasi struktur model ONNX (`best.onnx`) menggunakan skrip inspeksi:
+     - Input tensor: `images` berdimensi `[1, 3, 640, 640]`, tipe `float32`.
+     - Output tensor: `output0` berdimensi `[1, 6, 8400]`, tipe `float32`.
+- **Berkas Terlibat:** `model-export/weights/best.onnx`, `server/requirements.txt`
+- **Acceptance Criteria:** Model dapat dimuat oleh `onnxruntime.InferenceSession` tanpa peringatan ketidakcocokan opset.
+
+#### Task ML-02: Parity Check (.pt vs .onnx)
+- **Tujuan:** Menjamin hasil deteksi antara checkpoint PyTorch asli dan model ekspor ONNX identik.
+- **Langkah:**
+  1. Menjalankan inferensi pada 5 gambar uji yang sama menggunakan model PyTorch (`best.pt`) dan model ONNX (`best.onnx`).
+  2. Menghitung deviasi maksimum nilai bounding box dan confidence.
+- **Berkas Terlibat:** `server/tests/test_model_parity.py`
+- **Acceptance Criteria:** Selisih maksimum nilai probabilitas deteksi $< 10^{-3}$ ($0.1\%$).
+
+---
+
+### Fase 2: Preprocessing, Postprocessing, & Non-Maximum Suppression
+
+#### Task ML-03: Implementasi Modul Preprocessing Preservasi Rasio Citra
+- **Tujuan:** Mengubah citra masukan dengan berbagai resolusi menjadi tensor input standar tanpa distorsi bentuk buah.
+- **Langkah:**
+  1. Membaca buffer byte citra menjadi objek `PIL.Image.Image` dalam ruang warna RGB.
+  2. Menerapkan *Letterbox Scaling* ke ukuran $640 \times 640$:
+     - Menghitung rasio penskalaan minimum: $r = \min(640 / W_{\text{orig}}, 640 / H_{\text{orig}})$.
+     - Menghitung ukuran baru: $W_{\text{new}} = \text{round}(W_{\text{orig}} \times r)$, $H_{\text{new}} = \text{round}(H_{\text{orig}} \times r)$.
+     - Mengisi ruang kosong (padding) dengan warna abu-abu netral $(114, 114, 114)$ di kedua sisi sehingga objek berada di tengah.
+     - Menyimpan parameter transformasi: `scale_ratio`, `pad_x`, `pad_y`.
+  3. Mengonversi citra ke array NumPy `float32` dan melakukan normalisasi rentang $[0, 255] \rightarrow [0.0, 1.0]$.
+  4. Melakukan transposisi dimensi dari format HWC `(640, 640, 3)` ke format NCHW `(1, 3, 640, 640)`.
+- **Berkas Terlibat:** `[NEW] server/ml_engine/preprocessor.py`
+- **Acceptance Criteria:** Fungsi mengembalikan tensor berdimensi tepat `(1, 3, 640, 640)` bertipe `float32` dan metadata skala.
+
+#### Task ML-04: Implementasi Postprocessing, Filtering, & Non-Maximum Suppression (NMS)
+- **Tujuan:** Mengekstrak kotak pembatas yang valid, membuang deteksi ganda, dan memetakan koordinat kembali ke dimensi asli.
+- **Langkah:**
+  1. Memproses tensor output berdimensi `(1, 6, 8400)`:
+     - Menghapus batch dimension dan transposisi menjadi `(8400, 6)`.
+     - Setiap baris: `[x_center, y_center, width, height, prob_fresh, prob_rotten]`.
+  2. Menyaring deteksi dengan confidence score di bawah ambang batas ($\text{confidence} < \text{confidence\_threshold}$, default $0.35$).
+  3. Mengonversi format koordinat pusat $(x_c, y_c, w, h)$ ke sudut $(x_1, y_1, x_2, y_2)$.
+  4. Menerapkan algoritma **Non-Maximum Suppression (NMS)**:
+     - Mengurutkan kandidat kotak berdasarkan skor confidence tertinggi.
+     - Mengeliminasi kotak-kotak bertumpang-tindih yang memiliki nilai Intersection over Union ($\text{IoU}$) $\ge 0.45$.
+  5. Mengembalikan koordinat kotak ke resolusi gambar asli (*coordinate rescaling*):
+     $$x_{\text{orig}} = \frac{x_{\text{padded}} - \text{pad}_x}{\text{scale\_ratio}}, \quad y_{\text{orig}} = \frac{y_{\text{padded}} - \text{pad}_y}{\text{scale\_ratio}}$$
+     Melakukan *clamping* agar koordinat berada dalam rentang valid $[0, W_{\text{orig}}]$ dan $[0, H_{\text{orig}}]$.
+- **Berkas Terlibat:** `[NEW] server/ml_engine/postprocessor.py`
+- **Acceptance Criteria:** NMS berhasil menggabungkan prediksi ganda pada satu buah tomat menjadi tepat satu kotak deteksi.
+
+---
+
+### Fase 3: Engine Inferensi & Optimasi Latensi
+
+#### Task ML-05: Implementasi Kelas Singleton YOLOInferenceEngine
+- **Tujuan:** Menjamin pemuatan model hanya terjadi satu kali saat server start (*warm start*), menghindari latensi berulang saat pemanggilan API.
+- **Langkah:**
+  1. Membuat kelas `YOLOInferenceEngine` dengan pola desain *singleton*:
+     - Menyimpan instance `InferenceSession` di memori.
+     - Menetapkan konfigurasi `session_options.intra_op_num_threads` sesuai jumlah core CPU.
+  2. Menyediakan fungsi utama `predict_harvest_image(image_bytes, confidence_threshold)`.
+  3. Mengukur durasi waktu eksekusi menggunakan `time.perf_counter()`.
+- **Berkas Terlibat:** `[NEW] server/ml_engine/inferencer.py`
+- **Acceptance Criteria:** Model di-load sekali, pemanggilan inferensi berikutnya tidak mengulang proses pemuatan berkas ONNX.
+
+#### Task ML-06: Penanganan Kasus Tepi (*Edge Cases*) & Error Handling
+- **Tujuan:** Mencegah terjadinya exception atau crash saat menerima input yang tidak biasa.
+- **Langkah:**
+  1. **Gambar Tanpa Tomat:** Mengembalikan array deteksi kosong `[]`, `total_objects: 0`, dan status sukses (bukan error).
+  2. **Citra Gelap / Blur:** Membiarkan model mendeteksi dengan confidence wajar; jika di bawah threshold, ditolak secara wajar oleh filter.
+  3. **Berkas Rusak / Corrupt Bytes:** Menangkap exception decoding gambar dan mengembalikan exception internal terdefinisi (`InvalidImageBytesError`).
+  4. **Resolusi Ekstrem:** Memastikan letterbox mampu menangani aspek rasio panorama (misal $3000 \times 400$) atau vertikal tanpa division by zero.
+- **Berkas Terlibat:** `server/ml_engine/inferencer.py`
+- **Acceptance Criteria:** Seluruh pengujian skenario edge-case menghasilkan respon terkendali tanpa crash pada engine.
+
+---
+
+### Fase 4: Handoff & Uji Integrasi
+
+#### Task ML-07: Pengemasan Modul Bersih & Unit Testing
+- **Tujuan:** Menyerahkan modul inferensi siap pakai kepada Fullstack Developer.
+- **Langkah:**
+  1. Mengekspor fungsi utama melalui `server/ml_engine/__init__.py`.
+  2. Menulis unit test komprehensif menggunakan `pytest`:
+     - Uji inferensi dengan gambar sampel tomat.
+     - Uji deteksi citra kosong.
+     - Uji kepatuhan format output terhadap skema kontrak integrasi.
+- **Berkas Terlibat:** `[NEW] server/ml_engine/__init__.py`, `[NEW] server/tests/test_ml_engine.py`
+- **Acceptance Criteria:** `pytest server/tests/test_ml_engine.py` lulus 100%.
+
+---
+
+## 7. Rencana Pengembangan Model Masa Depan (FUTURE SCOPE)
+
+Kemampuan berikut **BELUM TERSEDIA** saat ini dan dicatat sebagai agenda riset lanjutan:
+1. **Dataset Multi-Grading Khusus:** Mengumpulkan dan menganotasi dataset tomat dengan label mutu komersial (Grade A, Grade B, Reject) yang divalidasi langsung oleh pakar agronomi/hortikultura.
+2. **Perluasan Komoditas Target:** Akuisisi dataset citra keranjang panen Cabai Rawit Hijau, Cabai Merah Keriting, dan Terung untuk memperluas cakupan deteksi.
+3. **Model Segmentasi Instan (*Instance Segmentation*):** Mengembangkan model YOLO11-seg untuk menghitung luas area permukaan tomat guna mengestimasi volume dan diameter buah secara matematis.
+
+---
+
+## 8. Definition of Done (DoD) ML Engineer
+
+Pekerjaan ML Engineer dinyatakan selesai jika memenuhi seluruh checklist berikut:
+1. Berkas model `best.onnx` berhasil diintegrasikan melalui `onnxruntime` tanpa error.
+2. Pipeline preprocessing letterbox $640 \times 640$ mempertahankan rasio aspek dan menghasilkan tensor FP32 ter-normalisasi.
+3. Postprocessing NMS berhasil membuang deteksi tumpang-tindih (IoU 0.45) dan mengembalikan koordinat asli.
+4. Respon inferensi 100% mematuhi skema kontrak integrasi raw detection.
+5. Latensi inferensi rata-rata pada CPU server terukur $< 500\text{ ms}$.
+6. Tidak ada klaim fiktif terkait Grade A/B/Reject atau komoditas cabai/terung.
+7. Seluruh unit test pada `server/tests/test_ml_engine.py` lulus 100%.
