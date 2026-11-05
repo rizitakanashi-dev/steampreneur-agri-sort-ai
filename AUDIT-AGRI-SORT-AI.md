@@ -219,7 +219,7 @@ Proposal STEAMPreneur SMK mewajibkan integrasi nyata dari 5 pilar:
 - [x] **Validasi & Keamanan Upload Citra (Task FS-BE-02):** Validasi *magic bytes* (JPEG, PNG, WebP), batas ukuran 10 MB, anti-decompression bomb (4096 px), dan sanitasi nama file di `server/utils/security.py` & `server/routers/qc.py` — **Selesai (5 Nov 2026)**.
 - [x] **Mock Inference Engine Deterministik (Task FS-BE-03):** Engine mock di `server/services/mock_engine.py` dan integrasi endpoint `POST /api/v1/qc/scan` aktif sesuai kontrak output JSON baku (5 Nov 2026).
 - [x] **Modul Smart Pricing & Metadata Harga Lengkap (Task FS-BE-04):** Modul `server/services/pricing_service.py` dan router `server/routers/pricing.py` selesai dibuat dengan metadata transparansi harga, STEAM Math kalkulator nilai ekonomi panen, dan pencegahan bug NaN/Inf — **Selesai (5 Nov 2026)**.
-- [ ] **Lapisan Penyimpanan Riwayat Transaksi (Task FS-BE-05):** Persistensi riwayat pemindaian ke storage service.
+- [x] **Lapisan Penyimpanan Riwayat Transaksi (Task FS-BE-05):** Modul `server/services/storage_service.py` dan router `server/routers/history.py` selesai dibuat dengan persistensi lokal aman file-lock atomik, pagination & filter, ketahanan terhadap korupsi data JSON, serta DDL skema Supabase/PostgreSQL (5 Nov 2026).
 - [ ] **Integrasi API Harga BAPANAS:** Buat endpoint integrasi atau service scraper harga harian pangan nasional untuk wilayah Sumatera Barat / Payakumbuh dengan fallback ke cache lokal.
 
 ### Prioritas P2 (Penyempurnaan Skalabilitas & Presentasi Juri)
@@ -237,7 +237,7 @@ Jalankan perintah-perintah berikut di terminal untuk memverifikasi kondisi siste
 # 1. Jalankan unit test frontend JavaScript (60 tests, 100% PASS)
 npm test
 
-# 2. Jalankan unit test backend Python (28 tests, 100% PASS)
+# 2. Jalankan unit test backend Python (36 tests, 100% PASS)
 python3 -m unittest discover -s server/tests
 
 # 3. Uji toleransi floating-point IEEE-754 (Sudah lulus/PASS)

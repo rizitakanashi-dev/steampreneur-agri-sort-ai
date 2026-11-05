@@ -13,6 +13,7 @@ from fastapi.responses import JSONResponse
 
 from server.services.mock_engine import predict_harvest_image_mock
 from server.services.pricing_service import calculate_economic_projection, get_commodity_pricing
+from server.services.storage_service import storage_service
 from server.utils.security import ImageValidationError, validate_upload_image
 
 router = APIRouter(prefix="/api/v1/qc", tags=["Quality Control"])
@@ -120,7 +121,7 @@ async def scan_harvest_batch(
             fresh_count=fresh_count,
         )
 
-        return {
+        result_data = {
             "status": "success",
             "data": {
                 "scan_id": scan_id,
@@ -147,6 +148,14 @@ async def scan_harvest_batch(
                 "smart_pricing": pricing_info,
             },
         }
+
+        # Simpan otomatis ke lapisan persistensi (Task FS-BE-05)
+        try:
+            storage_service.save_scan(result_data["data"])
+        except Exception:
+            pass
+
+        return result_data
 
     except ImageValidationError as exc:
         return JSONResponse(

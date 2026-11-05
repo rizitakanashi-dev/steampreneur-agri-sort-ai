@@ -403,6 +403,7 @@ footer {
     <li><input type="checkbox" checked disabled> <strong>Validasi &amp; Keamanan Upload Citra (Task FS-BE-02):</strong> Modul <code>server/utils/security.py</code> dan router <code>server/routers/qc.py</code> aktif dengan verifikasi magic bytes, batas 10 MB, anti-decompression bomb, dan sanitasi path (5 Nov 2026).</li>
     <li><input type="checkbox" checked disabled> <strong>Mock Inference Engine Deterministik (Task FS-BE-03):</strong> Modul <code>server/services/mock_engine.py</code> dan endpoint <code>POST /api/v1/qc/scan</code> terhubung dengan format kontrak JSON baku, boundary clamping, dan rekomendasi cerdas (5 Nov 2026).</li>
     <li><input type="checkbox" checked disabled> <strong>Modul Smart Pricing &amp; Metadata Acuan (Task FS-BE-04):</strong> Modul <code>server/services/pricing_service.py</code> dan router <code>server/routers/pricing.py</code> menyediakan tabel harga terstruktur (5 komoditas hortikultura), STEAM Math nilai ekonomi panen, dan pencegahan bug NaN/Inf (5 Nov 2026).</li>
+    <li><input type="checkbox" checked disabled> <strong>Lapisan Persistensi Riwayat &amp; Skema Database (Task FS-BE-05):</strong> Modul <code>server/services/storage_service.py</code> dan router <code>server/routers/history.py</code> selesai dibuat dengan penyimpanan atomik, pagination, toleransi JSON rusak, serta skema DDL Supabase PostgreSQL (5 Nov 2026).</li>
     <li><input type="checkbox"> Hubungkan harga acuan ke feed scraper Panel Harga Harian BAPANAS wilayah Sumatera Barat.</li>
   </ul>
 

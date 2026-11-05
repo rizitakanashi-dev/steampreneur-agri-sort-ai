@@ -4,6 +4,7 @@ venv/
 .venv/
 __pycache__/
 *.pyc
+server/data/
 
 # Build outputs
 dist/
