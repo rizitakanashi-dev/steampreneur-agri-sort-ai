@@ -34,6 +34,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Hubungkan router modular
+from server.routers.qc import router as qc_router
+
+app.include_router(qc_router)
+
 
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception) -> JSONResponse:
