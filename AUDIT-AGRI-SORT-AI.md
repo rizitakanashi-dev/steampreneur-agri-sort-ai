@@ -47,7 +47,7 @@ Proposal lomba resmi mengajukan inovasi Web App Quality Control & Smart Pricing 
 | **A1** | **Computer Vision / AI Core** | Deteksi buah Grade A, Grade B, Reject secara otomatis berbasis model **YOLO11** (ekspor ONNX / OpenVINO), latensi < 500 ms di droplet CPU. | **Belum ada inferensi AI.** Mutu ditentukan lewat input manual form / slider (persentase kesegaran & cacat) di [`src/components/HarvestForm.jsx:130`](src/components/HarvestForm.jsx#L130). | ⚠️ **GAP UTAMA** (Wajib dikerjakan untuk lomba) |
 | **A2** | **Kamera / Batch Scanner** | Pemindaian foto keranjang panen langsung via kamera smartphone/laptop pengguna. | **Selesai diimplementasikan.** Komponen Batch Camera & Upload Foto Keranjang aktif di [`src/components/HarvestForm.jsx`](src/components/HarvestForm.jsx) (kamera HP `capture="environment"`, galeri, drag-and-drop, validasi 10 MB, dan pratinjau). | ✅ **SELESAI (Sprint 2)** |
 | **A3** | **Integrasi Harga BAPANAS** | Mengambil data harga harian resmi secara otomatis via API Panel Harga Badan Pangan Nasional untuk wilayah lokal/provinsi. | Menggunakan tabel konstanta simulasi statis di [`src/business/priceReference.js:15-30`](src/business/priceReference.js#L15-L30). Komponen eksplisit menyatakan "Bukan data resmi BAPANAS". | ⚠️ **GAP UTAMA** |
-| **A4** | **Backend & API Service** | Python (FastAPI) REST API yang di-deploy pada DigitalOcean CPU Droplet untuk menangani inferensi ONNX dan kalkulasi harga cerdas. | Belum ada folder/kode backend Python sama sekali. Seluruh aplikasi berupa Single Page Application (SPA) client-side. | ⚠️ **GAP ARSITEKTUR** |
+| **A4** | **Backend & API Service** | Python (FastAPI) REST API yang di-deploy pada DigitalOcean CPU Droplet untuk menangani inferensi ONNX dan kalkulasi harga cerdas. | **Fondasi backend aktif.** Struktur [`server/main.py`](server/main.py) dan `requirements.txt` selesai dibuat dengan healthcheck `GET /api/v1/health`, proteksi CORS, dan error handler terstandarisasi (Task FS-BE-01). | 🟡 **PROGRES (Fase 1 Backend)** |
 | **A5** | **Basis Data & Cloud Storage** | Supabase Cloud BaaS (Database PostgreSQL, Otentikasi Pengguna, Row-Level Security / RLS, dan penyimpanan berkas gambar 30 hari). | Data disimpan di `localStorage` peramban dengan key `agrisort.panen.v1` ([`src/business/harvestStorage.js:1`](src/business/harvestStorage.js#L1)). Tanpa autentikasi, tanpa RLS, tanpa backup cloud. | ⚠️ **GAP ARSITEKTUR** |
 | **A6** | **Penyelarasan Komoditas** | Cabai Besar (1.720.000 ton), Cabai Rawit (1.743.125 ton), dan Tomat (1.227.949 ton) sesuai data statistik BPS hortikultura nasional. | **Selesai diselaraskan.** Ditambahkan `Cabai Merah Keriting` (Rp45.000/kg) dan `Cabai Rawit Merah` (Rp42.000/kg) di [`src/business/priceReference.js`](src/business/priceReference.js) dan [`src/business/harvestValidation.js`](src/business/harvestValidation.js). | ✅ **SELESAI (Sprint 1)** |
 | **A7** | **Framework Frontend** | Proposal Bagian 3.2 & 5.2 menuliskan Next.js & Tailwind CSS. | Menggunakan React 19.3 + Vite 8.3 + Material UI (MUI) v9.5 + Emotion. Sesuai kesepakatan arahan mentor (Stack Lock). | ✅ **DITERIMA** (Stack React + Vite + MUI sudah sangat solid dan performan). |
@@ -174,6 +174,7 @@ Proposal STEAMPreneur SMK mewajibkan integrasi nyata dari 5 pilar:
 | Shell Navigasi | [`src/components/AppShell.jsx`](src/components/AppShell.jsx) | Drawer menu navigasi samping, AppBar, status responsive mobile 360px | ✅ Berfungsi |
 | Header Halaman | [`src/components/PageHeader.jsx`](src/components/PageHeader.jsx) | Judul dan breadcrumb sub-aplikasi | ✅ Berfungsi |
 | Batch QC Scanner & Form Panen | [`src/components/HarvestForm.jsx`](src/components/HarvestForm.jsx) | Pengambilan foto keranjang (kamera HP/upload berkas/drag-drop), pratinjau citra, form komoditas, bobot, mutu, dan dialog konfirmasi | ✅ Berfungsi |
+| Backend FastAPI Server | [`server/main.py`](server/main.py) | Entry point API Gateway, healthcheck (`/api/v1/health`), CORS middleware, dan error handling terstandarisasi | ✅ Berfungsi (Task FS-BE-01) |
 | Tampilan Hasil QC | [`src/components/QCResults.jsx`](src/components/QCResults.jsx) | Visualisasi kartu distribusi Grade A/B/Reject, estimasi berat & nilai | ✅ Berfungsi |
 | Rekap Panen & Filter | [`src/components/HarvestRecap.jsx`](src/components/HarvestRecap.jsx) | Tabel riwayat panen, paginasi, pencarian, filter tanggal, baris total | ✅ Berfungsi |
 | Dashboard Harga | [`src/components/PricingDashboard.jsx`](src/components/PricingDashboard.jsx) | Proyeksi pendapatan petani berdasarkan variasi mutu & volume | ✅ Berfungsi |
@@ -211,9 +212,11 @@ Proposal STEAMPreneur SMK mewajibkan integrasi nyata dari 5 pilar:
 
 ### Prioritas P1 (Penyelarasan Janji Proposal Menuju Prototype Lomba Nasional)
 - [x] **Modul Upload/Kamera Keranjang Panen:** Tambahkan komponen input foto keranjang di tab QC Scanner (bisa upload file atau ambil foto langsung lewat kamera HP) — **Selesai (4 Nov 2026)**.
+- [x] **Inisialisasi Backend FastAPI & Healthcheck (Task FS-BE-01):** Struktur `server/main.py` dan `server/requirements.txt` selesai dibuat dengan CORS dan exception handler terstandarisasi — **Selesai (5 Nov 2026)**.
+- [ ] **Validasi & Keamanan Upload Citra (Task FS-BE-02):** Validasi *magic bytes*, batas ukuran 10 MB, anti-decompression bomb, dan sanitasi nama file.
 - [ ] **Service Inferensi AI Sederhana (FastAPI / Mock AI Worker):**
-  - Buat folder `backend/` dengan framework FastAPI atau Cloudflare Worker.
-  - Sediakan endpoint `POST /api/v1/qc/scan` yang menerima gambar dan menjalankan `model-export/weights/best.onnx` untuk mengembalikan persentase `gradeA`, `gradeB`, `reject`, dan bounding boxes.
+  - Buat mock engine deterministik (`server/services/mock_engine.py`) untuk pengujian lokal.
+  - Sediakan endpoint `POST /api/v1/qc/scan` yang siap menerima gambar dan menjalankan model untuk mengembalikan deteksi dan persentase kondisi.
 - [ ] **Integrasi API Harga BAPANAS:** Buat endpoint integrasi atau service scraper harga harian pangan nasional untuk wilayah Sumatera Barat / Payakumbuh dengan fallback ke cache lokal.
 
 ### Prioritas P2 (Penyempurnaan Skalabilitas & Presentasi Juri)

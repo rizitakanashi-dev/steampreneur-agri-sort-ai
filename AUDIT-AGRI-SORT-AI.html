@@ -300,8 +300,8 @@ footer {
       <tr>
         <td><strong>Backend REST API</strong></td>
         <td>Python FastAPI di DigitalOcean CPU Droplet untuk inferensi ONNX.</td>
-        <td>Arsitektur Single Page Application (SPA) murni tanpa backend.</td>
-        <td><span class="pill-warning">GAP ARSITEKTUR</span></td>
+        <td>Fondasi backend aktif di <code>server/main.py</code> (FastAPI, healthcheck <code>/api/v1/health</code>, CORS, dan error handling terstandarisasi).</td>
+        <td><span class="pill-warning">PROGRES (FASE 1)</span></td>
       </tr>
       <tr>
         <td><strong>Penyimpanan Cloud</strong></td>
@@ -399,7 +399,8 @@ footer {
   <h3>Sprint 2 — Fitur Inti Proposal Lomba (P1)</h3>
   <ul class="checklist">
     <li><input type="checkbox" checked disabled> <strong>Modul Kamera / Upload Foto Keranjang Panen:</strong> Selesai diimplementasikan di <code>HarvestForm.jsx</code> dengan kamera HP <code>capture="environment"</code>, galeri, drag &amp; drop, dan pratinjau (4 Nov 2026).</li>
-    <li><input type="checkbox"> Bangun backend Python FastAPI sederhana dengan ONNX Runtime untuk inferensi YOLO11 (&lt; 500 ms).</li>
+    <li><input type="checkbox" checked disabled> <strong>Inisialisasi Backend FastAPI &amp; Healthcheck (Task FS-BE-01):</strong> Server <code>server/main.py</code> dan <code>requirements.txt</code> aktif dengan CORS dan exception handler terstandarisasi (5 Nov 2026).</li>
+    <li><input type="checkbox"> Bangun modul validasi &amp; keamanan upload citra (Task FS-BE-02) serta mock inference engine (Task FS-BE-03).</li>
     <li><input type="checkbox"> Hubungkan harga acuan ke feed scraper Panel Harga Harian BAPANAS wilayah Sumatera Barat.</li>
   </ul>
 
