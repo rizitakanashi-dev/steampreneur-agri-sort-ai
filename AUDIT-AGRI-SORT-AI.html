@@ -401,7 +401,7 @@ footer {
     <li><input type="checkbox" checked disabled> <strong>Modul Kamera / Upload Foto Keranjang Panen:</strong> Selesai diimplementasikan di <code>HarvestForm.jsx</code> dengan kamera HP <code>capture="environment"</code>, galeri, drag &amp; drop, dan pratinjau (4 Nov 2026).</li>
     <li><input type="checkbox" checked disabled> <strong>Inisialisasi Backend FastAPI &amp; Healthcheck (Task FS-BE-01):</strong> Server <code>server/main.py</code> dan <code>requirements.txt</code> aktif dengan CORS dan exception handler terstandarisasi (5 Nov 2026).</li>
     <li><input type="checkbox" checked disabled> <strong>Validasi &amp; Keamanan Upload Citra (Task FS-BE-02):</strong> Modul <code>server/utils/security.py</code> dan router <code>server/routers/qc.py</code> aktif dengan verifikasi magic bytes, batas 10 MB, anti-decompression bomb, dan sanitasi path (5 Nov 2026).</li>
-    <li><input type="checkbox"> Bangun mock inference engine deterministik (Task FS-BE-03) untuk pengujian lokal.</li>
+    <li><input type="checkbox" checked disabled> <strong>Mock Inference Engine Deterministik (Task FS-BE-03):</strong> Modul <code>server/services/mock_engine.py</code> dan endpoint <code>POST /api/v1/qc/scan</code> terhubung dengan format kontrak JSON baku, boundary clamping, dan rekomendasi cerdas (5 Nov 2026).</li>
     <li><input type="checkbox"> Hubungkan harga acuan ke feed scraper Panel Harga Harian BAPANAS wilayah Sumatera Barat.</li>
   </ul>
 

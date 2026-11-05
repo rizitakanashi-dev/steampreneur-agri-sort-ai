@@ -176,7 +176,8 @@ Proposal STEAMPreneur SMK mewajibkan integrasi nyata dari 5 pilar:
 | Batch QC Scanner & Form Panen | [`src/components/HarvestForm.jsx`](src/components/HarvestForm.jsx) | Pengambilan foto keranjang (kamera HP/upload berkas/drag-drop), pratinjau citra, form komoditas, bobot, mutu, dan dialog konfirmasi | ✅ Berfungsi |
 | Backend FastAPI Server | [`server/main.py`](server/main.py) | Entry point API Gateway, healthcheck (`/api/v1/health`), CORS middleware, dan error handling terstandarisasi | ✅ Berfungsi (Task FS-BE-01) |
 | Modul Keamanan Upload Citra | [`server/utils/security.py`](server/utils/security.py) | Deteksi Magic Bytes (JPEG/PNG/WebP), batas ukuran 10 MB, anti-decompression bomb (4096 px), dan sanitasi path | ✅ Berfungsi (Task FS-BE-02) |
-| Router QC & Scanner API | [`server/routers/qc.py`](server/routers/qc.py) | Endpoint `POST /api/v1/qc/scan` dengan validasi payload multipart dan penanganan error terstandarisasi | ✅ Berfungsi (Task FS-BE-02) |
+| Router QC & Scanner API | [`server/routers/qc.py`](server/routers/qc.py) | Endpoint `POST /api/v1/qc/scan` dengan validasi payload multipart dan penanganan error terstandarisasi | ✅ Berfungsi (Task FS-BE-02 & FS-BE-03) |
+| Mock Inference Engine | [`server/services/mock_engine.py`](server/services/mock_engine.py) | Engine deteksi deterministik tomat (segar & busuk), filtering confidence threshold, dan perhitungan rasio kondisi | ✅ Berfungsi (Task FS-BE-03) |
 | Tampilan Hasil QC | [`src/components/QCResults.jsx`](src/components/QCResults.jsx) | Visualisasi kartu distribusi Grade A/B/Reject, estimasi berat & nilai | ✅ Berfungsi |
 | Rekap Panen & Filter | [`src/components/HarvestRecap.jsx`](src/components/HarvestRecap.jsx) | Tabel riwayat panen, paginasi, pencarian, filter tanggal, baris total | ✅ Berfungsi |
 | Dashboard Harga | [`src/components/PricingDashboard.jsx`](src/components/PricingDashboard.jsx) | Proyeksi pendapatan petani berdasarkan variasi mutu & volume | ✅ Berfungsi |
@@ -216,9 +217,9 @@ Proposal STEAMPreneur SMK mewajibkan integrasi nyata dari 5 pilar:
 - [x] **Modul Upload/Kamera Keranjang Panen:** Tambahkan komponen input foto keranjang di tab QC Scanner (bisa upload file atau ambil foto langsung lewat kamera HP) — **Selesai (4 Nov 2026)**.
 - [x] **Inisialisasi Backend FastAPI & Healthcheck (Task FS-BE-01):** Struktur `server/main.py` dan `server/requirements.txt` selesai dibuat dengan CORS dan exception handler terstandarisasi — **Selesai (5 Nov 2026)**.
 - [x] **Validasi & Keamanan Upload Citra (Task FS-BE-02):** Validasi *magic bytes* (JPEG, PNG, WebP), batas ukuran 10 MB, anti-decompression bomb (4096 px), dan sanitasi nama file di `server/utils/security.py` & `server/routers/qc.py` — **Selesai (5 Nov 2026)**.
-- [ ] **Service Inferensi AI Sederhana (FastAPI / Mock AI Worker):**
-  - Buat mock engine deterministik (`server/services/mock_engine.py`) untuk pengujian lokal (Task FS-BE-03).
-  - Sediakan endpoint `POST /api/v1/qc/scan` yang siap menerima gambar dan menjalankan model untuk mengembalikan deteksi dan persentase kondisi.
+- [x] **Mock Inference Engine Deterministik (Task FS-BE-03):** Engine mock di `server/services/mock_engine.py` dan integrasi endpoint `POST /api/v1/qc/scan` aktif sesuai kontrak output JSON baku (5 Nov 2026).
+- [ ] **Modul Smart Pricing & Metadata Harga Lengkap (Task FS-BE-04):** Pengelolaan data harga referensi terstruktur dan kalkulasi nilai ekonomi panen transparan.
+- [ ] **Lapisan Penyimpanan Riwayat Transaksi (Task FS-BE-05):** Persistensi riwayat pemindaian ke storage service.
 - [ ] **Integrasi API Harga BAPANAS:** Buat endpoint integrasi atau service scraper harga harian pangan nasional untuk wilayah Sumatera Barat / Payakumbuh dengan fallback ke cache lokal.
 
 ### Prioritas P2 (Penyempurnaan Skalabilitas & Presentasi Juri)
@@ -233,19 +234,16 @@ Proposal STEAMPreneur SMK mewajibkan integrasi nyata dari 5 pilar:
 Jalankan perintah-perintah berikut di terminal untuk memverifikasi kondisi sistem:
 
 ```bash
-# 1. Jalankan seluruh unit test logika bisnis (60 tests, 100% PASS)
+# 1. Jalankan unit test frontend JavaScript (60 tests, 100% PASS)
 npm test
 
-# 2. Uji keberadaan bug floating-point EPSILON (Sudah lulus/PASS)
+# 2. Jalankan unit test backend Python (15 tests, 100% PASS)
+python3 -m unittest discover -s server/tests
+
+# 3. Uji toleransi floating-point IEEE-754 (Sudah lulus/PASS)
 node -e "import('./src/business/harvestCalculation.js').then(m => m.calculateGradeWeights(100, { gradeA: 70.1, gradeB: 20.1, reject: 9.8 })).then(() => console.log('PASS')).catch(e => console.error('FAIL:', e.message))"
 
-# 3. Periksa status git dan riwayat commit
-git status
-git log -n 5 --oneline
-```
-node -e "import('./src/business/harvestCalculation.js').then(m => m.calculateGradeWeights(100, { gradeA: 70.1, gradeB: 20.1, reject: 9.8 })).then(() => console.log('PASS')).catch(e => console.error('FAIL:', e.message))"
-
-# 3. Periksa status git dan riwayat commit
+# 4. Periksa status git dan riwayat commit
 git status
 git log -n 5 --oneline
 ```
