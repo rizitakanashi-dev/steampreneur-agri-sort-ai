@@ -311,6 +311,18 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm }
   const counts = inference?.object_counts || {}
   const pricing = scanResult?.smart_pricing
 
+  // Deteksi apakah model menghasilkan 1 bounding box raksasa yang menutupi seluruh gambar
+  const firstBox = inference?.detections?.[0]?.box
+  const imgDims = inference?.image_dimensions
+  const isGlobalBoundingBox = Boolean(
+    inference?.detections?.length === 1 &&
+      firstBox &&
+      imgDims &&
+      imgDims.width > 0 &&
+      imgDims.height > 0 &&
+      (firstBox.x2 - firstBox.x1) * (firstBox.y2 - firstBox.y1) > 0.5 * imgDims.width * imgDims.height
+  )
+
   return (
     <Stack spacing={3}>
       {/* 1. KARTU SELEKSI KOMODITAS UTAMA (PROMINENT DI ATAS) */}
@@ -485,6 +497,22 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm }
               </Alert>
             )}
 
+            {/* Banner Panduan Pengambilan Sampel untuk Petani/Penilai */}
+            <Alert
+              severity="info"
+              icon={<InfoOutlinedIcon />}
+              sx={{ mb: 2.5, borderRadius: 2, bgcolor: '#f0fdf4', borderColor: '#bbf7d0', color: '#166534' }}
+            >
+              <Typography variant="body2" fontWeight={700}>
+                Tips Akurasi AI ({selectedCommodity}):
+              </Typography>
+              <Typography variant="caption" sx={{ display: 'block', mt: 0.25, color: '#15803d' }}>
+                {isEggplant
+                  ? 'Model mendeteksi mutu buah per butir. Untuk akurasi optimal, ambil 2–5 buah sampel dari keranjang dan letakkan berjajar di atas nampan/alas datar (hindari tumpukan padat pasar berlapis).'
+                  : 'Arahkan kamera tegak lurus (top-down view) dengan pencahayaan memadai agar buah terdeteksi jelas.'}
+              </Typography>
+            </Alert>
+
             {/* TAB 0: LIVE CAMERA */}
             {activeTab === 0 && (
               <Box>
@@ -653,6 +681,26 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm }
               </Stack>
             </CardContent>
           </Card>
+
+          {/* Notifikasi Edukasi jika terdeteksi tumpukan padat sebagai 1 box global */}
+          {isGlobalBoundingBox && (
+            <Alert
+              severity="warning"
+              icon={<InfoOutlinedIcon />}
+              sx={{ borderRadius: 2.5, bgcolor: '#fffbeb', borderColor: '#fde68a' }}
+            >
+              <Typography variant="subtitle2" fontWeight={800} color="#92400e">
+                Terdeteksi Sebagai 1 Sampel Global (Tumpukan Padat Keranjang)
+              </Typography>
+              <Typography variant="body2" color="#b45309" sx={{ mt: 0.5 }}>
+                Model mendeteksi seluruh area keranjang sebagai 1 sampel global dengan label{' '}
+                <strong>{firstBox ? inference?.detections?.[0]?.class_name : 'Reject'}</strong>.
+                Untuk menghitung persentase butir per butir (Extra Class, Class I, Class II, dan Reject),
+                disarankan mengambil <strong>2–5 buah sampel terung</strong> dan meletakkannya berjajar di atas
+                nampan/meja datar (tidak bertumpuk tebal).
+              </Typography>
+            </Alert>
+          )}
 
           {/* Canvas Overlay Anotasi AI */}
           <ScanCanvasOverlay
