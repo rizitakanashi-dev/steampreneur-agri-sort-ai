@@ -19,6 +19,9 @@ from PIL import Image
 
 logger = logging.getLogger("agrisort.ai_engine")
 
+# Nonaktifkan autoinstall otomatis Ultralytics di lingkungan Linux terkelola
+os.environ.setdefault("YOLO_AUTOINSTALL", "False")
+
 try:
     from ultralytics import YOLO
     ULTRALYTICS_AVAILABLE = True
