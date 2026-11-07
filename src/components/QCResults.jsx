@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import {
   Alert,
   Box,
@@ -5,15 +6,28 @@ import {
   Card,
   CardContent,
   Chip,
+  Divider,
   Grid,
+  IconButton,
   Stack,
+  Tooltip,
   Typography,
 } from '@mui/material'
 import ArrowBackRoundedIcon from '@mui/icons-material/ArrowBackRounded'
 import AssessmentRoundedIcon from '@mui/icons-material/AssessmentRounded'
+import AutoAwesomeRoundedIcon from '@mui/icons-material/AutoAwesomeRounded'
+import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded'
+import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined'
 import Inventory2RoundedIcon from '@mui/icons-material/Inventory2Rounded'
 import LocalShippingRoundedIcon from '@mui/icons-material/LocalShippingRounded'
+import PrintRoundedIcon from '@mui/icons-material/PrintRounded'
 import RecyclingRoundedIcon from '@mui/icons-material/RecyclingRounded'
+import TrendingUpRoundedIcon from '@mui/icons-material/TrendingUpRounded'
+import WarningAmberRoundedIcon from '@mui/icons-material/WarningAmberRounded'
+import { PieChart } from '@mui/x-charts/PieChart'
+
+import { ScanCanvasOverlay } from './ScanCanvasOverlay.jsx'
+import { getClassTheme } from '../utils/canvasOverlayHelper.js'
 
 const numberFormatter = new Intl.NumberFormat('id-ID', { maximumFractionDigits: 2 })
 const rupiahFormatter = new Intl.NumberFormat('id-ID', {
@@ -30,137 +44,495 @@ function formatRupiah(value) {
   return typeof value === 'number' && Number.isFinite(value) ? rupiahFormatter.format(value) : 'Belum tersedia'
 }
 
-function QualityIndicator({ color, icon: Icon, label, percentage, weight }) {
+function QualityIndicator({ color, icon: Icon, label, percentage, count, weight }) {
   return (
     <Stack
       direction="row"
-      spacing={2}
+      spacing={1.5}
       sx={{
         alignItems: 'center',
         border: '1px solid',
         borderColor: 'divider',
         borderRadius: 2,
         flex: 1,
-        minWidth: { xs: '100%', sm: 180 },
-        p: 2,
+        minWidth: { xs: '100%', sm: 160 },
+        p: 1.75,
       }}
     >
-      <Box sx={{ alignItems: 'center', bgcolor: `${color}18`, borderRadius: 2, color, display: 'flex', height: 40, justifyContent: 'center', width: 40 }}>
+      <Box
+        sx={{
+          alignItems: 'center',
+          bgcolor: `${color}18`,
+          borderRadius: 2,
+          color,
+          display: 'flex',
+          height: 42,
+          justifyContent: 'center',
+          width: 42,
+        }}
+      >
         <Icon fontSize="small" />
       </Box>
-      <Box>
-        <Typography color="text.secondary" variant="body2">{label}</Typography>
-        <Typography color={color} fontWeight={800} variant="h5">{formatNumber(percentage)}%</Typography>
-        <Typography color="text.secondary" variant="caption">{formatNumber(weight)} kg</Typography>
+      <Box sx={{ minWidth: 0, flex: 1 }}>
+        <Typography color="text.secondary" noWrap variant="body2">
+          {label}
+        </Typography>
+        <Typography color={color} fontWeight={800} variant="h6">
+          {formatNumber(percentage)}%
+        </Typography>
+        <Typography color="text.secondary" variant="caption">
+          {count !== undefined ? `${count} butir` : `${formatNumber(weight)} kg`}
+        </Typography>
       </Box>
     </Stack>
   )
 }
 
-function ActionRecommendation({ result }) {
-  const rejectPercentage = result?.persenC
-  const gradeAPercentage = result?.persenA
+function ActionRecommendationCard({ recommendationNote, rejectCount, rejectPercentage }) {
+  if (recommendationNote) {
+    const isWarning = (rejectCount && rejectCount > 0) || (rejectPercentage && rejectPercentage > 0)
+    return (
+      <Alert
+        icon={isWarning ? <WarningAmberRoundedIcon /> : <CheckCircleRoundedIcon />}
+        severity={isWarning ? 'warning' : 'success'}
+        sx={{ borderRadius: 2 }}
+      >
+        <Typography fontWeight={700} variant="body2">
+          Rekomendasi Tindakan Sortir:
+        </Typography>
+        <Typography variant="body2">{recommendationNote}</Typography>
+      </Alert>
+    )
+  }
 
   if (typeof rejectPercentage === 'number' && rejectPercentage > 0) {
     return (
-      <Alert icon={<RecyclingRoundedIcon />} severity="info">
-        <Typography fontWeight={700} variant="body2">Pisahkan produk Reject sebelum pengiriman.</Typography>
-        <Typography variant="body2">Sebanyak {formatNumber(rejectPercentage)}% ({formatNumber(result.beratC)} kg) dapat diarahkan untuk olahan atau pakan sesuai kondisi lapangan.</Typography>
+      <Alert icon={<RecyclingRoundedIcon />} severity="warning" sx={{ borderRadius: 2 }}>
+        <Typography fontWeight={700} variant="body2">
+          Pisahkan produk Reject sebelum pengiriman.
+        </Typography>
+        <Typography variant="body2">
+          Sebanyak {formatNumber(rejectPercentage)}% terindikasi cacat/reject. Pisahkan segera untuk mencegah penularan pembusukan.
+        </Typography>
       </Alert>
     )
   }
 
-  if (typeof gradeAPercentage === 'number' && gradeAPercentage > 0) {
-    return (
-      <Alert icon={<LocalShippingRoundedIcon />} severity="info">
-        <Typography fontWeight={700} variant="body2">Batch siap dipertimbangkan untuk pengiriman.</Typography>
-        <Typography variant="body2">Grade A tercatat sebesar {formatNumber(gradeAPercentage)}% dari batch ini.</Typography>
-      </Alert>
-    )
-  }
-
-  return <Alert severity="info">Tinjau kembali komposisi mutu batch sebelum menentukan tujuan penjualan.</Alert>
+  return (
+    <Alert icon={<LocalShippingRoundedIcon />} severity="info" sx={{ borderRadius: 2 }}>
+      <Typography fontWeight={700} variant="body2">
+        Batch siap dipasarkan.
+      </Typography>
+      <Typography variant="body2">
+        Seluruh sampel berada dalam kondisi prima untuk dipasarkan ke mitra pengepul.
+      </Typography>
+    </Alert>
+  )
 }
 
 export function QCResults({ batch, onBackToInput, onViewRecap }) {
-  if (!batch?.hasil) {
+  const [selectedDetection, setSelectedDetection] = useState(null)
+
+  if (!batch?.hasil && !batch?.scanResult) {
     return (
-      <Box sx={{ alignItems: 'center', display: 'flex', flexDirection: 'column', justifyContent: 'center', minHeight: '50vh', textAlign: 'center', px: 2 }}>
-        <AssessmentRoundedIcon color="disabled" sx={{ fontSize: 56, mb: 2 }} />
-        <Typography gutterBottom variant="h5">Belum ada hasil QC</Typography>
-        <Typography color="text.secondary" sx={{ mb: 3, maxWidth: 420 }} variant="body2">
-          Simpan satu batch dari halaman input untuk melihat distribusi mutu dan estimasi nilainya.
+      <Box
+        sx={{
+          alignItems: 'center',
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'center',
+          minHeight: '50vh',
+          px: 2,
+          textAlign: 'center',
+        }}
+      >
+        <AssessmentRoundedIcon color="disabled" sx={{ fontSize: 64, mb: 2 }} />
+        <Typography gutterBottom variant="h5">
+          Belum Ada Hasil Pemeriksaan QC
         </Typography>
-        <Button onClick={onBackToInput} startIcon={<ArrowBackRoundedIcon />} variant="outlined">
-          Kembali ke input batch
+        <Typography color="text.secondary" sx={{ maxWidth: 460, mb: 3 }} variant="body2">
+          Ambil foto keranjang panen atau input parameter mutu dari tab QC Scanner untuk melihat analisis visual dan estimasi harga.
+        </Typography>
+        <Button onClick={onBackToInput} startIcon={<ArrowBackRoundedIcon />} variant="contained">
+          Mulai Pemindaian Batch
         </Button>
       </Box>
     )
   }
 
-  const { hasil } = batch
+  const { hasil, scanResult } = batch
+  const hasAiScan = Boolean(scanResult?.inference_result)
+  const inference = scanResult?.inference_result
+  const pricing = scanResult?.smart_pricing
+  const commodity = batch.komoditas || scanResult?.commodity || 'Tomat'
+  const isEggplant = commodity.toLowerCase().includes('terung') || commodity.toLowerCase().includes('terong')
+
+  // Susun data untuk Donut PieChart
+  let pieChartData = []
+  if (hasAiScan && inference) {
+    const counts = inference.object_counts || {}
+    if (isEggplant) {
+      pieChartData = [
+        { id: 0, value: counts.extra_class || 0, label: 'Extra Class', color: '#059669' },
+        { id: 1, value: counts.class_1 || 0, label: 'Class 1', color: '#0284c7' },
+        { id: 2, value: counts.class_2 || 0, label: 'Class 2', color: '#d97706' },
+        { id: 3, value: counts.reject || 0, label: 'Reject', color: '#dc2626' },
+      ].filter((d) => d.value > 0)
+    } else {
+      pieChartData = [
+        { id: 0, value: counts.fresh_tomato || 0, label: 'Tomat Segar', color: '#047857' },
+        { id: 1, value: counts.rotten_tomato || 0, label: 'Tomat Busuk', color: '#b91c1c' },
+      ].filter((d) => d.value > 0)
+    }
+  } else if (hasil) {
+    pieChartData = [
+      { id: 0, value: hasil.persenA || 0, label: 'Grade A', color: '#289d67' },
+      { id: 1, value: hasil.persenB || 0, label: 'Grade B', color: '#c68f2f' },
+      { id: 2, value: hasil.persenC || 0, label: 'Reject', color: '#a94f46' },
+    ].filter((d) => d.value > 0)
+  }
+
+  const photoUrl = batch.fotoKeranjang || scanResult?.imagePreview
 
   return (
     <Stack spacing={3}>
-      <Card>
+      {/* Header Utama Hasil QC */}
+      <Card elevation={2} sx={{ borderRadius: 3 }}>
         <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
-          <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" spacing={2}>
+          <Stack
+            alignItems={{ xs: 'flex-start', sm: 'center' }}
+            direction={{ xs: 'column', sm: 'row' }}
+            justifyContent="space-between"
+            spacing={2}
+          >
             <Box>
-              <Stack alignItems="center" direction="row" spacing={1}>
-                <AssessmentRoundedIcon color="primary" />
-                <Typography variant="h5">Hasil Analisis QC</Typography>
+              <Stack alignItems="center" direction="row" spacing={1.25}>
+                {hasAiScan ? (
+                  <AutoAwesomeRoundedIcon color="primary" sx={{ fontSize: 28 }} />
+                ) : (
+                  <AssessmentRoundedIcon color="primary" sx={{ fontSize: 28 }} />
+                )}
+                <Typography fontWeight={800} variant="h5">
+                  Hasil Pemeriksaan Mutu Panen
+                </Typography>
               </Stack>
-              <Typography color="text.secondary" sx={{ mt: 1 }} variant="body2">
-                Ringkasan hasil batch yang sudah dihitung dan disimpan.
+              <Typography color="text.secondary" sx={{ mt: 0.5 }} variant="body2">
+                Batch ID: <strong>{batch.id}</strong> • Tanggal: {batch.tanggal} • Komoditas: <strong>{commodity}</strong>
               </Typography>
             </Box>
-            <Chip color="success" label="Hasil tersimpan" size="small" />
+
+            <Stack direction="row" spacing={1}>
+              <Chip
+                color={hasAiScan ? 'primary' : 'default'}
+                icon={hasAiScan ? <AutoAwesomeRoundedIcon /> : <AssessmentRoundedIcon />}
+                label={hasAiScan ? 'AI Computer Vision' : 'Manual Calculation'}
+                size="small"
+                sx={{ fontWeight: 700 }}
+              />
+              <Tooltip title="Cetak atau simpan bukti QC sebagai PDF">
+                <IconButton onClick={() => window.print()} size="small">
+                  <PrintRoundedIcon fontSize="small" />
+                </IconButton>
+              </Tooltip>
+            </Stack>
           </Stack>
-          <Grid container spacing={2} sx={{ mt: 1 }}>
-            <Grid size={{ xs: 12, sm: 4 }}><Typography color="text.secondary" variant="body2">ID batch</Typography><Typography fontWeight={700} variant="body1">{batch.id}</Typography></Grid>
-            <Grid size={{ xs: 12, sm: 4 }}><Typography color="text.secondary" variant="body2">Tanggal</Typography><Typography fontWeight={700} variant="body1">{batch.tanggal}</Typography></Grid>
-            <Grid size={{ xs: 12, sm: 4 }}><Typography color="text.secondary" variant="body2">Komoditas</Typography><Typography fontWeight={700} variant="body1">{batch.komoditas}</Typography></Grid>
-          </Grid>
         </CardContent>
       </Card>
 
-      <Grid container spacing={3}>
-        <Grid size={{ xs: 12, md: 8 }}>
-          <Card sx={{ height: '100%' }}>
+      {/* Bagian Visual: Canvas Bounding Box & Diagram Donat */}
+      <Grid container spacing={2.5}>
+        {/* Kolom Kiri: Visualisasi Canvas Citra (Jika ada foto) */}
+        {photoUrl && (
+          <Grid size={{ xs: 12, md: 7 }}>
+            <ScanCanvasOverlay
+              commodity={commodity}
+              detections={inference?.detections || []}
+              imageDimensions={inference?.image_dimensions}
+              imageUrl={photoUrl}
+              onSelectDetection={(det) => setSelectedDetection(det)}
+            />
+          </Grid>
+        )}
+
+        {/* Kolom Kanan: Donut Chart Proporsi & Ringkasan Sampel */}
+        <Grid size={{ xs: 12, md: photoUrl ? 5 : 12 }}>
+          <Card elevation={2} sx={{ borderRadius: 3, height: '100%' }}>
             <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
-              <Stack direction="row" justifyContent="space-between" sx={{ mb: 2 }}>
-                <Box><Typography variant="h6">Distribusi kualitas</Typography><Typography color="text.secondary" variant="body2">Berat total: {formatNumber(batch.beratKg)} kg</Typography></Box>
+              <Stack direction="row" justifyContent="space-between" sx={{ mb: 1.5 }}>
+                <Typography fontWeight={700} variant="h6">
+                  Proporsi Kondisi Sampel
+                </Typography>
                 <Inventory2RoundedIcon color="primary" />
               </Stack>
-              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
-                <QualityIndicator color="#289d67" icon={AssessmentRoundedIcon} label="Grade A" percentage={hasil.persenA} weight={hasil.beratA} />
-                <QualityIndicator color="#c68f2f" icon={AssessmentRoundedIcon} label="Grade B" percentage={hasil.persenB} weight={hasil.beratB} />
-                <QualityIndicator color="#a94f46" icon={RecyclingRoundedIcon} label="Reject" percentage={hasil.persenC} weight={hasil.beratC} />
-              </Stack>
-            </CardContent>
-          </Card>
-        </Grid>
-        <Grid size={{ xs: 12, md: 4 }}>
-          <Card sx={{ height: '100%' }}>
-            <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
-              <Typography color="text.secondary" variant="body2">Estimasi nilai panen</Typography>
-              <Typography color="primary.dark" sx={{ mt: 1 }} variant="h4">{formatRupiah(hasil.totalNilai)}</Typography>
-              <Typography color="text.secondary" sx={{ mt: 1 }} variant="body2">Nilai disimpan sebagai arsip hasil batch.</Typography>
+
+              {pieChartData.length > 0 ? (
+                <Box
+                  sx={{
+                    alignItems: 'center',
+                    display: 'flex',
+                    justifyContent: 'center',
+                    my: 1,
+                  }}
+                >
+                  <PieChart
+                    height={220}
+                    series={[
+                      {
+                        data: pieChartData,
+                        innerRadius: 55,
+                        outerRadius: 95,
+                        paddingAngle: 3,
+                        cornerRadius: 4,
+                      },
+                    ]}
+                    width={290}
+                  />
+                </Box>
+              ) : (
+                <Alert severity="info" sx={{ my: 2 }}>
+                  Tidak ada data proporsi untuk ditampilkan.
+                </Alert>
+              )}
+
+              <Divider sx={{ my: 1.5 }} />
+
+              {/* Rincian Angka Sampel */}
+              {hasAiScan && inference ? (
+                <Stack spacing={1}>
+                  <Stack direction="row" justifyContent="space-between">
+                    <Typography color="text.secondary" variant="body2">
+                      Total Buah Terdeteksi:
+                    </Typography>
+                    <Typography fontWeight={700} variant="body2">
+                      {inference.object_counts?.total || 0} butir
+                    </Typography>
+                  </Stack>
+                  <Stack direction="row" justifyContent="space-between">
+                    <Typography color="text.secondary" variant="body2">
+                      Waktu Inferensi AI:
+                    </Typography>
+                    <Typography fontWeight={600} variant="body2">
+                      {inference.inference_time_ms} ms
+                    </Typography>
+                  </Stack>
+                  <Stack direction="row" justifyContent="space-between">
+                    <Typography color="text.secondary" variant="body2">
+                      Versi Model:
+                    </Typography>
+                    <Typography color="text.secondary" variant="caption">
+                      {inference.model_version}
+                    </Typography>
+                  </Stack>
+                </Stack>
+              ) : (
+                <Stack spacing={1}>
+                  <Stack direction="row" justifyContent="space-between">
+                    <Typography color="text.secondary" variant="body2">
+                      Berat Total Batch:
+                    </Typography>
+                    <Typography fontWeight={700} variant="body2">
+                      {formatNumber(batch.beratKg)} kg
+                    </Typography>
+                  </Stack>
+                  <Stack direction="row" justifyContent="space-between">
+                    <Typography color="text.secondary" variant="body2">
+                      Metode Penilaian:
+                    </Typography>
+                    <Typography fontWeight={600} variant="body2">
+                      Form Input Manual
+                    </Typography>
+                  </Stack>
+                </Stack>
+              )}
             </CardContent>
           </Card>
         </Grid>
       </Grid>
 
-      <Card>
+      {/* Indikator Mutu Spesifik Komoditas */}
+      <Card elevation={2} sx={{ borderRadius: 3 }}>
         <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
-          <Typography gutterBottom variant="h6">Rekomendasi tindakan</Typography>
-          <ActionRecommendation result={hasil} />
+          <Typography fontWeight={700} sx={{ mb: 2 }} variant="h6">
+            Indikator Mutu Deteksi ({commodity})
+          </Typography>
+
+          {hasAiScan && isEggplant ? (
+            // Indikator 4 Kelas Terung
+            <Stack direction={{ xs: 'column', sm: 'row' }} flexWrap="wrap" gap={2}>
+              <QualityIndicator
+                color="#059669"
+                count={inference?.object_counts?.extra_class || 0}
+                icon={AssessmentRoundedIcon}
+                label="Extra Class (Super)"
+                percentage={pricing?.condition_ratios?.extra_class_percent || 0}
+              />
+              <QualityIndicator
+                color="#0284c7"
+                count={inference?.object_counts?.class_1 || 0}
+                icon={AssessmentRoundedIcon}
+                label="Class 1 (Standar)"
+                percentage={pricing?.condition_ratios?.class_1_percent || 0}
+              />
+              <QualityIndicator
+                color="#d97706"
+                count={inference?.object_counts?.class_2 || 0}
+                icon={AssessmentRoundedIcon}
+                label="Class 2 (Lokal)"
+                percentage={pricing?.condition_ratios?.class_2_percent || 0}
+              />
+              <QualityIndicator
+                color="#dc2626"
+                count={inference?.object_counts?.reject || 0}
+                icon={RecyclingRoundedIcon}
+                label="Reject (Afkir)"
+                percentage={pricing?.condition_ratios?.reject_percent || 0}
+              />
+            </Stack>
+          ) : hasAiScan ? (
+            // Indikator 2 Kelas Tomat
+            <Stack direction={{ xs: 'column', sm: 'row' }} flexWrap="wrap" gap={2}>
+              <QualityIndicator
+                color="#047857"
+                count={inference?.object_counts?.fresh_tomato || 0}
+                icon={CheckCircleRoundedIcon}
+                label="Tomat Segar"
+                percentage={inference?.condition_ratios?.fresh_ratio_percent || 0}
+              />
+              <QualityIndicator
+                color="#b91c1c"
+                count={inference?.object_counts?.rotten_tomato || 0}
+                icon={RecyclingRoundedIcon}
+                label="Tomat Busuk/Cacat"
+                percentage={inference?.condition_ratios?.rotten_ratio_percent || 0}
+              />
+            </Stack>
+          ) : (
+            // Indikator Manual Grade A/B/Reject
+            <Stack direction={{ xs: 'column', sm: 'row' }} flexWrap="wrap" gap={2}>
+              <QualityIndicator
+                color="#289d67"
+                icon={AssessmentRoundedIcon}
+                label="Grade A"
+                percentage={hasil.persenA}
+                weight={hasil.beratA}
+              />
+              <QualityIndicator
+                color="#c68f2f"
+                icon={AssessmentRoundedIcon}
+                label="Grade B"
+                percentage={hasil.persenB}
+                weight={hasil.beratB}
+              />
+              <QualityIndicator
+                color="#a94f46"
+                icon={RecyclingRoundedIcon}
+                label="Reject"
+                percentage={hasil.persenC}
+                weight={hasil.beratC}
+              />
+            </Stack>
+          )}
         </CardContent>
       </Card>
 
+      {/* Kartu Estimasi Ekonomi & Smart Pricing (STEAM Math) */}
+      <Card elevation={2} sx={{ borderRadius: 3 }}>
+        <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
+          <Stack
+            alignItems={{ xs: 'flex-start', sm: 'center' }}
+            direction={{ xs: 'column', sm: 'row' }}
+            justifyContent="space-between"
+            spacing={1}
+            sx={{ mb: 2 }}
+          >
+            <Stack alignItems="center" direction="row" spacing={1}>
+              <TrendingUpRoundedIcon color="primary" />
+              <Typography fontWeight={700} variant="h6">
+                Proyeksi Nilai Ekonomi (Smart Pricing)
+              </Typography>
+            </Stack>
+            <Chip
+              color="warning"
+              label={pricing?.data_status === 'simulasi' ? 'Acuan Lokal (Simulasi)' : 'Simulasi'}
+              size="small"
+              variant="outlined"
+            />
+          </Stack>
+
+          <Grid container spacing={2.5}>
+            <Grid size={{ xs: 12, sm: 4 }}>
+              <Box sx={{ p: 2, bgcolor: 'rgba(3, 110, 69, 0.06)', borderRadius: 2, border: '1px solid rgba(3, 110, 69, 0.18)' }}>
+                <Typography color="text.secondary" variant="body2">
+                  Estimasi Nilai Jual Panen
+                </Typography>
+                <Typography color="primary.main" fontWeight={800} sx={{ mt: 0.5 }} variant="h5">
+                  {formatRupiah(pricing?.estimated_economic_value ?? hasil?.totalNilai)}
+                </Typography>
+                <Typography color="text.secondary" sx={{ mt: 0.5 }} variant="caption">
+                  {batch.beratKg ? `Untuk bobot total ${batch.beratKg} kg` : 'Berdasarkan rasio sampel'}
+                </Typography>
+              </Box>
+            </Grid>
+
+            <Grid size={{ xs: 12, sm: 4 }}>
+              <Box sx={{ p: 2, bgcolor: 'rgba(185, 28, 28, 0.05)', borderRadius: 2, border: '1px solid rgba(185, 28, 28, 0.18)' }}>
+                <Typography color="text.secondary" variant="body2">
+                  Potensi Risiko Susut / Afkir
+                </Typography>
+                <Typography color="error.main" fontWeight={800} sx={{ mt: 0.5 }} variant="h5">
+                  {formatRupiah(pricing?.potential_loss_value ?? hasil?.nilaiC ?? 0)}
+                </Typography>
+                <Typography color="text.secondary" sx={{ mt: 0.5 }} variant="caption">
+                  Nilai yang hilang jika tidak disortir
+                </Typography>
+              </Box>
+            </Grid>
+
+            <Grid size={{ xs: 12, sm: 4 }}>
+              <Box sx={{ p: 2, bgcolor: 'background.default', borderRadius: 2, border: '1px solid', borderColor: 'divider' }}>
+                <Typography color="text.secondary" variant="body2">
+                  Harga Acuan Pasar
+                </Typography>
+                <Typography fontWeight={800} sx={{ mt: 0.5 }} variant="h5">
+                  {formatRupiah(pricing?.reference_price_per_kg || 12000)}
+                </Typography>
+                <Typography color="text.secondary" sx={{ mt: 0.5 }} variant="caption">
+                  per kg ({pricing?.region || 'Sumatera Barat'})
+                </Typography>
+              </Box>
+            </Grid>
+          </Grid>
+
+          {/* Rekomendasi Tindakan */}
+          <Box sx={{ mt: 2.5 }}>
+            <ActionRecommendationCard
+              recommendationNote={pricing?.recommendation_note}
+              rejectCount={inference?.object_counts?.rotten_tomato || inference?.object_counts?.reject}
+              rejectPercentage={inference?.condition_ratios?.rotten_ratio_percent || hasil?.persenC}
+            />
+          </Box>
+        </CardContent>
+      </Card>
+
+      {/* Tombol Aksi Navigasi */}
       <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" spacing={1.5}>
-        <Button fullWidth onClick={onBackToInput} startIcon={<ArrowBackRoundedIcon />} variant="outlined" sx={{ maxWidth: { sm: 220 } }}>Kembali ke input</Button>
-        <Button fullWidth onClick={onViewRecap} variant="outlined" sx={{ maxWidth: { sm: 220 } }}>Lihat semua rekap</Button>
+        <Button
+          fullWidth
+          onClick={onBackToInput}
+          startIcon={<ArrowBackRoundedIcon />}
+          sx={{ maxWidth: { sm: 220 } }}
+          variant="outlined"
+        >
+          Scan Batch Lain
+        </Button>
+        <Button
+          fullWidth
+          onClick={onViewRecap}
+          sx={{ maxWidth: { sm: 220 } }}
+          variant="contained"
+        >
+          Buka Rekap Data Panen
+        </Button>
       </Stack>
     </Stack>
   )

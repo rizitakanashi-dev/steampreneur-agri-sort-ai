@@ -6,6 +6,7 @@ import {
   Card,
   CardContent,
   Chip,
+  CircularProgress,
   Dialog,
   DialogActions,
   DialogContent,
@@ -22,6 +23,7 @@ import {
   TextField,
   Typography,
 } from '@mui/material'
+import AutoAwesomeRoundedIcon from '@mui/icons-material/AutoAwesomeRounded'
 import CameraAltRoundedIcon from '@mui/icons-material/CameraAltRounded'
 import CheckCircleOutlineRoundedIcon from '@mui/icons-material/CheckCircleOutlineRounded'
 import CloudUploadRoundedIcon from '@mui/icons-material/CloudUploadRounded'
@@ -30,6 +32,7 @@ import PhotoCameraRoundedIcon from '@mui/icons-material/PhotoCameraRounded'
 import RestartAltRoundedIcon from '@mui/icons-material/RestartAltRounded'
 import CalculateRoundedIcon from '@mui/icons-material/CalculateRounded'
 import { defaultHarvestForm, validateHarvestForm, validateGradePercentages, commodityOptions, sizeOptions, todayAsInputValue } from '../business/harvestValidation.js'
+import { scanHarvestImage } from '../services/scanService.js'
 
 function FieldError({ children }) {
   return children ? <FormHelperText error>{children}</FormHelperText> : null
@@ -45,6 +48,9 @@ export function HarvestForm({ onSave }) {
   const [imagePreview, setImagePreview] = useState(null)
   const [imageError, setImageError] = useState('')
   const [isDragging, setIsDragging] = useState(false)
+  const [isScanning, setIsScanning] = useState(false)
+  const [scanNotice, setScanNotice] = useState('')
+  const [scanResult, setScanResult] = useState(null)
   const fileInputRef = useRef(null)
   const cameraInputRef = useRef(null)
 
@@ -75,8 +81,47 @@ export function HarvestForm({ onSave }) {
     setImageFile(null)
     setImagePreview(null)
     setImageError('')
+    setScanNotice('')
+    setScanResult(null)
     if (fileInputRef.current) fileInputRef.current.value = ''
     if (cameraInputRef.current) cameraInputRef.current.value = ''
+  }
+
+  const handleAiScan = async () => {
+    if (!imageFile) return
+    setIsScanning(true)
+    setScanNotice('')
+    try {
+      const parsedWeight = form.beratKg ? Number(form.beratKg.replace(',', '.')) : null
+      const response = await scanHarvestImage({
+        imageFile,
+        commodity: form.komoditas || 'Tomat',
+        weightKg: parsedWeight && !Number.isNaN(parsedWeight) && parsedWeight > 0 ? parsedWeight : null,
+      })
+
+      if (response?.data) {
+        setScanResult(response.data)
+        const inf = response.data.inference_result
+        if (inf) {
+          if (inf.condition_ratios?.fresh_ratio_percent !== undefined) {
+            setForm((prev) => ({
+              ...prev,
+              kesegaranPersen: String(Math.round(inf.condition_ratios.fresh_ratio_percent)),
+              cacatPersen: String(Math.round(inf.condition_ratios.rotten_ratio_percent)),
+            }))
+          }
+          setScanNotice(
+            `Deteksi AI Berhasil! (${inf.object_counts?.total || 0} butir terdeteksi). Form parameter mutu disinkronkan otomatis.`
+          )
+        } else {
+          setScanNotice(response.data.message || 'Pemeriksaan komoditas siap dianalisis.')
+        }
+      }
+    } catch (err) {
+      setScanNotice(`Pemberitahuan AI Scanner: ${err.message}. Anda tetap dapat menggunakan input manual.`)
+    } finally {
+      setIsScanning(false)
+    }
   }
 
   const handleDragOver = (e) => {
@@ -142,6 +187,7 @@ export function HarvestForm({ onSave }) {
       fotoKeranjang: imagePreview,
       fotoNama: imageFile?.name || null,
       fotoUkuran: imageFile ? `${(imageFile.size / (1024 * 1024)).toFixed(2)} MB` : null,
+      scanResult,
     })
   }
 
@@ -266,6 +312,24 @@ export function HarvestForm({ onSave }) {
                       </Stack>
                     </Stack>
                   </CardContent>
+
+                  <Box sx={{ p: 1.5, borderTop: '1px solid', borderColor: 'divider', bgcolor: 'rgba(3, 110, 69, 0.04)' }}>
+                    <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} alignItems="center" justifyContent="space-between">
+                      <Button
+                        variant="contained"
+                        color="primary"
+                        size="small"
+                        disabled={isScanning}
+                        startIcon={isScanning ? <CircularProgress size={16} color="inherit" /> : <AutoAwesomeRoundedIcon />}
+                        onClick={handleAiScan}
+                      >
+                        {isScanning ? 'Memindai Citra dengan AI...' : 'Pindai Mutu Otomatis dengan AI'}
+                      </Button>
+                      <Typography variant="caption" color="text.secondary">
+                        Model: {form.komoditas?.toLowerCase().includes('terung') ? 'Terung (4-Kelas)' : 'Tomat (2-Kelas)'}
+                      </Typography>
+                    </Stack>
+                  </Box>
                 </Card>
               ) : (
                 <Box
@@ -326,6 +390,16 @@ export function HarvestForm({ onSave }) {
                     </Stack>
                   </Stack>
                 </Box>
+              )}
+
+              {scanNotice && (
+                <Alert
+                  severity={scanNotice.includes('Berhasil') ? 'success' : 'info'}
+                  onClose={() => setScanNotice('')}
+                  sx={{ mt: 1 }}
+                >
+                  {scanNotice}
+                </Alert>
               )}
             </Stack>
 
