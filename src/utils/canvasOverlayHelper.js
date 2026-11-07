@@ -69,15 +69,32 @@ export const DEFAULT_THEME = Object.freeze({
  */
 export function getClassTheme(className) {
   if (!className) return DEFAULT_THEME
-  const rawKey = String(className).trim().toLowerCase().replace(/\s+/g, '-')
-  const normalizedKey =
-    rawKey === 'class-i'
-      ? 'class-1'
-      : rawKey === 'class-ii'
-        ? 'class-2'
-        : rawKey
+  const raw = String(className).trim().toLowerCase()
+  const rawSlug = raw.replace(/\s+/g, '-')
 
-  return CLASS_PALETTE[normalizedKey] || CLASS_PALETTE[rawKey] || DEFAULT_THEME
+  if (CLASS_PALETTE[rawSlug]) return CLASS_PALETTE[rawSlug]
+  if (CLASS_PALETTE[raw]) return CLASS_PALETTE[raw]
+
+  // Normalisasi alias nama kelas model YOLO (Terung 4-Kelas & Tomat 2-Kelas)
+  if (raw === 'class ii' || raw === 'class 2' || raw === 'class-2' || rawSlug === 'class-ii') {
+    return CLASS_PALETTE['class-2']
+  }
+  if (raw === 'class i' || raw === 'class 1' || raw === 'class-1' || rawSlug === 'class-i') {
+    return CLASS_PALETTE['class-1']
+  }
+  if (raw.includes('extra')) {
+    return CLASS_PALETTE['extra-class']
+  }
+  if (raw.includes('reject') || raw.includes('afkir')) {
+    return CLASS_PALETTE['reject']
+  }
+  if (raw.includes('fresh')) {
+    return CLASS_PALETTE['fresh-tomato']
+  }
+  if (raw.includes('rotten')) {
+    return CLASS_PALETTE['rotten-tomato']
+  }
+  return DEFAULT_THEME
 }
 
 /**

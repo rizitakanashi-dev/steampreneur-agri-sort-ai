@@ -27,6 +27,7 @@ import { calculateHarvest, calculateHarvestValue } from './business/harvestCalcu
 import { readBatches, saveBatch } from './business/harvestStorage.js'
 import { COMMODITY_OPTIONS, PRICE_REFERENCE_SOURCE, REFERENCE_PRICES_PER_KG } from './business/priceReference.js'
 import { AppShell } from './components/AppShell.jsx'
+import { BatchQCScanner } from './components/BatchQCScanner.jsx'
 import { HarvestForm } from './components/HarvestForm.jsx'
 import { HarvestRecap } from './components/HarvestRecap.jsx'
 import { QCResults } from './components/QCResults.jsx'
@@ -137,10 +138,49 @@ function DashboardPreview({ onNavigate }) {
   )
 }
 
-function FoundationPage({ activePage, onHarvestConfirm, onNavigate, batches, selectedBatch, onBackToInput, onViewRecap, onSelectBatch }) {
+function FoundationPage({
+  activePage,
+  onHarvestConfirm,
+  onNavigate,
+  batches,
+  selectedBatch,
+  onBackToInput,
+  onViewRecap,
+  onSelectBatch,
+  onBatchSaved,
+}) {
+  const [showManualForm, setShowManualForm] = useState(false)
   const page = pages[activePage]
+
   if (activePage === 'overview') return <DashboardPreview onNavigate={onNavigate} />
-  if (activePage === 'scanner') return <HarvestForm onSave={onHarvestConfirm} />
+
+  if (activePage === 'scanner') {
+    return (
+      <Stack spacing={2.5}>
+        <Stack direction="row" justifyContent="flex-end">
+          <Button
+            size="small"
+            variant="text"
+            color="inherit"
+            onClick={() => setShowManualForm((prev) => !prev)}
+            sx={{ textDecoration: 'underline', color: 'text.secondary' }}
+          >
+            {showManualForm ? '← Kembali ke Scanner Kamera AI' : 'Beralih ke Input Panen Manual (Tanpa Foto) →'}
+          </Button>
+        </Stack>
+
+        {showManualForm ? (
+          <HarvestForm onSave={onHarvestConfirm} />
+        ) : (
+          <BatchQCScanner
+            onBatchSaved={onBatchSaved}
+            onViewResults={(batch) => onSelectBatch(batch)}
+          />
+        )}
+      </Stack>
+    )
+  }
+
   if (activePage === 'results') return <QCResults batch={selectedBatch} onBackToInput={onBackToInput} onViewRecap={onViewRecap} />
   if (activePage === 'results-list') return <HarvestRecap batches={batches} onSelectBatch={onSelectBatch} />
   if (activePage === 'pricing') return <PricingDashboard />
@@ -236,6 +276,11 @@ function App() {
           onSelectBatch={handleSelectBatch}
           onViewRecap={handleViewRecap}
           selectedBatch={selectedBatch}
+          onBatchSaved={(newBatch) => {
+            setBatches((current) => [...current, newBatch])
+            setSelectedBatch(newBatch)
+            setHarvestMessage(`Batch ${newBatch.id} (${newBatch.komoditas}) berhasil disimpan ke rekap data panen.`)
+          }}
         />
       </Container>
     </AppShell>
