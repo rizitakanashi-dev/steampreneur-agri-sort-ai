@@ -23,6 +23,7 @@ import MenuRoundedIcon from '@mui/icons-material/MenuRounded'
 import PriceCheckRoundedIcon from '@mui/icons-material/PriceCheckRounded'
 import QrCodeScannerRoundedIcon from '@mui/icons-material/QrCodeScannerRounded'
 import SettingsRoundedIcon from '@mui/icons-material/SettingsRounded'
+import TableChartRoundedIcon from '@mui/icons-material/TableChartRounded'
 
 const drawerWidth = 248
 
@@ -30,6 +31,7 @@ const navigationItems = [
   { id: 'overview', label: 'Dashboard', icon: DashboardRoundedIcon },
   { id: 'scanner', label: 'Batch QC Scanner', icon: QrCodeScannerRoundedIcon },
   { id: 'results', label: 'Hasil Analisis QC', icon: AssessmentRoundedIcon },
+  { id: 'results-list', label: 'Rekap Data Panen', icon: TableChartRoundedIcon },
   { id: 'pricing', label: 'Harga Pasar', icon: PriceCheckRoundedIcon },
 ]
 

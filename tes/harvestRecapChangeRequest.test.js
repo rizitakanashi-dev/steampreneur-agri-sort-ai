@@ -94,6 +94,22 @@ test('CSV mengekspor hanya baris yang sedang tersaring', () => {
   assert.ok(!csv.includes('panen-1'), 'baris yang tersaring tidak boleh ikut terekspor')
 })
 
+test('CSV mengekspor batch AI Scan dengan nilai ekonomi yang valid', () => {
+  const aiBatch = [
+    {
+      id: 'ai-batch-001',
+      tanggal: '2026-11-08',
+      komoditas: 'Terung',
+      beratKg: 50,
+      pricing: { estimated_economic_value: 460000 },
+    },
+  ]
+  const csv = buildHarvestCsv(aiBatch)
+  const lines = csv.split('\r\n')
+  assert.equal(lines.length, 2)
+  assert.ok(lines[1].includes('460000'), 'nilai estimasi AI harus tercantum pada baris CSV')
+})
+
 test('calculateBatchTotals mengembalikan nol untuk daftar kosong', () => {
   assert.deepEqual(calculateBatchTotals([]), { totalBeratKg: 0, totalNilai: 0 })
   assert.deepEqual(calculateBatchTotals(), { totalBeratKg: 0, totalNilai: 0 })
@@ -114,4 +130,15 @@ test('calculateBatchTotals menangani batch tanpa hasil', () => {
   const result = calculateBatchTotals(partial)
   assert.equal(result.totalBeratKg, 35)
   assert.equal(result.totalNilai, 50000)
+})
+
+test('calculateBatchTotals mendukung batch AI Scan dan pricing service', () => {
+  const aiBatches = [
+    { id: 'scan-1', beratKg: 50, scanResult: { smart_pricing: { estimated_economic_value: 450000 } } },
+    { id: 'scan-2', beratKg: 30, pricing: { estimated_economic_value: 270000 } },
+    { id: 'manual-1', beratKg: 20, hasil: { totalNilai: 180000 } },
+  ]
+  const result = calculateBatchTotals(aiBatches)
+  assert.equal(result.totalBeratKg, 100)
+  assert.equal(result.totalNilai, 900000)
 })
