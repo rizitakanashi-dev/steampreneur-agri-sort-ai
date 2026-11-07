@@ -39,9 +39,13 @@ import TuneRoundedIcon from '@mui/icons-material/TuneRounded'
 import VideocamRoundedIcon from '@mui/icons-material/VideocamRounded'
 import AssessmentRoundedIcon from '@mui/icons-material/AssessmentRounded'
 import RecyclingRoundedIcon from '@mui/icons-material/RecyclingRounded'
+import VerifiedRoundedIcon from '@mui/icons-material/VerifiedRounded'
+import PrintRoundedIcon from '@mui/icons-material/PrintRounded'
+import CloseRoundedIcon from '@mui/icons-material/CloseRounded'
 
 import { LiveCameraViewfinder } from './LiveCameraViewfinder.jsx'
 import { ScanCanvasOverlay } from './ScanCanvasOverlay.jsx'
+import { QCPrintCertificate } from './QCPrintCertificate.jsx'
 import { scanHarvestImage } from '../services/scanService.js'
 import { saveBatch } from '../business/harvestStorage.js'
 import { REFERENCE_PRICES_PER_KG } from '../business/priceReference.js'
@@ -108,6 +112,7 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm }
 
   // State modal simpan rekap
   const [isSaveModalOpen, setIsSaveModalOpen] = useState(false)
+  const [isCertModalOpen, setIsCertModalOpen] = useState(false)
   const [saveWeight, setSaveWeight] = useState('')
   const [saveNotes, setSaveNotes] = useState('')
   const [saveSuccessMsg, setSaveSuccessMsg] = useState('')
@@ -656,7 +661,7 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm }
                   </Box>
                 </Stack>
 
-                <Stack direction="row" spacing={1.25}>
+                <Stack direction="row" spacing={1.25} flexWrap="wrap">
                   <Button
                     variant="outlined"
                     color="inherit"
@@ -665,7 +670,17 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm }
                     onClick={handleClearImage}
                     sx={{ borderRadius: 2 }}
                   >
-                    Pindai Ulang / Foto Baru
+                    Pindai Ulang
+                  </Button>
+                  <Button
+                    variant="outlined"
+                    color="primary"
+                    size="small"
+                    startIcon={<VerifiedRoundedIcon />}
+                    onClick={() => setIsCertModalOpen(true)}
+                    sx={{ borderRadius: 2, fontWeight: 700 }}
+                  >
+                    Sertifikat QC
                   </Button>
                   <Button
                     variant="contained"
@@ -675,7 +690,7 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm }
                     onClick={() => setIsSaveModalOpen(true)}
                     sx={{ borderRadius: 2, fontWeight: 700 }}
                   >
-                    Simpan ke Rekap Panen
+                    Simpan ke Rekap
                   </Button>
                 </Stack>
               </Stack>
@@ -871,6 +886,59 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm }
           </Button>
           <Button onClick={handleConfirmSaveToRecap} variant="contained" color="primary">
             Simpan Sekarang
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* DIALOG PRATINJAU SERTIFIKAT MUTU QC */}
+      <Dialog
+        open={isCertModalOpen}
+        onClose={() => setIsCertModalOpen(false)}
+        maxWidth="md"
+        fullWidth
+        scroll="paper"
+      >
+        <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Stack direction="row" spacing={1} alignItems="center">
+            <VerifiedRoundedIcon color="primary" />
+            <Typography variant="h6" fontWeight={800}>
+              Sertifikat Mutu QC Resmi (A4)
+            </Typography>
+          </Stack>
+          <IconButton onClick={() => setIsCertModalOpen(false)} size="small">
+            <CloseRoundedIcon />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent dividers sx={{ p: { xs: 1, sm: 2 } }}>
+          {scanResult && (
+            <QCPrintCertificate
+              batch={{
+                id: scanResult.scan_id || 'QC-SCAN',
+                tanggal: new Date().toISOString().slice(0, 10),
+                komoditas: selectedCommodity,
+                beratKg: Number(saveWeight.replace(',', '.')) || 10,
+                fotoKeranjang: scanResult.imagePreview,
+                ai_scan_performed: true,
+                inference: inference,
+                pricing: pricing,
+                scanResult: scanResult,
+              }}
+              showPrintButton
+              onPrint={() => window.print()}
+            />
+          )}
+        </DialogContent>
+        <DialogActions sx={{ p: 2 }}>
+          <Button onClick={() => setIsCertModalOpen(false)} color="inherit">
+            Tutup
+          </Button>
+          <Button
+            onClick={() => window.print()}
+            variant="contained"
+            color="primary"
+            startIcon={<PrintRoundedIcon />}
+          >
+            Cetak / Unduh PDF
           </Button>
         </DialogActions>
       </Dialog>
