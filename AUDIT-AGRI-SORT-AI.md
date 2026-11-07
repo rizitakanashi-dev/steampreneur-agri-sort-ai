@@ -221,6 +221,7 @@ Proposal STEAMPreneur SMK mewajibkan integrasi nyata dari 5 pilar:
 - [x] **Modul Smart Pricing & Metadata Harga Lengkap (Task FS-BE-04):** Modul `server/services/pricing_service.py` dan router `server/routers/pricing.py` selesai dibuat dengan metadata transparansi harga, STEAM Math kalkulator nilai ekonomi panen, dan pencegahan bug NaN/Inf — **Selesai (5 Nov 2026)**.
 - [x] **Lapisan Penyimpanan Riwayat Transaksi (Task FS-BE-05):** Modul `server/services/storage_service.py` dan router `server/routers/history.py` selesai dibuat dengan persistensi lokal aman file-lock atomik, pagination & filter, ketahanan terhadap korupsi data JSON, serta DDL skema Supabase/PostgreSQL (5 Nov 2026).
 - [x] **Dukungan Model AI Terung 4-Kelas Kualitas (Revisi 7 Nov 2026):** Modul `server/services/mock_engine.py` dan `server/routers/qc.py` diperluas mendukung klasifikasi mutu Terung 4 kelas (`extra-class`, `class-1`, `class-2`, `reject`) sesuai standar komersial UNECE/SNI dengan STEAM Math multi-tier pricing dan mitigasi KeyError (7 Nov 2026).
+- [x] **Reverse Proxy Vite & Client API Service (Task FS-FE-01):** Konfigurasi reverse proxy `/api` di `vite.config.js` dan service klien `src/services/scanService.js` aktif dengan proteksi timeout 15 detik, multipart upload, pre-flight check, dan penanganan error terstandarisasi (7 Nov 2026).
 - [ ] **Integrasi API Harga BAPANAS:** Buat endpoint integrasi atau service scraper harga harian pangan nasional untuk wilayah Sumatera Barat / Payakumbuh dengan fallback ke cache lokal.
 
 ### Prioritas P2 (Penyempurnaan Skalabilitas & Presentasi Juri)
@@ -235,7 +236,7 @@ Proposal STEAMPreneur SMK mewajibkan integrasi nyata dari 5 pilar:
 Jalankan perintah-perintah berikut di terminal untuk memverifikasi kondisi sistem:
 
 ```bash
-# 1. Jalankan unit test frontend JavaScript (60 tests, 100% PASS)
+# 1. Jalankan unit test frontend JavaScript (72 tests, 100% PASS)
 npm test
 
 # 2. Jalankan unit test backend Python (41 tests, 100% PASS)

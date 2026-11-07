@@ -405,6 +405,7 @@ footer {
     <li><input type="checkbox" checked disabled> <strong>Modul Smart Pricing &amp; Metadata Acuan (Task FS-BE-04):</strong> Modul <code>server/services/pricing_service.py</code> dan router <code>server/routers/pricing.py</code> menyediakan tabel harga terstruktur (5 komoditas hortikultura), STEAM Math nilai ekonomi panen, dan pencegahan bug NaN/Inf (5 Nov 2026).</li>
     <li><input type="checkbox" checked disabled> <strong>Lapisan Persistensi Riwayat &amp; Skema Database (Task FS-BE-05):</strong> Modul <code>server/services/storage_service.py</code> dan router <code>server/routers/history.py</code> selesai dibuat dengan penyimpanan atomik, pagination, toleransi JSON rusak, serta skema DDL Supabase PostgreSQL (5 Nov 2026).</li>
     <li><input type="checkbox" checked disabled> <strong>Dukungan Model AI Terung 4-Kelas Kualitas:</strong> Modul <code>server/services/mock_engine.py</code> dan <code>server/routers/qc.py</code> mendukung 4 kelas (Extra Class, Class 1, Class 2, Reject) sesuai SNI/UNECE FFV-05 dengan STEAM Math multi-tier pricing (7 Nov 2026).</li>
+    <li><input type="checkbox" checked disabled> <strong>Reverse Proxy Vite &amp; Client API Service (Task FS-FE-01):</strong> Konfigurasi proxy <code>/api</code> di <code>vite.config.js</code> dan service <code>src/services/scanService.js</code> aktif dengan timeout 15s, multipart upload, dan penanganan error terstandarisasi (7 Nov 2026).</li>
     <li><input type="checkbox"> Hubungkan harga acuan ke feed scraper Panel Harga Harian BAPANAS wilayah Sumatera Barat.</li>
   </ul>
 
