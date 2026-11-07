@@ -179,20 +179,23 @@ export function QCResults({ batch, onBackToInput, onViewRecap }) {
   let pieChartData = []
   if (hasAiScan && inference) {
     const counts = inference.object_counts || {}
-    if (isEggplant) {
+    if (isEggplant && (counts.extra_class || counts.class_1 || counts.class_2 || counts.reject)) {
       pieChartData = [
         { id: 0, value: counts.extra_class || 0, label: 'Extra Class', color: '#059669' },
         { id: 1, value: counts.class_1 || 0, label: 'Class 1', color: '#0284c7' },
         { id: 2, value: counts.class_2 || 0, label: 'Class 2', color: '#d97706' },
         { id: 3, value: counts.reject || 0, label: 'Reject', color: '#dc2626' },
       ].filter((d) => d.value > 0)
-    } else {
+    } else if (counts.fresh_tomato || counts.rotten_tomato) {
       pieChartData = [
         { id: 0, value: counts.fresh_tomato || 0, label: 'Tomat Segar', color: '#047857' },
         { id: 1, value: counts.rotten_tomato || 0, label: 'Tomat Busuk', color: '#b91c1c' },
       ].filter((d) => d.value > 0)
     }
-  } else if (hasil) {
+  }
+
+  // Fallback proporsi dari hasil persentase batch jika data objek AI belum terisi
+  if (pieChartData.length === 0 && hasil) {
     pieChartData = [
       { id: 0, value: hasil.persenA || 0, label: 'Grade A', color: '#289d67' },
       { id: 1, value: hasil.persenB || 0, label: 'Grade B', color: '#c68f2f' },
