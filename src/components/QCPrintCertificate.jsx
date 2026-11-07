@@ -429,7 +429,7 @@ export function QCPrintCertificate({ batch, showPrintButton = false, onPrint }) 
               SMART QC VERIFIED
             </Typography>
             <Typography sx={{ fontSize: 8.5, color: '#4b5563', mt: 0.25 }}>
-              Model AI YOLOv8 Engine
+              Model AI {cert.modelEngineName || 'Ultralytics YOLO11'}
             </Typography>
             <Typography sx={{ fontSize: 8, color: '#6b7280' }}>
               ID: {cert.registrationId}

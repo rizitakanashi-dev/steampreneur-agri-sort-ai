@@ -18,27 +18,33 @@ export const INSTITUTION_INFO = Object.freeze({
 export function formatCertificateDate(dateVal) {
   if (!dateVal) return '-'
   try {
-    const d = new Date(dateVal)
-    if (Number.isNaN(d.getTime())) {
-      // Fallback if string like '2026-11-08'
-      const parts = String(dateVal).split('-')
-      if (parts.length === 3) {
-        const months = [
-          'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
-          'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
-        ]
-        const mIdx = parseInt(parts[1], 10) - 1
-        if (mIdx >= 0 && mIdx < 12) {
-          return `${parseInt(parts[2], 10)} ${months[mIdx]} ${parts[0]}`
-        }
+    const str = String(dateVal).trim()
+    const months = [
+      'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+      'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
+    ]
+
+    // Jika format tanggal murni YYYY-MM-DD (tanpa waktu), parse langsung agar tidak tergeser oleh UTC timezone
+    const isoDateOnly = str.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/)
+    if (isoDateOnly) {
+      const year = isoDateOnly[1]
+      const mIdx = parseInt(isoDateOnly[2], 10) - 1
+      const day = parseInt(isoDateOnly[3], 10)
+      if (mIdx >= 0 && mIdx < 12) {
+        return `${day} ${months[mIdx]} ${year}`
       }
-      return String(dateVal)
     }
-    return new Intl.DateTimeFormat('id-ID', {
-      day: 'numeric',
-      month: 'long',
-      year: 'numeric',
-    }).format(d)
+
+    const d = new Date(dateVal)
+    if (!Number.isNaN(d.getTime())) {
+      return new Intl.DateTimeFormat('id-ID', {
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric',
+        timeZone: 'Asia/Jakarta',
+      }).format(d)
+    }
+    return str
   } catch {
     return String(dateVal)
   }
@@ -67,31 +73,79 @@ export function buildCertificateData(batch = {}) {
   const isEggplant =
     commodity.toLowerCase().includes('terung') ||
     commodity.toLowerCase().includes('terong') ||
-    safeBatch.inference?.commodity === 'terung'
+    commodity.toLowerCase().includes('eggplant') ||
+    safeBatch.inference?.commodity === 'terung' ||
+    safeBatch.scanResult?.commodity === 'Terung'
 
-  const hasInference = Boolean(safeBatch.inference || safeBatch.ai_scan_performed)
-  const totalWeightKg = Number.isFinite(Number(safeBatch.beratKg))
-    ? Number(safeBatch.beratKg)
-    : Number.isFinite(Number(safeBatch.volume_kg))
-      ? Number(safeBatch.volume_kg)
-      : 0
+  const hasInference = Boolean(
+    safeBatch.inference ||
+    safeBatch.ai_scan_performed ||
+    safeBatch.scanResult
+  )
+
+  const rawWeight = Number(safeBatch.beratKg ?? safeBatch.volume_kg ?? safeBatch.actual_weight_kg)
+  const totalWeightKg = Number.isFinite(rawWeight) && rawWeight > 0 ? rawWeight : 0
 
   const refPrice =
     Number(safeBatch.pricing?.reference_price_per_kg) ||
+    Number(safeBatch.scanResult?.smart_pricing?.reference_price_per_kg) ||
     getReferencePricePerKg(commodity) ||
     (isEggplant ? 10000 : 12000)
 
+  const pricing = safeBatch.pricing || safeBatch.scanResult?.smart_pricing || {}
+  const inference = safeBatch.inference || safeBatch.scanResult?.inference_result || {}
+  const ratios =
+    pricing.condition_ratios ||
+    inference.condition_ratios ||
+    safeBatch.condition_ratios ||
+    {}
+  const counts = inference.object_counts || {}
+  const tier = pricing.tier_breakdown || {}
+
   let grades = []
 
-  if (isEggplant && (safeBatch.pricing?.tier_breakdown || safeBatch.inference?.condition_ratios)) {
-    // 4-Class Terung Grading
-    const ratios = safeBatch.inference?.condition_ratios || {}
-    const tier = safeBatch.pricing?.tier_breakdown || {}
+  const hasTerungData =
+    isEggplant &&
+    (tier.extra_class ||
+      ratios.extra_class_percent !== undefined ||
+      ratios.extra_class_ratio_percent !== undefined ||
+      counts.extra_class !== undefined ||
+      hasInference)
 
-    const extraRatio = Number(ratios.extra_class_ratio_percent ?? (tier.extra_class?.weight_kg ? (tier.extra_class.weight_kg / (totalWeightKg || 1)) * 100 : 0))
-    const c1Ratio = Number(ratios.class_1_ratio_percent ?? (tier.class_1?.weight_kg ? (tier.class_1.weight_kg / (totalWeightKg || 1)) * 100 : 0))
-    const c2Ratio = Number(ratios.class_2_ratio_percent ?? (tier.class_2?.weight_kg ? (tier.class_2.weight_kg / (totalWeightKg || 1)) * 100 : 0))
-    const rejRatio = Number(ratios.reject_ratio_percent ?? (tier.reject?.weight_kg ? (tier.reject.weight_kg / (totalWeightKg || 1)) * 100 : 0))
+  if (hasTerungData) {
+    // 4-Class Terung Grading (YOLO11n 4-Kelas Komersial)
+    const totalCount =
+      Number(counts.total) ||
+      ((Number(counts.extra_class) || 0) +
+        (Number(counts.class_1) || 0) +
+        (Number(counts.class_2) || 0) +
+        (Number(counts.reject) || 0)) ||
+      1
+
+    const extraRatio = Number(
+      ratios.extra_class_percent ??
+      ratios.extra_class_ratio_percent ??
+      (tier.extra_class?.weight_kg ? (tier.extra_class.weight_kg / (totalWeightKg || 1)) * 100 : 0) ??
+      (counts.extra_class !== undefined ? (Number(counts.extra_class) / totalCount) * 100 : 0)
+    )
+    const c1Ratio = Number(
+      ratios.class_1_percent ??
+      ratios.class_1_ratio_percent ??
+      (tier.class_1?.weight_kg ? (tier.class_1.weight_kg / (totalWeightKg || 1)) * 100 : 0) ??
+      (counts.class_1 !== undefined ? (Number(counts.class_1) / totalCount) * 100 : 0)
+    )
+    const c2Ratio = Number(
+      ratios.class_2_percent ??
+      ratios.class_2_ratio_percent ??
+      (tier.class_2?.weight_kg ? (tier.class_2.weight_kg / (totalWeightKg || 1)) * 100 : 0) ??
+      (counts.class_2 !== undefined ? (Number(counts.class_2) / totalCount) * 100 : 0)
+    )
+    const rejRatio = Number(
+      ratios.reject_percent ??
+      ratios.reject_ratio_percent ??
+      (tier.reject?.weight_kg ? (tier.reject.weight_kg / (totalWeightKg || 1)) * 100 : 0) ??
+      (counts.reject !== undefined ? (Number(counts.reject) / totalCount) * 100 : 0)
+    )
 
     const extraWeight = Number(tier.extra_class?.weight_kg ?? (totalWeightKg * (extraRatio / 100)))
     const c1Weight = Number(tier.class_1?.weight_kg ?? (totalWeightKg * (c1Ratio / 100)))
@@ -145,11 +199,22 @@ export function buildCertificateData(batch = {}) {
         status: 'Pakan Ternak / Kompos Organik',
       },
     ]
-  } else if (hasInference && safeBatch.inference?.condition_ratios) {
+  } else if (hasInference && (ratios.fresh_ratio_percent !== undefined || ratios.fresh_percent !== undefined || counts.fresh_tomato !== undefined)) {
     // Tomat 2-Class AI Scan
-    const ratios = safeBatch.inference.condition_ratios
-    const freshRatio = Number(ratios.fresh_ratio_percent ?? 0)
-    const rottenRatio = Number(ratios.rotten_ratio_percent ?? 0)
+    const freshCount = Number(counts.fresh_tomato ?? counts.fresh ?? 0)
+    const rottenCount = Number(counts.rotten_tomato ?? counts.rotten ?? 0)
+    const totalTomato = Number(counts.total) || (freshCount + rottenCount) || 1
+
+    const freshRatio = Number(
+      ratios.fresh_ratio_percent ??
+      ratios.fresh_percent ??
+      (counts.fresh_tomato !== undefined ? (freshCount / totalTomato) * 100 : 0)
+    )
+    const rottenRatio = Number(
+      ratios.rotten_ratio_percent ??
+      ratios.rotten_percent ??
+      (counts.rotten_tomato !== undefined ? (rottenCount / totalTomato) * 100 : 0)
+    )
 
     const freshWeight = Number((totalWeightKg * (freshRatio / 100)).toFixed(2))
     const rottenWeight = Number((totalWeightKg * (rottenRatio / 100)).toFixed(2))
@@ -230,36 +295,49 @@ export function buildCertificateData(batch = {}) {
   // Financial aggregation
   const calculatedTotal = grades.reduce((acc, curr) => acc + (curr.subtotalRp || 0), 0)
   const totalRevenue =
-    Number(safeBatch.pricing?.estimated_economic_value) ||
+    Number(pricing.estimated_economic_value) ||
     Number(safeBatch.hasil?.totalNilai) ||
     calculatedTotal
 
   const potentialLoss =
-    Number(safeBatch.pricing?.potential_loss_value) ||
+    Number(pricing.potential_loss_value) ||
     Number(safeBatch.hasil?.nilaiC) ||
     (grades.find((g) => g.code === 'REJECT' || g.code === 'ROTTEN')?.weightKg || 0) * refPrice
 
   const recommendationNote =
-    safeBatch.pricing?.recommendation_note ||
+    pricing.recommendation_note ||
     (potentialLoss > 0
       ? 'Segera pisahkan komoditas afkir untuk mencegah penyebaran mikroba pembusuk ke hasil panen bermutu prima.'
       : 'Kualitas panen prima merata. Batch memenuhi standar distribusi pasar modern.')
 
+  const todayStr = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Jakarta' }).format(new Date())
+
+  const modelEngineName = isEggplant
+    ? 'Ultralytics YOLO11n (4-Class Commercial Quality)'
+    : commodity.toLowerCase().includes('tomat')
+      ? 'Ultralytics YOLO11 (2-Class Fresh/Rotten)'
+      : hasInference
+        ? 'Ultralytics YOLO11 Vision Engine'
+        : 'Sistem Analisis Panen SMKN 4 Payakumbuh'
+
+  const inspectionMethod = hasInference
+    ? `Computer Vision AI — ${modelEngineName}`
+    : 'Inspeksi Visual & Model Perhitungan Terstandar'
+
   return {
     registrationId: formatRegistrationId(safeBatch.id),
-    harvestDate: formatCertificateDate(safeBatch.tanggal),
-    inspectionDate: formatCertificateDate(new Date()),
+    harvestDate: formatCertificateDate(safeBatch.tanggal || todayStr),
+    inspectionDate: formatCertificateDate(todayStr),
     commodity,
     totalWeightKg,
-    inspectionMethod: hasInference
-      ? 'Computer Vision AI (YOLOv8 & Deep Learning Multi-Class)'
-      : 'Inspeksi Visual & Model Perhitungan Terstandar',
+    modelEngineName,
+    inspectionMethod,
     evaluator: hasInference ? 'Agri-Sort AI Autonomous Engine' : 'Sistem Analisis Panen SMKN 4 Payakumbuh',
     farmerName: safeBatch.petani || 'Kelompok Tani Mitra SMKN 4 Payakumbuh',
     location: safeBatch.lokasi || 'Kawasan Agribisnis Payakumbuh, Sumatera Barat',
     referencePricePerKg: refPrice,
-    marketRegion: safeBatch.pricing?.region || 'Pasar Ibuh Payakumbuh / Sumatera Barat',
-    dataStatus: safeBatch.pricing?.data_status || 'simulasi',
+    marketRegion: pricing.region || safeBatch.pricing?.region || 'Pasar Ibuh Payakumbuh / Sumatera Barat',
+    dataStatus: pricing.data_status || safeBatch.pricing?.data_status || 'simulasi',
     grades,
     financials: {
       totalRevenue,

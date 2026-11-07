@@ -50,6 +50,7 @@ import { scanHarvestImage } from '../services/scanService.js'
 import { saveBatch } from '../business/harvestStorage.js'
 import { REFERENCE_PRICES_PER_KG } from '../business/priceReference.js'
 import { calculateHarvest, calculateHarvestValue } from '../business/harvestCalculation.js'
+import { getTodayDateString } from '../business/harvestValidation.js'
 
 const rupiahFormatter = new Intl.NumberFormat('id-ID', {
   style: 'currency',
@@ -248,7 +249,12 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm }
     let persenB = 0
     let persenC = 0
 
-    if (selectedCommodity.toLowerCase().includes('terung')) {
+    if (scanResult.business_grading?.grade_breakdown) {
+      const gb = scanResult.business_grading.grade_breakdown
+      persenA = Math.round(gb.grade_a_percent || 0)
+      persenB = Math.round(gb.grade_b_percent || 0)
+      persenC = Math.round(gb.reject_percent || 0)
+    } else if (selectedCommodity.toLowerCase().includes('terung')) {
       const extra = inf?.object_counts?.extra_class || 0
       const c1 = inf?.object_counts?.class_1 || 0
       const c2 = inf?.object_counts?.class_2 || 0
@@ -264,8 +270,13 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm }
       persenC = Math.round((rotten / (totalObjs || 1)) * 100)
     }
 
+    // Defensive clamping mencegah error floating rounding (misal 51% + 50% = 101%)
+    if (persenA + persenC > 100) {
+      persenC = Math.max(0, 100 - persenA)
+    }
+
     const calculatedInput = {
-      tanggal: new Date().toISOString().slice(0, 10),
+      tanggal: getTodayDateString(),
       komoditas: selectedCommodity,
       beratKg: parsedWeight,
       kesegaranPersen: persenA,
@@ -841,7 +852,7 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm }
                         Harga Acuan Pasar:
                       </Typography>
                       <Typography variant="h6" fontWeight={800} color="primary.dark">
-                        {formatRupiah(pricing.base_price_per_kg)} <Typography component="span" variant="caption">/ kg</Typography>
+                        {formatRupiah(pricing.reference_price_per_kg || pricing.base_price_per_kg || REFERENCE_PRICES_PER_KG[selectedCommodity] || 10000)} <Typography component="span" variant="caption">/ kg</Typography>
                       </Typography>
                     </Box>
                   </Stack>
@@ -914,14 +925,15 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm }
             <QCPrintCertificate
               batch={{
                 id: scanResult.scan_id || 'QC-SCAN',
-                tanggal: new Date().toISOString().slice(0, 10),
+                tanggal: getTodayDateString(),
                 komoditas: selectedCommodity,
-                beratKg: Number(saveWeight.replace(',', '.')) || 10,
+                beratKg: Number(saveWeight ? saveWeight.replace(',', '.') : 10) || 10,
                 fotoKeranjang: scanResult.imagePreview,
                 ai_scan_performed: true,
                 inference: inference,
                 pricing: pricing,
                 scanResult: scanResult,
+                business_grading: scanResult.business_grading,
               }}
               showPrintButton
               onPrint={() => window.print()}

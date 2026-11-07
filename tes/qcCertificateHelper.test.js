@@ -18,6 +18,7 @@ test('formatRegistrationId menghasilkan ID standar registrasi QC', () => {
 test('formatCertificateDate memformat tanggal ke bahasa Indonesia secara aman', () => {
   assert.equal(formatCertificateDate('2026-11-08'), '8 November 2026')
   assert.equal(formatCertificateDate('2026-05-17'), '17 Mei 2026')
+  assert.equal(formatCertificateDate('2026-11-07T18:54:30.000Z'), '8 November 2026')
   assert.equal(formatCertificateDate(null), '-')
   assert.equal(formatCertificateDate(undefined), '-')
 })
@@ -87,6 +88,57 @@ test('buildCertificateData memproses batch Terung 4-Class dengan akurat', () => 
 
   assert.equal(cert.financials.totalRevenue, 920000)
   assert.equal(cert.financials.potentialLoss, 100000)
+})
+
+test('buildCertificateData memproses batch Terung 4-Class dari respon riil backend tanpa tier_breakdown', () => {
+  const realBackendBatch = {
+    id: 'SCAN-TRG-001',
+    tanggal: '2026-11-08',
+    komoditas: 'Terung',
+    beratKg: 10,
+    inference: {
+      commodity: 'terung',
+      object_counts: { total: 4, extra_class: 1, class_1: 2, class_2: 1, reject: 0 },
+      condition_ratios: {
+        extra_class_percent: 25.0,
+        class_1_percent: 50.0,
+        class_2_percent: 25.0,
+        reject_percent: 0.0,
+        marketable_percent: 100.0,
+      },
+    },
+    pricing: {
+      reference_price_per_kg: 10000,
+      estimated_economic_value: 98750,
+      potential_loss_value: 0,
+      condition_ratios: {
+        extra_class_percent: 25.0,
+        class_1_percent: 50.0,
+        class_2_percent: 25.0,
+        reject_percent: 0.0,
+      },
+    },
+  }
+
+  const cert = buildCertificateData(realBackendBatch)
+  assert.equal(cert.modelEngineName, 'Ultralytics YOLO11n (4-Class Commercial Quality)')
+  assert.ok(cert.inspectionMethod.includes('YOLO11n'))
+  assert.equal(cert.grades.length, 4)
+
+  const extra = cert.grades.find((g) => g.code === 'EXTRA')
+  assert.equal(extra.ratioPercent, 25.0)
+  assert.equal(extra.weightKg, 2.5)
+  assert.equal(extra.subtotalRp, 28750)
+
+  const c1 = cert.grades.find((g) => g.code === 'CLASS-1')
+  assert.equal(c1.ratioPercent, 50.0)
+  assert.equal(c1.weightKg, 5.0)
+  assert.equal(c1.subtotalRp, 50000)
+
+  const c2 = cert.grades.find((g) => g.code === 'CLASS-2')
+  assert.equal(c2.ratioPercent, 25.0)
+  assert.equal(c2.weightKg, 2.5)
+  assert.equal(c2.subtotalRp, 20000)
 })
 
 test('buildCertificateData memproses batch Tomat AI scan dengan akurat', () => {

@@ -7,8 +7,12 @@ const commodityOptions = [
 ]
 const sizeOptions = ['Besar', 'Sedang', 'Kecil']
 
-function todayAsInputValue() {
+export function getTodayDateString() {
   return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Jakarta' }).format(new Date())
+}
+
+function todayAsInputValue() {
+  return getTodayDateString()
 }
 
 export const defaultHarvestForm = {

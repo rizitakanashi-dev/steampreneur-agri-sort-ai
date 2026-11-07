@@ -325,6 +325,33 @@ def calculate_eggplant_economic_projection(
             f"Potensi pendapatan mencapai Rp {estimated_value or 0:,}."
         )
 
+    tier_breakdown = {
+        "extra_class": {
+            "ratio_percent": extra_ratio,
+            "weight_kg": round(w_extra, 2) if (valid_weight is not None and total_samples > 0) else None,
+            "price_per_kg": round(base_price * 1.15),
+            "subtotal_value": round(val_extra) if (valid_weight is not None and total_samples > 0) else None,
+        },
+        "class_1": {
+            "ratio_percent": class1_ratio,
+            "weight_kg": round(w_class1, 2) if (valid_weight is not None and total_samples > 0) else None,
+            "price_per_kg": round(base_price * 1.00),
+            "subtotal_value": round(val_class1) if (valid_weight is not None and total_samples > 0) else None,
+        },
+        "class_2": {
+            "ratio_percent": class2_ratio,
+            "weight_kg": round(w_class2, 2) if (valid_weight is not None and total_samples > 0) else None,
+            "price_per_kg": round(base_price * 0.80),
+            "subtotal_value": round(val_class2) if (valid_weight is not None and total_samples > 0) else None,
+        },
+        "reject": {
+            "ratio_percent": reject_ratio,
+            "weight_kg": round(w_reject, 2) if (valid_weight is not None and total_samples > 0) else None,
+            "price_per_kg": 0,
+            "subtotal_value": 0,
+        },
+    }
+
     return {
         "commodity": "Terung",
         "reference_price_per_kg": base_price,
@@ -337,6 +364,7 @@ def calculate_eggplant_economic_projection(
         "estimated_economic_value": estimated_value,
         "potential_loss_value": potential_loss,
         "max_potential_value": max_potential_value,
+        "tier_breakdown": tier_breakdown,
         "grade_multipliers": {
             "extra_class": 1.15,
             "class_1": 1.00,
