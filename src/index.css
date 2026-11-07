@@ -15,3 +15,84 @@ body {
 * {
   box-sizing: border-box;
 }
+
+/* Sembunyikan elemen cetak di mode layar normal */
+@media screen {
+  .qc-print-only {
+    display: none !important;
+  }
+}
+
+/* Aturan Cetak Sertifikat / Resi Resmi Digital A4 */
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 8mm 10mm;
+  }
+
+  html,
+  body,
+  #root,
+  main {
+    background: #ffffff !important;
+    color: #111827 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    min-height: auto !important;
+    width: 100% !important;
+  }
+
+  /* Sembunyikan semua elemen chrome navigasi, toolbar, tombol, dan tampilan layar */
+  header,
+  nav,
+  aside,
+  button,
+  .no-print,
+  .MuiDrawer-root,
+  .MuiAppBar-root,
+  .MuiBackdrop-root,
+  .qc-screen-only {
+    display: none !important;
+  }
+
+  /* Tampilkan kontainer cetak resmi secara penuh dan bersih */
+  .qc-print-only {
+    display: block !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  .qc-printable-certificate {
+    display: block !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: none !important;
+    box-shadow: none !important;
+    background: #ffffff !important;
+    color: #111827 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Hindari pemotongan baris di tengah tabel atau tanda tangan */
+  tr,
+  table,
+  .qc-printable-certificate table,
+  .qc-printable-certificate tfoot,
+  .qc-printable-certificate .MuiStack-root {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  /* Jika dicetak dari dalam Dialog pratinjau MUI */
+  .MuiDialog-paper {
+    box-shadow: none !important;
+    margin: 0 !important;
+    max-width: 100% !important;
+    width: 100% !important;
+    border: none !important;
+  }
+}

@@ -6,6 +6,10 @@ import {
   Card,
   CardContent,
   Chip,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
   Divider,
   Grid,
   IconButton,
@@ -17,16 +21,19 @@ import ArrowBackRoundedIcon from '@mui/icons-material/ArrowBackRounded'
 import AssessmentRoundedIcon from '@mui/icons-material/AssessmentRounded'
 import AutoAwesomeRoundedIcon from '@mui/icons-material/AutoAwesomeRounded'
 import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded'
+import CloseRoundedIcon from '@mui/icons-material/CloseRounded'
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined'
 import Inventory2RoundedIcon from '@mui/icons-material/Inventory2Rounded'
 import LocalShippingRoundedIcon from '@mui/icons-material/LocalShippingRounded'
 import PrintRoundedIcon from '@mui/icons-material/PrintRounded'
 import RecyclingRoundedIcon from '@mui/icons-material/RecyclingRounded'
 import TrendingUpRoundedIcon from '@mui/icons-material/TrendingUpRounded'
+import VerifiedRoundedIcon from '@mui/icons-material/VerifiedRounded'
 import WarningAmberRoundedIcon from '@mui/icons-material/WarningAmberRounded'
 import { PieChart } from '@mui/x-charts/PieChart'
 
 import { ScanCanvasOverlay } from './ScanCanvasOverlay.jsx'
+import { QCPrintCertificate } from './QCPrintCertificate.jsx'
 import { getClassTheme } from '../utils/canvasOverlayHelper.js'
 
 const numberFormatter = new Intl.NumberFormat('id-ID', { maximumFractionDigits: 2 })
@@ -132,6 +139,7 @@ function ActionRecommendationCard({ recommendationNote, rejectCount, rejectPerce
 
 export function QCResults({ batch, onBackToInput, onViewRecap }) {
   const [selectedDetection, setSelectedDetection] = useState(null)
+  const [isCertModalOpen, setIsCertModalOpen] = useState(false)
 
   if (!batch?.hasil && !batch?.scanResult) {
     return (
@@ -195,49 +203,60 @@ export function QCResults({ batch, onBackToInput, onViewRecap }) {
   const photoUrl = batch.fotoKeranjang || scanResult?.imagePreview
 
   return (
-    <Stack spacing={3}>
-      {/* Header Utama Hasil QC */}
-      <Card elevation={2} sx={{ borderRadius: 3 }}>
-        <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
-          <Stack
-            alignItems={{ xs: 'flex-start', sm: 'center' }}
-            direction={{ xs: 'column', sm: 'row' }}
-            justifyContent="space-between"
-            spacing={2}
-          >
-            <Box>
-              <Stack alignItems="center" direction="row" spacing={1.25}>
-                {hasAiScan ? (
-                  <AutoAwesomeRoundedIcon color="primary" sx={{ fontSize: 28 }} />
-                ) : (
-                  <AssessmentRoundedIcon color="primary" sx={{ fontSize: 28 }} />
-                )}
-                <Typography fontWeight={800} variant="h5">
-                  Hasil Pemeriksaan Mutu Panen
+    <>
+      <Stack className="qc-screen-only" spacing={3}>
+        {/* Header Utama Hasil QC */}
+        <Card elevation={2} sx={{ borderRadius: 3 }}>
+          <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
+            <Stack
+              alignItems={{ xs: 'flex-start', sm: 'center' }}
+              direction={{ xs: 'column', sm: 'row' }}
+              justifyContent="space-between"
+              spacing={2}
+            >
+              <Box>
+                <Stack alignItems="center" direction="row" spacing={1.25}>
+                  {hasAiScan ? (
+                    <AutoAwesomeRoundedIcon color="primary" sx={{ fontSize: 28 }} />
+                  ) : (
+                    <AssessmentRoundedIcon color="primary" sx={{ fontSize: 28 }} />
+                  )}
+                  <Typography fontWeight={800} variant="h5">
+                    Hasil Pemeriksaan Mutu Panen
+                  </Typography>
+                </Stack>
+                <Typography color="text.secondary" sx={{ mt: 0.5 }} variant="body2">
+                  Batch ID: <strong>{batch.id}</strong> • Tanggal: {batch.tanggal} • Komoditas: <strong>{commodity}</strong>
                 </Typography>
-              </Stack>
-              <Typography color="text.secondary" sx={{ mt: 0.5 }} variant="body2">
-                Batch ID: <strong>{batch.id}</strong> • Tanggal: {batch.tanggal} • Komoditas: <strong>{commodity}</strong>
-              </Typography>
-            </Box>
+              </Box>
 
-            <Stack direction="row" spacing={1}>
-              <Chip
-                color={hasAiScan ? 'primary' : 'default'}
-                icon={hasAiScan ? <AutoAwesomeRoundedIcon /> : <AssessmentRoundedIcon />}
-                label={hasAiScan ? 'AI Computer Vision' : 'Manual Calculation'}
-                size="small"
-                sx={{ fontWeight: 700 }}
-              />
-              <Tooltip title="Cetak atau simpan bukti QC sebagai PDF">
-                <IconButton onClick={() => window.print()} size="small">
-                  <PrintRoundedIcon fontSize="small" />
-                </IconButton>
-              </Tooltip>
+              <Stack alignItems={{ xs: 'flex-start', sm: 'center' }} direction={{ xs: 'column', sm: 'row' }} spacing={1}>
+                <Chip
+                  color={hasAiScan ? 'primary' : 'default'}
+                  icon={hasAiScan ? <AutoAwesomeRoundedIcon /> : <AssessmentRoundedIcon />}
+                  label={hasAiScan ? 'AI Computer Vision' : 'Manual Calculation'}
+                  size="small"
+                  sx={{ fontWeight: 700 }}
+                />
+                <Button
+                  color="primary"
+                  onClick={() => setIsCertModalOpen(true)}
+                  size="small"
+                  startIcon={<VerifiedRoundedIcon />}
+                  sx={{ fontWeight: 700 }}
+                  variant="outlined"
+                >
+                  Sertifikat QC
+                </Button>
+                <Tooltip title="Cetak atau simpan bukti QC resmi sebagai PDF (A4)">
+                  <IconButton aria-label="Cetak bukti QC" onClick={() => window.print()} size="small">
+                    <PrintRoundedIcon fontSize="small" />
+                  </IconButton>
+                </Tooltip>
+              </Stack>
             </Stack>
-          </Stack>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
 
       {/* Bagian Visual: Canvas Bounding Box & Diagram Donat */}
       <Grid container spacing={2.5}>
@@ -520,20 +539,74 @@ export function QCResults({ batch, onBackToInput, onViewRecap }) {
           fullWidth
           onClick={onBackToInput}
           startIcon={<ArrowBackRoundedIcon />}
-          sx={{ maxWidth: { sm: 220 } }}
+          sx={{ maxWidth: { sm: 200 } }}
           variant="outlined"
         >
           Scan Batch Lain
         </Button>
-        <Button
-          fullWidth
-          onClick={onViewRecap}
-          sx={{ maxWidth: { sm: 220 } }}
-          variant="contained"
-        >
-          Buka Rekap Data Panen
-        </Button>
+        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}>
+          <Button
+            onClick={() => setIsCertModalOpen(true)}
+            startIcon={<VerifiedRoundedIcon />}
+            sx={{ minWidth: { sm: 190 } }}
+            variant="outlined"
+          >
+            Lihat Sertifikat Resmi
+          </Button>
+          <Button
+            onClick={onViewRecap}
+            sx={{ minWidth: { sm: 200 } }}
+            variant="contained"
+          >
+            Buka Rekap Data Panen
+          </Button>
+        </Stack>
       </Stack>
     </Stack>
+
+    {/* Sertifikat Resmi untuk @media print */}
+    <Box className="qc-print-only">
+      <QCPrintCertificate batch={batch} />
+    </Box>
+
+    {/* Dialog Pratinjau Sertifikat QC di Layar Sebelum Cetak */}
+    <Dialog
+      fullWidth
+      maxWidth="md"
+      onClose={() => setIsCertModalOpen(false)}
+      open={isCertModalOpen}
+    >
+      <DialogTitle sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', pb: 1 }}>
+        <Stack alignItems="center" direction="row" spacing={1}>
+          <VerifiedRoundedIcon color="primary" />
+          <Typography fontWeight={700} variant="h6">
+            Pratinjau Sertifikat Uji Mutu Digital
+          </Typography>
+        </Stack>
+        <IconButton aria-label="Tutup" onClick={() => setIsCertModalOpen(false)} size="small">
+          <CloseRoundedIcon />
+        </IconButton>
+      </DialogTitle>
+      <DialogContent dividers sx={{ p: { xs: 1.5, sm: 3 }, bgcolor: '#f9fafb' }}>
+        <QCPrintCertificate
+          batch={batch}
+          onPrint={() => window.print()}
+          showPrintButton
+        />
+      </DialogContent>
+      <DialogActions sx={{ px: 3, py: 2 }}>
+        <Button onClick={() => setIsCertModalOpen(false)} variant="outlined">
+          Tutup
+        </Button>
+        <Button
+          onClick={() => window.print()}
+          startIcon={<PrintRoundedIcon />}
+          variant="contained"
+        >
+          Cetak / Simpan PDF (A4)
+        </Button>
+      </DialogActions>
+    </Dialog>
+  </>
   )
 }

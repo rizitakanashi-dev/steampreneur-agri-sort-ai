@@ -223,12 +223,13 @@ Proposal STEAMPreneur SMK mewajibkan integrasi nyata dari 5 pilar:
 - [x] **Dukungan Model AI Terung 4-Kelas Kualitas (Revisi 7 Nov 2026):** Modul `server/services/mock_engine.py` dan `server/routers/qc.py` diperluas mendukung klasifikasi mutu Terung 4 kelas (`extra-class`, `class-1`, `class-2`, `reject`) sesuai standar komersial UNECE/SNI dengan STEAM Math multi-tier pricing dan mitigasi KeyError (7 Nov 2026).
 - [x] **Reverse Proxy Vite & Client API Service (Task FS-FE-01):** Konfigurasi reverse proxy `/api` di `vite.config.js` dan service klien `src/services/scanService.js` aktif dengan proteksi timeout 15 detik, multipart upload, pre-flight check, dan penanganan error terstandarisasi (7 Nov 2026).
 - [x] **Komponen Visualisasi Deteksi Citra Interaktif (Task FS-FE-02):** Komponen `src/components/ScanCanvasOverlay.jsx` dan modul helper `src/utils/canvasOverlayHelper.js` aktif melukis kotak pembatas (*bounding box*) responsif dengan penskalaan proporsional, switch anotasi, dan palet warna multi-kelas Tomat & Terung (7 Nov 2026).
-- [x] **Modernisasi Halaman Hasil QC & Integrasi Alur Pemindaian (Task FS-FE-03):** Halaman `src/components/QCResults.jsx` dan tombol pemicu AI di `HarvestForm.jsx` aktif menyajikan visualisasi kanvas bounding box, diagram donat proporsi kondisi buah (`@mui/x-charts`), kartu STEAM Math smart pricing, serta cetak bukti QC (7 Nov 2026).
+- [x] **Modernisasi Halaman Hasil QC & Integrasi Alur Pemindaian (Task FS-FE-03):** Halaman `src/components/QCResults.jsx` dan tombol pemicu AI di `HarvestForm.jsx` aktif menyajikan visualisasi kanvas bounding box, diagram donat proporsi kondisi buah (`@mui/x-charts`), kartu STEAM Math smart pricing, serta tombol pratinjau sertifikat (7 Nov 2026).
+- [x] **Fitur Cetak Sertifikat & Resi Resmi QC Panen Digital (Pilihan 1 - Demo Kepsek):** Komponen `src/components/QCPrintCertificate.jsx`, helper `src/utils/qcCertificateHelper.js`, modal pratinjau A4 di `src/components/QCResults.jsx`, serta isolasi stylesheet `@media print` di `src/index.css` aktif mencetak sertifikat resmi ber-kop SMKN 4 Payakumbuh, logo/badge STEAMPreneur 2026, tabel klasifikasi mutu, rekapitulasi nilai ekonomi Rupiah, mitigasi risiko afkir, dan kolom tanda tangan resmi Petani & Petugas QC (8 Nov 2026).
 - [ ] **Integrasi API Harga BAPANAS:** Buat endpoint integrasi atau service scraper harga harian pangan nasional untuk wilayah Sumatera Barat / Payakumbuh dengan fallback ke cache lokal.
 
 ### Prioritas P2 (Penyempurnaan Skalabilitas & Presentasi Juri)
 - [ ] Integrasi Supabase Auth & Cloud Database untuk menggantikan keterbatasan `localStorage`.
-- [ ] Fitur Cetak Bukti QC Digital (Export PDF / Resi QC Panen).
+- [x] Fitur Cetak Bukti QC Digital (Export PDF / Resi QC Panen) — **Selesai & Diverifikasi (8 Nov 2026)**.
 - [ ] Siapkan demonstrasi video berlatar keranjang panen nyata untuk pembuktian di hadapan dewan juri STEAMPreneur.
 
 ---
@@ -238,7 +239,7 @@ Proposal STEAMPreneur SMK mewajibkan integrasi nyata dari 5 pilar:
 Jalankan perintah-perintah berikut di terminal untuk memverifikasi kondisi sistem:
 
 ```bash
-# 1. Jalankan unit test frontend JavaScript (79 tests, 100% PASS)
+# 1. Jalankan unit test frontend JavaScript (87 tests, 100% PASS)
 npm test
 
 # 2. Jalankan unit test backend Python (41 tests, 100% PASS)
