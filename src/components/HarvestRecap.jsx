@@ -170,7 +170,7 @@ export function HarvestRecap({ batches = [], onSelectBatch }) {
           </Grid>
           <Grid size={{ xs: 12, sm: 6, md: 2.5 }}>
             <FormControl fullWidth size="small">
-              <InputLabel id="recap-commodity-label">Komoditas</InputLabel>
+              <InputLabel id="recap-commodity-label" shrink>Komoditas</InputLabel>
               <Select
                 displayEmpty
                 label="Komoditas"
