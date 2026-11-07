@@ -1,259 +1,155 @@
-# Agri-Sort AI
+# Agri-Sort AI — Precision Agriculture & Smart Pricing
 
-Website Quality Control & Smart Pricing Hortikultura untuk petani dan pedagang di Payakumbuh.
+Aplikasi Computer Vision Quality Control (QC) dan Smart Pricing komoditas hortikultura untuk petani, pedagang pengumpul, dan pengelola pasar di Payakumbuh dan Sumatera Barat.
 
-Agri-Sort AI membantu mencatat hasil panen cabai rawit hijau, terung, dan tomat, mengkalkulasi distribusi mutu (grade) secara otomatis, dan memantau acuan harga pasar agar keputusan jual lebih tepat.
+Agri-Sort AI menggabungkan model **Deep Learning YOLO11** dengan antarmuka modern **React 19** dan backend berkinerja tinggi **FastAPI**, membantu memilah mutu buah panen secara otomatis, memvisualisasikan sebaran grade komersial, menghitung estimasi nilai ekonomi, dan menerbitkan Sertifikat Mutu Digital standar cetak A4.
 
-Target pengguna: petani, pedagang pengumpul, dan penjual di pasar.
+---
 
-## Tech Stack
+## 🌟 Fitur Utama Sistem
 
-| Komponen | Teknologi | Versi |
-|----------|-----------|-------|
-| Framework UI | React | 19.3 |
-| Bundler / Dev server | Vite | 8.3 |
-| Library komponen UI | Material UI (`@mui/material`, `@mui/icons-material`) | 9.5 |
-| Styling engine | Emotion (`@emotion/react`, `@emotion/styled`) | 11.14 |
-| Grafik tren harga | MUI X Charts (`@mui/x-charts`) | 9.15 |
-| Bahasa | JavaScript (ES modules, tanpa TypeScript) | — |
-| Penyimpanan data | `localStorage` browser (tanpa backend) | — |
-| Test runner | Node.js built-in (`node --test`) | Node 26+ |
-| Font | Google Fonts (Inter) | SIL OFL 1.1 |
+1. **Batch QC Scanner Cerdas (Live Camera & File Upload):**
+   - **Live Viewfinder Kamera:** Mengakses sensor webcam laptop atau kamera smartphone secara real-time dengan sudut pandang tegak lurus (*top-down view*), fitur ganti kamera depan/belakang, dan pengambilan snapshot sekali klik.
+   - **Drag & Drop Berkas:** Mendukung unggah berkas citra `JPG`, `PNG`, dan `WebP` (hingga 10 MB) dengan deteksi instan.
+   - **Seleksi Komoditas Multi-Model:**
+     - 🍆 **Terung (Eggplant):** Model YOLO11n dengan **4 kelas mutu komersial** (`Extra Class`, `Class I`, `Class II`, `Reject`).
+     - 🍅 **Tomat (Tomato):** Model YOLO11n dengan **2 kelas mutu** (`Tomat Segar`, `Tomat Busuk/Cacat`).
+     - 🌶️ **Cabai Rawit Hijau:** Mode pencatatan mutu lapangan manual.
+   - **Slider Sensitivitas Deteksi:** Pengaturan batas keyakinan (*confidence threshold*) dari 5% hingga 80% (rekomendasi: 20% untuk Terung, 35% untuk Tomat).
 
-Tidak menggunakan Next.js, Tailwind, Supabase, atau framework test tambahan.
+2. **Hasil Analisis Mutu Instan (Instant QC Results):**
+   - Hasil deteksi langsung muncul di layar tanpa memaksa pengguna mengisi formulir panen panjang terlebih dahulu.
+   - **Lapisan Kanvas Visual Interaktif (`ScanCanvasOverlay`):** Bounding box berwarna per kelas mutu (Emerald untuk Extra Class, Sky Blue untuk Class I, Amber untuk Class II, Ruby Red untuk Reject), sudut bracket modern, dan toggle anotasi on/off.
+   - **Indikator Distribusi Mutu:** Donut Chart (`@mui/x-charts`) dan kartu statistik butir serta persentase mutu panen.
+   - **Estimasi Smart Pricing:** Rekomendasi harga jual per kg dan total nilai panen berdasarkan formula acuan pasar komoditas.
 
-## Alur Inti
+3. **Sertifikat Mutu QC Resmi (Format Cetak A4):**
+   - Penerbitan Sertifikat Mutu Digital berstandar dokumen resmi A4 lengkap dengan ID registrasi, tabel rincian butir terdeteksi, ringkasan grade komersial (Grade A, Grade B, Reject), dan tanda tangan digital.
+   - Tombol satu-klik untuk mencetak langsung ke printer atau mengunduh sebagai PDF resmi transaksi.
 
-1. **Input Hasil Panen** — Pengguna memasukkan komoditas (cabai rawit hijau / terung / tomat), berat total (kg), dan parameter mutu (kesegaran, ukuran, cacat).
-2. **Kalkulasi Distribusi Grade & Harga** — Sistem menghitung pembagian grade (A / B / C), estimasi harga per grade berdasarkan acuan harga pasar, dan total nilai panen.
-3. **Lihat Rekap Data** — Pengguna melihat riwayat pencatatan, ringkasan distribusi mutu, dan perbandingan nilai antar panen di halaman rekap.
+4. **Rekap Data Panen & Manajemen Inventaris:**
+   - Riwayat seluruh batch panen yang tersimpan di penyimpanan lokal browser (`localStorage`).
+   - Pencarian real-time (berdasarkan ID Batch atau Komoditas) dan filter rentang tanggal.
+   - Ekspor laporan ke format **CSV** murni (ramah Microsoft Excel).
 
-## Cara Menjalankan
+---
 
-### Prasyarat
+## 🛠️ Tech Stack & Arsitektur
 
-- Node.js LTS (>= 18) dan npm.
-- Git (untuk clone repositori).
-- Browser modern (Chrome / Edge / Firefox terbaru).
+| Lapisan | Komponen / Teknologi | Versi | Peran & Tanggung Jawab |
+|---|---|---|---|
+| **Frontend** | React 19, Vite 8 | 19.3 / 8.3 | SPA Interaktif, Client-Side State, Routing |
+| **UI Library** | Material UI (MUI), Emotion | 9.5 / 11.14 | Desain komponen responsif mobile & desktop |
+| **Visualisasi** | MUI X Charts (`@mui/x-charts`) | 9.15 | Diagram Donut sebaran mutu panen |
+| **Backend API** | FastAPI, Uvicorn | 0.162 / 0.54 | REST API Gateway, validasi keamanan citra |
+| **AI / ML Engine** | Ultralytics YOLO11n, PyTorch CPU | 8.4.205 / 2.15 | Inferensi deteksi objek buah (<500 ms) |
+| **Penyimpanan** | Browser `localStorage` (`agrisort.panen.v1`) | — | Persistensi data batch panen lokal |
+| **Testing** | Node.js Test Runner & Python Unittest | — | 89 test frontend + 51 test backend |
 
-### Clone Repo
+---
 
+## 🚀 Panduan Menjalankan Aplikasi
+
+### 1. Prasyarat Sistem
+* **Node.js:** Versi $\ge 18.0$ (disarankan versi LTS)
+* **Python:** Versi $\ge 3.10$ (didukung hingga Python 3.14)
+* **Git** dan peramban modern (Google Chrome, Microsoft Edge, atau Mozilla Firefox)
+
+### 2. Instalasi Dependensi
+
+**Terminal 1 — Dependensi Frontend:**
 ```bash
 git clone https://github.com/rizitakanashi-dev/steampreneur-agri-sort-ai.git
 cd steampreneur-agri-sort-ai
-```
-
-### Install Dependensi
-
-```bash
 npm install
 ```
 
-### Jalankan Server Development
+**Terminal 2 — Dependensi Backend Python:**
+```bash
+# Pasang PyTorch CPU-only dan Ultralytics (hemat penyimpanan):
+python3 -m pip install --break-system-packages torch torchvision --index-url https://download.pytorch.org/whl/cpu
+python3 -m pip install --break-system-packages -r server/requirements.txt
+```
 
+### 3. Menjalankan Server Lokal
+
+**Terminal 1 — Jalankan Backend FastAPI (Port 8000):**
+```bash
+python3 -m uvicorn server.main:app --host 127.0.0.1 --port 8000 --reload
+```
+*Dokumentasi Swagger API backend dapat diakses di `http://127.0.0.1:8000/docs`.*
+
+**Terminal 2 — Jalankan Frontend React (Port 5173):**
 ```bash
 npm run dev
 ```
 
-Lalu buka URL yang ditampilkan di terminal (umumnya `http://localhost:5173`).
+Buka peramban di `http://localhost:5173`.
 
-### Build Produksi (Opsional)
+---
 
-```bash
-npm run build
-npm run preview
-```
+## 🧪 Eksekusi Pengujian Otomatis (*Test Suite*)
 
-## Tangkapan Layar Alur Inti
+Seluruh logika bisnis, keamanan citra, dan kalkulasi diuji secara ketat:
 
-| Langkah | Deskripsi | Gambar |
-|---------|-----------|--------|
-| 1 | Input hasil panen | ![Langkah 1](docs/bukti/langkah-1.png) |
-| 2 | Kalkulasi distribusi grade & harga | ![Langkah 2](docs/bukti/langkah-2.png) |
-| 3 | Rekap data panen | ![Langkah 3](docs/bukti/langkah-3.png) |
-
-## Cara Menjalankan Pengujian
-
+### Pengujian Frontend (89 Unit Tests Passing)
 ```bash
 npm test
 ```
+*Mencakup penskalaan koordinat canvas, tema warna 4-kelas, pembulatan mata uang, validasi input, ekspor CSV, filter rekap panen, dan helper sertifikat mutu.*
 
-Perintah di atas menjalankan seluruh unit test di folder `tes/` menggunakan test runner bawaan Node.js (`node --test`), tanpa framework tambahan.
-
-Hasil yang diharapkan: **57 test lulus, 0 gagal**.
-
-| Berkas test | Jumlah | Cakupan |
-|-------------|--------|---------|
-| `tes/harvestCalculation.test.js` | 12 | Kalkulasi distribusi grade, harga, pembulatan Rupiah |
-| `tes/harvestValidation.test.js` | 5 | Validasi field form input panen (termasuk penolakan berat `0.0`/`0,00`) |
-| `tes/gradeValidation.test.js` | 5 | Validasi persentase Grade A/B |
-| `tes/harvestStorage.test.js` | 4 | Penyimpanan `localStorage` (data kosong, JSON rusak, ID unik) |
-| `tes/harvestProjection.test.js` | 5 | Proyeksi pendapatan pada Pricing Dashboard |
-| `tes/harvestRecapChangeRequest.test.js` | 15 | Pencarian, filter kombinasi, ekspor data tersaring, total berat/nilai rekap |
-| `tes/csvExporter.test.js` | 10 | Header CSV, angka murni, escape koma/kutip/newline |
-| `tes/initialState.test.js` | 1 | State awal aplikasi |
-| **Total** | **57** | 32 test alur inti + 25 test Change Request |
-
-Pengujian Bug Hunt Kasir Kantin (Tugas 2) berada di folder `bughunt-kasir/tes/` dan dijalankan terpisah:
-
+### Pengujian Backend (51 Unit Tests Passing)
 ```bash
-cd bughunt-kasir
-node --test tes/*.test.js
+python3 -m unittest discover -s server/tests
 ```
+*Mencakup validasi magic bytes citra, proteksi decompression bomb, AI inference engine, simulasi mock deterministik, dan formula smart pricing multi-tier.*
 
-Hasil: **24 test lulus, 0 gagal** (4 bug diperbaiki: validasi jumlah, batas gabungan 99, tipe jumlah numerik, diskon member eksklusif).
+---
 
-## Fitur dan Batasan
-
-### Fitur
-
-- Pencatatan hasil panen (komoditas, berat, parameter mutu)
-- Kalkulasi distribusi grade (A / B / C) otomatis
-- Estimasi harga per grade dan total nilai panen
-- Acuan harga pasar cabai rawit hijau, terung, dan tomat
-- Rekap dan riwayat data panen
-- **Pencarian real-time** pada halaman Rekap (berdasarkan ID batch atau komoditas, tidak membedakan huruf besar/kecil)
-- **Filter komoditas dan rentang tanggal** yang dapat dikombinasikan dengan pencarian
-- **Ekspor CSV** data yang sedang tampil (hasil pencarian + filter aktif)
-- **Baris total rekap** (jumlah berat + jumlah nilai dari baris yang tampil)
-- **Pricing Dashboard** dengan grafik tren harga dan proyeksi pendapatan
-- SPA React tanpa backend, berjalan penuh di browser
-
-### Halaman Rekap Data Panen
-
-Halaman **Hasil Analisis QC → Lihat semua rekap** menampilkan seluruh batch yang tersimpan di browser.
-
-1. **Mencari** — ketik ID batch atau nama komoditas pada kotak pencarian. Tabel tersaring langsung saat mengetik dan tidak membedakan huruf besar/kecil.
-2. **Memfilter** — pilih **Komoditas** pada dropdown, dan/atau isi rentang tanggal pada kolom **Dari** dan **Sampai** (batas tanggal ikut dihitung). Pencarian dan filter dapat dipakai bersamaan.
-3. **Mereset** — klik ikon **Reset filter** untuk mengembalikan semua filter ke keadaan awal.
-4. **Mengekspor CSV** — klik **Ekspor CSV** untuk mengunduh **hanya baris yang sedang tampil**. Berkas dapat dibuka di Excel; baris pertama berisi nama kolom dan angka ditulis murni tanpa simbol `Rp` maupun pemisah ribuan (contoh: `15000`).
-
-Jika tidak ada data yang cocok, tabel menampilkan pesan **"Data tidak ditemukan"**.
-
-### Batasan
-
-- Simulasi client-side: seluruh data tersimpan di `localStorage` browser
-- Data tidak tersinkron antar perangkat/browser
-- Data hilang jika cache/`localStorage` browser dihapus
-- Acuan harga bersifat referensi dan perlu pembaruan manual
-- Belum ada autentikasi, backend, maupun database server
-
-## Struktur Folder
+## 📁 Struktur Direktori Proyek
 
 ```
 steampreneur-agri-sort-ai/
-├── README.md
-├── .gitignore
-├── package.json
-├── package-lock.json
-├── vite.config.js
-├── index.html
-├── docs/
-│   ├── 01-spesifikasi.md
-│   ├── 02-rencana.md
-│   ├── 03-log-prompt.md
-│   ├── 04-kasus-uji.md
-│   ├── 05-kesalahan-ai.md
-│   ├── 06-catatan-review.md
-│   ├── 07-refleksi.md
-│   ├── 08-penjelasan-kode.md
-│   ├── analisis-change-request.md
-│   └── bukti/                    (tangkapan layar hasil uji)
-├── src/
-│   ├── main.jsx
-│   ├── App.jsx
-│   ├── theme.js                  (tema MUI)
-│   ├── index.css
-│   ├── business/                 (logika bisnis, tanpa React)
-│   │   ├── harvestCalculation.js
-│   │   ├── harvestValidation.js
-│   │   ├── harvestStorage.js
-│   │   ├── harvestFilter.js      (pencarian, filter, & total rekap)
-│   │   ├── harvestProjection.js
-│   │   ├── priceReference.js
-│   │   └── initialState.js
-│   ├── components/               (komponen UI MUI)
-│   │   ├── AppShell.jsx
-│   │   ├── HarvestForm.jsx
-│   │   ├── HarvestRecap.jsx
-│   │   ├── QCResults.jsx
-│   │   ├── PricingDashboard.jsx
-│   │   ├── PriceTrendChart.jsx
-│   │   └── PageHeader.jsx
-│   └── utils/
-│       └── csvExporter.js        (pembangun & pengunduh CSV)
-├── tes/                          (unit test aplikasi utama)
-│   ├── harvestCalculation.test.js
-│   ├── harvestValidation.test.js
-│   ├── gradeValidation.test.js
-│   ├── harvestStorage.test.js
-│   ├── harvestProjection.test.js
-│   ├── harvestRecapChangeRequest.test.js
-│   ├── csvExporter.test.js
-│   └── initialState.test.js
-└── bughunt-kasir/                (Bug Hunt Tugas 2 — Kasir Kantin STEAM)
-    ├── app.js
-    ├── kasir.js
-    ├── index.html
-    ├── package.json              (konfigurasi "type": "commonjs" untuk node --test)
-    ├── catatan-bug.md
-    └── tes/
-        ├── validasiJumlah.test.js
-        ├── batasGabungan.test.js
-        ├── tipeJumlah.test.js
-        ├── diskonMember.test.js
-        └── contoh.test.js
+├── server/                              # Backend FastAPI & AI Engine
+│   ├── main.py                          # Inisialisasi FastAPI & middleware CORS
+│   ├── requirements.txt                 # Dependensi Python
+│   ├── routers/                         # Endpoint API (QC, History, Pricing)
+│   ├── services/                        # Service AI Engine, Storage, & Pricing
+│   │   ├── ai_engine.py                 # Singleton Ultralytics YOLO11 Loader & Predictor
+│   │   └── pricing_service.py           # Formula Smart Pricing & Grading Rule Engine
+│   ├── utils/security.py                # Validasi Magic Bytes & Keamanan Berkas
+│   └── tests/                           # 51 Backend Unit Tests
+├── models-20261107T170211Z-1-001/       # Artefak Model YOLO11 Terung
+│   └── models/terung/
+│       ├── best.pt                      # Bobot PyTorch Terung 4-Class (5.49 MB)
+│       ├── best.onnx                    # Bobot ONNX Opset 18 (10.67 MB)
+│       ├── data.yaml                    # Konfigurasi Roboflow (Class I, II, Extra, Reject)
+│       └── model-metadata.json          # Metadata & evaluasi mAP model
+├── model-export/                        # Artefak Model YOLO11 Tomat 2-Class Legacy
+│   └── weights/best.pt                  # Bobot Tomat Segar & Busuk
+├── src/                                 # Frontend React 19
+│   ├── components/
+│   │   ├── BatchQCScanner.jsx           # Scanner Utama (Live Camera + File Upload + Direct Results)
+│   │   ├── LiveCameraViewfinder.jsx     # Viewfinder Kamera Realtime (Webcam / HP)
+│   │   ├── ScanCanvasOverlay.jsx        # Lapisan Kanvas Bounding Box Interaktif
+│   │   ├── QCResults.jsx                # Dasbor Hasil Pemeriksaan Mutu & Donut Chart
+│   │   ├── QCPrintCertificate.jsx       # Template Cetak Sertifikat Mutu Format A4
+│   │   ├── HarvestRecap.jsx             # Tabel Rekap Panen & Ekspor CSV
+│   │   └── PricingDashboard.jsx         # Tren Harga Acuan Pasar & Kalkulator Pendapatan
+│   ├── business/                        # Domain Logika Bisnis & Validasi Klien
+│   ├── utils/                           # Helper Kanvas, Sertifikat, & CSV
+│   └── services/scanService.js          # API Client Penghubung ke Backend
+├── tes/                                 # 89 Frontend Unit Tests
+└── docs/                                # Dokumentasi Teknis, Workflow, & Panduan Lapangan
 ```
 
-Catatan: struktur folder mengikuti konvensi Vite, sesuai izin pada lembar challenge. Logika bisnis dipisahkan dari komponen React agar dapat diuji tanpa render.
+---
 
-### Catatan Cakupan: fitur proposal vs implementasi challenge
+## 👥 Informasi Pengembang
 
-Beberapa fitur yang berasal dari proposal awal **tidak diimplementasikan** karena berada di luar cakupan challenge (lihat `docs/01-spesifikasi.md` Bagian 5):
+Karya siswa **SMKN 4 Payakumbuh** — Bidang Lomba *STEAMPreneur* Tingkat Nasional 2026:
+* **Faris Al Farizi** — Ketua Tim / Senior Fullstack Developer
+* **Hieray Antovino** — Analis Bisnis & Dokumentator
+* **Ahmad Afif** — Machine Learning Engineer & Quality Assurance
 
-| Item | Status | Alasan |
-|------|--------|--------|
-| Kasus uji U07 (validasi foto blur / Laplacian Variance) | Tidak diuji | Fitur AI vision tidak diimplementasikan dalam versi challenge (frontend-only, tanpa unggah foto atau model YOLO/ONNX). |
-| Kasus uji U08 (filter objek non-komoditas / confidence score) Tidak diuji | Sama seperti U07 — inferensi model tidak tersedia di versi challenge. |
-| Kasus uji U12 / kriteria K17 (`agrisort.harga_cache.v1`) | Tidak diimplementasikan | Tidak ada integrasi API harga BAPANAS, sehingga tidak ada cache offline yang perlu dibaca. Harga acuan adalah tabel tetap di `src/business/priceReference.js`. |
-| Cetak Sertifikat PDF | Tidak dikerjakan | Di luar kriteria Change Request; tidak ada pustaka PDF yang ditambahkan. |
-
-Semua nilai BPP (biaya pokok produksi) dan harga acuan di aplikasi ini adalah **data bawaan/simulasi (mock)** yang ditulis di dalam kode, bukan hasil pengambilan data nyata dari API mana pun.
-
-## Dokumentasi
-
-| Berkas | Isi |
-|--------|-----|
-| [`AUDIT-AGRI-SORT-AI.md`](AUDIT-AGRI-SORT-AI.md) | **Audit & Evaluasi Teknis:** Analisis kesenjangan Proposal STEAMPreneur 2026 vs kode, deteksi bug kritis, evaluasi 5 pilar STEAM, dan rekomendasi perbaikan |
-| [`PRD-AGRI-SORT-AI.md`](PRD-AGRI-SORT-AI.md) | **Product Requirements Document (PRD):** Visi produk, target pengguna, kebutuhan fungsional/non-fungsional, arsitektur AI + Cloud, skema DB Supabase, kontrak API, dan roadmap |
-| [`AUDIT-AGRI-SORT-AI.html`](AUDIT-AGRI-SORT-AI.html) | Versi web/cetak visual dokumen audit dengan tema visual Agri-Sort AI |
-| `docs/01-spesifikasi.md` | Spesifikasi lengkap: masalah, solusi, aturan bisnis, rumus, field form, pesan error |
-| `docs/02-rencana.md` | Rencana kerja: 21 langkah, estimasi vs aktual, pembagian peran |
-| `docs/03-log-prompt.md` | Log prompt AI: setiap interaksi, hasil, dan keputusan tim |
-| `docs/04-kasus-uji.md` | Kasus uji K01–K25 dengan status Pass/Fail |
-| `docs/05-kesalahan-ai.md` | 7 kesalahan AI yang ditemukan dan diperbaiki tim |
-| `docs/06-catatan-review.md` | Code review: 6 temuan (R01–R06) dengan keputusan diterima/ditunda/ditolak |
-| `docs/07-refleksi.md` | Refleksi tim: 6 pertanyaan, diisi jujur termasuk kesalahan urutan commit |
-| `docs/08-penjelasan-kode.md` | Penjelasan kode per anggota (7 bagian: Ahmad 2, Faris 3, Hieray 2) |
-| `docs/analisis-change-request.md` | Analisis dampak change request sebelum eksekusi |
-
-## Sumber dan Lisensi
-
-| Sumber | Versi | Lisensi |
-|--------|-------|---------|
-| React | 19.3 | MIT |
-| Vite | 8.3 | MIT |
-| Material UI (`@mui/material`, `@mui/icons-material`) | 9.5 | MIT |
-| Emotion (`@emotion/react`, `@emotion/styled`) | 11.14 | MIT |
-| MUI X Charts (`@mui/x-charts`) | 9.15 | MIT |
-| Google Fonts (Inter) | — | SIL Open Font License 1.1 |
-
-Proyek ini dirilis di bawah lisensi MIT.
-
-## Informasi Tim
-
-Proyek oleh siswa SMKN 4 Payakumbuh:
-
-- **Faris Al Farizi** — Ketua / Navigator
-- **Hieray Antovino** — Analis / Dokumentator
-- **Ahmad Afif** — Penguji
+Lisensi: [MIT License](LICENSE).

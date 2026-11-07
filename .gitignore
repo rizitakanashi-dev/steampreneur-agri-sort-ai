@@ -28,3 +28,10 @@ Thumbs.db
 # IDE
 .vscode/
 .idea/
+.cursor/
+.superdesign/
+.windsurfrules
+CLAUDE.md
+
+# Large archives & temporary model dumps
+*.zip
