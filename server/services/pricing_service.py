@@ -102,11 +102,14 @@ COMMODITY_PRICING_TABLE: Dict[str, Dict[str, Any]] = {
 
 
 def normalize_commodity_key(name: str) -> str:
-    """Normalisasi nama komoditas untuk pencarian toleran spasi dan huruf besar/kecil."""
+    """Normalisasi nama komoditas untuk pencarian toleran spasi, ejaan lokal, dan huruf besar/kecil."""
     if not name:
         return ""
     # Menggabungkan spasi ganda menjadi spasi tunggal dan mengubah huruf kecil
-    return " ".join(name.strip().lower().split())
+    key = " ".join(name.strip().lower().split())
+    if key == "terong":
+        return "terung"
+    return key
 
 
 def get_commodity_pricing(commodity_name: str, region: str = "Sumatera Barat") -> Dict[str, Any]:
@@ -238,3 +241,119 @@ def calculate_economic_projection(
         "recommendation_note": recommendation_note,
         "is_known_commodity": pricing["is_known"],
     }
+
+
+def calculate_eggplant_economic_projection(
+    weight_kg: Optional[float],
+    extra_count: int,
+    class1_count: int,
+    class2_count: int,
+    reject_count: int,
+    region: str = "Sumatera Barat",
+) -> Dict[str, Any]:
+    """
+    Menghitung estimasi nilai ekonomi 4-Kelas untuk Terung (Task Model Baru 7 Nov 2026):
+    - Extra Class (Mutu Super): Multiplier 1.15 (+15% premi kualitas)
+    - Class 1 (Mutu Pasar Standar): Multiplier 1.00
+    - Class 2 (Mutu Pasar Tradisional/Lokal): Multiplier 0.80 (-20% diskon toleransi)
+    - Reject (Afkir/Rusak): Multiplier 0.00
+    """
+    pricing = get_commodity_pricing("terung", region)
+    base_price = pricing["price_per_kg"]
+
+    total_samples = max(0, extra_count + class1_count + class2_count + reject_count)
+
+    # Validasi dan sanitasi bobot fisik input
+    valid_weight: Optional[float] = None
+    try:
+        if weight_kg is not None:
+            w = float(weight_kg)
+            if not math.isnan(w) and not math.isinf(w) and w > 0:
+                valid_weight = w
+    except (TypeError, ValueError):
+        valid_weight = None
+
+    if total_samples > 0:
+        extra_ratio = round((extra_count / total_samples) * 100, 2)
+        class1_ratio = round((class1_count / total_samples) * 100, 2)
+        class2_ratio = round((class2_count / total_samples) * 100, 2)
+        reject_ratio = round((reject_count / total_samples) * 100, 2)
+    else:
+        extra_ratio = class1_ratio = class2_ratio = reject_ratio = 0.0
+
+    marketable_ratio = round(extra_ratio + class1_ratio + class2_ratio, 2)
+
+    estimated_value: Optional[int] = None
+    potential_loss: Optional[int] = None
+    max_potential_value: Optional[int] = None
+
+    if valid_weight is not None:
+        if total_samples > 0:
+            w_extra = valid_weight * (extra_count / total_samples)
+            w_class1 = valid_weight * (class1_count / total_samples)
+            w_class2 = valid_weight * (class2_count / total_samples)
+            w_reject = valid_weight * (reject_count / total_samples)
+
+            val_extra = w_extra * (base_price * 1.15)
+            val_class1 = w_class1 * (base_price * 1.00)
+            val_class2 = w_class2 * (base_price * 0.80)
+
+            estimated_value = round(val_extra + val_class1 + val_class2)
+            potential_loss = round(w_reject * base_price)
+        else:
+            estimated_value = 0
+            potential_loss = 0
+
+        max_potential_value = round(valid_weight * (base_price * 1.15))
+
+    # Rekomendasi tindakan komersial
+    if total_samples == 0:
+        rec_note = (
+            "Tidak ada objek terung yang terdeteksi dengan ambang batas keyakinan saat ini. "
+            "Pastikan pencahayaan cukup dan foto keranjang fokus pada permukaan terung."
+        )
+    elif reject_count > 0:
+        rec_note = (
+            f"Mutu Terdistribusi 4-Kelas: {marketable_ratio}% terung layak jual "
+            f"(Extra: {extra_ratio}%, Class 1: {class1_ratio}%, Class 2: {class2_ratio}%). "
+            f"Segera pisahkan {reject_count} butir reject untuk menjaga standar mutu dan menyelamatkan potensi Rp {estimated_value or 0:,}."
+        )
+    else:
+        rec_note = (
+            f"Mutu Sangat Baik: 100% sampel terung tergolong mutu komersial tanpa reject "
+            f"(Extra Class: {extra_ratio}%, Class 1: {class1_ratio}%, Class 2: {class2_ratio}%). "
+            f"Potensi pendapatan mencapai Rp {estimated_value or 0:,}."
+        )
+
+    return {
+        "commodity": "Terung",
+        "reference_price_per_kg": base_price,
+        "currency": pricing["currency"],
+        "price_unit": pricing["price_unit"],
+        "region": pricing["region"],
+        "price_source": pricing["price_source"],
+        "data_date": pricing["data_date"],
+        "data_status": pricing["data_status"],
+        "estimated_economic_value": estimated_value,
+        "potential_loss_value": potential_loss,
+        "max_potential_value": max_potential_value,
+        "grade_multipliers": {
+            "extra_class": 1.15,
+            "class_1": 1.00,
+            "class_2": 0.80,
+            "reject": 0.00,
+        },
+        "condition_ratios": {
+            "extra_class_percent": extra_ratio,
+            "class_1_percent": class1_ratio,
+            "class_2_percent": class2_ratio,
+            "reject_percent": reject_ratio,
+            "marketable_percent": marketable_ratio,
+        },
+        "value_calculation_method": (
+            "Kalkulasi multi-grade Terung: Bobot x Rasio Kelas x Harga Acuan x Bobot Mutu (STEAM 4-Class Model)"
+        ),
+        "recommendation_note": rec_note,
+        "is_known_commodity": True,
+    }
+

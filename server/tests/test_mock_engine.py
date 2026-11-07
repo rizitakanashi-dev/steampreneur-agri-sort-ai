@@ -91,5 +91,46 @@ class TestMockInferenceEngine(unittest.TestCase):
             generate_mock_detections(640, 480, confidence_threshold=1.5)
 
 
+    def test_eggplant_4_class_detections(self):
+        width, height = 1280, 720
+        detections = generate_mock_detections(width, height, confidence_threshold=0.35, commodity="Terung")
+
+        self.assertEqual(len(detections), 12)
+        classes_found = {d["class_name"] for d in detections}
+        expected_classes = {"extra-class", "class-1", "class-2", "reject"}
+        self.assertEqual(classes_found, expected_classes)
+
+        for det in detections:
+            box = det["box"]
+            self.assertGreaterEqual(box["x1"], 0.0)
+            self.assertGreaterEqual(box["y1"], 0.0)
+            self.assertLessEqual(box["x2"], float(width))
+            self.assertLessEqual(box["y2"], float(height))
+            self.assertGreaterEqual(det["confidence"], 0.35)
+
+    def test_eggplant_predict_mock_contract(self):
+        width, height = 800, 600
+        result = asyncio.run(
+            predict_harvest_image_mock(
+                image_bytes=b"eggplant_image_bytes",
+                width=width,
+                height=height,
+                confidence_threshold=0.35,
+                simulate_delay=False,
+                commodity="Terung",
+            )
+        )
+
+        self.assertEqual(result["model_name"], "yolo11n-terung")
+        self.assertEqual(result["model_version"], "2026.11.07-eggplant-mock")
+        summary = result["detection_summary"]
+        self.assertEqual(summary["total_objects"], 12)
+        self.assertIn("extra-class", summary["class_counts"])
+        self.assertIn("class-1", summary["class_counts"])
+        self.assertIn("class-2", summary["class_counts"])
+        self.assertIn("reject", summary["class_counts"])
+        self.assertEqual(sum(summary["class_counts"].values()), 12)
+
+
 if __name__ == "__main__":
     unittest.main()

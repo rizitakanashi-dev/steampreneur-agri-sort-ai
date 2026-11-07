@@ -6,6 +6,7 @@ Zero-dependency test runner menggunakan Python unittest bawaan.
 import unittest
 from server.services.pricing_service import (
     calculate_economic_projection,
+    calculate_eggplant_economic_projection,
     get_commodity_pricing,
     list_supported_commodities,
     normalize_commodity_key,
@@ -174,6 +175,54 @@ class TestPricingService(unittest.TestCase):
             fresh_count=0,
         )
         self.assertIsNone(res_inf["estimated_economic_value"])
+
+
+    def test_normalize_commodity_key_terong_mapping(self):
+        self.assertEqual(normalize_commodity_key("terong"), "terung")
+        self.assertEqual(normalize_commodity_key("Terong"), "terung")
+        pricing = get_commodity_pricing("Terong")
+        self.assertTrue(pricing["is_known"])
+        self.assertEqual(pricing["price_per_kg"], 10000)
+
+    def test_calculate_eggplant_economic_projection_standard(self):
+        # 120 kg Terung, acuan Rp 10.000/kg
+        # 5 Extra, 4 Class 1, 2 Class 2, 1 Reject (Total 12 butir)
+        result = calculate_eggplant_economic_projection(
+            weight_kg=120.0,
+            extra_count=5,
+            class1_count=4,
+            class2_count=2,
+            reject_count=1,
+        )
+
+        self.assertEqual(result["commodity"], "Terung")
+        self.assertEqual(result["reference_price_per_kg"], 10000)
+        self.assertEqual(result["estimated_economic_value"], 1135000)
+        self.assertEqual(result["potential_loss_value"], 100000)
+        self.assertEqual(result["max_potential_value"], 1380000)
+        self.assertEqual(result["condition_ratios"]["marketable_percent"], 91.67)
+        self.assertEqual(result["condition_ratios"]["reject_percent"], 8.33)
+        self.assertIn("Mutu Terdistribusi 4-Kelas", result["recommendation_note"])
+
+    def test_calculate_eggplant_economic_projection_zero_and_nan(self):
+        res_zero = calculate_eggplant_economic_projection(
+            weight_kg=50.0,
+            extra_count=0,
+            class1_count=0,
+            class2_count=0,
+            reject_count=0,
+        )
+        self.assertEqual(res_zero["estimated_economic_value"], 0)
+        self.assertIn("Tidak ada objek terung yang terdeteksi", res_zero["recommendation_note"])
+
+        res_nan = calculate_eggplant_economic_projection(
+            weight_kg=float("nan"),
+            extra_count=5,
+            class1_count=5,
+            class2_count=0,
+            reject_count=0,
+        )
+        self.assertIsNone(res_nan["estimated_economic_value"])
 
 
 if __name__ == "__main__":

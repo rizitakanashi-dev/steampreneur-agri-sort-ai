@@ -12,7 +12,11 @@ from fastapi import APIRouter, File, Form, HTTPException, UploadFile, status
 from fastapi.responses import JSONResponse
 
 from server.services.mock_engine import predict_harvest_image_mock
-from server.services.pricing_service import calculate_economic_projection, get_commodity_pricing
+from server.services.pricing_service import (
+    calculate_economic_projection,
+    calculate_eggplant_economic_projection,
+    get_commodity_pricing,
+)
 from server.services.storage_service import storage_service
 from server.utils.security import ImageValidationError, validate_upload_image
 
@@ -60,15 +64,16 @@ async def scan_harvest_batch(
 
         comm_key = commodity.strip().lower()
         is_tomato = "tomat" in comm_key
+        is_eggplant = "terung" in comm_key or "terong" in comm_key or "eggplant" in comm_key
         width = file_info["dimensions"]["width"]
         height = file_info["dimensions"]["height"]
 
         scan_id = f"scan_{datetime.now(timezone.utc).strftime('%Y%m%d')}_{uuid.uuid4().hex[:6]}"
         timestamp = datetime.now(timezone.utc).isoformat()
 
-        # 4. Cabang Deteksi: Model saat ini hanya melatih deteksi Tomat
-        if not is_tomato:
-            # Komoditas non-tomat: kembalikan transparansi batas model AI & smart pricing manual
+        # 4. Cabang Deteksi: Model saat ini mendukung Tomat (2-kelas) dan Terung (4-kelas)
+        if not (is_tomato or is_eggplant):
+            # Komoditas non-AI: kembalikan transparansi batas model AI & smart pricing manual
             pricing_info = calculate_economic_projection(
                 commodity_name=commodity,
                 weight_kg=weight_kg,
@@ -89,65 +94,121 @@ async def scan_harvest_batch(
                     "commodity": commodity,
                     "ai_supported": False,
                     "actual_weight_kg": weight_kg,
-                    "message": "Model AI Computer Vision saat ini khusus dilatih untuk komoditas Tomat. Komoditas ini menggunakan pencatatan mutu manual.",
+                    "message": "Model AI Computer Vision saat ini mendukung komoditas Tomat dan Terung. Komoditas ini menggunakan pencatatan mutu manual.",
                     "inference_result": None,
                     "smart_pricing": pricing_info,
                 },
             }
 
-        # 5. Jalankan Inferensi Tomat (Task FS-BE-03: Mock Engine Deterministik)
-        raw_detection = await predict_harvest_image_mock(
-            image_bytes=image_bytes,
-            width=width,
-            height=height,
-            confidence_threshold=confidence_threshold,
-            simulate_delay=(mode != "test"),
-        )
+        # 5. Jalankan Inferensi Berdasarkan Komoditas
+        if is_eggplant:
+            # Model Terung: 4 kelas (extra-class, class-1, class-2, reject)
+            raw_detection = await predict_harvest_image_mock(
+                image_bytes=image_bytes,
+                width=width,
+                height=height,
+                confidence_threshold=confidence_threshold,
+                simulate_delay=(mode != "test"),
+                commodity="Terung",
+            )
+            class_counts = raw_detection["detection_summary"]["class_counts"]
+            total_objs = raw_detection["detection_summary"]["total_objects"]
+            extra_count = class_counts.get("extra-class", 0)
+            class1_count = class_counts.get("class-1", 0)
+            class2_count = class_counts.get("class-2", 0)
+            reject_count = class_counts.get("reject", 0)
 
-        total_objs = raw_detection["detection_summary"]["total_objects"]
-        fresh_count = raw_detection["detection_summary"]["class_counts"]["fresh-tomato"]
-        rotten_count = raw_detection["detection_summary"]["class_counts"]["rotten-tomato"]
+            pricing_info = calculate_eggplant_economic_projection(
+                weight_kg=weight_kg,
+                extra_count=extra_count,
+                class1_count=class1_count,
+                class2_count=class2_count,
+                reject_count=reject_count,
+            )
 
-        # Mitigasi ZeroDivisionError jika tidak ada objek terdeteksi
-        fresh_ratio = round((fresh_count / total_objs) * 100, 2) if total_objs > 0 else 0.0
-        rotten_ratio = round((rotten_count / total_objs) * 100, 2) if total_objs > 0 else 0.0
-
-        # 6. Kalkulasi Smart Pricing & Estimasi Nilai Ekonomi (Task FS-BE-04)
-        pricing_info = calculate_economic_projection(
-            commodity_name=commodity,
-            weight_kg=weight_kg,
-            fresh_ratio_percent=fresh_ratio,
-            rotten_count=rotten_count,
-            fresh_count=fresh_count,
-        )
-
-        result_data = {
-            "status": "success",
-            "data": {
-                "scan_id": scan_id,
-                "timestamp": timestamp,
-                "is_simulated": True,
-                "commodity": commodity,
-                "ai_supported": True,
-                "actual_weight_kg": weight_kg,
-                "inference_result": {
-                    "model_version": raw_detection["model_version"],
-                    "inference_time_ms": raw_detection["inference_time_ms"],
-                    "image_dimensions": {"width": width, "height": height},
-                    "detections": raw_detection["detections"],
-                    "object_counts": {
-                        "total": total_objs,
-                        "fresh_tomato": fresh_count,
-                        "rotten_tomato": rotten_count,
+            result_data = {
+                "status": "success",
+                "data": {
+                    "scan_id": scan_id,
+                    "timestamp": timestamp,
+                    "is_simulated": True,
+                    "commodity": "Terung",
+                    "ai_supported": True,
+                    "actual_weight_kg": weight_kg,
+                    "grading_system": "4-class (Extra Class, Class 1, Class 2, Reject)",
+                    "inference_result": {
+                        "model_version": raw_detection["model_version"],
+                        "inference_time_ms": raw_detection["inference_time_ms"],
+                        "image_dimensions": {"width": width, "height": height},
+                        "detections": raw_detection["detections"],
+                        "object_counts": {
+                            "total": total_objs,
+                            "extra_class": extra_count,
+                            "class_1": class1_count,
+                            "class_2": class2_count,
+                            "reject": reject_count,
+                        },
+                        "condition_ratios": pricing_info["condition_ratios"],
                     },
-                    "condition_ratios": {
-                        "fresh_ratio_percent": fresh_ratio,
-                        "rotten_ratio_percent": rotten_ratio,
-                    },
+                    "smart_pricing": pricing_info,
                 },
-                "smart_pricing": pricing_info,
-            },
-        }
+            }
+
+        else:
+            # Model Tomat: 2 kelas (fresh-tomato, rotten-tomato)
+            raw_detection = await predict_harvest_image_mock(
+                image_bytes=image_bytes,
+                width=width,
+                height=height,
+                confidence_threshold=confidence_threshold,
+                simulate_delay=(mode != "test"),
+                commodity="Tomat",
+            )
+
+            total_objs = raw_detection["detection_summary"]["total_objects"]
+            fresh_count = raw_detection["detection_summary"]["class_counts"].get("fresh-tomato", 0)
+            rotten_count = raw_detection["detection_summary"]["class_counts"].get("rotten-tomato", 0)
+
+            # Mitigasi ZeroDivisionError jika tidak ada objek terdeteksi
+            fresh_ratio = round((fresh_count / total_objs) * 100, 2) if total_objs > 0 else 0.0
+            rotten_ratio = round((rotten_count / total_objs) * 100, 2) if total_objs > 0 else 0.0
+
+            pricing_info = calculate_economic_projection(
+                commodity_name=commodity,
+                weight_kg=weight_kg,
+                fresh_ratio_percent=fresh_ratio,
+                rotten_count=rotten_count,
+                fresh_count=fresh_count,
+            )
+
+            result_data = {
+                "status": "success",
+                "data": {
+                    "scan_id": scan_id,
+                    "timestamp": timestamp,
+                    "is_simulated": True,
+                    "commodity": commodity,
+                    "ai_supported": True,
+                    "actual_weight_kg": weight_kg,
+                    "grading_system": "2-class (Fresh, Rotten)",
+                    "inference_result": {
+                        "model_version": raw_detection["model_version"],
+                        "inference_time_ms": raw_detection["inference_time_ms"],
+                        "image_dimensions": {"width": width, "height": height},
+                        "detections": raw_detection["detections"],
+                        "object_counts": {
+                            "total": total_objs,
+                            "fresh_tomato": fresh_count,
+                            "rotten_tomato": rotten_count,
+                        },
+                        "condition_ratios": {
+                            "fresh_ratio_percent": fresh_ratio,
+                            "rotten_ratio_percent": rotten_ratio,
+                        },
+                    },
+                    "smart_pricing": pricing_info,
+                },
+            }
 
         # Simpan otomatis ke lapisan persistensi (Task FS-BE-05)
         try:
