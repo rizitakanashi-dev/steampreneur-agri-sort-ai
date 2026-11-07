@@ -1,0 +1,13 @@
+train: ../train/images
+val: ../valid/images
+test: ../test/images
+
+nc: 4
+names: ['Class I', 'Class II', 'Extra Class', 'Reject']
+
+roboflow:
+  workspace: rizi-takanashi
+  project: eggplant-quality-grades-hgdr1-oooww
+  version: 1
+  license: CC BY 4.0
+  url: https://app.roboflow.com/rizi-takanashi/eggplant-quality-grades-hgdr1-oooww/1

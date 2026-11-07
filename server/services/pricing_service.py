@@ -357,3 +357,73 @@ def calculate_eggplant_economic_projection(
         "is_known_commodity": True,
     }
 
+
+def calculate_business_grading(
+    commodity: str,
+    weight_kg: Optional[float],
+    ratios: Dict[str, float],
+) -> Dict[str, Any]:
+    """
+    Menghitung pemetaan grade mutu komersial (Business Grading Rule Engine).
+    Dokumen Acuan: docs/rencana-kerja-fullstack.md (Task FS-04 & Bab 3.2)
+
+    Formula Terung:
+      - Grade A = Extra Class % + Class I % (Mutu Super & Standar Ekspor / Pasar Modern)
+      - Grade B = Class II % (Mutu Pasar Tradisional & Olahan)
+      - Reject  = Reject % (Afkir / Kompos)
+
+    Formula Tomat:
+      - Grade A = Fresh %
+      - Grade B = 0.0%
+      - Reject  = Rotten %
+    """
+    comm = (commodity or "").strip().lower()
+    is_eggplant = "terung" in comm or "terong" in comm or "eggplant" in comm
+
+    valid_weight = None
+    if weight_kg is not None:
+        try:
+            w = float(weight_kg)
+            if not math.isnan(w) and not math.isinf(w) and w > 0:
+                valid_weight = w
+        except (TypeError, ValueError):
+            valid_weight = None
+
+    if is_eggplant:
+        extra_pct = float(ratios.get("extra_class_percent", ratios.get("extra_class_ratio_percent", 0.0)))
+        c1_pct = float(ratios.get("class_1_percent", ratios.get("class_1_ratio_percent", 0.0)))
+        c2_pct = float(ratios.get("class_2_percent", ratios.get("class_2_ratio_percent", 0.0)))
+        rej_pct = float(ratios.get("reject_percent", ratios.get("reject_ratio_percent", 0.0)))
+
+        grade_a_pct = round(extra_pct + c1_pct, 2)
+        grade_b_pct = round(c2_pct, 2)
+        reject_pct = round(rej_pct, 2)
+        rule_desc = "Extra Class & Class I -> Grade A, Class II -> Grade B, Reject -> Reject"
+    else:
+        fresh_pct = float(ratios.get("fresh_ratio_percent", ratios.get("fresh_ratio", 0.0)))
+        rotten_pct = float(ratios.get("rotten_ratio_percent", ratios.get("rotten_ratio", 0.0)))
+
+        grade_a_pct = round(fresh_pct, 2)
+        grade_b_pct = 0.0
+        reject_pct = round(rotten_pct, 2)
+        rule_desc = "Fresh Tomato -> Grade A, Rotten Tomato -> Reject"
+
+    grade_a_kg = round(valid_weight * (grade_a_pct / 100.0), 2) if valid_weight is not None else None
+    grade_b_kg = round(valid_weight * (grade_b_pct / 100.0), 2) if valid_weight is not None else None
+    reject_kg = round(valid_weight * (reject_pct / 100.0), 2) if valid_weight is not None else None
+
+    return {
+        "preliminary_mapping_rule": rule_desc,
+        "grade_breakdown": {
+            "grade_a_percent": grade_a_pct,
+            "grade_b_percent": grade_b_pct,
+            "reject_percent": reject_pct,
+        },
+        "estimated_weights_kg": {
+            "grade_a_kg": grade_a_kg,
+            "grade_b_kg": grade_b_kg,
+            "reject_kg": reject_kg,
+        },
+    }
+
+

@@ -65,11 +65,19 @@ export const DEFAULT_THEME = Object.freeze({
 
 /**
  * Mengambil palet warna dan label ramah pengguna berdasarkan class_name model AI.
+ * Mendukung format slug ('class-1') maupun format asli Roboflow ('Class I', 'Class II', 'Extra Class').
  */
 export function getClassTheme(className) {
   if (!className) return DEFAULT_THEME
-  const key = String(className).trim().toLowerCase()
-  return CLASS_PALETTE[key] || DEFAULT_THEME
+  const rawKey = String(className).trim().toLowerCase().replace(/\s+/g, '-')
+  const normalizedKey =
+    rawKey === 'class-i'
+      ? 'class-1'
+      : rawKey === 'class-ii'
+        ? 'class-2'
+        : rawKey
+
+  return CLASS_PALETTE[normalizedKey] || CLASS_PALETTE[rawKey] || DEFAULT_THEME
 }
 
 /**

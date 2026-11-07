@@ -9,9 +9,9 @@
 | Acuan Kompetisi | Sayembara STEAMPreneur SMK Tingkat Nasional Tahun 2026 ("Solusi Nyata untuk Indonesia") |
 | Dokumen Acuan | `Proposal STEAMPreneur SMK Tahun 2026.docx.pdf` & `docs/01-spesifikasi.md` |
 | Scope Audit | **Full-Stack & Sistem AI** (Kesesuaian Proposal vs Kode Nyata, Logika Bisnis, Keamanan, Performa) |
-| Tanggal Review | 3 November 2026 (Diperbarui: 4 November 2026) |
-| Versi Terakhir Dianalisis | Main (Sprint 1: Perbaikan Bug Fondasi P0) |
-| Status Audit | **Bug Fondasi P0 Teratasi — 60/60 Tests Lulus (Menuju Integrasi AI)** |
+| Tanggal Review | 3 November 2026 (Diperbarui: 8 November 2026) |
+| Versi Terakhir Dianalisis | Main (Integrasi Model AI Faris 4-Kelas & Business Grading Engine) |
+| Status Audit | **Kesiapan Demo Kepsek — 140/140 Tests Lulus (89 JS + 51 Python)** |
 
 ---
 
@@ -226,6 +226,8 @@ Proposal STEAMPreneur SMK mewajibkan integrasi nyata dari 5 pilar:
 - [x] **Modernisasi Halaman Hasil QC & Integrasi Alur Pemindaian (Task FS-FE-03):** Halaman `src/components/QCResults.jsx` dan tombol pemicu AI di `HarvestForm.jsx` aktif menyajikan visualisasi kanvas bounding box, diagram donat proporsi kondisi buah (`@mui/x-charts`), kartu STEAM Math smart pricing, serta tombol pratinjau sertifikat (7 Nov 2026).
 - [x] **Fitur Cetak Sertifikat & Resi Resmi QC Panen Digital (Pilihan 1 - Demo Kepsek):** Komponen `src/components/QCPrintCertificate.jsx`, helper `src/utils/qcCertificateHelper.js`, modal pratinjau A4 di `src/components/QCResults.jsx`, serta isolasi stylesheet `@media print` di `src/index.css` aktif mencetak sertifikat resmi ber-kop SMKN 4 Payakumbuh, logo/badge STEAMPreneur 2026, tabel klasifikasi mutu, rekapitulasi nilai ekonomi Rupiah, mitigasi risiko afkir, dan kolom tanda tangan resmi Petani & Petugas QC (8 Nov 2026).
 - [x] **Integrasi Riwayat Panen Multi-Class & Navigasi Rekap (Task FS-FE-04):** Komponen `src/components/HarvestRecap.jsx`, `AppShell.jsx`, dan `src/business/harvestFilter.js` aktif mendukung navigasi drawer langsung ke Rekap Data Panen, indikator lencana AI, visualisasi chip mutu multi-kelas (Terung 4-Class & Tomat AI), kalkulasi total nilai ekonomi gabungan, ekspor CSV akurat, serta aksi instan 'Buka QC & Cetak Sertifikat' (8 Nov 2026).
+- [x] **Packaging Aset Model AI Terung & Metadata (Task FS-02):** Berkas model bobot YOLO11 Faris (`best.onnx`, `best.pt`, `data.yaml`, `model-metadata.json`) dikemas mandiri di `server/models/terung/` untuk kepastian runtime lokal dan inferensi CPU droplet (8 Nov 2026).
+- [x] **Mesin Aturan Business Grading & Estimasi Bobot Fisik (Task FS-04):** Modul `server/services/pricing_service.py` (`calculate_business_grading`) memetakan kelas agronomi model AI (Extra Class + Class I &rarr; Grade A, Class II &rarr; Grade B, Reject &rarr; Reject) serta menghitung alokasi bobot fisik per grade dengan rekonsiliasi residu floating-point, disinkronkan ke router QC dan overlay kanvas Roboflow (8 Nov 2026).
 - [ ] **Integrasi API Harga BAPANAS:** Buat endpoint integrasi atau service scraper harga harian pangan nasional untuk wilayah Sumatera Barat / Payakumbuh dengan fallback ke cache lokal.
 
 ### Prioritas P2 (Penyempurnaan Skalabilitas & Presentasi Juri)
@@ -243,7 +245,7 @@ Jalankan perintah-perintah berikut di terminal untuk memverifikasi kondisi siste
 # 1. Jalankan unit test frontend JavaScript (89 tests, 100% PASS)
 npm test
 
-# 2. Jalankan unit test backend Python (41 tests, 100% PASS)
+# 2. Jalankan unit test backend Python (51 tests, 100% PASS)
 python3 -m unittest discover -s server/tests
 
 # 3. Uji toleransi floating-point IEEE-754 (Sudah lulus/PASS)

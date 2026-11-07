@@ -20,6 +20,12 @@ test('getClassTheme mengembalikan tema warna yang tepat untuk tiap kelas Tomat &
   assert.equal(getClassTheme('class-2').stroke, '#d97706')
   assert.equal(getClassTheme('reject').stroke, '#dc2626')
 
+  // Dukungan format kelas asli Roboflow dataset Terung
+  assert.equal(getClassTheme('Extra Class').stroke, '#059669')
+  assert.equal(getClassTheme('Class I').stroke, '#0284c7')
+  assert.equal(getClassTheme('Class II').stroke, '#d97706')
+  assert.equal(getClassTheme('Reject').stroke, '#dc2626')
+
   // Case-insensitive & whitespace trimming
   assert.equal(getClassTheme('  Fresh-Tomato  ').stroke, '#047857')
 

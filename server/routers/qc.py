@@ -14,6 +14,7 @@ from fastapi.responses import JSONResponse
 from server.services.ai_engine import ai_engine
 from server.services.mock_engine import predict_harvest_image_mock
 from server.services.pricing_service import (
+    calculate_business_grading,
     calculate_economic_projection,
     calculate_eggplant_economic_projection,
     get_commodity_pricing,
@@ -145,6 +146,13 @@ async def scan_harvest_batch(
                 reject_count=reject_count,
             )
 
+            # Business grading mapping sesuai kontrak Faris (docs/rencana-kerja-fullstack.md Bab 3.2)
+            business_grading = calculate_business_grading(
+                commodity="Terung",
+                weight_kg=weight_kg,
+                ratios=pricing_info["condition_ratios"],
+            )
+
             result_data = {
                 "status": "success",
                 "data": {
@@ -169,6 +177,7 @@ async def scan_harvest_batch(
                         },
                         "condition_ratios": pricing_info["condition_ratios"],
                     },
+                    "business_grading": business_grading,
                     "smart_pricing": pricing_info,
                 },
             }
@@ -189,6 +198,13 @@ async def scan_harvest_batch(
                 fresh_ratio_percent=fresh_ratio,
                 rotten_count=rotten_count,
                 fresh_count=fresh_count,
+            )
+
+            # Business grading mapping untuk Tomat 2-Class
+            business_grading = calculate_business_grading(
+                commodity=commodity,
+                weight_kg=weight_kg,
+                ratios={"fresh_ratio_percent": fresh_ratio, "rotten_ratio_percent": rotten_ratio},
             )
 
             result_data = {
@@ -216,6 +232,7 @@ async def scan_harvest_batch(
                             "rotten_ratio_percent": rotten_ratio,
                         },
                     },
+                    "business_grading": business_grading,
                     "smart_pricing": pricing_info,
                 },
             }

@@ -32,24 +32,24 @@ TOMATO_CANDIDATES = [
     {"class_id": 0, "name": "fresh-tomato", "conf": 0.87, "rel_box": (0.74, 0.65, 0.90, 0.83)},
 ]
 
-# Kandidat deteksi sintetis untuk Terung (4 kelas: extra-class, class-1, class-2, reject)
+# Kandidat deteksi sintetis untuk Terung (4 kelas sesuai data.yaml: 0=Class I, 1=Class II, 2=Extra Class, 3=Reject)
 # Proporsi representatif: 5 Extra Class, 4 Class 1, 2 Class 2, 1 Reject = 12 butir/buah
 EGGPLANT_CANDIDATES = [
     # Baris 1: Buah lonjong memanjang
-    {"class_id": 0, "name": "extra-class", "conf": 0.94, "rel_box": (0.08, 0.08, 0.26, 0.42)},
-    {"class_id": 0, "name": "extra-class", "conf": 0.92, "rel_box": (0.30, 0.06, 0.48, 0.40)},
-    {"class_id": 1, "name": "class-1", "conf": 0.88, "rel_box": (0.52, 0.09, 0.70, 0.43)},
-    {"class_id": 0, "name": "extra-class", "conf": 0.95, "rel_box": (0.73, 0.07, 0.92, 0.41)},
+    {"class_id": 2, "name": "extra-class", "conf": 0.94, "rel_box": (0.08, 0.08, 0.26, 0.42)},
+    {"class_id": 2, "name": "extra-class", "conf": 0.92, "rel_box": (0.30, 0.06, 0.48, 0.40)},
+    {"class_id": 0, "name": "class-1", "conf": 0.88, "rel_box": (0.52, 0.09, 0.70, 0.43)},
+    {"class_id": 2, "name": "extra-class", "conf": 0.95, "rel_box": (0.73, 0.07, 0.92, 0.41)},
     # Baris 2: Lapisan tengah
-    {"class_id": 1, "name": "class-1", "conf": 0.87, "rel_box": (0.09, 0.44, 0.28, 0.78)},
-    {"class_id": 2, "name": "class-2", "conf": 0.84, "rel_box": (0.31, 0.42, 0.49, 0.76)},
-    {"class_id": 0, "name": "extra-class", "conf": 0.89, "rel_box": (0.53, 0.45, 0.71, 0.79)},
+    {"class_id": 0, "name": "class-1", "conf": 0.87, "rel_box": (0.09, 0.44, 0.28, 0.78)},
+    {"class_id": 1, "name": "class-2", "conf": 0.84, "rel_box": (0.31, 0.42, 0.49, 0.76)},
+    {"class_id": 2, "name": "extra-class", "conf": 0.89, "rel_box": (0.53, 0.45, 0.71, 0.79)},
     {"class_id": 3, "name": "reject", "conf": 0.79, "rel_box": (0.74, 0.43, 0.93, 0.77)},  # Cacat/busuk 1
     # Baris 3: Lapisan bawah
-    {"class_id": 0, "name": "extra-class", "conf": 0.91, "rel_box": (0.14, 0.65, 0.34, 0.94)},
-    {"class_id": 1, "name": "class-1", "conf": 0.90, "rel_box": (0.36, 0.63, 0.55, 0.93)},
-    {"class_id": 1, "name": "class-1", "conf": 0.86, "rel_box": (0.57, 0.66, 0.75, 0.95)},
-    {"class_id": 2, "name": "class-2", "conf": 0.82, "rel_box": (0.76, 0.64, 0.94, 0.92)},
+    {"class_id": 2, "name": "extra-class", "conf": 0.91, "rel_box": (0.14, 0.65, 0.34, 0.94)},
+    {"class_id": 0, "name": "class-1", "conf": 0.90, "rel_box": (0.36, 0.63, 0.55, 0.93)},
+    {"class_id": 0, "name": "class-1", "conf": 0.86, "rel_box": (0.57, 0.66, 0.75, 0.95)},
+    {"class_id": 1, "name": "class-2", "conf": 0.82, "rel_box": (0.76, 0.64, 0.94, 0.92)},
 ]
 
 

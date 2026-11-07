@@ -1,0 +1,84 @@
+
+{
+  "model": {
+    "name": "Agri-Sort Eggplant Quality Detection",
+    "version": "1.0.0",
+    "architecture": "YOLO11n",
+    "task": "object-detection",
+    "framework": "Ultralytics",
+    "framework_version": "8.4.204",
+    "input_size": 640,
+    "files": {
+      "pytorch": "best.pt",
+      "onnx": "best.onnx",
+      "dataset_config": "data.yaml"
+    }
+  },
+  "dataset": {
+    "name": "Eggplant Quality Grades",
+    "source": "Roboflow",
+    "project_version": 1,
+    "classes": {
+      "0": "Class I",
+      "1": "Class II",
+      "2": "Extra Class",
+      "3": "Reject"
+    },
+    "splits": {
+      "train_images": 0,
+      "valid_images": 0,
+      "test_images": 311
+    }
+  },
+  "evaluation": {
+    "split": "test",
+    "precision": 0.6954,
+    "recall": 0.7990,
+    "map50": 0.8017,
+    "map50_95": 0.7343,
+    "per_class": {
+      "Class I": {
+        "precision": 0.666,
+        "recall": 0.735,
+        "map50": 0.729,
+        "map50_95": 0.635
+      },
+      "Class II": {
+        "precision": 0.611,
+        "recall": 0.763,
+        "map50": 0.761,
+        "map50_95": 0.731
+      },
+      "Extra Class": {
+        "precision": 0.725,
+        "recall": 0.837,
+        "map50": 0.833,
+        "map50_95": 0.743
+      },
+      "Reject": {
+        "precision": 0.779,
+        "recall": 0.861,
+        "map50": 0.883,
+        "map50_95": 0.828
+      }
+    }
+  },
+  "grading": {
+    "mapping_status": "provisional",
+    "mapping": {
+      "Class I": "Grade A",
+      "Class II": "Grade B",
+      "Extra Class": "Grade A",
+      "Reject": "Reject"
+    },
+    "standard": null
+  },
+  "inference": {
+    "default_confidence_threshold": 0.25,
+    "recommended_input_size": 640
+  },
+  "deployment": {
+    "status": "not-integrated",
+    "recommended_backend": "Python + FastAPI + Ultralytics"
+  }
+}
