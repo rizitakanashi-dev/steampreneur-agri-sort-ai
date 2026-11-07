@@ -17,6 +17,8 @@ import time
 from typing import Any, Dict, List, Optional
 from PIL import Image
 
+from server.services.tiled_inference import run_sliced_yolo_inference
+
 logger = logging.getLogger("agrisort.ai_engine")
 
 # Nonaktifkan autoinstall otomatis Ultralytics di lingkungan Linux terkelola
@@ -94,12 +96,22 @@ class YOLOInferenceEngine:
 
         if comm_key not in self._models:
             cfg = self.model_configs.get(comm_key)
-            if not cfg or not os.path.exists(cfg["path"]):
+            if not cfg:
+                raise FileNotFoundError(f"Konfigurasi model untuk komoditas '{comm_key}' tidak ditemukan.")
+
+            model_path = cfg["path"]
+            if not os.path.exists(model_path) and comm_key == "terung":
+                # Fallback ke server/models/terung/best.pt jika direktori terung lain tidak ditemukan
+                alt_path = os.path.join(self.base_dir, "server", "models", "terung", "best.pt")
+                if os.path.exists(alt_path):
+                    model_path = alt_path
+
+            if not os.path.exists(model_path):
                 raise FileNotFoundError(
-                    f"Berkas model untuk komoditas '{comm_key}' tidak ditemukan di lokasi: {cfg['path'] if cfg else 'None'}"
+                    f"Berkas model untuk komoditas '{comm_key}' tidak ditemukan di lokasi: {model_path}"
                 )
-            logger.info("Memuat bobot model YOLO11 %s dari: %s", comm_key, cfg["path"])
-            self._models[comm_key] = YOLO(cfg["path"])
+            logger.info("Memuat bobot model YOLO11 %s dari: %s", comm_key, model_path)
+            self._models[comm_key] = YOLO(model_path)
 
         return self._models[comm_key], comm_key
 
@@ -108,15 +120,19 @@ class YOLOInferenceEngine:
         image_bytes: bytes,
         commodity: str = "Terung",
         confidence_threshold: float = 0.25,
-        iou_threshold: float = 0.45,
+        iou_threshold: float = 0.40,
+        enable_slicing: bool = True,
+        disambiguate_grades: bool = True,
     ) -> Dict[str, Any]:
         """
-        Mengeksekusi inferensi pada citra panen.
+        Mengeksekusi inferensi pada citra panen menggunakan Sliced SAHI & Grade Disambiguation.
         Parameter:
             image_bytes: Buffer byte gambar (JPEG/PNG/WebP)
             commodity: Jenis komoditas ("Terung" atau "Tomat")
             confidence_threshold: Batas ambang keyakinan minimum (default 0.25 untuk Terung)
-            iou_threshold: Batas Non-Maximum Suppression (default 0.45)
+            iou_threshold: Batas Non-Maximum Suppression (default 0.40)
+            enable_slicing: Mengaktifkan pemotongan grid dinamis (SAHI) untuk objek bertumpuk
+            disambiguate_grades: Menjalankan kalibrasi diskriminasi mutu (Class II vs Reject)
         Mengembalikan:
             Dictionary terstruktur sesuai kontrak raw detection baku.
         """
@@ -134,18 +150,16 @@ class YOLOInferenceEngine:
         model, comm_key = self.get_model(commodity)
         cfg = self.model_configs[comm_key]
 
-        # 3. Jalankan inferensi Ultralytics YOLO
-        # imgsz=640 sesuai dengan parameter training di Google Colab
-        results = model.predict(
-            source=image,
-            conf=confidence_threshold,
-            iou=iou_threshold,
-            imgsz=640,
-            verbose=False,
+        # 3. Jalankan inferensi Ultralytics YOLO dengan Tiled SAHI & Grade Disambiguation
+        sliced_res = run_sliced_yolo_inference(
+            image=image,
+            model=model,
+            commodity=comm_key,
+            confidence_threshold=confidence_threshold,
+            iou_threshold=iou_threshold,
+            enable_slicing=enable_slicing,
+            disambiguate_grades=disambiguate_grades,
         )
-
-        res = results[0]
-        boxes = res.boxes
 
         detections: List[Dict[str, Any]] = []
         class_counts: Dict[str, int] = {}
@@ -155,44 +169,34 @@ class YOLOInferenceEngine:
             class_counts[exp_cls] = 0
             class_counts[self._normalize_class_slug(exp_cls)] = 0
 
-        # 4. Ekstraksi koordinat bounding box dan skor keyakinan
-        if boxes is not None and len(boxes) > 0:
-            for idx, box in enumerate(boxes):
-                cls_id = int(box.cls[0].item())
-                raw_name = model.names.get(cls_id, f"class_{cls_id}")
-                conf = round(float(box.conf[0].item()), 4)
-                xyxy = box.xyxy[0].tolist()
+        # 4. Format hasil deteksi
+        for idx, item in enumerate(sliced_res["detections"]):
+            raw_name = item["class_name"]
+            conf = item["confidence"]
+            box = item["box"]
+            name_slug = self._normalize_class_slug(raw_name)
 
-                name_slug = self._normalize_class_slug(raw_name)
+            det_obj = {
+                "id": idx + 1,
+                "class_id": item["class_id"],
+                "class_name": raw_name,
+                "class_slug": name_slug,
+                "confidence": conf,
+                "box": box,
+            }
+            if item.get("disambiguated"):
+                det_obj["disambiguated"] = True
+                det_obj["disambiguation_reason"] = item.get("disambiguation_reason")
 
-                # Clamping koordinat dalam batas lebar dan tinggi citra asli
-                x1 = max(0.0, min(float(width), float(xyxy[0])))
-                y1 = max(0.0, min(float(height), float(xyxy[1])))
-                x2 = max(0.0, min(float(width), float(xyxy[2])))
-                y2 = max(0.0, min(float(height), float(xyxy[3])))
-
-                detections.append({
-                    "id": idx + 1,
-                    "class_id": cls_id,
-                    "class_name": raw_name,
-                    "class_slug": name_slug,
-                    "confidence": conf,
-                    "box": {
-                        "x1": round(x1, 1),
-                        "y1": round(y1, 1),
-                        "x2": round(x2, 1),
-                        "y2": round(y2, 1),
-                    },
-                })
-
-                class_counts[raw_name] = class_counts.get(raw_name, 0) + 1
-                if name_slug != raw_name:
-                    class_counts[name_slug] = class_counts.get(name_slug, 0) + 1
+            detections.append(det_obj)
+            class_counts[raw_name] = class_counts.get(raw_name, 0) + 1
+            if name_slug != raw_name:
+                class_counts[name_slug] = class_counts.get(name_slug, 0) + 1
 
         elapsed_ms = round((time.perf_counter() - start_time) * 1000, 2)
 
         return {
-            "contract_version": "1.1.0",
+            "contract_version": "1.2.0",
             "model_name": cfg["name"],
             "model_version": cfg["version"],
             "commodity": cfg["expected_classes"],
@@ -202,6 +206,10 @@ class YOLOInferenceEngine:
             "detection_summary": {
                 "total_objects": len(detections),
                 "class_counts": class_counts,
+                "slicing_applied": sliced_res["is_sliced"],
+                "dense_box_suppressed": sliced_res["dense_box_suppressed"],
+                "tiles_processed": sliced_res["tiles_processed"],
+                "disambiguated_count": sliced_res["disambiguated_count"],
             },
         }
 

@@ -32,6 +32,8 @@ async def scan_harvest_batch(
     weight_kg: Optional[float] = Form(None, description="Estimasi berat fisik total dari timbangan (kg)"),
     confidence_threshold: float = Form(0.35, description="Batas ambang confidence deteksi (0.05 - 0.95)"),
     mode: str = Form("production", description="Mode eksekusi: 'production' atau 'mock'"),
+    enable_slicing: bool = Form(True, description="Aktifkan Tiled Inference (SAHI) untuk objek bertumpuk"),
+    disambiguate_grades: bool = Form(True, description="Aktifkan kalibrasi diskriminasi mutu Class II vs Reject"),
 ):
     """
     Endpoint pemindaian kualitas panen (POST /api/v1/qc/scan).
@@ -112,6 +114,8 @@ async def scan_harvest_batch(
                     image_bytes=image_bytes,
                     commodity=commodity,
                     confidence_threshold=confidence_threshold,
+                    enable_slicing=enable_slicing,
+                    disambiguate_grades=disambiguate_grades,
                 )
                 is_simulated = False
             except Exception:
@@ -168,6 +172,9 @@ async def scan_harvest_batch(
                         "inference_time_ms": raw_detection["inference_time_ms"],
                         "image_dimensions": {"width": width, "height": height},
                         "detections": raw_detection["detections"],
+                        "slicing_applied": raw_detection["detection_summary"].get("slicing_applied", False),
+                        "dense_box_suppressed": raw_detection["detection_summary"].get("dense_box_suppressed", False),
+                        "disambiguated_count": raw_detection["detection_summary"].get("disambiguated_count", 0),
                         "object_counts": {
                             "total": total_objs,
                             "extra_class": extra_count,
@@ -222,6 +229,9 @@ async def scan_harvest_batch(
                         "inference_time_ms": raw_detection["inference_time_ms"],
                         "image_dimensions": {"width": width, "height": height},
                         "detections": raw_detection["detections"],
+                        "slicing_applied": raw_detection["detection_summary"].get("slicing_applied", False),
+                        "dense_box_suppressed": raw_detection["detection_summary"].get("dense_box_suppressed", False),
+                        "disambiguated_count": raw_detection["detection_summary"].get("disambiguated_count", 0),
                         "object_counts": {
                             "total": total_objs,
                             "fresh_tomato": fresh_count,

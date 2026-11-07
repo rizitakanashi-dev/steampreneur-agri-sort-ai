@@ -77,6 +77,8 @@ export function buildScanFormData({
   weightKg = null,
   confidenceThreshold = 0.35,
   mode = 'production',
+  enableSlicing = true,
+  disambiguateGrades = true,
 }) {
   const formData = new FormData()
   formData.append('image', imageFile)
@@ -92,6 +94,14 @@ export function buildScanFormData({
 
   if (mode) {
     formData.append('mode', String(mode))
+  }
+
+  if (enableSlicing !== undefined) {
+    formData.append('enable_slicing', String(enableSlicing))
+  }
+
+  if (disambiguateGrades !== undefined) {
+    formData.append('disambiguate_grades', String(disambiguateGrades))
   }
 
   return formData
@@ -138,6 +148,8 @@ export async function scanHarvestImage({
   weightKg = null,
   confidenceThreshold = 0.35,
   mode = 'production',
+  enableSlicing = true,
+  disambiguateGrades = true,
   timeoutMs = DEFAULT_TIMEOUT_MS,
 }) {
   validateScanParams({ imageFile, confidenceThreshold, weightKg })
@@ -148,6 +160,8 @@ export async function scanHarvestImage({
     weightKg,
     confidenceThreshold,
     mode,
+    enableSlicing,
+    disambiguateGrades,
   })
 
   const response = await fetchWithTimeout(

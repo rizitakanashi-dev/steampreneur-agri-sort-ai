@@ -92,6 +92,32 @@ class TestYOLOInferenceEngine(unittest.TestCase):
             self.engine.get_model("Terung")
         self.assertIn("belum terpasang", str(ctx.exception).lower())
 
+    def test_predict_real_model_slicing_and_contract(self):
+        """Memverifikasi pemanggilan predict() nyata menghasilkan kontrak 1.2.0 dan metadata slicing/disambiguasi."""
+        if not self.engine.is_available():
+            self.skipTest("Ultralytics tidak terpasang di lingkungan uji")
+
+        # Buat gambar sintetis beresolusi 640x480
+        test_img = Image.new("RGB", (640, 480), color=(100, 40, 120))
+        buf = BytesIO()
+        test_img.save(buf, format="JPEG")
+        raw_bytes = buf.getvalue()
+
+        res = self.engine.predict(
+            image_bytes=raw_bytes,
+            commodity="Terung",
+            confidence_threshold=0.25,
+            enable_slicing=True,
+            disambiguate_grades=True,
+        )
+
+        self.assertEqual(res["contract_version"], "1.2.0")
+        self.assertEqual(res["model_name"], "Agri-Sort Eggplant Quality Detection")
+        self.assertIn("slicing_applied", res["detection_summary"])
+        self.assertIn("dense_box_suppressed", res["detection_summary"])
+        self.assertIn("disambiguated_count", res["detection_summary"])
+        self.assertIsInstance(res["detections"], list)
+
 
 if __name__ == "__main__":
     unittest.main()
