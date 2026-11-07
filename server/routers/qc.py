@@ -11,6 +11,7 @@ import uuid
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile, status
 from fastapi.responses import JSONResponse
 
+from server.services.ai_engine import ai_engine
 from server.services.mock_engine import predict_harvest_image_mock
 from server.services.pricing_service import (
     calculate_economic_projection,
@@ -100,23 +101,41 @@ async def scan_harvest_batch(
                 },
             }
 
-        # 5. Jalankan Inferensi Berdasarkan Komoditas
-        if is_eggplant:
-            # Model Terung: 4 kelas (extra-class, class-1, class-2, reject)
+        # 5. Jalankan Inferensi Berdasarkan Komoditas (Real AI vs Mock Fallback)
+        is_simulated = False
+        raw_detection = None
+
+        if mode == "production" and ai_engine.is_available():
+            try:
+                raw_detection = ai_engine.predict(
+                    image_bytes=image_bytes,
+                    commodity=commodity,
+                    confidence_threshold=confidence_threshold,
+                )
+                is_simulated = False
+            except Exception:
+                # Fallback aman jika model belum dimuat atau terjadi kendala
+                raw_detection = None
+                is_simulated = True
+
+        if raw_detection is None:
+            is_simulated = True
             raw_detection = await predict_harvest_image_mock(
                 image_bytes=image_bytes,
                 width=width,
                 height=height,
                 confidence_threshold=confidence_threshold,
                 simulate_delay=(mode != "test"),
-                commodity="Terung",
+                commodity=commodity,
             )
+
+        if is_eggplant:
             class_counts = raw_detection["detection_summary"]["class_counts"]
             total_objs = raw_detection["detection_summary"]["total_objects"]
-            extra_count = class_counts.get("extra-class", 0)
-            class1_count = class_counts.get("class-1", 0)
-            class2_count = class_counts.get("class-2", 0)
-            reject_count = class_counts.get("reject", 0)
+            extra_count = class_counts.get("extra-class", 0) or class_counts.get("Extra Class", 0)
+            class1_count = class_counts.get("class-1", 0) or class_counts.get("Class I", 0) or class_counts.get("Class 1", 0)
+            class2_count = class_counts.get("class-2", 0) or class_counts.get("Class II", 0) or class_counts.get("Class 2", 0)
+            reject_count = class_counts.get("reject", 0) or class_counts.get("Reject", 0)
 
             pricing_info = calculate_eggplant_economic_projection(
                 weight_kg=weight_kg,
@@ -131,11 +150,11 @@ async def scan_harvest_batch(
                 "data": {
                     "scan_id": scan_id,
                     "timestamp": timestamp,
-                    "is_simulated": True,
+                    "is_simulated": is_simulated,
                     "commodity": "Terung",
                     "ai_supported": True,
                     "actual_weight_kg": weight_kg,
-                    "grading_system": "4-class (Extra Class, Class 1, Class 2, Reject)",
+                    "grading_system": "4-class (Extra Class, Class I, Class II, Reject)",
                     "inference_result": {
                         "model_version": raw_detection["model_version"],
                         "inference_time_ms": raw_detection["inference_time_ms"],
@@ -155,19 +174,10 @@ async def scan_harvest_batch(
             }
 
         else:
-            # Model Tomat: 2 kelas (fresh-tomato, rotten-tomato)
-            raw_detection = await predict_harvest_image_mock(
-                image_bytes=image_bytes,
-                width=width,
-                height=height,
-                confidence_threshold=confidence_threshold,
-                simulate_delay=(mode != "test"),
-                commodity="Tomat",
-            )
-
+            class_counts = raw_detection["detection_summary"]["class_counts"]
             total_objs = raw_detection["detection_summary"]["total_objects"]
-            fresh_count = raw_detection["detection_summary"]["class_counts"].get("fresh-tomato", 0)
-            rotten_count = raw_detection["detection_summary"]["class_counts"].get("rotten-tomato", 0)
+            fresh_count = class_counts.get("fresh-tomato", 0) or class_counts.get("fresh", 0)
+            rotten_count = class_counts.get("rotten-tomato", 0) or class_counts.get("rotten", 0)
 
             # Mitigasi ZeroDivisionError jika tidak ada objek terdeteksi
             fresh_ratio = round((fresh_count / total_objs) * 100, 2) if total_objs > 0 else 0.0
@@ -186,7 +196,7 @@ async def scan_harvest_batch(
                 "data": {
                     "scan_id": scan_id,
                     "timestamp": timestamp,
-                    "is_simulated": True,
+                    "is_simulated": is_simulated,
                     "commodity": commodity,
                     "ai_supported": True,
                     "actual_weight_kg": weight_kg,
