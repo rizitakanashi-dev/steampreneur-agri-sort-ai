@@ -95,6 +95,7 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm }
   const [activeTab, setActiveTab] = useState(0) // 0: Live Camera, 1: Upload File
   const [confidenceThreshold, setConfidenceThreshold] = useState(0.20)
   const [showSensitivitySetting, setShowSensitivitySetting] = useState(false)
+  const [isDragging, setIsDragging] = useState(false)
 
   // State gambar
   const [imageFile, setImageFile] = useState(null)
@@ -135,9 +136,8 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm }
     await triggerInference(file, previewUrl, selectedCommodity, confidenceThreshold)
   }
 
-  // Handle pilih berkas gambar
-  const handleFileChange = (e) => {
-    const file = e.target?.files?.[0]
+  // Handle pemrosesan berkas citra (baik via file dialog maupun drag and drop)
+  const handleProcessFile = (file) => {
     if (!file) return
 
     const allowedTypes = ['image/jpeg', 'image/png', 'image/webp']
@@ -153,12 +153,45 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm }
 
     setImageFile(file)
     setScanError('')
+    setScanResult(null)
+    setActiveTab(1) // Beralih otomatis ke tab Pratinjau Berkas
     const reader = new FileReader()
     reader.onload = (event) => {
       const dataUrl = event.target?.result
       setImagePreview(dataUrl)
     }
     reader.readAsDataURL(file)
+  }
+
+  // Handle pilih berkas gambar via input file
+  const handleFileChange = (e) => {
+    const file = e.target?.files?.[0]
+    if (file) {
+      handleProcessFile(file)
+    }
+  }
+
+  // Handle Drag & Drop Events
+  const handleDragOver = (e) => {
+    e.preventDefault()
+    e.stopPropagation()
+    if (!isDragging) setIsDragging(true)
+  }
+
+  const handleDragLeave = (e) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDragging(false)
+  }
+
+  const handleDrop = (e) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDragging(false)
+    const file = e.dataTransfer?.files?.[0]
+    if (file) {
+      handleProcessFile(file)
+    }
   }
 
   const handleClearImage = () => {
@@ -387,7 +420,45 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm }
 
       {/* 2. TAMPILAN SCANNER (JIKA BELUM ADA HASIL SCAN) */}
       {!scanResult && (
-        <Card elevation={2} sx={{ borderRadius: 3 }}>
+        <Card
+          elevation={2}
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
+          sx={{
+            borderRadius: 3,
+            position: 'relative',
+            border: isDragging ? '2px dashed #047857' : '1px solid transparent',
+            bgcolor: isDragging ? 'rgba(4, 120, 87, 0.04)' : 'inherit',
+            transition: 'all 0.2s',
+          }}
+        >
+          {isDragging && (
+            <Box
+              sx={{
+                position: 'absolute',
+                inset: 0,
+                zIndex: 20,
+                bgcolor: 'rgba(240, 253, 244, 0.92)',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                pointerEvents: 'none',
+                borderRadius: 3,
+                border: '3px dashed #047857',
+              }}
+            >
+              <CloudUploadRoundedIcon sx={{ fontSize: 64, color: '#047857', mb: 1.5 }} />
+              <Typography variant="h6" fontWeight={800} color="#047857">
+                Lepaskan Berkas Foto di Sini
+              </Typography>
+              <Typography variant="body2" color="#065f46">
+                Foto keranjang {selectedCommodity} akan segera disiapkan untuk dianalisis
+              </Typography>
+            </Box>
+          )}
+
           <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
             <Tabs
               value={activeTab}
@@ -494,26 +565,30 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm }
                 ) : (
                   <Box
                     onClick={() => fileInputRef.current?.click()}
+                    onDragOver={handleDragOver}
+                    onDragLeave={handleDragLeave}
+                    onDrop={handleDrop}
                     sx={{
-                      border: '2px dashed #94a3b8',
+                      border: '2px dashed',
+                      borderColor: isDragging ? 'primary.main' : '#94a3b8',
                       borderRadius: 2.5,
                       p: { xs: 3, sm: 5 },
                       textAlign: 'center',
                       cursor: 'pointer',
-                      bgcolor: '#f8fafc',
+                      bgcolor: isDragging ? 'rgba(3, 110, 69, 0.08)' : '#f8fafc',
                       '&:hover': { bgcolor: '#f1f5f9', borderColor: 'primary.main' },
                       transition: 'all 0.2s',
                     }}
                   >
                     <CloudUploadRoundedIcon sx={{ fontSize: 56, color: 'primary.main', mb: 1.5 }} />
                     <Typography variant="subtitle1" fontWeight={700}>
-                      Klik untuk Pilih Foto atau Seret ke Sini
+                      Klik untuk Pilih Foto atau Tarik &amp; Lepaskan (Drag &amp; Drop) ke Sini
                     </Typography>
                     <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
                       Ambil foto tampak atas (top-down) keranjang {selectedCommodity} &bull; JPG, PNG, atau WebP (maks. 10 MB)
                     </Typography>
                     <Button variant="outlined" sx={{ mt: 2, borderRadius: 2 }} startIcon={<CloudUploadRoundedIcon />}>
-                      Pilih Berkas
+                      Pilih Berkas dari Komputer
                     </Button>
                   </Box>
                 )}
