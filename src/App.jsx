@@ -137,12 +137,12 @@ function DashboardPreview({ onNavigate }) {
   )
 }
 
-function FoundationPage({ activePage, onHarvestConfirm, onNavigate, batches, selectedBatch, onBackToInput, onViewRecap }) {
+function FoundationPage({ activePage, onHarvestConfirm, onNavigate, batches, selectedBatch, onBackToInput, onViewRecap, onSelectBatch }) {
   const page = pages[activePage]
   if (activePage === 'overview') return <DashboardPreview onNavigate={onNavigate} />
   if (activePage === 'scanner') return <HarvestForm onSave={onHarvestConfirm} />
   if (activePage === 'results') return <QCResults batch={selectedBatch} onBackToInput={onBackToInput} onViewRecap={onViewRecap} />
-  if (activePage === 'results-list') return <HarvestRecap batches={batches} />
+  if (activePage === 'results-list') return <HarvestRecap batches={batches} onSelectBatch={onSelectBatch} />
   if (activePage === 'pricing') return <PricingDashboard />
   return (
     <Card>
@@ -185,14 +185,23 @@ function App() {
     setActivePage('results-list')
   }
 
+  const handleSelectBatch = (batch) => {
+    setSelectedBatch(batch)
+    setActivePage('results')
+  }
+
   const handleHarvestConfirm = (input) => {
     const calculation = calculateHarvest(input)
     const valueCalculation = calculateHarvestValue({
       ...input,
       hargaAcuanPerKg: REFERENCE_PRICES_PER_KG[input.komoditas],
     })
+    const isAiScan = Boolean(input.scanResult?.inference_result)
     const savedBatch = saveBatch({
       ...input,
+      ai_scan_performed: isAiScan,
+      inference: input.scanResult?.inference_result,
+      pricing: input.scanResult?.smart_pricing,
       hasil: {
         persenA: calculation.persentase.gradeA,
         persenB: calculation.persentase.gradeB,
@@ -203,7 +212,7 @@ function App() {
         nilaiA: valueCalculation.nilai.gradeA,
         nilaiB: valueCalculation.nilai.gradeB,
         nilaiC: valueCalculation.nilai.reject,
-        totalNilai: valueCalculation.totalNilai,
+        totalNilai: input.scanResult?.smart_pricing?.estimated_economic_value ?? valueCalculation.totalNilai,
       },
       dicatatPada: new Date().toISOString(),
     })
@@ -218,7 +227,16 @@ function App() {
       <Container maxWidth="lg" sx={{ px: { xs: 1.5, sm: 2, md: 3 }, py: { xs: 2.5, sm: 3.5, md: 4.5 } }}>
         <PageHeader eyebrow="Agri-Sort AI / Precision Agriculture" title={page.title} description={page.description} />
         {harvestMessage && <Alert onClose={() => setHarvestMessage('')} severity="success" sx={{ mb: 2 }}>{harvestMessage}</Alert>}
-        <FoundationPage activePage={activePage} batches={batches} onBackToInput={handleBackToInput} onHarvestConfirm={handleHarvestConfirm} onNavigate={handleNavigate} onViewRecap={handleViewRecap} selectedBatch={selectedBatch} />
+        <FoundationPage
+          activePage={activePage}
+          batches={batches}
+          onBackToInput={handleBackToInput}
+          onHarvestConfirm={handleHarvestConfirm}
+          onNavigate={handleNavigate}
+          onSelectBatch={handleSelectBatch}
+          onViewRecap={handleViewRecap}
+          selectedBatch={selectedBatch}
+        />
       </Container>
     </AppShell>
   )

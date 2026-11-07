@@ -225,6 +225,7 @@ Proposal STEAMPreneur SMK mewajibkan integrasi nyata dari 5 pilar:
 - [x] **Komponen Visualisasi Deteksi Citra Interaktif (Task FS-FE-02):** Komponen `src/components/ScanCanvasOverlay.jsx` dan modul helper `src/utils/canvasOverlayHelper.js` aktif melukis kotak pembatas (*bounding box*) responsif dengan penskalaan proporsional, switch anotasi, dan palet warna multi-kelas Tomat & Terung (7 Nov 2026).
 - [x] **Modernisasi Halaman Hasil QC & Integrasi Alur Pemindaian (Task FS-FE-03):** Halaman `src/components/QCResults.jsx` dan tombol pemicu AI di `HarvestForm.jsx` aktif menyajikan visualisasi kanvas bounding box, diagram donat proporsi kondisi buah (`@mui/x-charts`), kartu STEAM Math smart pricing, serta tombol pratinjau sertifikat (7 Nov 2026).
 - [x] **Fitur Cetak Sertifikat & Resi Resmi QC Panen Digital (Pilihan 1 - Demo Kepsek):** Komponen `src/components/QCPrintCertificate.jsx`, helper `src/utils/qcCertificateHelper.js`, modal pratinjau A4 di `src/components/QCResults.jsx`, serta isolasi stylesheet `@media print` di `src/index.css` aktif mencetak sertifikat resmi ber-kop SMKN 4 Payakumbuh, logo/badge STEAMPreneur 2026, tabel klasifikasi mutu, rekapitulasi nilai ekonomi Rupiah, mitigasi risiko afkir, dan kolom tanda tangan resmi Petani & Petugas QC (8 Nov 2026).
+- [x] **Integrasi Riwayat Panen Multi-Class & Navigasi Rekap (Task FS-FE-04):** Komponen `src/components/HarvestRecap.jsx`, `AppShell.jsx`, dan `src/business/harvestFilter.js` aktif mendukung navigasi drawer langsung ke Rekap Data Panen, indikator lencana AI, visualisasi chip mutu multi-kelas (Terung 4-Class & Tomat AI), kalkulasi total nilai ekonomi gabungan, ekspor CSV akurat, serta aksi instan 'Buka QC & Cetak Sertifikat' (8 Nov 2026).
 - [ ] **Integrasi API Harga BAPANAS:** Buat endpoint integrasi atau service scraper harga harian pangan nasional untuk wilayah Sumatera Barat / Payakumbuh dengan fallback ke cache lokal.
 
 ### Prioritas P2 (Penyempurnaan Skalabilitas & Presentasi Juri)
@@ -239,7 +240,7 @@ Proposal STEAMPreneur SMK mewajibkan integrasi nyata dari 5 pilar:
 Jalankan perintah-perintah berikut di terminal untuk memverifikasi kondisi sistem:
 
 ```bash
-# 1. Jalankan unit test frontend JavaScript (87 tests, 100% PASS)
+# 1. Jalankan unit test frontend JavaScript (89 tests, 100% PASS)
 npm test
 
 # 2. Jalankan unit test backend Python (41 tests, 100% PASS)

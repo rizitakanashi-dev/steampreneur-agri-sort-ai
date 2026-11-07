@@ -76,14 +76,24 @@ export function listCommodities(batches = []) {
 /**
  * Menghitung total berat (kg) dan total nilai (Rp) dari sekumpulan batch.
  * Dipakai oleh baris total di tabel rekap.
- * Batch tanpa `hasil` dianggap memiliki nilai 0.
+ * Mendukung batch manual (hasil.totalNilai) maupun batch AI Scan (smart_pricing).
+ * Batch tanpa data nilai dianggap memiliki nilai 0.
  */
 export function calculateBatchTotals(batches = []) {
   return batches.reduce(
-    (acc, batch) => ({
-      totalBeratKg: acc.totalBeratKg + (Number(batch?.beratKg) || 0),
-      totalNilai: acc.totalNilai + (Number(batch?.hasil?.totalNilai) || 0),
-    }),
+    (acc, batch) => {
+      const batchWeight = Number(batch?.beratKg ?? batch?.volume_kg) || 0
+      const batchValue =
+        Number(
+          batch?.pricing?.estimated_economic_value ??
+          batch?.scanResult?.smart_pricing?.estimated_economic_value ??
+          batch?.hasil?.totalNilai
+        ) || 0
+      return {
+        totalBeratKg: acc.totalBeratKg + batchWeight,
+        totalNilai: acc.totalNilai + batchValue,
+      }
+    },
     { totalBeratKg: 0, totalNilai: 0 },
   )
 }

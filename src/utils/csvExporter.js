@@ -75,11 +75,16 @@ export function buildHarvestCsvRows(batches = []) {
   const rows = [CSV_HEADERS]
   for (const batch of batches) {
     const result = batch.hasil || {}
+    const totalNilai =
+      result.totalNilai ??
+      batch.pricing?.estimated_economic_value ??
+      batch.scanResult?.smart_pricing?.estimated_economic_value ??
+      ''
     rows.push([
       batch.id,
       batch.tanggal,
       batch.komoditas,
-      numericCell(batch.beratKg),
+      numericCell(batch.beratKg ?? batch.volume_kg),
       numericCell(batch.kesegaranPersen),
       batch.ukuran,
       numericCell(batch.cacatPersen),
@@ -92,7 +97,7 @@ export function buildHarvestCsvRows(batches = []) {
       numericCell(result.nilaiA),
       numericCell(result.nilaiB),
       numericCell(result.nilaiC),
-      numericCell(result.totalNilai),
+      numericCell(totalNilai),
       batch.catatan ?? '',
     ])
   }
