@@ -7,12 +7,58 @@ Dokumen Acuan: docs/rencana-kerja-fullstack.md (Task FS-BE-04)
 from typing import Any, Dict
 from fastapi import APIRouter, HTTPException, Query, status
 
+from server.services.bapanas_service import bapanas_service
 from server.services.pricing_service import (
     get_commodity_pricing,
     list_supported_commodities,
 )
 
 router = APIRouter(prefix="/api/v1/pricing", tags=["Pricing & Market Reference"])
+
+
+@router.get("/bapanas/live")
+async def get_bapanas_live() -> Dict[str, Any]:
+    """
+    Mengambil data harga pangan harian resmi langsung dari Panel Harga BAPANAS (Sumatera Barat).
+    """
+    data = bapanas_service.get_all_prices()
+    return {
+        "status": "success",
+        "data": data,
+    }
+
+
+@router.get("/bapanas/commodities/{commodity}")
+async def get_bapanas_commodity(commodity: str) -> Dict[str, Any]:
+    """
+    Mengambil harga resmi BAPANAS untuk komoditas tertentu (Cabai, Tomat, Terung).
+    """
+    data = bapanas_service.get_commodity_price(commodity)
+    if not data:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={
+                "code": "BAPANAS_COMMODITY_NOT_FOUND",
+                "message": f"Komoditas '{commodity}' tidak terdaftar dalam data Panel Harga BAPANAS.",
+            },
+        )
+    return {
+        "status": "success",
+        "data": data,
+    }
+
+
+@router.post("/bapanas/sync")
+async def sync_bapanas() -> Dict[str, Any]:
+    """
+    Memicu pembaruan sinkronisasi feed BAPANAS secara instan.
+    """
+    updated = bapanas_service.sync_feed(force=True)
+    return {
+        "status": "success",
+        "message": "Data Panel Harga BAPANAS berhasil disinkronkan ke versi terbaru.",
+        "data": updated,
+    }
 
 
 @router.get("/commodities")

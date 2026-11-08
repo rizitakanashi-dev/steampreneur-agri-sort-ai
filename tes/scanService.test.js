@@ -4,9 +4,12 @@ import {
   ApiError,
   buildScanFormData,
   checkBackendHealth,
+  fetchBapanasCommodity,
+  fetchBapanasLive,
   fetchPricingCommodities,
   fetchScanHistory,
   scanHarvestImage,
+  syncBapanasPrices,
   validateScanParams,
 } from '../src/services/scanService.js'
 
@@ -239,3 +242,83 @@ test('fetchScanHistory mengambil riwayat scan dengan benar', async () => {
     globalThis.fetch = originalFetch
   }
 })
+
+test('fetchBapanasLive mengambil data feed BAPANAS resmi', async () => {
+  const originalFetch = globalThis.fetch
+
+  globalThis.fetch = async () => ({
+    ok: true,
+    json: async () => ({
+      status: 'success',
+      data: {
+        source: 'Panel Harga Pangan — Badan Pangan Nasional (BAPANAS)',
+        region: 'Sumatera Barat',
+        market_center: 'Pasar Ibuh Payakumbuh',
+        commodities: {
+          tomat: { commodity_name: 'Tomat', price_per_kg: 12000 },
+        },
+      },
+    }),
+  })
+
+  try {
+    const data = await fetchBapanasLive()
+    assert.equal(data.region, 'Sumatera Barat')
+    assert.equal(data.market_center, 'Pasar Ibuh Payakumbuh')
+    assert.equal(data.commodities.tomat.price_per_kg, 12000)
+  } finally {
+    globalThis.fetch = originalFetch
+  }
+})
+
+test('syncBapanasPrices memperbarui data feed BAPANAS', async () => {
+  const originalFetch = globalThis.fetch
+
+  globalThis.fetch = async () => ({
+    ok: true,
+    json: async () => ({
+      status: 'success',
+      message: 'Data Panel Harga BAPANAS berhasil disinkronkan ke versi terbaru.',
+      data: {
+        sync_status: 'live',
+        region: 'Sumatera Barat',
+      },
+    }),
+  })
+
+  try {
+    const data = await syncBapanasPrices()
+    assert.equal(data.sync_status, 'live')
+    assert.equal(data.region, 'Sumatera Barat')
+  } finally {
+    globalThis.fetch = originalFetch
+  }
+})
+
+test('fetchBapanasCommodity mengambil harga komoditas spesifik', async () => {
+  const originalFetch = globalThis.fetch
+
+  globalThis.fetch = async (url) => {
+    assert.ok(url.includes('/api/v1/pricing/bapanas/commodities/cabai%20merah%20keriting'))
+    return {
+      ok: true,
+      json: async () => ({
+        status: 'success',
+        data: {
+          commodity_name: 'Cabai Merah Keriting',
+          price_per_kg: 45000,
+          market: 'Pasar Ibuh Payakumbuh',
+        },
+      }),
+    }
+  }
+
+  try {
+    const item = await fetchBapanasCommodity('cabai merah keriting')
+    assert.equal(item.commodity_name, 'Cabai Merah Keriting')
+    assert.equal(item.price_per_kg, 45000)
+  } finally {
+    globalThis.fetch = originalFetch
+  }
+})
+

@@ -45,7 +45,7 @@ const pages = {
 const metrics = [
   { label: 'Batch tersimpan', value: 'Lokal', detail: 'tersimpan di browser ini', icon: LocalShippingRoundedIcon, color: '#036e45' },
   { label: 'Komoditas terdaftar', value: String(COMMODITY_OPTIONS.length), detail: 'sesuai konfigurasi harga', icon: AutoAwesomeRoundedIcon, color: '#2f7299' },
-  { label: 'Sumber harga', value: 'Simulasi', detail: 'bukan data BAPANAS resmi', icon: TrendingUpRoundedIcon, color: '#b49262' },
+  { label: 'Sumber harga', value: 'BAPANAS', detail: 'Panel Harga Pangan Sumbar', icon: TrendingUpRoundedIcon, color: '#036e45' },
 ]
 
 const rupiahFormatter = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 })

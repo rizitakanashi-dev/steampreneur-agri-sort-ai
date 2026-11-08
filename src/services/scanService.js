@@ -227,6 +227,42 @@ export async function fetchPricingCommodities(timeoutMs = 5000) {
 }
 
 /**
+ * Mengambil data live feed Panel Harga Pangan BAPANAS (GET /api/v1/pricing/bapanas/live).
+ */
+export async function fetchBapanasLive(timeoutMs = 5000) {
+  const response = await fetchWithTimeout('/api/v1/pricing/bapanas/live', { method: 'GET' }, timeoutMs)
+  if (!response.ok) {
+    throw new ApiError('Gagal memuat feed harga BAPANAS.', { status: response.status })
+  }
+  const data = await response.json()
+  return data.data || null
+}
+
+/**
+ * Memicu sinkronisasi instan feed Panel Harga Pangan BAPANAS (POST /api/v1/pricing/bapanas/sync).
+ */
+export async function syncBapanasPrices(timeoutMs = 8000) {
+  const response = await fetchWithTimeout('/api/v1/pricing/bapanas/sync', { method: 'POST' }, timeoutMs)
+  if (!response.ok) {
+    throw new ApiError('Gagal menyinkronkan data BAPANAS.', { status: response.status })
+  }
+  const data = await response.json()
+  return data.data || null
+}
+
+/**
+ * Mengambil harga resmi BAPANAS untuk komoditas tertentu (GET /api/v1/pricing/bapanas/commodities/:commodity).
+ */
+export async function fetchBapanasCommodity(commodity, timeoutMs = 5000) {
+  const response = await fetchWithTimeout(`/api/v1/pricing/bapanas/commodities/${encodeURIComponent(commodity)}`, { method: 'GET' }, timeoutMs)
+  if (!response.ok) {
+    throw new ApiError(`Gagal mengambil data harga BAPANAS untuk ${commodity}.`, { status: response.status })
+  }
+  const data = await response.json()
+  return data.data || null
+}
+
+/**
  * Mengambil riwayat pemindaian panen dari backend (GET /api/v1/qc/history).
  */
 export async function fetchScanHistory({ limit = 50, offset = 0, commodity = null, timeoutMs = 5000 } = {}) {

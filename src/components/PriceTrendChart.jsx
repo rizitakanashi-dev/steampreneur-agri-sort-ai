@@ -10,7 +10,7 @@ const rupiahFormatter = new Intl.NumberFormat('id-ID', { maximumFractionDigits: 
  * dengan @mui/material@9 yang terpasang, sehingga tidak perlu menambah library grafik
  * terpisah. Hanya menerima titik data yang benar-benar ada; tidak membuat tren sendiri.
  */
-export function PriceTrendChart({ history = [], commodity }) {
+export function PriceTrendChart({ history = [], commodity, isOfficialBapanas = false }) {
   if (history.length < 2) {
     return (
       <Box sx={{ alignItems: 'center', bgcolor: '#f7f9fa', borderRadius: 2, display: 'flex', justifyContent: 'center', minHeight: 260, px: 2 }}>
@@ -29,7 +29,7 @@ export function PriceTrendChart({ history = [], commodity }) {
           color: '#036e45',
           curve: 'linear',
           data: history.map((point) => point.pricePerKg),
-          label: 'Harga referensi (Rp/kg)',
+          label: isOfficialBapanas ? 'Harga BAPANAS (Rp/kg)' : 'Harga referensi (Rp/kg)',
           showMark: true,
           valueFormatter: (value) => `Rp${rupiahFormatter.format(value ?? 0)}`,
         }]}
@@ -37,7 +37,9 @@ export function PriceTrendChart({ history = [], commodity }) {
         yAxis={[{ label: 'Rp/kg', width: 68, valueFormatter: (value) => rupiahFormatter.format(value) }]}
       />
       <Typography color="text.secondary" variant="caption">
-        {history.length} titik data contoh untuk {commodity}. Bukan data BAPANAS resmi.
+        {isOfficialBapanas
+          ? `${history.length} titik data resmi Badan Pangan Nasional (BAPANAS) — Pasar Ibuh Payakumbuh untuk ${commodity}.`
+          : `${history.length} titik data contoh untuk ${commodity}. Simulasi acuan lokal.`}
       </Typography>
     </Stack>
   )
