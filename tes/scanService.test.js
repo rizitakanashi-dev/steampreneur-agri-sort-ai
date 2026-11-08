@@ -9,6 +9,7 @@ import {
   fetchPricingCommodities,
   fetchScanHistory,
   scanHarvestImage,
+  scanMultiAngleHarvestImages,
   syncBapanasPrices,
   validateScanParams,
 } from '../src/services/scanService.js'
@@ -317,6 +318,74 @@ test('fetchBapanasCommodity mengambil harga komoditas spesifik', async () => {
     const item = await fetchBapanasCommodity('cabai merah keriting')
     assert.equal(item.commodity_name, 'Cabai Merah Keriting')
     assert.equal(item.price_per_kg, 45000)
+  } finally {
+    globalThis.fetch = originalFetch
+  }
+})
+
+test('scanMultiAngleHarvestImages menolak pemanggilan tanpa imageFront atau imageBack', async () => {
+  const fakeFile = new Blob(['image data'], { type: 'image/jpeg' })
+
+  await assert.rejects(
+    async () => scanMultiAngleHarvestImages({ imageFront: null, imageBack: fakeFile }),
+    (err) => err instanceof ApiError && err.code === 'MISSING_MULTI_VIEW_IMAGES'
+  )
+
+  await assert.rejects(
+    async () => scanMultiAngleHarvestImages({ imageFront: fakeFile, imageBack: null }),
+    (err) => err instanceof ApiError && err.code === 'MISSING_MULTI_VIEW_IMAGES'
+  )
+})
+
+test('scanMultiAngleHarvestImages berhasil memproses respons server multi-sudut', async () => {
+  const originalFetch = globalThis.fetch
+  const fakeFront = new Blob(['front data'], { type: 'image/jpeg' })
+  const fakeBack = new Blob(['back data'], { type: 'image/jpeg' })
+
+  const mockPayload = {
+    status: 'success',
+    data: {
+      scan_id: 'scan_multi_20261108_abc123',
+      inspection_mode: 'multi_angle_dual_shot',
+      commodity: 'Terung',
+      multi_angle_aggregation: {
+        aggregation_weights: { front_view_weight: 0.5, back_view_weight: 0.5 },
+        weighted_condition_ratios: {
+          extra_class_percent: 40,
+          class_1_percent: 30,
+          class_2_percent: 20,
+          reject_percent: 10,
+        },
+        occlusion_analysis: {
+          occlusion_bias_detected: false,
+          occlusion_severity: 'NONE',
+          consistency_index_percent: 95.0,
+        },
+      },
+    },
+  }
+
+  globalThis.fetch = async (url, options) => {
+    assert.ok(url.includes('/api/v1/qc/scan-multi'))
+    assert.equal(options.method, 'POST')
+    assert.ok(options.body instanceof FormData)
+    return {
+      ok: true,
+      status: 200,
+      json: async () => mockPayload,
+    }
+  }
+
+  try {
+    const res = await scanMultiAngleHarvestImages({
+      imageFront: fakeFront,
+      imageBack: fakeBack,
+      commodity: 'Terung',
+      weightKg: 20.0,
+    })
+    assert.equal(res.status, 'success')
+    assert.equal(res.data.inspection_mode, 'multi_angle_dual_shot')
+    assert.equal(res.data.multi_angle_aggregation.weighted_condition_ratios.reject_percent, 10)
   } finally {
     globalThis.fetch = originalFetch
   }

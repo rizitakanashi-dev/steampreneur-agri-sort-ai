@@ -199,6 +199,97 @@ export async function scanHarvestImage({
 }
 
 /**
+ * Mengirim dua berkas citra panen (Depan & Belakang) ke endpoint POST /api/v1/qc/scan-multi.
+ * Mengatasi Single-View Occlusion Bias dengan rata-rata tertimbang dan analisis disparitas cacat.
+ */
+export async function scanMultiAngleHarvestImages({
+  imageFront,
+  imageBack,
+  commodity = 'Terung',
+  weightKg = null,
+  confidenceThreshold = 0.35,
+  weightFront = 0.50,
+  weightBack = 0.50,
+  mode = 'production',
+  enableSlicing = true,
+  disambiguateGrades = true,
+  autoClahe = true,
+  timeoutMs = DEFAULT_TIMEOUT_MS,
+}) {
+  if (!imageFront || !imageBack) {
+    throw new ApiError('Pemindaian multi-sudut memerlukan kedua berkas citra (Sisi Depan & Sisi Belakang).', {
+      code: 'MISSING_MULTI_VIEW_IMAGES',
+      status: 400,
+    })
+  }
+
+  validateScanParams({ imageFile: imageFront, confidenceThreshold, weightKg })
+
+  const formData = new FormData()
+  formData.append('image_front', imageFront)
+  formData.append('image_back', imageBack)
+  formData.append('commodity', String(commodity || 'Terung'))
+
+  if (weightKg !== null && weightKg !== undefined && weightKg !== '') {
+    formData.append('weight_kg', String(weightKg))
+  }
+  if (confidenceThreshold !== null && confidenceThreshold !== undefined) {
+    formData.append('confidence_threshold', String(confidenceThreshold))
+  }
+  if (weightFront !== null && weightFront !== undefined) {
+    formData.append('weight_front', String(weightFront))
+  }
+  if (weightBack !== null && weightBack !== undefined) {
+    formData.append('weight_back', String(weightBack))
+  }
+  if (mode) {
+    formData.append('mode', String(mode))
+  }
+  if (enableSlicing !== undefined) {
+    formData.append('enable_slicing', String(enableSlicing))
+  }
+  if (disambiguateGrades !== undefined) {
+    formData.append('disambiguate_grades', String(disambiguateGrades))
+  }
+  if (autoClahe !== undefined) {
+    formData.append('auto_clahe', String(autoClahe))
+  }
+
+  const response = await fetchWithTimeout(
+    '/api/v1/qc/scan-multi',
+    {
+      method: 'POST',
+      body: formData,
+    },
+    timeoutMs
+  )
+
+  let data
+  try {
+    data = await response.json()
+  } catch {
+    throw new ApiError('Format respon server tidak valid (bukan JSON).', {
+      code: 'INVALID_SERVER_RESPONSE',
+      status: response.status,
+    })
+  }
+
+  if (!response.ok || data.status === 'error') {
+    const errorInfo = data.error || {}
+    throw new ApiError(
+      errorInfo.message || 'Terjadi kesalahan saat memproses pemindaian multi-sudut.',
+      {
+        code: errorInfo.code || 'MULTI_SCAN_FAILED',
+        details: errorInfo.details || {},
+        status: response.status,
+      }
+    )
+  }
+
+  return data
+}
+
+/**
  * Memeriksa status kesehatan server FastAPI (GET /api/v1/health).
  */
 export async function checkBackendHealth(timeoutMs = 3000) {

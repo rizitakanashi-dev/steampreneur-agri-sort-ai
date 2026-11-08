@@ -13,6 +13,7 @@ from fastapi.responses import JSONResponse
 
 from server.services.ai_engine import ai_engine
 from server.services.mock_engine import predict_harvest_image_mock
+from server.services.multi_angle_service import aggregate_multi_view_qc
 from server.services.pricing_service import (
     calculate_business_grading,
     calculate_economic_projection,
@@ -20,6 +21,7 @@ from server.services.pricing_service import (
     get_commodity_pricing,
 )
 from server.services.storage_service import storage_service
+from server.utils.image_quality import analyze_image_quality, apply_clahe_enhancement
 from server.utils.security import ImageValidationError, validate_upload_image
 
 router = APIRouter(prefix="/api/v1/qc", tags=["Quality Control"])
@@ -275,6 +277,208 @@ async def scan_harvest_batch(
                 "error": {
                     "code": "SCAN_PROCESSING_ERROR",
                     "message": f"Terjadi kesalahan saat memproses pemindaian: {str(exc)}",
+                    "details": {},
+                },
+            },
+        )
+
+
+@router.post("/scan-multi")
+async def scan_multi_angle_harvest_batch(
+    image_front: UploadFile = File(..., description="Foto panen Sisi Depan / Atas (JPG, PNG, WebP)"),
+    image_back: UploadFile = File(..., description="Foto panen Sisi Belakang / Balik (JPG, PNG, WebP)"),
+    commodity: str = Form("Terung", description="Jenis komoditas hortikultura"),
+    weight_kg: Optional[float] = Form(None, description="Estimasi berat fisik total dari timbangan (kg)"),
+    confidence_threshold: float = Form(0.35, description="Batas ambang confidence deteksi (0.05 - 0.95)"),
+    weight_front: float = Form(0.50, description="Bobot sudut pandang depan (0.01 - 1.0)"),
+    weight_back: float = Form(0.50, description="Bobot sudut pandang belakang (0.01 - 1.0)"),
+    mode: str = Form("production", description="Mode eksekusi: 'production' atau 'mock'"),
+    enable_slicing: bool = Form(True, description="Aktifkan Tiled Inference (SAHI) untuk objek bertumpuk"),
+    disambiguate_grades: bool = Form(True, description="Aktifkan kalibrasi diskriminasi mutu Class II vs Reject"),
+    auto_clahe: bool = Form(True, description="Aktifkan adaptif CLAHE otomatis jika citra remang-remang"),
+):
+    """
+    Endpoint pemindaian kualitas panen Multi-Angle / Multi-Shot (POST /api/v1/qc/scan-multi).
+    Mengatasi kelemahan Single-View Occlusion Bias dengan mengagregasi 2 berkas foto
+    (Sisi Depan & Sisi Belakang) dan menghitung rata-rata tertimbang (weighted defect ratio).
+    """
+    try:
+        front_bytes = await image_front.read()
+        back_bytes = await image_back.read()
+
+        # 1. Validasi Keamanan Citra untuk kedua foto
+        file_info_front = validate_upload_image(
+            image_bytes=front_bytes,
+            claimed_filename=image_front.filename or "front.jpg",
+            claimed_content_type=image_front.content_type,
+        )
+        file_info_back = validate_upload_image(
+            image_bytes=back_bytes,
+            claimed_filename=image_back.filename or "back.jpg",
+            claimed_content_type=image_back.content_type,
+        )
+
+        # 2. Validasi Parameter Bobot & Penimbang
+        if weight_kg is not None and weight_kg <= 0:
+            raise ImageValidationError(
+                "Berat total harus bernilai lebih dari 0 kg.",
+                code="INVALID_WEIGHT_VALUE",
+                details={"weight_kg": weight_kg},
+            )
+
+        if not (0.05 <= confidence_threshold <= 0.95):
+            raise ImageValidationError(
+                "Batas confidence threshold harus berada pada rentang 0.05 hingga 0.95.",
+                code="INVALID_CONFIDENCE_THRESHOLD",
+                details={"confidence_threshold": confidence_threshold},
+            )
+
+        if weight_front <= 0 or weight_back <= 0:
+            raise ImageValidationError(
+                "Bobot sudut pandang depan dan belakang harus bernilai lebih besar dari 0.",
+                code="INVALID_VIEW_WEIGHTS",
+                details={"weight_front": weight_front, "weight_back": weight_back},
+            )
+
+        # 3. Analisis Kualitas Optik (Laplacian Blur & Mean Luminance)
+        front_quality = analyze_image_quality(front_bytes)
+        back_quality = analyze_image_quality(back_bytes)
+
+        # 4. Pra-pemrosesan CLAHE Adaptif jika citra terdeteksi remang-remang (Pasar Subuh)
+        proc_front_bytes = front_bytes
+        proc_back_bytes = back_bytes
+
+        if auto_clahe:
+            if front_quality.get("clahe_recommended"):
+                proc_front_bytes = apply_clahe_enhancement(front_bytes)
+                front_quality["clahe_applied"] = True
+            else:
+                front_quality["clahe_applied"] = False
+
+            if back_quality.get("clahe_recommended"):
+                proc_back_bytes = apply_clahe_enhancement(back_bytes)
+                back_quality["clahe_applied"] = True
+            else:
+                back_quality["clahe_applied"] = False
+
+        scan_id = f"scan_multi_{datetime.now(timezone.utc).strftime('%Y%m%d')}_{uuid.uuid4().hex[:6]}"
+        timestamp = datetime.now(timezone.utc).isoformat()
+
+        # 5. Eksekusi Inferensi AI untuk kedua sudut
+        is_simulated = False
+        raw_front = None
+        raw_back = None
+
+        if mode == "production" and ai_engine.is_available():
+            try:
+                raw_front = ai_engine.predict(
+                    image_bytes=proc_front_bytes,
+                    commodity=commodity,
+                    confidence_threshold=confidence_threshold,
+                    enable_slicing=enable_slicing,
+                    disambiguate_grades=disambiguate_grades,
+                )
+                raw_back = ai_engine.predict(
+                    image_bytes=proc_back_bytes,
+                    commodity=commodity,
+                    confidence_threshold=confidence_threshold,
+                    enable_slicing=enable_slicing,
+                    disambiguate_grades=disambiguate_grades,
+                )
+                is_simulated = False
+            except Exception:
+                raw_front = None
+                raw_back = None
+                is_simulated = True
+
+        if raw_front is None or raw_back is None:
+            is_simulated = True
+            raw_front = await predict_harvest_image_mock(
+                image_bytes=proc_front_bytes,
+                width=file_info_front["dimensions"]["width"],
+                height=file_info_front["dimensions"]["height"],
+                confidence_threshold=confidence_threshold,
+                simulate_delay=False,
+                commodity=commodity,
+            )
+            raw_back = await predict_harvest_image_mock(
+                image_bytes=proc_back_bytes,
+                width=file_info_back["dimensions"]["width"],
+                height=file_info_back["dimensions"]["height"],
+                confidence_threshold=confidence_threshold,
+                simulate_delay=False,
+                commodity=commodity,
+            )
+
+        # 6. Agregasi Multi-Sudut (Weighted Defect Aggregation & Occlusion Bias Detection)
+        aggregation = aggregate_multi_view_qc(
+            front_raw=raw_front,
+            back_raw=raw_back,
+            commodity=commodity,
+            weight_kg=weight_kg,
+            weight_front=weight_front,
+            weight_back=weight_back,
+        )
+
+        result_data = {
+            "status": "success",
+            "data": {
+                "scan_id": scan_id,
+                "timestamp": timestamp,
+                "inspection_mode": "multi_angle_dual_shot",
+                "is_simulated": is_simulated,
+                "commodity": commodity,
+                "actual_weight_kg": weight_kg,
+                "front_view": {
+                    "image_dimensions": file_info_front["dimensions"],
+                    "quality_metrics": front_quality,
+                    "inference_time_ms": raw_front.get("inference_time_ms", 0.0),
+                    "detections": raw_front.get("detections", []),
+                    "object_counts": raw_front.get("detection_summary", {}).get("class_counts", {}),
+                    "total_objects": raw_front.get("detection_summary", {}).get("total_objects", 0),
+                },
+                "back_view": {
+                    "image_dimensions": file_info_back["dimensions"],
+                    "quality_metrics": back_quality,
+                    "inference_time_ms": raw_back.get("inference_time_ms", 0.0),
+                    "detections": raw_back.get("detections", []),
+                    "object_counts": raw_back.get("detection_summary", {}).get("class_counts", {}),
+                    "total_objects": raw_back.get("detection_summary", {}).get("total_objects", 0),
+                },
+                "multi_angle_aggregation": aggregation,
+                "business_grading": aggregation["business_grading"],
+                "smart_pricing": aggregation["smart_pricing"],
+            },
+        }
+
+        # Simpan otomatis ke persistensi scans.json
+        try:
+            storage_service.save_scan(result_data["data"])
+        except Exception:
+            pass
+
+        return result_data
+
+    except ImageValidationError as exc:
+        return JSONResponse(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            content={
+                "status": "error",
+                "error": {
+                    "code": exc.code,
+                    "message": exc.message,
+                    "details": exc.details,
+                },
+            },
+        )
+    except Exception as exc:
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content={
+                "status": "error",
+                "error": {
+                    "code": "MULTI_SCAN_PROCESSING_ERROR",
+                    "message": f"Terjadi kesalahan saat memproses pemindaian multi-sudut: {str(exc)}",
                     "details": {},
                 },
             },

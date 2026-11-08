@@ -10,8 +10,8 @@
 | Dokumen Acuan | `Proposal STEAMPreneur SMK Tahun 2026.docx.pdf` & `docs/01-spesifikasi.md` |
 | Scope Audit | **Full-Stack & Sistem AI** (Kesesuaian Proposal vs Kode Nyata, Logika Bisnis, Keamanan, Performa) |
 | Tanggal Review | 3 November 2026 (Diperbarui: 8 November 2026) |
-| Versi Terakhir Dianalisis | Main (Integrasi Model AI Faris 4-Kelas, Live BAPANAS Feed & Modul Edukasi Sains Patologi) |
-| Status Audit | **Kesiapan Demo Kepsek — 161/161 Tests Lulus (96 JS + 65 Python)** |
+| Versi Terakhir Dianalisis | Main (Integrasi Multi-Angle QC Aggregation, Pre-flight Image Quality CLAHE, Model Terung 4-Kelas, Live BAPANAS Feed & Patologi) |
+| Status Audit | **Kesiapan Demo Kepsek — 174/174 Tests Lulus (98 JS + 76 Python)** |
 
 ---
 

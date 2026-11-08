@@ -280,16 +280,16 @@ Pekerjaan ML Engineer dinyatakan selesai jika memenuhi seluruh kriteria:
    - Mengoptimalkan waktu respons navigasi (*non-blocking hardware release*).
 
 ### B. Agenda & Tindak Lanjut Khusus untuk Faris Al Farizi (ML & AI Pipeline):
-1. **Multi-Angle / Multi-Shot Inference Aggregation:**
+1. **Multi-Angle / Multi-Shot Inference Aggregation:** `[SELESAI & TERVERIFIKASI]`
    - **Tujuan:** Mengatasi kelemahan inspeksi satu arah (*Single-View Occlusion Bias*) agar tidak ada petani/pengepul yang menyembunyikan sisi busuk di belakang.
-   - **Tugas Faris:** Menyiapkan endpoint backend `POST /api/v1/qc/scan-multi` yang menerima 2 berkas foto (Sisi Depan & Sisi Belakang) dan menghitung rata-rata tertimbang (*weighted defect ratio*) dari kedua sudut pandang.
-2. **Pre-flight Quality Gate Citra di Backend (Pasar Subuh & Kamera Kentang):**
+   - **Status Selesai:** Endpoint backend `POST /api/v1/qc/scan-multi` telah aktif di `server/routers/qc.py`.
+   - **Layanan Agregasi:** `server/services/multi_angle_service.py` menghitung rata-rata tertimbang (*weighted defect ratio*), disparitas cacat (*defect delta*), indeks konsistensi lot panen (*consistency index*), serta memicu peringatan otomatis `occlusion_bias_detected` saat sisi belakang terbukti menyembunyikan cacat lebih tinggi.
+   - **Klien JS Frontend:** `src/services/scanService.js` menyediakan `scanMultiAngleHarvestImages()`.
+2. **Pre-flight Quality Gate Citra di Backend (Pasar Subuh & Kamera Kentang):** `[SELESAI & TERVERIFIKASI]`
    - **Tujuan:** Mencegah salah prediksi saat foto diambil di Pasar Ibuh Payakumbuh pada subuh hari yang remang-remang atau menggunakan kamera HP murah.
-   - **Tugas Faris:**
-     - Menambahkan fungsi deteksi ketajaman (*Laplacian Variance*) dan pencahayaan (*Mean Luminance*) di `ai_engine.py`.
-     - Menguji pipeline pra-pemrosesan CLAHE (*Contrast Limited Adaptive Histogram Equalization*) pada citra input sebelum masuk tensor YOLO11n.
-3. **Validasi Tiled Inference SAHI di Dataset Riil Pasar Ibuh:**
-   - Menguji keandalan skrip `server/services/tiled_inference.py` pada citra keranjang padat bertumpuk dengan rasio oklusi tinggi.
+   - **Status Selesai:** Modul `server/utils/image_quality.py` menyediakan fungsi `analyze_image_quality` (deteksi ketajaman Laplacian Variance & Mean Luminance) dan filter adaptif `apply_clahe_enhancement` (Contrast Limited Adaptive Histogram Equalization pada kanal L ruang warna LAB) yang diaktifkan otomatis saat citra terdeteksi *underexposed*.
+3. **Validasi Tiled Inference SAHI di Dataset Riil Pasar Ibuh:** `[SELESAI & TERVERIFIKASI]`
+   - Skrip `server/services/tiled_inference.py` terbukti mendeteksi multi-buah individual dan berhasil menghapus box monolitik halusinasi keranjang.
 
 ### C. Pembagian Peran Anggota Lain:
 - **Ahmad Afif (QA & Dokumentasi) bersama Pak Rogi Auvi:**
