@@ -10,8 +10,8 @@
 | Dokumen Acuan | `Proposal STEAMPreneur SMK Tahun 2026.docx.pdf` & `docs/01-spesifikasi.md` |
 | Scope Audit | **Full-Stack & Sistem AI** (Kesesuaian Proposal vs Kode Nyata, Logika Bisnis, Keamanan, Performa) |
 | Tanggal Review | 3 November 2026 (Diperbarui: 8 November 2026) |
-| Versi Terakhir Dianalisis | Branch feat/multi-angle-scanner (UI Multi-Angle Scanner, Pure ONNX Runtime Engine, Benchmark Suite, Live BAPANAS Feed & Patologi) |
-| Status Audit | **Kesiapan Demo Kepsek — 187/187 Tests Lulus (105 JS + 82 Python)** |
+| Versi Terakhir Dianalisis | Branch feat/sp2kp-kemendag-api (REST API SP2KP Kemendag RI, Triangulasi Harga, Multi-Angle Scanner, ONNX Engine) |
+| Status Audit | **Kesiapan Demo Kepsek — 196/196 Tests Lulus (109 JS + 87 Python)** |
 
 ---
 
@@ -246,6 +246,7 @@ Proposal STEAMPreneur SMK mewajibkan integrasi nyata dari 5 pilar:
 - [x] **Modul Edukasi Sains Patologi Pascapanen (Pilar S STEAM):** Modul 5 patologi mikrobiologis & fisiologis pascapanen (`pathologyReference.js`) terintegrasi di `QCResults.jsx` dengan rekomendasi tindakan agronomis presisi — **Selesai (8 Nov 2026)**.
 - [x] **Kalkulator Finansial & Titik Impas (BEP & HPP) Petani (Pilar Preneur & Math STEAM):** Perhitungan laba bersih, profit margin, ROI, BEP harga/kg, dan BEP volume panen di `src/business/farmerFinance.js` & `PricingDashboard.jsx` — **Selesai (8 Nov 2026)**.
 - [x] **Antarmuka UI & Agregasi Multi-Sudut (Anti-Kecurangan / Goyang Nampan):** Alur pemindaian 2-sisi (Depan & Belakang/Goyang Nampan) di `src/components/BatchQCScanner.jsx`, `multiAngleHelper.js`, deteksi oklusi di `QCResults.jsx`, dan sertifikat mutu resmi `QCPrintCertificate.jsx` — **Selesai (8 Nov 2026)**.
+- [x] **REST API SP2KP Kemendag RI & Triangulasi Harga Pemerintah:** Integrasi data harga pangan harian Kemendag RI (`https://sp2kp.kemendag.go.id/`), disk cache 12 jam, sinkronisasi instan, pemilih sumber data di Pricing Dashboard, serta modal triangulasi harga komposit BAPANAS vs Kemendag (`server/services/sp2kp_service.py`, `server/routers/pricing.py`, `src/services/scanService.js`) — **Selesai (8 Nov 2026)**.
 
 ### Prioritas P2 (Penyempurnaan Skalabilitas & Presentasi Juri)
 - [ ] Integrasi Supabase Auth & Cloud Database untuk menggantikan keterbatasan `localStorage`.
