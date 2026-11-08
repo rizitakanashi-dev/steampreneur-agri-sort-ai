@@ -27,9 +27,13 @@ import {
 import CalculateRoundedIcon from '@mui/icons-material/CalculateRounded'
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined'
 import SyncRoundedIcon from '@mui/icons-material/SyncRounded'
+import TrendingUpRoundedIcon from '@mui/icons-material/TrendingUpRounded'
+import TrendingDownRoundedIcon from '@mui/icons-material/TrendingDownRounded'
 import VerifiedRoundedIcon from '@mui/icons-material/VerifiedRounded'
+import MonetizationOnRoundedIcon from '@mui/icons-material/MonetizationOnRounded'
 import { calculateMinimumPrice, parseNumeric } from '../business/harvestCalculation.js'
 import { calculateRevenueProjection, calculateWeightedPricePerKg } from '../business/harvestProjection.js'
+import { calculateFarmerProfitability } from '../business/farmerFinance.js'
 import { COMMODITY_OPTIONS, PRICE_HISTORY, PRICE_REFERENCE_SOURCE, REFERENCE_PRICES_PER_KG, getReferencePricePerKg } from '../business/priceReference.js'
 import { PriceTrendChart } from './PriceTrendChart.jsx'
 import { fetchBapanasLive, syncBapanasPrices } from '../services/scanService.js'
@@ -72,6 +76,10 @@ export function PricingDashboard() {
   const [persenB, setPersenB] = useState('18')
   const [includeReject, setIncludeReject] = useState(false)
   const [error, setError] = useState('')
+
+  // State Finansial Petani (BPP & BEP)
+  const [bppInput, setBppInput] = useState('7000')
+  const [targetMargin, setTargetMargin] = useState('20')
 
   // State untuk Live Feed BAPANAS
   const [bapanasPayload, setBapanasPayload] = useState(null)
@@ -158,7 +166,32 @@ export function PricingDashboard() {
   }, [commodity, volumeKg, persenA, persenB, includeReject])
 
   const weightedPrice = projection ? calculateWeightedPricePerKg(projection) : null
-  const bppInput = 15000
+
+  // Kalkulasi Kelayakan Finansial & Titik Impas Petani (HPP, BEP, Net Profit, ROI)
+  const farmerFinance = useMemo(() => {
+    if (!projection) return null
+    return calculateFarmerProfitability({
+      revenue: projection.totalNilai,
+      sellableVolumeKg: projection.volumeKg,
+      costMode: 'perKg',
+      bppPerKg: bppInput,
+    })
+  }, [projection, bppInput])
+
+  // Rekomendasi Harga Jual Sasaran Berdasarkan Margin Target
+  const targetPriceRec = useMemo(() => {
+    const bpp = parseNumeric(bppInput)
+    const margin = parseNumeric(targetMargin)
+    if (bpp === null || bpp <= 0 || margin === null || margin < 0) return null
+    try {
+      return calculateMinimumPrice({
+        bppPerKg: bpp,
+        policy: { type: 'margin', percent: margin },
+      })
+    } catch {
+      return null
+    }
+  }, [bppInput, targetMargin])
 
   return (
     <Stack spacing={3}>
@@ -428,35 +461,142 @@ export function PricingDashboard() {
               </CardContent>
             </Card>
 
-            <Card>
+            {/* KARTU FINANSIAL PETANI: HPP, BEP, DAN LABA BERSIH (STEAM MATH & ENTREPRENEURSHIP) */}
+            <Card sx={{ border: '1px solid #e0e0e0', borderRadius: 2 }}>
               <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
-                <Typography gutterBottom variant="h6">BPP dan harga minimum</Typography>
-                <Typography color="text.secondary" variant="body2">
-                  BPP contoh Rp{numberFormatter.format(bppInput)} / kg. Harga minimum hanya dapat dihitung setelah tim
-                  menetapkan kebijakan margin atau markup di spesifikasi.
-                </Typography>
-                <Alert severity="warning" sx={{ mt: 2 }}>
-                  Kebijakan margin/markup belum disetujui, sehingga rekomendasi harga minimum tidak ditampilkan.
-                </Alert>
-              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} sx={{ mt: 2 }}>
-                  {[{ type: 'markup', percent: 20 }, { type: 'margin', percent: 20 }].map((policy) => (
-                    <Button
-                      key={policy.type}
-                      fullWidth
-                      onClick={() => {
-                        try {
-                          setError(`Contoh ${policy.type} 20%: harga minimum ${formatRupiah(calculateMinimumPrice({ bppPerKg: bppInput, policy }))} / kg`)
-                        } catch (calculationError) {
-                          setError(calculationError.message)
-                        }
-                      }}
-                      variant="outlined"
-                    >
-                      Coba {policy.type} 20%
-                    </Button>
-                  ))}
+                <Stack alignItems="center" direction="row" justifyContent="space-between" sx={{ mb: 1.5 }}>
+                  <Stack alignItems="center" direction="row" spacing={1}>
+                    <MonetizationOnRoundedIcon color="primary" />
+                    <Typography variant="h6">Titik Impas (BEP) & Laba Petani</Typography>
+                  </Stack>
+                  <Chip
+                    color="primary"
+                    label="STEAM: Preneur"
+                    size="small"
+                    sx={{ fontWeight: 700, fontSize: '0.72rem' }}
+                  />
                 </Stack>
-                {error && <Alert severity="info" sx={{ mt: 2 }}>{error}</Alert>}
+                <Typography color="text.secondary" sx={{ mb: 2 }} variant="body2">
+                  Kalkulator kelayakan finansial agribisnis: bandingkan nilai sortasi pasar dengan Biaya Pokok Produksi (BPP) budidaya.
+                </Typography>
+
+                <Grid container spacing={2} sx={{ mb: 2 }}>
+                  <Grid size={{ xs: 12, sm: 6 }}>
+                    <TextField
+                      fullWidth
+                      helperText="Estimasi modal bibit, pupuk, pestisida & tenaga kerja"
+                      inputMode="decimal"
+                      label="BPP / Modal per kg"
+                      onChange={(e) => setBppInput(e.target.value)}
+                      size="small"
+                      slotProps={{
+                        input: {
+                          startAdornment: <InputAdornment position="start">Rp</InputAdornment>,
+                          endAdornment: <InputAdornment position="end">/ kg</InputAdornment>,
+                        },
+                      }}
+                      value={bppInput}
+                    />
+                  </Grid>
+                  <Grid size={{ xs: 12, sm: 6 }}>
+                    <TextField
+                      fullWidth
+                      helperText="Target margin laba bersih yang diharapkan"
+                      inputMode="decimal"
+                      label="Target Margin Petani"
+                      onChange={(e) => setTargetMargin(e.target.value)}
+                      size="small"
+                      slotProps={{
+                        input: {
+                          endAdornment: <InputAdornment position="end">%</InputAdornment>,
+                        },
+                      }}
+                      value={targetMargin}
+                    />
+                  </Grid>
+                </Grid>
+
+                {farmerFinance ? (
+                  <Stack spacing={2}>
+                    {/* Status Laba / Rugi Banner */}
+                    <Box
+                      sx={{
+                        bgcolor: farmerFinance.isProfitable ? '#f0fdf4' : '#fef2f2',
+                        border: '1px solid',
+                        borderColor: farmerFinance.isProfitable ? '#86efac' : '#fca5a5',
+                        borderRadius: 2,
+                        p: 2,
+                      }}
+                    >
+                      <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ xs: 'flex-start', sm: 'center' }} spacing={1}>
+                        <Box>
+                          <Stack direction="row" alignItems="center" spacing={1}>
+                            {farmerFinance.isProfitable ? (
+                              <TrendingUpRoundedIcon sx={{ color: '#16a34a' }} />
+                            ) : (
+                              <TrendingDownRoundedIcon sx={{ color: '#dc2626' }} />
+                            )}
+                            <Typography fontWeight={700} variant="subtitle2" sx={{ color: farmerFinance.isProfitable ? '#15803d' : '#b91c1c' }}>
+                              {farmerFinance.isProfitable ? 'Prospek Panen Menguntungkan (Surplus)' : 'Potensi Defisit / Risiko Rugi'}
+                            </Typography>
+                          </Stack>
+                          <Typography fontWeight={800} variant="h5" sx={{ color: farmerFinance.isProfitable ? '#166534' : '#991b1b', mt: 0.5 }}>
+                            {formatRupiah(farmerFinance.netProfit)}
+                          </Typography>
+                          <Typography variant="caption" sx={{ color: farmerFinance.isProfitable ? '#15803d' : '#b91c1c' }}>
+                            Margin Bersih: {farmerFinance.profitMarginPercent}% &bull; ROI Modal: {farmerFinance.roiPercent}%
+                          </Typography>
+                        </Box>
+
+                        <Chip
+                          color={farmerFinance.isProfitable ? 'success' : 'error'}
+                          label={farmerFinance.isProfitable ? `Laba Bersih` : `Defisit Modal`}
+                          sx={{ fontWeight: 700 }}
+                        />
+                      </Stack>
+                    </Box>
+
+                    {/* Rincian Finansial & Titik Impas (BEP) */}
+                    <TableContainer sx={{ overflowX: 'auto', border: '1px solid #f1f5f9', borderRadius: 1.5 }}>
+                      <Table size="small">
+                        <TableBody>
+                          <TableRow>
+                            <TableCell sx={{ color: 'text.secondary' }}>Total Modal Budidaya (HPP Total)</TableCell>
+                            <TableCell align="right" sx={{ fontWeight: 600 }}>{formatRupiah(farmerFinance.totalCost)}</TableCell>
+                          </TableRow>
+                          <TableRow>
+                            <TableCell sx={{ color: 'text.secondary' }}>Titik Impas Harga (BEP Harga)</TableCell>
+                            <TableCell align="right" sx={{ fontWeight: 600, color: 'primary.dark' }}>
+                              {formatRupiah(farmerFinance.bepPricePerKg)} / kg
+                            </TableCell>
+                          </TableRow>
+                          <TableRow>
+                            <TableCell sx={{ color: 'text.secondary' }}>Volume Balik Modal (BEP Volume)</TableCell>
+                            <TableCell align="right" sx={{ fontWeight: 600 }}>
+                              {formatNumber(farmerFinance.bepVolumeKg)} kg dari {formatNumber(farmerFinance.sellableVolumeKg)} kg
+                            </TableCell>
+                          </TableRow>
+                          {targetPriceRec && (
+                            <TableRow sx={{ bgcolor: '#f8fafc' }}>
+                              <TableCell sx={{ fontWeight: 600, color: '#036e45' }}>
+                                Rekomendasi Jual (Target Margin {targetMargin}%)
+                              </TableCell>
+                              <TableCell align="right" sx={{ fontWeight: 800, color: '#036e45' }}>
+                                {formatRupiah(targetPriceRec)} / kg
+                              </TableCell>
+                            </TableRow>
+                          )}
+                        </TableBody>
+                      </Table>
+                    </TableContainer>
+
+                    {error && <Alert severity="info">{error}</Alert>}
+                  </Stack>
+                ) : (
+                  <Alert severity="info" icon={<InfoOutlinedIcon />}>
+                    Lengkapi form volume panen dan persentase grade di atas untuk melihat analisis laba dan titik impas.
+                  </Alert>
+                )}
               </CardContent>
             </Card>
           </Stack>
