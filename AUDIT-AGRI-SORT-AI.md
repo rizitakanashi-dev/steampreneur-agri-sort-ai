@@ -108,13 +108,15 @@ Proposal lomba resmi mengajukan inovasi Web App Quality Control & Smart Pricing 
 
 ---
 
-### B4. [RENDAH] Menu Pengaturan di AppShell Tidak Memiliki Aksi (`onClick`)
+### B4. [TERATASI 8 NOV 2026] Menu Pengaturan di AppShell & Dialog Info Sistem STEAMPreneur
 
-- **Lokasi Kode:** [`src/components/AppShell.jsx:113`](src/components/AppShell.jsx#L113)
-- **Gejala Masalah:**
-  Item navigasi "Pengaturan" pada Sidebar Drawer tidak memiliki properti `onClick` atau routing aktif. Pengguna yang mengklik item tersebut tidak mendapatkan respons apa pun.
-- **Rekomendasi Perbaikan:**
-  Berikan aksi modal/dialog informasi profil pengguna SMK atau sembunyikan sementara sampai modul manajemen akun / konfigurasi harga selesai dibuat.
+- **Lokasi Kode:** [`src/components/AppShell.jsx:116`](src/components/AppShell.jsx#L116) & [`src/components/SettingsDialog.jsx`](src/components/SettingsDialog.jsx)
+- **Status Perbaikan:** ✅ **Selesai Diimplementasikan.**
+- **Solusi yang Diterapkan:**
+  Menu "Pengaturan" pada Sidebar Drawer dan AppBar mobile kini membuka komponen dialog interaktif `SettingsDialog.jsx` yang mencakup:
+  1. **Tab Profil Tim & Sekolah:** Profil SMKN 4 Payakumbuh (RPL), Guru Pembimbing (Rogi Auvi, S.Pd), serta pembagian peran tim inovator (Faris Al Farizi, Hieray Antovino, Ahmad Afif).
+  2. **Tab Konektivitas & AI Engine:** Diagnostik healthcheck backend server FastAPI (`/api/v1/health`) dengan pengecekan latensi respons real-time, status integrasi BAPANAS RI & SP2KP Kemendag RI, dan arsitektur model AI YOLO11n + Tiled SAHI.
+  3. **Tab Manajemen Data Demo:** Tombol reset cache riwayat panen lokal (`clearBatches`) dengan dialog konfirmasi aman untuk memulai demonstrasi baru di hadapan juri.
 
 ---
 

@@ -24,6 +24,7 @@ import PriceCheckRoundedIcon from '@mui/icons-material/PriceCheckRounded'
 import QrCodeScannerRoundedIcon from '@mui/icons-material/QrCodeScannerRounded'
 import SettingsRoundedIcon from '@mui/icons-material/SettingsRounded'
 import TableChartRoundedIcon from '@mui/icons-material/TableChartRounded'
+import { SettingsDialog } from './SettingsDialog.jsx'
 
 const drawerWidth = 248
 
@@ -39,6 +40,7 @@ export function AppShell({ activePage, onNavigate, children }) {
   const theme = useTheme()
   const isDesktop = useMediaQuery(theme.breakpoints.up('md'))
   const [mobileOpen, setMobileOpen] = useState(false)
+  const [settingsOpen, setSettingsOpen] = useState(false)
 
   const handleNavigate = (pageId) => {
     onNavigate(pageId)
@@ -112,19 +114,48 @@ export function AppShell({ activePage, onNavigate, children }) {
           SYSTEM
         </Typography>
         <List disablePadding>
-          <ListItemButton sx={{ borderRadius: 1.75, minHeight: 44, px: 1.5 }}>
-            <ListItemIcon sx={{ color: 'text.secondary', minWidth: 36 }}><SettingsRoundedIcon fontSize="small" /></ListItemIcon>
-            <ListItemText primary="Pengaturan" slotProps={{ primary: { sx: { fontSize: 13, fontWeight: 500 } } }} />
+          <ListItemButton
+            onClick={() => {
+              setSettingsOpen(true)
+              setMobileOpen(false)
+            }}
+            sx={{
+              borderRadius: 1.75,
+              minHeight: 44,
+              px: 1.5,
+              '&:hover': { bgcolor: 'rgba(1, 110, 68, 0.08)' },
+            }}
+          >
+            <ListItemIcon sx={{ color: 'text.secondary', minWidth: 36 }}>
+              <SettingsRoundedIcon fontSize="small" />
+            </ListItemIcon>
+            <ListItemText primary="Pengaturan & Info Sistem" slotProps={{ primary: { sx: { fontSize: 13, fontWeight: 600 } } }} />
           </ListItemButton>
         </List>
       </Box>
 
       <Box sx={{ flexGrow: 1 }} />
-      <Stack direction="row" spacing={1.25} sx={{ alignItems: 'center', borderTop: '1px solid', borderColor: 'divider', p: 2 }}>
+      <Stack
+        direction="row"
+        spacing={1.25}
+        onClick={() => {
+          setSettingsOpen(true)
+          setMobileOpen(false)
+        }}
+        sx={{
+          alignItems: 'center',
+          borderTop: '1px solid',
+          borderColor: 'divider',
+          p: 2,
+          cursor: 'pointer',
+          transition: 'background-color 0.15s ease',
+          '&:hover': { bgcolor: 'rgba(1, 110, 68, 0.08)' },
+        }}
+      >
         <Avatar sx={{ bgcolor: 'primary.dark', fontSize: 13, height: 32, width: 32 }}>AS</Avatar>
         <Box sx={{ minWidth: 0 }}>
-          <Typography noWrap fontWeight={700} variant="body2">Agri-Sort Workspace</Typography>
-          <Typography color="text.secondary" noWrap variant="caption">Mode lokal · Aktif</Typography>
+          <Typography noWrap fontWeight={700} variant="body2">SMKN 4 Payakumbuh</Typography>
+          <Typography color="text.secondary" noWrap variant="caption">STEAMPreneur 2026</Typography>
         </Box>
       </Stack>
     </Stack>
@@ -140,6 +171,9 @@ export function AppShell({ activePage, onNavigate, children }) {
             </IconButton>
             <Typography color="text.primary" fontWeight={800} variant="subtitle1">Agri-Sort AI</Typography>
             <Box sx={{ flexGrow: 1 }} />
+            <IconButton aria-label="Buka pengaturan" onClick={() => setSettingsOpen(true)} size="small" sx={{ mr: 1 }}>
+              <SettingsRoundedIcon fontSize="small" />
+            </IconButton>
             <Avatar sx={{ bgcolor: 'primary.dark', fontSize: 12, height: 30, width: 30 }}>AS</Avatar>
           </Toolbar>
         </AppBar>
@@ -168,6 +202,9 @@ export function AppShell({ activePage, onNavigate, children }) {
         {!isDesktop && <Toolbar sx={{ minHeight: 64 }} />}
         {children}
       </Box>
+
+      {/* DIALOG PENGATURAN & INFO SISTEM STEAMPRENEUR */}
+      <SettingsDialog open={settingsOpen} onClose={() => setSettingsOpen(false)} />
     </Box>
   )
 }
