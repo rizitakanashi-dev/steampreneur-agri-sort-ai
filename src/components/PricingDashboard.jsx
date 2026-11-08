@@ -391,24 +391,24 @@ export function PricingDashboard() {
   return (
     <Stack spacing={3}>
       {/* 1. Bar Pemilih Lembaga Resmi Negara & Tombol Triangulasi */}
-      <Card elevation={1} sx={{ borderRadius: 2.5, border: '1px solid', borderColor: 'divider' }}>
-        <CardContent sx={{ p: 2 }}>
+      <Card elevation={0} sx={{ borderRadius: 2.5, border: '1px solid', borderColor: 'divider', bgcolor: '#f8fafc' }}>
+        <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
           <Stack
             direction={{ xs: 'column', md: 'row' }}
             justifyContent="space-between"
-            alignItems={{ md: 'center' }}
-            spacing={1.5}
+            alignItems={{ xs: 'flex-start', md: 'center' }}
+            spacing={2}
           >
             <Box>
-              <Typography variant="subtitle2" fontWeight={800}>
-                Pilih Sumber Data Acuan Harga Pasar Resmi
+              <Typography variant="subtitle2" fontWeight={800} sx={{ color: 'text.primary' }}>
+                Sumber Data Acuan Harga Pasar
               </Typography>
               <Typography variant="caption" color="text.secondary">
-                Data ditarik langsung dari sistem kementerian dan badan pangan nasional resmi RI.
+                Data resmi BAPANAS & SP2KP Kemendag RI untuk Pasar Ibuh Payakumbuh
               </Typography>
             </Box>
 
-            <Stack direction="row" spacing={1} flexWrap="wrap">
+            <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap', gap: 1 }}>
               <Button
                 size="small"
                 variant={activeSource === 'bapanas' ? 'contained' : 'outlined'}
@@ -417,8 +417,15 @@ export function PricingDashboard() {
                   setActiveSource('bapanas')
                   setSyncStatusMsg('Sumber harga diubah ke Panel BAPANAS RI.')
                 }}
-                startIcon={<AccountBalanceRoundedIcon />}
-                sx={{ borderRadius: 2, fontWeight: 700 }}
+                startIcon={<AccountBalanceRoundedIcon fontSize="small" />}
+                sx={{
+                  borderRadius: 2,
+                  fontWeight: 700,
+                  whiteSpace: 'nowrap',
+                  textTransform: 'none',
+                  px: 1.5,
+                  py: 0.75,
+                }}
               >
                 BAPANAS RI
               </Button>
@@ -430,10 +437,17 @@ export function PricingDashboard() {
                   setActiveSource('sp2kp')
                   setSyncStatusMsg('Sumber harga diubah ke SP2KP Kemendag RI.')
                 }}
-                startIcon={<StorefrontRoundedIcon />}
-                sx={{ borderRadius: 2, fontWeight: 700 }}
+                startIcon={<StorefrontRoundedIcon fontSize="small" />}
+                sx={{
+                  borderRadius: 2,
+                  fontWeight: 700,
+                  whiteSpace: 'nowrap',
+                  textTransform: 'none',
+                  px: 1.5,
+                  py: 0.75,
+                }}
               >
-                SP2KP Kemendag RI
+                SP2KP Kemendag
               </Button>
               <Button
                 size="small"
@@ -443,8 +457,15 @@ export function PricingDashboard() {
                   setActiveSource('triangulasi')
                   setSyncStatusMsg('Sumber harga diubah ke Triangulasi Komposit Dua Lembaga Negara.')
                 }}
-                startIcon={<VerifiedRoundedIcon />}
-                sx={{ borderRadius: 2, fontWeight: 700 }}
+                startIcon={<VerifiedRoundedIcon fontSize="small" />}
+                sx={{
+                  borderRadius: 2,
+                  fontWeight: 700,
+                  whiteSpace: 'nowrap',
+                  textTransform: 'none',
+                  px: 1.5,
+                  py: 0.75,
+                }}
               >
                 Triangulasi Komposit
               </Button>
@@ -453,10 +474,18 @@ export function PricingDashboard() {
                 variant="outlined"
                 color="info"
                 onClick={() => setIsComparisonModalOpen(true)}
-                startIcon={<BalanceRoundedIcon />}
-                sx={{ borderRadius: 2, fontWeight: 700 }}
+                startIcon={<BalanceRoundedIcon fontSize="small" />}
+                sx={{
+                  borderRadius: 2,
+                  fontWeight: 700,
+                  whiteSpace: 'nowrap',
+                  textTransform: 'none',
+                  px: 1.5,
+                  py: 0.75,
+                  bgcolor: 'background.paper',
+                }}
               >
-                Tabel Komparasi & Pilih
+                Tabel Komparasi
               </Button>
             </Stack>
           </Stack>
@@ -467,13 +496,14 @@ export function PricingDashboard() {
       {isTriangulasiActive ? (
         <Alert
           action={
-            <Stack direction="row" spacing={1}>
+            <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap', gap: 0.5 }}>
               <Button
                 color="inherit"
                 disabled={isSyncing}
                 onClick={handleSyncPrices}
                 size="small"
                 startIcon={isSyncing ? <CircularProgress color="inherit" size={16} /> : <SyncRoundedIcon />}
+                sx={{ whiteSpace: 'nowrap', textTransform: 'none', fontWeight: 700 }}
               >
                 {isSyncing ? 'Sinkronisasi...' : 'Sinkronkan'}
               </Button>
@@ -482,6 +512,7 @@ export function PricingDashboard() {
                 size="small"
                 onClick={() => setIsComparisonModalOpen(true)}
                 startIcon={<BalanceRoundedIcon />}
+                sx={{ whiteSpace: 'nowrap', textTransform: 'none', fontWeight: 700 }}
               >
                 Ganti Komoditas
               </Button>
