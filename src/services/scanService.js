@@ -369,3 +369,52 @@ export async function fetchScanHistory({ limit = 50, offset = 0, commodity = nul
   const data = await response.json()
   return data.data || { records: [], total_count: 0 }
 }
+
+/**
+ * Mengambil data live feed SP2KP Kemendag RI (GET /api/v1/pricing/sp2kp/live).
+ * Portal Resmi: https://sp2kp.kemendag.go.id/
+ */
+export async function fetchSp2kpLive(timeoutMs = 5000) {
+  const response = await fetchWithTimeout('/api/v1/pricing/sp2kp/live', { method: 'GET' }, timeoutMs)
+  if (!response.ok) {
+    throw new ApiError('Gagal memuat data harga SP2KP Kemendag RI.', { status: response.status })
+  }
+  const data = await response.json()
+  return data.data || null
+}
+
+/**
+ * Mengambil harga resmi SP2KP Kemendag untuk komoditas tertentu (GET /api/v1/pricing/sp2kp/commodities/:commodity).
+ */
+export async function fetchSp2kpCommodity(commodity, timeoutMs = 5000) {
+  const response = await fetchWithTimeout(`/api/v1/pricing/sp2kp/commodities/${encodeURIComponent(commodity)}`, { method: 'GET' }, timeoutMs)
+  if (!response.ok) {
+    throw new ApiError(`Gagal mengambil data harga SP2KP Kemendag untuk ${commodity}.`, { status: response.status })
+  }
+  const data = await response.json()
+  return data.data || null
+}
+
+/**
+ * Memicu sinkronisasi instan feed SP2KP Kemendag RI (POST /api/v1/pricing/sp2kp/sync).
+ */
+export async function syncSp2kpPrices(timeoutMs = 8000) {
+  const response = await fetchWithTimeout('/api/v1/pricing/sp2kp/sync', { method: 'POST' }, timeoutMs)
+  if (!response.ok) {
+    throw new ApiError('Gagal menyinkronkan data SP2KP Kemendag RI.', { status: response.status })
+  }
+  const data = await response.json()
+  return data.data || null
+}
+
+/**
+ * Mengambil komparasi triangulasi harga BAPANAS vs SP2KP Kemendag RI (GET /api/v1/pricing/government/comparison).
+ */
+export async function fetchGovernmentPriceComparison(timeoutMs = 5000) {
+  const response = await fetchWithTimeout('/api/v1/pricing/government/comparison', { method: 'GET' }, timeoutMs)
+  if (!response.ok) {
+    throw new ApiError('Gagal memuat komparasi harga resmi pemerintah.', { status: response.status })
+  }
+  const data = await response.json()
+  return data.data || null
+}

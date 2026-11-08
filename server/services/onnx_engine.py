@@ -14,15 +14,16 @@ import logging
 import os
 import time
 from typing import Any, Dict, List, Optional, Tuple, Union
-import numpy as np
-from PIL import Image
-
 logger = logging.getLogger("agrisort.onnx_engine")
 
 try:
+    import numpy as np
+    from PIL import Image
     import onnxruntime as ort
     ONNX_AVAILABLE = True
 except ImportError:
+    np = None
+    Image = None
     ort = None
     ONNX_AVAILABLE = False
 
