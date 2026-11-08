@@ -6,10 +6,17 @@ Dokumen Acuan: docs/rencana-kerja-ml-engineer.md (Bab 8B Poin 1)
 
 from io import BytesIO
 import unittest
-from fastapi.testclient import TestClient
 from PIL import Image
 
-from server.main import app
+try:
+    from fastapi.testclient import TestClient
+    from server.main import app
+    HAS_FASTAPI = True
+except ImportError:
+    TestClient = None
+    app = None
+    HAS_FASTAPI = False
+
 from server.services.multi_angle_service import aggregate_multi_view_qc
 
 
@@ -111,6 +118,7 @@ class TestMultiAngleQCAggregation(unittest.TestCase):
         self.assertAlmostEqual(ratios["rotten_ratio_percent"], 30.0, places=1)
 
 
+@unittest.skipUnless(HAS_FASTAPI, "FastAPI tidak terpasang di environment ini")
 class TestMultiAngleEndpointAPI(unittest.TestCase):
     """Pengujian integrasi endpoint FastAPI POST /api/v1/qc/scan-multi."""
 

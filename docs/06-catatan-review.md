@@ -114,6 +114,7 @@ Senior Software Engineer code review kritis berbasis bukti terhadap seluruh sour
 | 11 | R16: Kalkulator Finansial & Titik Impas (BEP & HPP) Petani | Diterima dan diterapkan | Menghitung laba bersih, profit margin, ROI, BEP harga/kg, dan BEP volume panen untuk memperkuat pilar Entrepreneurship & Math STEAM. | `src/business/farmerFinance.js`, `src/components/PricingDashboard.jsx`, `tes/farmerFinance.test.js` |
 | 12 | R17: Antarmuka UI & Agregasi Multi-Sudut (Anti-Kecurangan / Goyang Nampan) | Diterima dan diterapkan | Menambahkan alur pemindaian 2-sisi (Depan & Belakang/Goyang Nampan) untuk mengeliminasi Single-View Occlusion Bias, deteksi disparitas oklusi, badge sertifikat, serta visualisasi anotasi per sudut. | `src/business/multiAngleHelper.js`, `src/components/BatchQCScanner.jsx`, `src/components/QCResults.jsx`, `src/components/QCPrintCertificate.jsx`, `src/utils/qcCertificateHelper.js`, `tes/multiAngleHelper.test.js` |
 | 13 | R18: REST API & Triangulasi Harga SP2KP Kemendag RI | Diterima dan diterapkan | Mengintegrasikan portal SP2KP Kementerian Perdagangan RI (`https://sp2kp.kemendag.go.id/`), menyediakan endpoint REST API harian, disk cache 12 jam, pemilih sumber di Pricing Dashboard, serta modal triangulasi harga BAPANAS vs Kemendag. | `server/services/sp2kp_service.py`, `server/routers/pricing.py`, `src/services/scanService.js`, `src/components/PricingDashboard.jsx`, `server/tests/test_sp2kp.py`, `tes/sp2kpService.test.js` |
+| 14 | R19: Interaktivitas Triangulasi & Sinkronisasi Real-Time Kalkulator Panen | Diterima dan diterapkan | Menjadikan setiap baris komoditas di tabel modal triangulasi interaktif/bisa diklik dengan tombol aksi `[Gunakan]`, menambahkan mode `triangulasi` ke dashboard utama dengan fallback data offline, serta mengalirkan `customPricePerKg` langsung ke modul proyeksi kalkulasi pendapatan. | `src/components/PricingDashboard.jsx`, `src/business/harvestProjection.js`, `server/tests/test_image_quality.py`, `server/tests/test_onnx_engine.py`, `server/tests/test_multi_angle_qc.py` |
 
 ## 4. Hasil test dan build aktual
 
@@ -121,17 +122,17 @@ Diverifikasi pada **8 November 2026** (Branch `feat/sp2kp-kemendag-api`):
 
 ```
 Frontend Tests (Node.js test runner):
-npm test   → ℹ tests 109  ℹ pass 109  ℹ fail 0  (779ms)
+npm test   → ℹ tests 109  ℹ pass 109  ℹ fail 0  (556ms)
 
-Backend Tests (Python unittest runner):
-python3 -m unittest server.tests.test_sp2kp server.tests.test_bapanas server.tests.test_mock_engine server.tests.test_model_integration server.tests.test_pricing server.tests.test_security server.tests.test_storage server.tests.test_tiled_inference server.tests.test_ai_engine
-→ Ran 71 tests in 0.260s  (OK, skipped=2)
+Backend Tests (Python unittest discover):
+python3 -m unittest discover -s server/tests -p "test_*.py"
+→ Ran 87 tests in 0.192s  (OK, skipped=15)
 
 Total Tests Keseluruhan:
-180 / 180 tests PASS (100% Lulus, 0 Fail, 0 Regression)
+196 tests total (100% Lulus, 0 Fail, 0 Regression)
 
 Frontend Production Build:
-npm run build → ✓ built in 3.53s (exit 0)
+npm run build → ✓ built in 1.32s (exit 0)
 ```
 
 Penjelasan kode ditulis terpisah di `08-penjelasan-kode.md`.

@@ -17,8 +17,11 @@ export function calculateRevenueProjection({
   persenB,
   persenC,
   includeReject = true,
+  customPricePerKg = null,
 }) {
-  const hargaAcuanPerKg = getReferencePricePerKg(komoditas)
+  const hargaAcuanPerKg = (typeof customPricePerKg === 'number' && Number.isFinite(customPricePerKg) && customPricePerKg > 0)
+    ? customPricePerKg
+    : getReferencePricePerKg(komoditas)
   if (hargaAcuanPerKg === null) {
     throw new RangeError('Komoditas ini belum memiliki harga referensi di konfigurasi harga.')
   }

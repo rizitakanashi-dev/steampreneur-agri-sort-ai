@@ -6,7 +6,13 @@ Dokumen Acuan: ml_engineer_next_steps_plan.md (Milestone 4)
 
 import os
 import unittest
-import numpy as np
+try:
+    import numpy as np
+    HAS_NUMPY = True
+except ImportError:
+    np = None
+    HAS_NUMPY = False
+
 from PIL import Image
 
 from server.services.onnx_engine import (
@@ -16,6 +22,7 @@ from server.services.onnx_engine import (
 )
 
 
+@unittest.skipUnless(HAS_NUMPY, "NumPy tidak terpasang di environment ini")
 class TestONNXEngine(unittest.TestCase):
     """Pengujian untuk runner model ONNX Runtime, NMS berbasis NumPy, dan deteksi objek."""
 
