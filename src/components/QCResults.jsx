@@ -34,6 +34,7 @@ import { PieChart } from '@mui/x-charts/PieChart'
 
 import { ScanCanvasOverlay } from './ScanCanvasOverlay.jsx'
 import { QCPrintCertificate } from './QCPrintCertificate.jsx'
+import { PostHarvestPathologyCards } from './PostHarvestPathologyCards.jsx'
 import { getClassTheme } from '../utils/canvasOverlayHelper.js'
 
 const numberFormatter = new Intl.NumberFormat('id-ID', { maximumFractionDigits: 2 })
@@ -535,6 +536,13 @@ export function QCResults({ batch, onBackToInput, onViewRecap }) {
           </Box>
         </CardContent>
       </Card>
+
+      {/* Kartu Edukasi Sains Patologi Pascapanen (Pilar S dari STEAM) */}
+      <PostHarvestPathologyCards
+        commodity={komoditas}
+        rejectCount={inference?.object_counts?.rotten_tomato || inference?.object_counts?.reject || 0}
+        rejectPercent={inference?.condition_ratios?.rotten_ratio_percent || hasil?.persenC || 0}
+      />
 
       {/* Tombol Aksi Navigasi */}
       <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" spacing={1.5}>
