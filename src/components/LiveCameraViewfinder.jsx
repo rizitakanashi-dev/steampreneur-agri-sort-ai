@@ -27,18 +27,29 @@ export function LiveCameraViewfinder({ onCapture, disabled = false }) {
   const [isCapturing, setIsCapturing] = useState(false)
 
   const stopStream = () => {
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach((track) => {
-        try {
-          track.stop()
-        } catch (e) {
-          console.warn('Gagal menghentikan track kamera:', e)
-        }
-      })
-      streamRef.current = null
-    }
+    const stream = streamRef.current
+    streamRef.current = null
+
     if (videoRef.current) {
-      videoRef.current.srcObject = null
+      try {
+        videoRef.current.pause()
+        videoRef.current.srcObject = null
+      } catch {
+        // Abaikan error saat reset video element
+      }
+    }
+
+    if (stream) {
+      // Hentikan hardware track di microtask berikutnya agar transisi DOM/halaman seketika tanpa jeda
+      setTimeout(() => {
+        stream.getTracks().forEach((track) => {
+          try {
+            track.stop()
+          } catch (e) {
+            console.warn('Gagal menghentikan track kamera:', e)
+          }
+        })
+      }, 0)
     }
   }
 
