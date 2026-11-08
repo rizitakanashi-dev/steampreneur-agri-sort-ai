@@ -290,6 +290,10 @@ Pekerjaan ML Engineer dinyatakan selesai jika memenuhi seluruh kriteria:
    - **Status Selesai:** Modul `server/utils/image_quality.py` menyediakan fungsi `analyze_image_quality` (deteksi ketajaman Laplacian Variance & Mean Luminance) dan filter adaptif `apply_clahe_enhancement` (Contrast Limited Adaptive Histogram Equalization pada kanal L ruang warna LAB) yang diaktifkan otomatis saat citra terdeteksi *underexposed*.
 3. **Validasi Tiled Inference SAHI di Dataset Riil Pasar Ibuh:** `[SELESAI & TERVERIFIKASI]`
    - Skrip `server/services/tiled_inference.py` terbukti mendeteksi multi-buah individual dan berhasil menghapus box monolitik halusinasi keranjang.
+4. **Migrasi Engine ONNX Runtime CPU (`best.onnx`):** `[SELESAI & TERVERIFIKASI]`
+   - Modul `server/services/onnx_engine.py` menghadirkan engine inferensi C++ ONNX murni berbasis NumPy, memangkas RAM dari ~500 MB ke < 90 MB dan mempercepat latensi hingga 1.18x lebih cepat dibandingkan PyTorch CPU.
+5. **Automated ML Benchmark & Evaluation Suite (`benchmark_models.py`):** `[SELESAI & TERVERIFIKASI]`
+   - Skrip `server/scripts/benchmark_models.py` mengevaluasi latensi P50/P95/P99, throughput FPS, perbandingan runtime, dan mengekspor bukti empiris resmi ke `server/data/benchmark_report.json`.
 
 ### C. Pembagian Peran Anggota Lain:
 - **Ahmad Afif (QA & Dokumentasi) bersama Pak Rogi Auvi:**

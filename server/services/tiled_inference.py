@@ -189,12 +189,30 @@ def run_sliced_yolo_inference(
 
     # Jika pemotongan tile dinonaktifkan atau citra sangat kecil (< 320x320)
     if not enable_slicing or (width < 320 and height < 320):
-        # Jalankan fallback NMS sederhana pada full_boxes
+        formatted_detections: List[Dict[str, Any]] = []
+        for idx, fb in enumerate(full_boxes):
+            bx = fb["box"]
+            formatted_detections.append({
+                "id": idx + 1,
+                "class_id": fb["cls_id"],
+                "class_name": fb["class_name"],
+                "confidence": round(fb["conf"], 4),
+                "box": {
+                    "x1": round(max(0.0, min(float(width), bx[0])), 1),
+                    "y1": round(max(0.0, min(float(height), bx[1])), 1),
+                    "x2": round(max(0.0, min(float(width), bx[2])), 1),
+                    "y2": round(max(0.0, min(float(height), bx[3])), 1),
+                },
+                "disambiguated": False,
+                "disambiguation_reason": None,
+            })
         return {
+            "detections": formatted_detections,
             "candidates": full_boxes,
             "is_sliced": False,
             "dense_box_suppressed": False,
             "tiles_processed": 0,
+            "disambiguated_count": 0,
         }
 
     # 2. Tentukan Strategi Grid Slicing Dinamis

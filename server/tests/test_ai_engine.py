@@ -79,9 +79,10 @@ class TestYOLOInferenceEngine(unittest.TestCase):
             self.engine.predict(image_bytes=corrupt_bytes, commodity="Terung")
         self.assertIn("gagal memproses byte citra", str(ctx.exception).lower())
 
+    @patch("server.services.ai_engine.is_onnx_available", return_value=False)
     @patch("server.services.ai_engine.ULTRALYTICS_AVAILABLE", False)
-    def test_ultralytics_unavailable_graceful_error(self):
-        """Memastikan runtime error yang ramah dilempar saat ultralytics belum terpasang."""
+    def test_ultralytics_unavailable_graceful_error(self, mock_onnx_avail):
+        """Memastikan runtime error yang ramah dilempar saat kedua runtime belum terpasang."""
         dummy_img = Image.new("RGB", (200, 200), color="purple")
         buf = BytesIO()
         dummy_img.save(buf, format="JPEG")
@@ -90,12 +91,12 @@ class TestYOLOInferenceEngine(unittest.TestCase):
         # Engine get_model harus melempar RuntimeError
         with self.assertRaises(RuntimeError) as ctx:
             self.engine.get_model("Terung")
-        self.assertIn("belum terpasang", str(ctx.exception).lower())
+        self.assertIn("tidak ada runtime", str(ctx.exception).lower())
 
     def test_predict_real_model_slicing_and_contract(self):
         """Memverifikasi pemanggilan predict() nyata menghasilkan kontrak 1.2.0 dan metadata slicing/disambiguasi."""
         if not self.engine.is_available():
-            self.skipTest("Ultralytics tidak terpasang di lingkungan uji")
+            self.skipTest("Runtime AI tidak terpasang di lingkungan uji")
 
         # Buat gambar sintetis beresolusi 640x480
         test_img = Image.new("RGB", (640, 480), color=(100, 40, 120))
@@ -113,10 +114,30 @@ class TestYOLOInferenceEngine(unittest.TestCase):
 
         self.assertEqual(res["contract_version"], "1.2.0")
         self.assertEqual(res["model_name"], "Agri-Sort Eggplant Quality Detection")
+        self.assertIn("runtime_engine", res)
         self.assertIn("slicing_applied", res["detection_summary"])
         self.assertIn("dense_box_suppressed", res["detection_summary"])
         self.assertIn("disambiguated_count", res["detection_summary"])
         self.assertIsInstance(res["detections"], list)
+
+    def test_onnx_runtime_parity_and_execution(self):
+        """Memverifikasi engine ONNX Runtime mengeksekusi inferensi dengan mulus dan cepat."""
+        from server.services.onnx_engine import is_onnx_available
+        if not is_onnx_available():
+            self.skipTest("onnxruntime tidak terpasang")
+
+        test_img = Image.new("RGB", (640, 640), color=(80, 20, 100))
+        buf = BytesIO()
+        test_img.save(buf, format="JPEG")
+
+        res = self.engine.predict(
+            image_bytes=buf.getvalue(),
+            commodity="Terung",
+            runtime="onnx",
+            enable_slicing=False,
+        )
+        self.assertEqual(res["runtime_engine"], "onnx_runtime")
+        self.assertLess(res["inference_time_ms"], 500.0)
 
 
 if __name__ == "__main__":

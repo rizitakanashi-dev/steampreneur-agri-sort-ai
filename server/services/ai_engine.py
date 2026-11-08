@@ -17,6 +17,7 @@ import time
 from typing import Any, Dict, List, Optional
 from PIL import Image
 
+from server.services.onnx_engine import ONNXYOLOModel, is_onnx_available
 from server.services.tiled_inference import run_sliced_yolo_inference
 
 logger = logging.getLogger("agrisort.ai_engine")
@@ -50,6 +51,8 @@ class YOLOInferenceEngine:
         # Jalur absolut direktori dasar repositori
         self.base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+        self.preferred_runtime = os.environ.get("AGRISORT_RUNTIME", "onnx").strip().lower()
+
         self.model_configs = {
             "terung": {
                 "name": "Agri-Sort Eggplant Quality Detection",
@@ -61,24 +64,26 @@ class YOLOInferenceEngine:
                     "terung",
                     "best.pt",
                 ),
+                "onnx_path": os.path.join(self.base_dir, "server", "models", "terung", "best.onnx"),
                 "expected_classes": ["Class I", "Class II", "Extra Class", "Reject"],
             },
             "tomat": {
                 "name": "Agri-Sort Tomato Freshness Detection",
                 "version": "1.0.0",
                 "path": os.path.join(self.base_dir, "model-export", "weights", "best.pt"),
+                "onnx_path": os.path.join(self.base_dir, "model-export", "weights", "best.onnx"),
                 "expected_classes": ["fresh-tomato", "rotten-tomato"],
             },
         }
 
     def is_available(self) -> bool:
-        """Memeriksa apakah runtime Ultralytics terpasang."""
-        return ULTRALYTICS_AVAILABLE
+        """Memeriksa apakah runtime ONNX atau Ultralytics tersedia."""
+        return is_onnx_available() or ULTRALYTICS_AVAILABLE
 
-    def get_model(self, commodity: str = "terung"):
+    def get_model(self, commodity: str = "terung", runtime: Optional[str] = None):
         """
         Pemuatan model secara lazy-loading singleton.
-        Mengembalikan instance YOLO dan canonical commodity key.
+        Mendukung backend engine 'onnx' (default berkecepatan tinggi) atau 'ultralytics' (PyTorch).
         """
         comm_lower = commodity.strip().lower()
         if "terung" in comm_lower or "terong" in comm_lower or "eggplant" in comm_lower:
@@ -88,32 +93,51 @@ class YOLOInferenceEngine:
         else:
             raise ValueError(f"Komoditas '{commodity}' tidak didukung oleh model AI saat ini.")
 
+        target_runtime = (runtime or self.preferred_runtime).strip().lower()
+        cfg = self.model_configs.get(comm_key)
+        if not cfg:
+            raise FileNotFoundError(f"Konfigurasi model untuk komoditas '{comm_key}' tidak ditemukan.")
+
+        # 1. Coba muat ONNX Runtime jika diminta dan berkas ONNX tersedia
+        if target_runtime == "onnx" and is_onnx_available():
+            cache_key = f"{comm_key}_onnx"
+            if cache_key not in self._models:
+                onnx_path = cfg.get("onnx_path", "")
+                if not os.path.exists(onnx_path) and comm_key == "terung":
+                    alt_onnx = os.path.join(self.base_dir, "models-20261107T170211Z-1-001", "models", "terung", "best.onnx")
+                    if os.path.exists(alt_onnx):
+                        onnx_path = alt_onnx
+
+                if os.path.exists(onnx_path):
+                    logger.info("Memuat engine ONNX Runtime CPU untuk %s dari: %s", comm_key, onnx_path)
+                    class_dict = {i: name for i, name in enumerate(cfg["expected_classes"])}
+                    self._models[cache_key] = ONNXYOLOModel(model_path=onnx_path, names=class_dict)
+                    return self._models[cache_key], comm_key, "onnx_runtime"
+                else:
+                    logger.warning("Berkas ONNX %s tidak ditemukan di %s. Mencoba fallback ke PyTorch.", comm_key, onnx_path)
+
+        # 2. Fallback ke Ultralytics PyTorch (.pt)
         if not ULTRALYTICS_AVAILABLE:
             raise RuntimeError(
-                "Pustaka 'ultralytics' belum terpasang di lingkungan runtime server. "
-                "Harap pasang dengan perintah: pip install ultralytics"
+                "Tidak ada runtime yang tersedia. Harap pasang 'onnxruntime' atau 'ultralytics'."
             )
 
-        if comm_key not in self._models:
-            cfg = self.model_configs.get(comm_key)
-            if not cfg:
-                raise FileNotFoundError(f"Konfigurasi model untuk komoditas '{comm_key}' tidak ditemukan.")
-
+        cache_key = f"{comm_key}_pt"
+        if cache_key not in self._models:
             model_path = cfg["path"]
             if not os.path.exists(model_path) and comm_key == "terung":
-                # Fallback ke server/models/terung/best.pt jika direktori terung lain tidak ditemukan
                 alt_path = os.path.join(self.base_dir, "server", "models", "terung", "best.pt")
                 if os.path.exists(alt_path):
                     model_path = alt_path
 
             if not os.path.exists(model_path):
                 raise FileNotFoundError(
-                    f"Berkas model untuk komoditas '{comm_key}' tidak ditemukan di lokasi: {model_path}"
+                    f"Berkas model PyTorch untuk komoditas '{comm_key}' tidak ditemukan di lokasi: {model_path}"
                 )
-            logger.info("Memuat bobot model YOLO11 %s dari: %s", comm_key, model_path)
-            self._models[comm_key] = YOLO(model_path)
+            logger.info("Memuat bobot model YOLO11 PyTorch %s dari: %s", comm_key, model_path)
+            self._models[cache_key] = YOLO(model_path)
 
-        return self._models[comm_key], comm_key
+        return self._models[cache_key], comm_key, "ultralytics_pytorch"
 
     def predict(
         self,
@@ -123,6 +147,7 @@ class YOLOInferenceEngine:
         iou_threshold: float = 0.40,
         enable_slicing: bool = True,
         disambiguate_grades: bool = True,
+        runtime: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
         Mengeksekusi inferensi pada citra panen menggunakan Sliced SAHI & Grade Disambiguation.
@@ -146,11 +171,11 @@ class YOLOInferenceEngine:
 
         width, height = image.size
 
-        # 2. Ambil instance model singleton
-        model, comm_key = self.get_model(commodity)
+        # 2. Ambil instance model singleton (ONNX Runtime atau PyTorch)
+        model, comm_key, active_runtime = self.get_model(commodity, runtime=runtime)
         cfg = self.model_configs[comm_key]
 
-        # 3. Jalankan inferensi Ultralytics YOLO dengan Tiled SAHI & Grade Disambiguation
+        # 3. Jalankan inferensi AI dengan Tiled SAHI & Grade Disambiguation
         sliced_res = run_sliced_yolo_inference(
             image=image,
             model=model,
@@ -199,6 +224,7 @@ class YOLOInferenceEngine:
             "contract_version": "1.2.0",
             "model_name": cfg["name"],
             "model_version": cfg["version"],
+            "runtime_engine": active_runtime,
             "commodity": cfg["expected_classes"],
             "inference_time_ms": elapsed_ms,
             "image_dimensions": {"width": width, "height": height},
@@ -206,6 +232,7 @@ class YOLOInferenceEngine:
             "detection_summary": {
                 "total_objects": len(detections),
                 "class_counts": class_counts,
+                "runtime_engine": active_runtime,
                 "slicing_applied": sliced_res["is_sliced"],
                 "dense_box_suppressed": sliced_res["dense_box_suppressed"],
                 "tiles_processed": sliced_res["tiles_processed"],
