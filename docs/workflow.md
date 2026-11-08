@@ -206,9 +206,35 @@ Rule        Rule
 
 ## 5. Rencana Pengujian Menyeluruh (Testing & Verification)
 
-- **Frontend Tests (87 tests passing):**  
-  `npm test` mencakup `tes/canvasOverlayHelper.test.js`, `tes/qcCertificateHelper.test.js`, `tes/scanService.test.js`, dan validasi panen.
-- **Backend Tests (41 tests passing):**  
-  `python3 -m unittest discover -s server/tests` mencakup `test_mock_engine.py`, `test_pricing.py`, `test_security.py`, dan `test_storage.py`.
+- **Frontend Tests (100 tests passing):**  
+  `npm test` mencakup `tes/canvasOverlayHelper.test.js`, `tes/qcCertificateHelper.test.js`, `tes/scanService.test.js`, `tes/pathologyReference.test.js`, `tes/farmerFinance.test.js`, dan validasi panen.
+- **Backend Tests (65 tests passing):**  
+  `python3 -m unittest discover -s server/tests` mencakup `test_ai_engine.py`, `test_bapanas.py`, `test_pricing.py`, `test_security.py`, `test_storage.py`, dan `test_tiled_inference.py`.
 - **Integrasi E2E:**  
   Pengujian pemindaian foto terung keranjang panen nyata melalui reverse proxy Vite dengan waktu respon $< 500\text{ ms}$.
+
+---
+
+## 6. Protokol Git Branching & Kolaborasi Tim (Anti-Conflict Standard)
+
+> **Instruksi Resmi Ketua Tim (Faris Al Farizi):**  
+> *"Setiap selesai satu fitur, buat branch baru agar tidak terjadi konflik atau penolakan push (*non-fast-forward*) antar-anggota tim."*
+
+### A. Standar Alur Kerja Git Cabang (*Feature Branch Workflow*):
+1. **Dilarang langsung memodifikasi dan mendorong kode ke `main` secara bersamaan.**
+2. **Setiap fitur / tugas baru wajib diawali dengan pembuatan branch khusus:**
+   ```bash
+   # Buat dan beralih ke branch baru dari main terbaru
+   git checkout -b feat/nama-fitur
+   ```
+3. **Konvensi Penamaan Branch:**
+   - `feat/nama-fitur`: Untuk fitur baru (misal: `feat/bep-calculator`, `feat/multi-angle-scan`, `feat/sahi-eval`)
+   - `fix/nama-bug`: Untuk perbaikan bug (misal: `fix/camera-leak`, `fix/label-collision`)
+   - `docs/nama-dokumen`: Untuk pembaruan proposal dan dokumen kerja tim
+4. **Mendorong Hasil Pekerjaan ke GitHub:**
+   ```bash
+   git push -u origin feat/nama-fitur
+   ```
+5. **Penggabungan ke `main` (*Merge Protocol*):**
+   - Pastikan seluruh 165 unit tests (100 JS + 65 Python) lulus 100% dan `npm run build` berhasil tanpa error sebelum digabungkan ke `main`.
+   - Menggunakan PR (*Pull Request*) atau merge bersih untuk menjaga kestabilan kode saat demo di hadapan Kepala Sekolah dan Juri.

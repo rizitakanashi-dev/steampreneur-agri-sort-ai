@@ -153,6 +153,20 @@ Proposal lomba resmi mengajukan inovasi Web App Quality Control & Smart Pricing 
 
 ---
 
+### C3. Standar Kolaborasi Git: Feature Branch Workflow (Pencegahan Konflik Tim)
+
+- **Instruksi Resmi Ketua Tim (Faris Al Farizi):**  
+  Setiap selesai satu fitur atau tugas baru, anggota tim wajib membuat branch baru (*Feature Branch*) dan dilarang langsung bekerja atau mendorong (*push*) kode secara berbarengan di branch `main`.
+- **Tujuan Arsitektural:**  
+  1. Mencegah penolakan push (*rejected: non-fast-forward / fetch first*) yang memicu merge conflict antar-anggota tim.
+  2. Memastikan branch `main` selalu berada dalam kondisi stabil dan siap didemokan sewaktu-waktu di hadapan Kepala Sekolah dan Dewan Juri STEAMPreneur.
+- **Konvensi Branch:**  
+  `feat/nama-fitur` (contoh: `feat/bep-calculator`, `feat/multi-angle-scan`) atau `fix/nama-bug` (contoh: `fix/camera-leak`).
+- **Protokol Merge:**  
+  Setiap branch hanya boleh digabungkan ke `main` setelah seluruh pengujian otomatis (165 tests: 100 JS + 65 Python) dinyatakan lulus 100% dan build produksi berhasil tanpa error.
+
+---
+
 ## D. Evaluasi 5 Pilar STEAM
 
 Proposal STEAMPreneur SMK mewajibkan integrasi nyata dari 5 pilar:
