@@ -77,6 +77,12 @@ export function buildCertificateData(batch = {}) {
     safeBatch.inference?.commodity === 'terung' ||
     safeBatch.scanResult?.commodity === 'Terung'
 
+  const isMultiAngle = Boolean(
+    safeBatch.is_multi_angle ||
+    safeBatch.scanResult?.is_multi_angle ||
+    safeBatch.scanResult?.inspection_mode?.includes('multi')
+  )
+
   const hasInference = Boolean(
     safeBatch.inference ||
     safeBatch.ai_scan_performed ||
@@ -321,7 +327,9 @@ export function buildCertificateData(batch = {}) {
         : 'Sistem Analisis Panen SMKN 4 Payakumbuh'
 
   const inspectionMethod = hasInference
-    ? `Computer Vision AI — ${modelEngineName}`
+    ? (isMultiAngle
+        ? `Computer Vision AI (Multi-Angle 2-Sisi Terverifikasi) — ${modelEngineName}`
+        : `Computer Vision AI — ${modelEngineName}`)
     : 'Inspeksi Visual & Model Perhitungan Terstandar'
 
   return {
@@ -330,6 +338,7 @@ export function buildCertificateData(batch = {}) {
     inspectionDate: formatCertificateDate(todayStr),
     commodity,
     totalWeightKg,
+    isMultiAngle,
     modelEngineName,
     inspectionMethod,
     evaluator: hasInference ? 'Agri-Sort AI Autonomous Engine' : 'Sistem Analisis Panen SMKN 4 Payakumbuh',

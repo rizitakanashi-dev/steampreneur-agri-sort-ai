@@ -42,11 +42,15 @@ import RecyclingRoundedIcon from '@mui/icons-material/RecyclingRounded'
 import VerifiedRoundedIcon from '@mui/icons-material/VerifiedRounded'
 import PrintRoundedIcon from '@mui/icons-material/PrintRounded'
 import CloseRoundedIcon from '@mui/icons-material/CloseRounded'
+import FlipCameraAndroidRoundedIcon from '@mui/icons-material/FlipCameraAndroidRounded'
+import ShieldRoundedIcon from '@mui/icons-material/ShieldRounded'
+import WarningAmberRoundedIcon from '@mui/icons-material/WarningAmberRounded'
 
 import { LiveCameraViewfinder } from './LiveCameraViewfinder.jsx'
 import { ScanCanvasOverlay } from './ScanCanvasOverlay.jsx'
 import { QCPrintCertificate } from './QCPrintCertificate.jsx'
-import { scanHarvestImage } from '../services/scanService.js'
+import { scanHarvestImage, scanMultiAngleHarvestImages } from '../services/scanService.js'
+import { aggregateMultiAngleScanResults } from '../business/multiAngleHelper.js'
 import { saveBatch } from '../business/harvestStorage.js'
 import { REFERENCE_PRICES_PER_KG } from '../business/priceReference.js'
 import { calculateHarvest, calculateHarvestValue } from '../business/harvestCalculation.js'
@@ -106,6 +110,15 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm }
   const [imageFile, setImageFile] = useState(null)
   const [imagePreview, setImagePreview] = useState(null)
 
+  // State Multi-Sudut (Anti-Kecurangan / Occlusion-Free)
+  const [isMultiAngleMode, setIsMultiAngleMode] = useState(false)
+  const [multiStep, setMultiStep] = useState(1) // 1: Foto Sisi 1 (Depan), 2: Foto Sisi 2 (Belakang / Goyang Nampan)
+  const [imageFileFront, setImageFileFront] = useState(null)
+  const [imagePreviewFront, setImagePreviewFront] = useState(null)
+  const [imageFileBack, setImageFileBack] = useState(null)
+  const [imagePreviewBack, setImagePreviewBack] = useState(null)
+  const [activeAngleView, setActiveAngleView] = useState(0) // 0: Sisi Depan, 1: Sisi Belakang
+
   // State proses scan
   const [isScanning, setIsScanning] = useState(false)
   const [scanError, setScanError] = useState('')
@@ -119,6 +132,8 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm }
   const [saveSuccessMsg, setSaveSuccessMsg] = useState('')
 
   const fileInputRef = useRef(null)
+  const fileInputRefFront = useRef(null)
+  const fileInputRefBack = useRef(null)
 
   // Sesuaikan default confidence saat berganti komoditas
   const handleSelectCommodity = (commId) => {
@@ -135,11 +150,62 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm }
 
   // Handle capture dari Live Camera
   const handleLiveCameraCapture = async (file, previewUrl) => {
-    setImageFile(file)
-    setImagePreview(previewUrl)
+    if (!isMultiAngleMode) {
+      setImageFile(file)
+      setImagePreview(previewUrl)
+      setScanError('')
+      await triggerInference(file, previewUrl, selectedCommodity, confidenceThreshold)
+    } else {
+      if (multiStep === 1) {
+        setImageFileFront(file)
+        setImagePreviewFront(previewUrl)
+        setScanError('')
+        setMultiStep(2)
+      } else {
+        setImageFileBack(file)
+        setImagePreviewBack(previewUrl)
+        setScanError('')
+        await triggerMultiInference(
+          imageFileFront,
+          file,
+          imagePreviewFront,
+          previewUrl,
+          selectedCommodity,
+          confidenceThreshold
+        )
+      }
+    }
+  }
+
+  // Handle pemrosesan berkas untuk sisi spesifik (Multi-Angle)
+  const handleProcessFileForSide = (file, side = 'front') => {
+    if (!file) return
+
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp']
+    if (!allowedTypes.includes(file.type)) {
+      setScanError('Format file tidak didukung. Harap gunakan format JPG, PNG, atau WebP.')
+      return
+    }
+
+    if (file.size > 10 * 1024 * 1024) {
+      setScanError('Ukuran gambar melebihi batas 10 MB. Silakan gunakan foto yang lebih kecil.')
+      return
+    }
+
     setScanError('')
-    // Langsung jalankan inferensi AI otomatis seketika foto diambil
-    await triggerInference(file, previewUrl, selectedCommodity, confidenceThreshold)
+    setScanResult(null)
+    const reader = new FileReader()
+    reader.onload = (event) => {
+      const dataUrl = event.target?.result
+      if (side === 'front') {
+        setImageFileFront(file)
+        setImagePreviewFront(dataUrl)
+      } else {
+        setImageFileBack(file)
+        setImagePreviewBack(dataUrl)
+      }
+    }
+    reader.readAsDataURL(file)
   }
 
   // Handle pemrosesan berkas citra (baik via file dialog maupun drag and drop)
@@ -187,7 +253,7 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm }
   const handleDragLeave = (e) => {
     e.preventDefault()
     e.stopPropagation()
-    setIsDragging(false)
+    if (!isDragging) setIsDragging(false)
   }
 
   const handleDrop = (e) => {
@@ -203,12 +269,20 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm }
   const handleClearImage = () => {
     setImageFile(null)
     setImagePreview(null)
+    setImageFileFront(null)
+    setImagePreviewFront(null)
+    setImageFileBack(null)
+    setImagePreviewBack(null)
+    setMultiStep(1)
+    setActiveAngleView(0)
     setScanResult(null)
     setScanError('')
     if (fileInputRef.current) fileInputRef.current.value = ''
+    if (fileInputRefFront.current) fileInputRefFront.current.value = ''
+    if (fileInputRefBack.current) fileInputRefBack.current.value = ''
   }
 
-  // Eksekusi inferensi AI
+  // Eksekusi inferensi AI Sudut Tunggal
   const triggerInference = async (file, previewUrl, commodity, conf) => {
     if (!file) return
     setIsScanning(true)
@@ -231,6 +305,123 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm }
     } catch (err) {
       console.error('Inference error:', err)
       setScanError(err.message || 'Gagal memproses gambar pada server backend.')
+    } finally {
+      setIsScanning(false)
+    }
+  }
+
+  // Eksekusi inferensi AI Multi-Sudut (Dual-Shot Aggregation)
+  const triggerMultiInference = async (fileFront, fileBack, previewFront, previewBack, commodity, conf) => {
+    if (!fileFront || !fileBack) {
+      setScanError('Kedua sisi foto (Depan & Belakang/Goyang Nampan) wajib tersedia.')
+      return
+    }
+    setIsScanning(true)
+    setScanError('')
+    try {
+      let finalResult = null
+
+      // 1. Coba panggil endpoint resmi multi-sudut backend POST /api/v1/qc/scan-multi
+      try {
+        const response = await scanMultiAngleHarvestImages({
+          imageFront: fileFront,
+          imageBack: fileBack,
+          commodity,
+          confidenceThreshold: conf,
+        })
+        if (response?.data) {
+          const d = response.data
+          const agg = d.multi_angle_aggregation || {}
+          const isEgg = String(commodity).toLowerCase().includes('terung')
+
+          finalResult = {
+            ...d,
+            is_multi_angle: true,
+            imagePreview: previewFront,
+            imagePreviewFront: previewFront,
+            imagePreviewBack: previewBack,
+            occlusion_analysis: agg.occlusion_analysis || {},
+            inference_result: {
+              object_counts: isEgg
+                ? {
+                    extra_class:
+                      agg.combined_object_counts?.extra_class_combined ??
+                      d.front_view?.object_counts?.['extra-class'] ??
+                      0,
+                    class_1:
+                      agg.combined_object_counts?.class_1_combined ??
+                      d.front_view?.object_counts?.['class-1'] ??
+                      0,
+                    class_2:
+                      agg.combined_object_counts?.class_2_combined ??
+                      d.front_view?.object_counts?.['class-2'] ??
+                      0,
+                    reject:
+                      agg.combined_object_counts?.reject_combined ??
+                      d.front_view?.object_counts?.reject ??
+                      0,
+                    total: agg.combined_object_counts?.total_samples_observed ?? 1,
+                  }
+                : {
+                    fresh_tomato:
+                      agg.combined_object_counts?.fresh_tomato_combined ??
+                      d.front_view?.object_counts?.['fresh-tomato'] ??
+                      0,
+                    rotten_tomato:
+                      agg.combined_object_counts?.rotten_tomato_combined ??
+                      d.front_view?.object_counts?.['rotten-tomato'] ??
+                      0,
+                    total: agg.combined_object_counts?.total_samples_observed ?? 1,
+                  },
+              condition_ratios: agg.weighted_condition_ratios || d.smart_pricing?.condition_ratios || {},
+              detections: d.front_view?.detections || [],
+              detections_front: d.front_view?.detections || [],
+              detections_back: d.back_view?.detections || [],
+              image_dimensions: d.front_view?.image_dimensions || { width: 1280, height: 720 },
+              image_dimensions_front: d.front_view?.image_dimensions || { width: 1280, height: 720 },
+              image_dimensions_back: d.back_view?.image_dimensions || { width: 1280, height: 720 },
+              inference_time_ms:
+                (d.front_view?.inference_time_ms || 0) + (d.back_view?.inference_time_ms || 0),
+            },
+            smart_pricing: d.smart_pricing,
+            business_grading: d.business_grading,
+          }
+        }
+      } catch (backendMultiErr) {
+        console.warn('Backend multi-scan fallback to client aggregation:', backendMultiErr)
+      }
+
+      // 2. Client-side fallback jika endpoint multi gagal
+      if (!finalResult) {
+        const [resFront, resBack] = await Promise.all([
+          scanHarvestImage({ imageFile: fileFront, commodity, confidenceThreshold: conf }),
+          scanHarvestImage({ imageFile: fileBack, commodity, confidenceThreshold: conf }),
+        ])
+        const aggregated = aggregateMultiAngleScanResults(
+          resFront?.data || resFront,
+          resBack?.data || resBack,
+          saveWeight ? Number(saveWeight.replace(',', '.')) : 10,
+          commodity
+        )
+        finalResult = {
+          ...aggregated,
+          imagePreview: previewFront,
+          imagePreviewFront: previewFront,
+          imagePreviewBack: previewBack,
+          inference_result: {
+            ...aggregated.inference_result,
+            detections_front: resFront?.data?.inference_result?.detections || [],
+            detections_back: resBack?.data?.inference_result?.detections || [],
+            image_dimensions_front: resFront?.data?.inference_result?.image_dimensions || { width: 1280, height: 720 },
+            image_dimensions_back: resBack?.data?.inference_result?.image_dimensions || { width: 1280, height: 720 },
+          },
+        }
+      }
+
+      setScanResult(finalResult)
+    } catch (err) {
+      console.error('Multi-angle inference error:', err)
+      setScanError(err.message || 'Gagal memproses pemindaian multi-sudut.')
     } finally {
       setIsScanning(false)
     }
@@ -294,8 +485,13 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm }
 
     const newBatch = saveBatch({
       ...calculatedInput,
-      fotoKeranjang: imagePreview,
-      fotoNama: imageFile?.name || `${selectedCommodity.toLowerCase()}_scan.jpg`,
+      fotoKeranjang: scanResult.imagePreviewFront || scanResult.imagePreview || imagePreview,
+      fotoKeranjangFront: scanResult.imagePreviewFront || null,
+      fotoKeranjangBack: scanResult.imagePreviewBack || null,
+      is_multi_angle: Boolean(scanResult.is_multi_angle),
+      fotoNama: scanResult.is_multi_angle
+        ? `${selectedCommodity.toLowerCase()}_multi_scan.jpg`
+        : (imageFile?.name || `${selectedCommodity.toLowerCase()}_scan.jpg`),
       ai_scan_performed: true,
       inference: inf,
       pricing: pricing,
@@ -443,6 +639,45 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm }
               )
             })}
           </Grid>
+
+          {/* Mode Inspeksi: Sudut Tunggal vs Multi-Sudut (Anti-Kecurangan / Goyang Nampan) */}
+          <Box sx={{ mt: 2.5, pt: 2, borderTop: '1px solid', borderColor: 'divider' }}>
+            <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ sm: 'center' }} spacing={1.5}>
+              <Box>
+                <Stack direction="row" alignItems="center" spacing={1}>
+                  <ShieldRoundedIcon color={isMultiAngleMode ? 'success' : 'action'} />
+                  <Typography variant="subtitle2" fontWeight={800}>
+                    Mode Inspeksi: {isMultiAngleMode ? 'Multi-Sudut (2 Sisi — Goyang Nampan)' : 'Sudut Tunggal (1 Sisi Standar)'}
+                  </Typography>
+                  <Chip
+                    label={isMultiAngleMode ? '🛡️ Anti-Bias Oklusi' : 'Cepat'}
+                    size="small"
+                    color={isMultiAngleMode ? 'success' : 'default'}
+                    variant={isMultiAngleMode ? 'filled' : 'outlined'}
+                    sx={{ fontWeight: 700, fontSize: '0.72rem', height: 22 }}
+                  />
+                </Stack>
+                <Typography variant="caption" color="text.secondary">
+                  {isMultiAngleMode
+                    ? 'Memeriksa 2 sisi (Depan & Belakang setelah nampan digoyang) untuk mendeteksi pembusukan tersembunyi.'
+                    : 'Pengambilan 1 foto cepat tampak atas untuk penilaian mutu standar.'}
+                </Typography>
+              </Box>
+              <Button
+                size="small"
+                variant={isMultiAngleMode ? 'contained' : 'outlined'}
+                color={isMultiAngleMode ? 'success' : 'inherit'}
+                onClick={() => {
+                  setIsMultiAngleMode((prev) => !prev)
+                  handleClearImage()
+                }}
+                startIcon={<FlipCameraAndroidRoundedIcon />}
+                sx={{ borderRadius: 2, fontWeight: 700, flexShrink: 0 }}
+              >
+                {isMultiAngleMode ? 'Beralih ke 1 Sisi' : 'Aktifkan Mode Multi-Sudut'}
+              </Button>
+            </Stack>
+          </Box>
         </CardContent>
       </Card>
 
@@ -532,69 +767,157 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm }
             {/* TAB 0: LIVE CAMERA */}
             {activeTab === 0 && (
               <Box>
-                {imagePreview ? (
-                  <Box sx={{ position: 'relative', borderRadius: 2, overflow: 'hidden', bgcolor: '#0f172a', textAlign: 'center' }}>
-                    <Box
-                      component="img"
-                      src={imagePreview}
-                      alt="Pratinjau Hasil Foto Kamera"
-                      sx={{ maxHeight: 380, maxWidth: '100%', objectFit: 'contain' }}
-                    />
-                    <IconButton
-                      onClick={handleClearImage}
-                      size="small"
-                      disabled={isScanning}
-                      sx={{
-                        position: 'absolute',
-                        top: 12,
-                        right: 12,
-                        bgcolor: 'rgba(0,0,0,0.65)',
-                        color: '#fff',
-                        '&:hover': { bgcolor: '#dc2626' },
-                      }}
-                      title="Ambil Ulang Foto"
-                    >
-                      <DeleteOutlineRoundedIcon />
-                    </IconButton>
-
-                    <Box sx={{ p: 2, bgcolor: '#ffffff', borderTop: '1px solid', borderColor: 'divider' }}>
-                      <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems="center" spacing={1.5}>
-                        <Box sx={{ textAlign: 'left' }}>
-                          <Typography variant="body2" fontWeight={700}>
-                            Foto Berhasil Diambil
+                {/* 1. KONDISI MODE MULTI-SUDUT AKTIF */}
+                {isMultiAngleMode ? (
+                  <Box>
+                    {/* Stepper Indikator 2 Langkah */}
+                    <Box sx={{ mb: 2.5, p: 2, bgcolor: '#f0fdf4', borderRadius: 2, border: '1px solid #bbf7d0' }}>
+                      <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ sm: 'center' }} spacing={1}>
+                        <Stack direction="row" spacing={1} alignItems="center">
+                          <Chip
+                            label={`Langkah ${multiStep} dari 2`}
+                            color="success"
+                            size="small"
+                            sx={{ fontWeight: 800 }}
+                          />
+                          <Typography variant="subtitle2" fontWeight={800} color="#166534">
+                            {multiStep === 1
+                              ? 'Langkah 1: Potret Sisi Depan / Tampak Atas'
+                              : 'Langkah 2: Goyang Nampan / Balikkan Buah, lalu Potret Sisi Belakang'}
                           </Typography>
-                          <Typography variant="caption" color="text.secondary">
-                            Kamera dinonaktifkan sementara untuk menghemat daya.
-                          </Typography>
-                        </Box>
-                        <Button
-                          variant="outlined"
-                          color="inherit"
-                          size="small"
-                          disabled={isScanning}
-                          onClick={handleClearImage}
-                          startIcon={<RefreshRoundedIcon />}
-                          sx={{ borderRadius: 2 }}
-                        >
-                          Ambil Ulang / Buka Kamera
-                        </Button>
+                        </Stack>
+                        {multiStep === 2 && (
+                          <Button
+                            size="small"
+                            variant="outlined"
+                            color="inherit"
+                            onClick={() => {
+                              setImageFileFront(null)
+                              setImagePreviewFront(null)
+                              setMultiStep(1)
+                            }}
+                            startIcon={<RefreshRoundedIcon />}
+                            sx={{ borderRadius: 1.5, fontSize: '0.75rem' }}
+                          >
+                            Ambil Ulang Sisi 1
+                          </Button>
+                        )}
                       </Stack>
+                      <Typography variant="caption" color="#15803d" sx={{ display: 'block', mt: 0.5 }}>
+                        {multiStep === 1
+                          ? 'Arahkan kamera ke sampel panen dan tekan tombol potret.'
+                          : 'Goyang nampan perlahan atau balikkan buah sampel secara acak agar sisi bawahnya terlihat oleh kamera.'}
+                      </Typography>
                     </Box>
+
+                    {/* Pratinjau Sisi 1 jika sedang di Langkah 2 */}
+                    {multiStep === 2 && imagePreviewFront && (
+                      <Box sx={{ mb: 2, p: 1.5, bgcolor: '#f8fafc', borderRadius: 2, border: '1px dashed #cbd5e1' }}>
+                        <Stack direction="row" spacing={1.5} alignItems="center">
+                          <Box
+                            component="img"
+                            src={imagePreviewFront}
+                            alt="Pratinjau Sisi 1 (Depan)"
+                            sx={{ width: 64, height: 64, objectFit: 'cover', borderRadius: 1.5, border: '1px solid #94a3b8' }}
+                          />
+                          <Box sx={{ flex: 1 }}>
+                            <Stack direction="row" spacing={1} alignItems="center">
+                              <CheckCircleRoundedIcon color="success" sx={{ fontSize: 18 }} />
+                              <Typography variant="body2" fontWeight={700}>
+                                Sisi 1 (Depan) Siap &amp; Tersimpan
+                              </Typography>
+                            </Stack>
+                            <Typography variant="caption" color="text.secondary">
+                              Sekarang ambil foto Sisi 2 di bawah untuk menyelesaikan analisis multi-sudut.
+                            </Typography>
+                          </Box>
+                        </Stack>
+                      </Box>
+                    )}
+
+                    <LiveCameraViewfinder
+                      key={`viewfinder-step-${multiStep}`}
+                      onCapture={handleLiveCameraCapture}
+                      disabled={isScanning}
+                    />
+
+                    {isScanning && (
+                      <Stack direction="row" spacing={1.5} alignItems="center" justifyContent="center" sx={{ mt: 2 }}>
+                        <CircularProgress size={20} color="primary" />
+                        <Typography variant="body2" fontWeight={600} color="primary.main">
+                          Sedang menganalisis 2 sudut foto dengan model YOLO11 {selectedCommodity}...
+                        </Typography>
+                      </Stack>
+                    )}
                   </Box>
                 ) : (
-                  <LiveCameraViewfinder
-                    onCapture={handleLiveCameraCapture}
-                    disabled={isScanning}
-                  />
-                )}
+                  /* 2. KONDISI MODE SUDUT TUNGGAL */
+                  <Box>
+                    {imagePreview ? (
+                      <Box sx={{ position: 'relative', borderRadius: 2, overflow: 'hidden', bgcolor: '#0f172a', textAlign: 'center' }}>
+                        <Box
+                          component="img"
+                          src={imagePreview}
+                          alt="Pratinjau Hasil Foto Kamera"
+                          sx={{ maxHeight: 380, maxWidth: '100%', objectFit: 'contain' }}
+                        />
+                        <IconButton
+                          onClick={handleClearImage}
+                          size="small"
+                          disabled={isScanning}
+                          sx={{
+                            position: 'absolute',
+                            top: 12,
+                            right: 12,
+                            bgcolor: 'rgba(0,0,0,0.65)',
+                            color: '#fff',
+                            '&:hover': { bgcolor: '#dc2626' },
+                          }}
+                          title="Ambil Ulang Foto"
+                        >
+                          <DeleteOutlineRoundedIcon />
+                        </IconButton>
 
-                {isScanning && (
-                  <Stack direction="row" spacing={1.5} alignItems="center" justifyContent="center" sx={{ mt: 2 }}>
-                    <CircularProgress size={20} color="primary" />
-                    <Typography variant="body2" fontWeight={600} color="primary.main">
-                      Sedang menganalisis foto dengan model YOLO11 {selectedCommodity}...
-                    </Typography>
-                  </Stack>
+                        <Box sx={{ p: 2, bgcolor: '#ffffff', borderTop: '1px solid', borderColor: 'divider' }}>
+                          <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems="center" spacing={1.5}>
+                            <Box sx={{ textAlign: 'left' }}>
+                              <Typography variant="body2" fontWeight={700}>
+                                Foto Berhasil Diambil
+                              </Typography>
+                              <Typography variant="caption" color="text.secondary">
+                                Kamera dinonaktifkan sementara untuk menghemat daya.
+                              </Typography>
+                            </Box>
+                            <Button
+                              variant="outlined"
+                              color="inherit"
+                              size="small"
+                              disabled={isScanning}
+                              onClick={handleClearImage}
+                              startIcon={<RefreshRoundedIcon />}
+                              sx={{ borderRadius: 2 }}
+                            >
+                              Ambil Ulang / Buka Kamera
+                            </Button>
+                          </Stack>
+                        </Box>
+                      </Box>
+                    ) : (
+                      <LiveCameraViewfinder
+                        onCapture={handleLiveCameraCapture}
+                        disabled={isScanning}
+                      />
+                    )}
+
+                    {isScanning && (
+                      <Stack direction="row" spacing={1.5} alignItems="center" justifyContent="center" sx={{ mt: 2 }}>
+                        <CircularProgress size={20} color="primary" />
+                        <Typography variant="body2" fontWeight={600} color="primary.main">
+                          Sedang menganalisis foto dengan model YOLO11 {selectedCommodity}...
+                        </Typography>
+                      </Stack>
+                    )}
+                  </Box>
                 )}
               </Box>
             )}
@@ -602,90 +925,274 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm }
             {/* TAB 1: UPLOAD FILE */}
             {activeTab === 1 && (
               <Box>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/jpeg,image/png,image/webp"
-                  style={{ display: 'none' }}
-                  onChange={handleFileChange}
-                />
-
-                {imagePreview ? (
-                  <Box sx={{ position: 'relative', borderRadius: 2, overflow: 'hidden', bgcolor: '#0f172a', textAlign: 'center' }}>
-                    <Box
-                      component="img"
-                      src={imagePreview}
-                      alt="Pratinjau Panen"
-                      sx={{ maxHeight: 380, maxWidth: '100%', objectFit: 'contain' }}
-                    />
-                    <IconButton
-                      onClick={handleClearImage}
-                      size="small"
-                      sx={{
-                        position: 'absolute',
-                        top: 12,
-                        right: 12,
-                        bgcolor: 'rgba(0,0,0,0.65)',
-                        color: '#fff',
-                        '&:hover': { bgcolor: '#dc2626' },
+                {isMultiAngleMode ? (
+                  <Box>
+                    <input
+                      ref={fileInputRefFront}
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp"
+                      style={{ display: 'none' }}
+                      onChange={(e) => {
+                        const f = e.target?.files?.[0]
+                        if (f) handleProcessFileForSide(f, 'front')
                       }}
-                      title="Ganti Foto"
-                    >
-                      <DeleteOutlineRoundedIcon />
-                    </IconButton>
+                    />
+                    <input
+                      ref={fileInputRefBack}
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp"
+                      style={{ display: 'none' }}
+                      onChange={(e) => {
+                        const f = e.target?.files?.[0]
+                        if (f) handleProcessFileForSide(f, 'back')
+                      }}
+                    />
 
-                    <Box sx={{ p: 2, bgcolor: '#ffffff', borderTop: '1px solid', borderColor: 'divider' }}>
-                      <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems="center" spacing={1.5}>
-                        <Box sx={{ textAlign: 'left' }}>
-                          <Typography variant="body2" fontWeight={700}>
-                            {imageFile?.name || 'Citra Panen Terpilih'}
-                          </Typography>
-                          <Typography variant="caption" color="text.secondary">
-                            Siap dipindai dengan model {selectedCommodity}
-                          </Typography>
-                        </Box>
-                        <Button
-                          variant="contained"
-                          color="primary"
-                          size="large"
-                          disabled={isScanning}
-                          onClick={() => triggerInference(imageFile, imagePreview, selectedCommodity, confidenceThreshold)}
-                          startIcon={isScanning ? <CircularProgress size={18} color="inherit" /> : <AutoAwesomeRoundedIcon />}
-                          sx={{ borderRadius: 2, fontWeight: 700, px: 3 }}
-                        >
-                          {isScanning ? 'Menganalisis...' : 'Mulai Pindai AI Sekarang'}
-                        </Button>
-                      </Stack>
+                    <Alert severity="info" sx={{ mb: 2.5, borderRadius: 2 }}>
+                      Mode Multi-Sudut Aktif: Unggah 2 berkas foto (Sisi Depan dan Sisi Belakang setelah sampel digoyang) untuk mendeteksi cacat tersembunyi.
+                    </Alert>
+
+                    <Grid container spacing={2}>
+                      {/* SISI 1: DEPAN */}
+                      <Grid size={{ xs: 12, sm: 6 }}>
+                        <Card variant="outlined" sx={{ borderRadius: 2.5, p: 2, height: '100%', display: 'flex', flexDirection: 'column' }}>
+                          <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1.5 }}>
+                            <Typography variant="subtitle2" fontWeight={800}>
+                              1. Sisi Depan / Tampak Atas
+                            </Typography>
+                            {imagePreviewFront && (
+                              <Chip label="Terpilih ✓" size="small" color="success" sx={{ fontWeight: 700, height: 22 }} />
+                            )}
+                          </Stack>
+
+                          {imagePreviewFront ? (
+                            <Box sx={{ position: 'relative', borderRadius: 2, overflow: 'hidden', bgcolor: '#0f172a', textAlign: 'center', mb: 1 }}>
+                              <Box
+                                component="img"
+                                src={imagePreviewFront}
+                                alt="Pratinjau Sisi Depan"
+                                sx={{ maxHeight: 200, maxWidth: '100%', objectFit: 'contain' }}
+                              />
+                              <Button
+                                size="small"
+                                variant="contained"
+                                color="inherit"
+                                onClick={() => fileInputRefFront.current?.click()}
+                                sx={{ position: 'absolute', bottom: 8, right: 8, fontSize: '0.72rem' }}
+                              >
+                                Ganti Foto
+                              </Button>
+                            </Box>
+                          ) : (
+                            <Box
+                              onClick={() => fileInputRefFront.current?.click()}
+                              sx={{
+                                border: '2px dashed #94a3b8',
+                                borderRadius: 2,
+                                p: 3,
+                                textAlign: 'center',
+                                cursor: 'pointer',
+                                bgcolor: '#f8fafc',
+                                flex: 1,
+                                display: 'flex',
+                                flexDirection: 'column',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                minHeight: 180,
+                                '&:hover': { bgcolor: '#f1f5f9', borderColor: 'primary.main' },
+                              }}
+                            >
+                              <CloudUploadRoundedIcon sx={{ fontSize: 40, color: 'primary.main', mb: 1 }} />
+                              <Typography variant="body2" fontWeight={700}>
+                                Klik untuk Unggah Foto Sisi 1
+                              </Typography>
+                              <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5 }}>
+                                Tampak atas keranjang / nampan
+                              </Typography>
+                            </Box>
+                          )}
+                        </Card>
+                      </Grid>
+
+                      {/* SISI 2: BELAKANG / GOYANG NAMPAN */}
+                      <Grid size={{ xs: 12, sm: 6 }}>
+                        <Card variant="outlined" sx={{ borderRadius: 2.5, p: 2, height: '100%', display: 'flex', flexDirection: 'column' }}>
+                          <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1.5 }}>
+                            <Typography variant="subtitle2" fontWeight={800}>
+                              2. Sisi Belakang (Setelah Dibalik)
+                            </Typography>
+                            {imagePreviewBack && (
+                              <Chip label="Terpilih ✓" size="small" color="success" sx={{ fontWeight: 700, height: 22 }} />
+                            )}
+                          </Stack>
+
+                          {imagePreviewBack ? (
+                            <Box sx={{ position: 'relative', borderRadius: 2, overflow: 'hidden', bgcolor: '#0f172a', textAlign: 'center', mb: 1 }}>
+                              <Box
+                                component="img"
+                                src={imagePreviewBack}
+                                alt="Pratinjau Sisi Belakang"
+                                sx={{ maxHeight: 200, maxWidth: '100%', objectFit: 'contain' }}
+                              />
+                              <Button
+                                size="small"
+                                variant="contained"
+                                color="inherit"
+                                onClick={() => fileInputRefBack.current?.click()}
+                                sx={{ position: 'absolute', bottom: 8, right: 8, fontSize: '0.72rem' }}
+                              >
+                                Ganti Foto
+                              </Button>
+                            </Box>
+                          ) : (
+                            <Box
+                              onClick={() => fileInputRefBack.current?.click()}
+                              sx={{
+                                border: '2px dashed #94a3b8',
+                                borderRadius: 2,
+                                p: 3,
+                                textAlign: 'center',
+                                cursor: 'pointer',
+                                bgcolor: '#f8fafc',
+                                flex: 1,
+                                display: 'flex',
+                                flexDirection: 'column',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                minHeight: 180,
+                                '&:hover': { bgcolor: '#f1f5f9', borderColor: 'primary.main' },
+                              }}
+                            >
+                              <FlipCameraAndroidRoundedIcon sx={{ fontSize: 40, color: '#059669', mb: 1 }} />
+                              <Typography variant="body2" fontWeight={700}>
+                                Klik untuk Unggah Foto Sisi 2
+                              </Typography>
+                              <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5 }}>
+                                Foto setelah sampel dibalik / nampan digoyang
+                              </Typography>
+                            </Box>
+                          )}
+                        </Card>
+                      </Grid>
+                    </Grid>
+
+                    <Box sx={{ mt: 2.5, textAlign: 'center' }}>
+                      <Button
+                        variant="contained"
+                        color="success"
+                        size="large"
+                        disabled={!imageFileFront || !imageFileBack || isScanning}
+                        onClick={() =>
+                          triggerMultiInference(
+                            imageFileFront,
+                            imageFileBack,
+                            imagePreviewFront,
+                            imagePreviewBack,
+                            selectedCommodity,
+                            confidenceThreshold
+                          )
+                        }
+                        startIcon={isScanning ? <CircularProgress size={18} color="inherit" /> : <ShieldRoundedIcon />}
+                        sx={{ borderRadius: 2.5, fontWeight: 700, px: 4, py: 1.25 }}
+                      >
+                        {isScanning ? 'Menganalisis 2 Sudut...' : 'Mulai Pindai AI 2-Sudut (Multi-Angle)'}
+                      </Button>
+                      {(!imageFileFront || !imageFileBack) && (
+                        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
+                          * Harap lengkapi kedua foto (Sisi 1 &amp; Sisi 2) untuk memulai analisis
+                        </Typography>
+                      )}
                     </Box>
                   </Box>
                 ) : (
-                  <Box
-                    onClick={() => fileInputRef.current?.click()}
-                    onDragOver={handleDragOver}
-                    onDragLeave={handleDragLeave}
-                    onDrop={handleDrop}
-                    sx={{
-                      border: '2px dashed',
-                      borderColor: isDragging ? 'primary.main' : '#94a3b8',
-                      borderRadius: 2.5,
-                      p: { xs: 3, sm: 5 },
-                      textAlign: 'center',
-                      cursor: 'pointer',
-                      bgcolor: isDragging ? 'rgba(3, 110, 69, 0.08)' : '#f8fafc',
-                      '&:hover': { bgcolor: '#f1f5f9', borderColor: 'primary.main' },
-                      transition: 'all 0.2s',
-                    }}
-                  >
-                    <CloudUploadRoundedIcon sx={{ fontSize: 56, color: 'primary.main', mb: 1.5 }} />
-                    <Typography variant="subtitle1" fontWeight={700}>
-                      Klik untuk Pilih Foto atau Tarik &amp; Lepaskan (Drag &amp; Drop) ke Sini
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-                      Ambil foto tampak atas (top-down) keranjang {selectedCommodity} &bull; JPG, PNG, atau WebP (maks. 10 MB)
-                    </Typography>
-                    <Button variant="outlined" sx={{ mt: 2, borderRadius: 2 }} startIcon={<CloudUploadRoundedIcon />}>
-                      Pilih Berkas dari Komputer
-                    </Button>
+                  /* Single file upload */
+                  <Box>
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp"
+                      style={{ display: 'none' }}
+                      onChange={handleFileChange}
+                    />
+
+                    {imagePreview ? (
+                      <Box sx={{ position: 'relative', borderRadius: 2, overflow: 'hidden', bgcolor: '#0f172a', textAlign: 'center' }}>
+                        <Box
+                          component="img"
+                          src={imagePreview}
+                          alt="Pratinjau Panen"
+                          sx={{ maxHeight: 380, maxWidth: '100%', objectFit: 'contain' }}
+                        />
+                        <IconButton
+                          onClick={handleClearImage}
+                          size="small"
+                          sx={{
+                            position: 'absolute',
+                            top: 12,
+                            right: 12,
+                            bgcolor: 'rgba(0,0,0,0.65)',
+                            color: '#fff',
+                            '&:hover': { bgcolor: '#dc2626' },
+                          }}
+                          title="Ganti Foto"
+                        >
+                          <DeleteOutlineRoundedIcon />
+                        </IconButton>
+
+                        <Box sx={{ p: 2, bgcolor: '#ffffff', borderTop: '1px solid', borderColor: 'divider' }}>
+                          <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems="center" spacing={1.5}>
+                            <Box sx={{ textAlign: 'left' }}>
+                              <Typography variant="body2" fontWeight={700}>
+                                {imageFile?.name || 'Citra Panen Terpilih'}
+                              </Typography>
+                              <Typography variant="caption" color="text.secondary">
+                                Siap dipindai dengan model {selectedCommodity}
+                              </Typography>
+                            </Box>
+                            <Button
+                              variant="contained"
+                              color="primary"
+                              size="large"
+                              disabled={isScanning}
+                              onClick={() => triggerInference(imageFile, imagePreview, selectedCommodity, confidenceThreshold)}
+                              startIcon={isScanning ? <CircularProgress size={18} color="inherit" /> : <AutoAwesomeRoundedIcon />}
+                              sx={{ borderRadius: 2, fontWeight: 700, px: 3 }}
+                            >
+                              {isScanning ? 'Menganalisis...' : 'Mulai Pindai AI Sekarang'}
+                            </Button>
+                          </Stack>
+                        </Box>
+                      </Box>
+                    ) : (
+                      <Box
+                        onClick={() => fileInputRef.current?.click()}
+                        onDragOver={handleDragOver}
+                        onDragLeave={handleDragLeave}
+                        onDrop={handleDrop}
+                        sx={{
+                          border: '2px dashed',
+                          borderColor: isDragging ? 'primary.main' : '#94a3b8',
+                          borderRadius: 2.5,
+                          p: { xs: 3, sm: 5 },
+                          textAlign: 'center',
+                          cursor: 'pointer',
+                          bgcolor: isDragging ? 'rgba(3, 110, 69, 0.08)' : '#f8fafc',
+                          '&:hover': { bgcolor: '#f1f5f9', borderColor: 'primary.main' },
+                          transition: 'all 0.2s',
+                        }}
+                      >
+                        <CloudUploadRoundedIcon sx={{ fontSize: 56, color: 'primary.main', mb: 1.5 }} />
+                        <Typography variant="subtitle1" fontWeight={700}>
+                          Klik untuk Pilih Foto atau Tarik &amp; Lepaskan (Drag &amp; Drop) ke Sini
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+                          Ambil foto tampak atas (top-down) keranjang {selectedCommodity} &bull; JPG, PNG, atau WebP (maks. 10 MB)
+                        </Typography>
+                        <Button variant="outlined" sx={{ mt: 2, borderRadius: 2 }} startIcon={<CloudUploadRoundedIcon />}>
+                          Pilih Berkas dari Komputer
+                        </Button>
+                      </Box>
+                    )}
                   </Box>
                 )}
               </Box>
@@ -715,9 +1222,22 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm }
                 <Stack direction="row" spacing={1.5} alignItems="center">
                   <CheckCircleRoundedIcon color="success" sx={{ fontSize: 32 }} />
                   <Box>
-                    <Typography variant="subtitle1" fontWeight={800} color="#166534">
-                      Deteksi AI Berhasil — {selectedCommodity}
-                    </Typography>
+                    <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
+                      <Typography variant="subtitle1" fontWeight={800} color="#166534">
+                        {scanResult.is_multi_angle
+                          ? `Inspeksi Multi-Sudut (2 Sisi) Berhasil — ${selectedCommodity}`
+                          : `Deteksi AI Berhasil — ${selectedCommodity}`}
+                      </Typography>
+                      {scanResult.is_multi_angle && (
+                        <Chip
+                          icon={<ShieldRoundedIcon />}
+                          label="🛡️ Multi-Angle Verified"
+                          size="small"
+                          color="success"
+                          sx={{ fontWeight: 800 }}
+                        />
+                      )}
+                    </Stack>
                     <Typography variant="caption" color="text.secondary">
                       Waktu Inferensi: {inference?.inference_time_ms || 0} ms &bull; Total Terdeteksi: {inference?.detections?.length || 0} butir
                     </Typography>
@@ -780,12 +1300,74 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm }
             </Alert>
           )}
 
+          {/* Notifikasi Peringatan Bias Oklusi (Anti-Kecurangan 2-Sisi) */}
+          {scanResult.occlusion_analysis?.occlusion_bias_detected && (
+            <Alert
+              severity="warning"
+              icon={<WarningAmberRoundedIcon />}
+              sx={{ borderRadius: 2.5, bgcolor: '#fffbeb', borderColor: '#fde68a' }}
+            >
+              <Typography variant="subtitle2" fontWeight={800} color="#92400e">
+                🛡️ Deteksi Bias Oklusi (Anti-Kecurangan Berhasil Menangkap Cacat Tersembunyi)
+              </Typography>
+              <Typography variant="body2" color="#b45309" sx={{ mt: 0.5 }}>
+                {scanResult.occlusion_analysis.warning_message ||
+                  `Terdeteksi disparitas cacat +${scanResult.occlusion_analysis.defect_delta_percent}% pada sisi belakang sampel panen.`}
+              </Typography>
+              <Typography variant="caption" color="#92400e" sx={{ display: 'block', mt: 0.5, fontWeight: 600 }}>
+                Indeks Konsistensi Lot: {scanResult.occlusion_analysis.consistency_index_percent ?? 85}% • Buah afkir berhasil dicegat dari percampuran Grade A.
+              </Typography>
+            </Alert>
+          )}
+
+          {/* Tab Pemilih Sudut Visualisasi (Hanya muncul jika pemindaian Multi-Sudut) */}
+          {scanResult.is_multi_angle && scanResult.imagePreviewBack && (
+            <Box sx={{ borderBottom: 1, borderColor: 'divider', pb: 1 }}>
+              <Tabs
+                value={activeAngleView}
+                onChange={(_, val) => setActiveAngleView(val)}
+                sx={{ minHeight: 38 }}
+              >
+                <Tab
+                  label="Visualisasi Sisi 1 (Depan / Tampak Atas)"
+                  icon={<CheckCircleRoundedIcon fontSize="small" />}
+                  iconPosition="start"
+                  sx={{ fontWeight: 700, minHeight: 38, textTransform: 'none' }}
+                />
+                <Tab
+                  label="Visualisasi Sisi 2 (Belakang / Goyang Nampan)"
+                  icon={<FlipCameraAndroidRoundedIcon fontSize="small" />}
+                  iconPosition="start"
+                  sx={{ fontWeight: 700, minHeight: 38, textTransform: 'none' }}
+                />
+              </Tabs>
+            </Box>
+          )}
+
           {/* Canvas Overlay Anotasi AI */}
           <ScanCanvasOverlay
             commodity={selectedCommodity}
-            detections={inference?.detections || []}
-            imageDimensions={inference?.image_dimensions}
-            imageUrl={scanResult.imagePreview}
+            detections={
+              scanResult.is_multi_angle && scanResult.imagePreviewBack
+                ? activeAngleView === 0
+                  ? scanResult.inference_result?.detections_front || scanResult.inference_result?.detections || []
+                  : scanResult.inference_result?.detections_back || scanResult.inference_result?.detections || []
+                : inference?.detections || []
+            }
+            imageDimensions={
+              scanResult.is_multi_angle && scanResult.imagePreviewBack
+                ? activeAngleView === 0
+                  ? scanResult.inference_result?.image_dimensions_front || scanResult.inference_result?.image_dimensions
+                  : scanResult.inference_result?.image_dimensions_back || scanResult.inference_result?.image_dimensions
+                : inference?.image_dimensions
+            }
+            imageUrl={
+              scanResult.is_multi_angle && scanResult.imagePreviewBack
+                ? activeAngleView === 0
+                  ? scanResult.imagePreviewFront || scanResult.imagePreview
+                  : scanResult.imagePreviewBack || scanResult.imagePreview
+                : scanResult.imagePreview
+            }
           />
 
           {/* Kartu Ringkasan Kelas Mutu */}
