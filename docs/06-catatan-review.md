@@ -107,17 +107,27 @@ Senior Software Engineer code review kritis berbasis bukti terhadap seluruh sour
 | 5 | R05: Pindahkan setError keluar dari useMemo | Diterima dan diperbaiki | Pelanggaran aturan React. `React.StrictMode` aktif di `main.jsx` baris 9. `useMemo` diubah menjadi pure function yang mengembalikan `{ projection, validationError }` tanpa `setState`. `validationError` ditampilkan di baris 204. `setError` hanya dipanggil dari `onClick` handler (baris 278, 280). 54 test pass, build berhasil. | `src/components/PricingDashboard.jsx` — refaktor `useMemo` ke derived value |
 | 6 | R06: Perjelas dependency array useMemo | Ditolak | `visibleBatches` dihitung di baris 64, di luar `useMemo` di baris 63. Dependency array `[batches, filter]` untuk `sortedBatches` sudah benar — `page` dan `rowsPerPage` bukan input `sortedBatches`. Tidak ada bug. | Tidak berubah |
 
+| 7 | R12: Integrasi Live Feed Panel Harga BAPANAS | Diterima dan diterapkan | Menghilangkan klaim statis simulasi menjadi live feed BAPANAS resmi Sumatera Barat / Pasar Ibuh Payakumbuh (`server/services/bapanas_service.py`). | `server/routers/pricing.py`, `src/components/PricingDashboard.jsx`, `src/services/scanService.js` |
+| 8 | R13: Modul Edukasi Sains Patologi Pascapanen (Pilar S STEAM) | Diterima dan diterapkan | Menambahkan identifikasi 5 patologi mikrobiologis & fisiologis pascapanen, tindakan mitigasi agronomis presisi, serta penyesuaian status adaptif saat 0 reject. | `src/business/pathologyReference.js`, `src/components/PostHarvestPathologyCards.jsx`, `src/components/QCResults.jsx` |
+| 9 | R14: Perbaikan ReferenceError komoditas di QCResults | Diterima dan diperbaiki | Memperbaiki typo referensi variabel `commodity` di `QCResults.jsx` yang menyebabkan White Screen of Death. | `src/components/QCResults.jsx` |
+| 10 | R15: Pelepasan Stream Kamera Non-Blocking di Linux | Diterima dan diperbaiki | Menambahkan pelepasan hardware video track non-blocking saat unmount dan menghentikan video live saat foto terambil agar kamera tidak bocor di latar belakang. | `src/components/LiveCameraViewfinder.jsx`, `src/components/BatchQCScanner.jsx` |
+
 ## 4. Hasil test dan build aktual
 
-Dijalankan pada 2026-10-15 (setelah perbaikan R01, R05, dan ekstraksi `calculateBatchTotals`):
+Diverifikasi pada **8 November 2026** (Integrasi Model AI Terung YOLO11n 4-Kelas, Live BAPANAS Feed, dan Modul Sains Patologi Pascapanen):
 
 ```
-npm test   → ℹ tests 57  ℹ pass 57  ℹ fail 0  (421ms)
-npm run build → ✓ built in 1.65s  (exit 0)
+Frontend Tests (Node.js test runner):
+npm test   → ℹ tests 96  ℹ pass 96  ℹ fail 0  (433ms)
+
+Backend Tests (Python unittest runner):
+python3 -m unittest discover -s server/tests → Ran 65 tests in 0.190s  (OK, skipped=1)
+
+Total Tests Keseluruhan:
+161 / 161 tests PASS (100% Lulus, 0 Fail, 0 Regression)
+
+Frontend Production Build:
+npm run build → ✓ built in 1.14s (exit 0)
 ```
-
-Perincian test per berkas: harvestCalculation (12), harvestValidation (5), gradeValidation (5), harvestStorage (4), harvestProjection (5), harvestRecapChangeRequest (15), csvExporter (10), initialState (1) = **57 total**.
-
-Catatan build: Vite memberi warning "Some chunks are larger than 500 kB" — ini disebabkan oleh bundle MUI + `@mui/x-charts` yang besar. Tidak memengaruhi fungsionalitas; code-splitting dapat dipertimbangkan tetapi di luar cakupan review ini.
 
 Penjelasan kode ditulis terpisah di `08-penjelasan-kode.md`.

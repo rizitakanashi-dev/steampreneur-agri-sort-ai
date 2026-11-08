@@ -257,3 +257,43 @@ Pekerjaan ML Engineer dinyatakan selesai jika memenuhi seluruh kriteria:
 4. Output inferensi mematuhi 100% kontrak skema raw detection tanpa menyertakan logika harga atau grade fiktif.
 5. Skenario gambar tanpa objek dan berkas rusak tertangani secara aman tanpa server crash.
 6. Seluruh unit test pada `server/tests/test_ai_engine.py` lulus 100%.
+
+---
+
+## 8. Catatan Kolaborasi Teknis & Tindak Lanjut untuk Faris Al Farizi (ML Engineer & Project Lead)
+
+> **Tanggal Catatan:** 8 November 2026  
+> **Pencatat:** Hieray Antovino (Fullstack Developer)  
+> **Status Integrasi:** 161 Unit Tests Lulus 100% (96 Frontend JS + 65 Backend Python)
+
+### A. Fitur yang Sudah Selesai Dikerjakan & Terverifikasi (Hieray):
+1. **Integrasi Live Feed Panel Harga BAPANAS (Badan Pangan Nasional RI):**
+   - Backend service: `server/services/bapanas_service.py` untuk wilayah Sumatera Barat & Pasar Ibuh Payakumbuh.
+   - Endpoint: `GET /api/v1/pricing/bapanas/live`, `GET /api/v1/pricing/bapanas/commodities/{comm}`, dan `POST /api/v1/pricing/bapanas/sync`.
+   - Frontend: Sinkronisasi instan, lencana hijau verified di `PricingDashboard.jsx`, dan penyesuaian metric card `App.jsx`.
+2. **Modul Edukasi Sains Patologi Pascapanen (Pilar S dari STEAM):**
+   - Basis data: `src/business/pathologyReference.js` (Antraknosa, Busuk Lunak Bakteri, Botrytis, Kerut Fisiologis, Blossom-End Rot).
+   - Komponen UI: `PostHarvestPathologyCards.jsx` dengan katalog interaktif dan status adaptif (100% Prima vs Deteksi Cacat Aktif).
+3. **Perbaikan Bug Kritis Kamera & Tampilan:**
+   - Menyembuhkan *White Screen of Death* di `QCResults.jsx` (memperbaiki referensi variabel `commodity`).
+   - Mengatasi *Hardware Camera Stream Leak* di `LiveCameraViewfinder.jsx` dan `BatchQCScanner.jsx` (kamera langsung mati saat foto diambil atau saat navigasi halaman di Linux).
+   - Mengoptimalkan waktu respons navigasi (*non-blocking hardware release*).
+
+### B. Agenda & Tindak Lanjut Khusus untuk Faris Al Farizi (ML & AI Pipeline):
+1. **Multi-Angle / Multi-Shot Inference Aggregation:**
+   - **Tujuan:** Mengatasi kelemahan inspeksi satu arah (*Single-View Occlusion Bias*) agar tidak ada petani/pengepul yang menyembunyikan sisi busuk di belakang.
+   - **Tugas Faris:** Menyiapkan endpoint backend `POST /api/v1/qc/scan-multi` yang menerima 2 berkas foto (Sisi Depan & Sisi Belakang) dan menghitung rata-rata tertimbang (*weighted defect ratio*) dari kedua sudut pandang.
+2. **Pre-flight Quality Gate Citra di Backend (Pasar Subuh & Kamera Kentang):**
+   - **Tujuan:** Mencegah salah prediksi saat foto diambil di Pasar Ibuh Payakumbuh pada subuh hari yang remang-remang atau menggunakan kamera HP murah.
+   - **Tugas Faris:**
+     - Menambahkan fungsi deteksi ketajaman (*Laplacian Variance*) dan pencahayaan (*Mean Luminance*) di `ai_engine.py`.
+     - Menguji pipeline pra-pemrosesan CLAHE (*Contrast Limited Adaptive Histogram Equalization*) pada citra input sebelum masuk tensor YOLO11n.
+3. **Validasi Tiled Inference SAHI di Dataset Riil Pasar Ibuh:**
+   - Menguji keandalan skrip `server/services/tiled_inference.py` pada citra keranjang padat bertumpuk dengan rasio oklusi tinggi.
+
+### C. Pembagian Peran Anggota Lain:
+- **Ahmad Afif (QA & Dokumentasi) bersama Pak Rogi Auvi:**
+  - Menyusun dokumen **SOP Pengambilan Sampel QC Lapangan (Metode Nampan Goyang / Shake & Roll Protocol)** sebagai lampiran resmi pembuktian pada presentasi Kepala Sekolah dan Dewan Juri STEAMPreneur.
+- **Hieray Antovino (Fullstack Developer):**
+  - Siap menghubungkan antarmuka tombol ganda (*Multi-Angle Capture UI*) begitu Faris merilis endpoint `scan-multi`.
+
