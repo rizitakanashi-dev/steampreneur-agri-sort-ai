@@ -539,7 +539,7 @@ export function QCResults({ batch, onBackToInput, onViewRecap }) {
 
       {/* Kartu Edukasi Sains Patologi Pascapanen (Pilar S dari STEAM) */}
       <PostHarvestPathologyCards
-        commodity={komoditas}
+        commodity={commodity}
         rejectCount={inference?.object_counts?.rotten_tomato || inference?.object_counts?.reject || 0}
         rejectPercent={inference?.condition_ratios?.rotten_ratio_percent || hasil?.persenC || 0}
       />

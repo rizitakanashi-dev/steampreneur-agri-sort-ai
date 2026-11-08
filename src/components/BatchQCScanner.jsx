@@ -532,10 +532,62 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm }
             {/* TAB 0: LIVE CAMERA */}
             {activeTab === 0 && (
               <Box>
-                <LiveCameraViewfinder
-                  onCapture={handleLiveCameraCapture}
-                  disabled={isScanning}
-                />
+                {imagePreview ? (
+                  <Box sx={{ position: 'relative', borderRadius: 2, overflow: 'hidden', bgcolor: '#0f172a', textAlign: 'center' }}>
+                    <Box
+                      component="img"
+                      src={imagePreview}
+                      alt="Pratinjau Hasil Foto Kamera"
+                      sx={{ maxHeight: 380, maxWidth: '100%', objectFit: 'contain' }}
+                    />
+                    <IconButton
+                      onClick={handleClearImage}
+                      size="small"
+                      disabled={isScanning}
+                      sx={{
+                        position: 'absolute',
+                        top: 12,
+                        right: 12,
+                        bgcolor: 'rgba(0,0,0,0.65)',
+                        color: '#fff',
+                        '&:hover': { bgcolor: '#dc2626' },
+                      }}
+                      title="Ambil Ulang Foto"
+                    >
+                      <DeleteOutlineRoundedIcon />
+                    </IconButton>
+
+                    <Box sx={{ p: 2, bgcolor: '#ffffff', borderTop: '1px solid', borderColor: 'divider' }}>
+                      <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems="center" spacing={1.5}>
+                        <Box sx={{ textAlign: 'left' }}>
+                          <Typography variant="body2" fontWeight={700}>
+                            Foto Berhasil Diambil
+                          </Typography>
+                          <Typography variant="caption" color="text.secondary">
+                            Kamera dinonaktifkan sementara untuk menghemat daya.
+                          </Typography>
+                        </Box>
+                        <Button
+                          variant="outlined"
+                          color="inherit"
+                          size="small"
+                          disabled={isScanning}
+                          onClick={handleClearImage}
+                          startIcon={<RefreshRoundedIcon />}
+                          sx={{ borderRadius: 2 }}
+                        >
+                          Ambil Ulang / Buka Kamera
+                        </Button>
+                      </Stack>
+                    </Box>
+                  </Box>
+                ) : (
+                  <LiveCameraViewfinder
+                    onCapture={handleLiveCameraCapture}
+                    disabled={isScanning}
+                  />
+                )}
+
                 {isScanning && (
                   <Stack direction="row" spacing={1.5} alignItems="center" justifyContent="center" sx={{ mt: 2 }}>
                     <CircularProgress size={20} color="primary" />
