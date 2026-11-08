@@ -10,20 +10,29 @@ Keunggulan Arsitektur:
 4. Mendukung antarmuka duck-typing yang 100% kompatibel dengan tiled_inference (SAHI).
 """
 
+from __future__ import annotations
+
 import logging
 import os
 import time
 from typing import Any, Dict, List, Optional, Tuple, Union
+
 logger = logging.getLogger("agrisort.onnx_engine")
 
 try:
     import numpy as np
+except ImportError:
+    np = None
+
+try:
     from PIL import Image
+except ImportError:
+    Image = None
+
+try:
     import onnxruntime as ort
     ONNX_AVAILABLE = True
 except ImportError:
-    np = None
-    Image = None
     ort = None
     ONNX_AVAILABLE = False
 
@@ -46,14 +55,14 @@ class ONNXResult:
 
 
 def compute_vectorized_nms(
-    boxes: np.ndarray,
-    scores: np.ndarray,
+    boxes: Any,
+    scores: Any,
     iou_threshold: float = 0.45,
 ) -> List[int]:
     """
     Eksekusi Non-Maximum Suppression (NMS) berbasis NumPy murni.
     """
-    if len(boxes) == 0:
+    if np is None or len(boxes) == 0:
         return []
 
     x1 = boxes[:, 0]
@@ -139,10 +148,14 @@ class ONNXYOLOModel:
         Mengembalikan list berisi objek hasil dengan atribut `.boxes`.
         """
         if isinstance(source, str):
+            if Image is None:
+                raise RuntimeError("PIL (Pillow) tidak terpasang di sistem.")
             img = Image.open(source).convert("RGB")
-        elif isinstance(source, Image.Image):
+        elif Image is not None and isinstance(source, Image.Image):
             img = source.convert("RGB")
-        elif isinstance(source, np.ndarray):
+        elif np is not None and isinstance(source, np.ndarray):
+            if Image is None:
+                raise RuntimeError("PIL (Pillow) tidak terpasang di sistem.")
             img = Image.fromarray(source).convert("RGB")
         else:
             raise ValueError(f"Tipe masukan tidak didukung: {type(source)}")
