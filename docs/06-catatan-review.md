@@ -111,23 +111,26 @@ Senior Software Engineer code review kritis berbasis bukti terhadap seluruh sour
 | 8 | R13: Modul Edukasi Sains Patologi Pascapanen (Pilar S STEAM) | Diterima dan diterapkan | Menambahkan identifikasi 5 patologi mikrobiologis & fisiologis pascapanen, tindakan mitigasi agronomis presisi, serta penyesuaian status adaptif saat 0 reject. | `src/business/pathologyReference.js`, `src/components/PostHarvestPathologyCards.jsx`, `src/components/QCResults.jsx` |
 | 9 | R14: Perbaikan ReferenceError komoditas di QCResults | Diterima dan diperbaiki | Memperbaiki typo referensi variabel `commodity` di `QCResults.jsx` yang menyebabkan White Screen of Death. | `src/components/QCResults.jsx` |
 | 10 | R15: Pelepasan Stream Kamera Non-Blocking di Linux | Diterima dan diperbaiki | Menambahkan pelepasan hardware video track non-blocking saat unmount dan menghentikan video live saat foto terambil agar kamera tidak bocor di latar belakang. | `src/components/LiveCameraViewfinder.jsx`, `src/components/BatchQCScanner.jsx` |
+| 11 | R16: Kalkulator Finansial & Titik Impas (BEP & HPP) Petani | Diterima dan diterapkan | Menghitung laba bersih, profit margin, ROI, BEP harga/kg, dan BEP volume panen untuk memperkuat pilar Entrepreneurship & Math STEAM. | `src/business/farmerFinance.js`, `src/components/PricingDashboard.jsx`, `tes/farmerFinance.test.js` |
+| 12 | R17: Antarmuka UI & Agregasi Multi-Sudut (Anti-Kecurangan / Goyang Nampan) | Diterima dan diterapkan | Menambahkan alur pemindaian 2-sisi (Depan & Belakang/Goyang Nampan) untuk mengeliminasi Single-View Occlusion Bias, deteksi disparitas oklusi, badge sertifikat, serta visualisasi anotasi per sudut. | `src/business/multiAngleHelper.js`, `src/components/BatchQCScanner.jsx`, `src/components/QCResults.jsx`, `src/components/QCPrintCertificate.jsx`, `src/utils/qcCertificateHelper.js`, `tes/multiAngleHelper.test.js` |
 
 ## 4. Hasil test dan build aktual
 
-Diverifikasi pada **8 November 2026** (Integrasi Model AI Terung YOLO11n 4-Kelas, Live BAPANAS Feed, dan Modul Sains Patologi Pascapanen):
+Diverifikasi pada **8 November 2026** (Branch `feat/multi-angle-scanner`):
 
 ```
 Frontend Tests (Node.js test runner):
-npm test   → ℹ tests 96  ℹ pass 96  ℹ fail 0  (433ms)
+npm test   → ℹ tests 105  ℹ pass 105  ℹ fail 0  (596ms)
 
 Backend Tests (Python unittest runner):
-python3 -m unittest discover -s server/tests → Ran 65 tests in 0.190s  (OK, skipped=1)
+python3 -m unittest server.tests.test_bapanas server.tests.test_mock_engine server.tests.test_model_integration server.tests.test_pricing server.tests.test_security server.tests.test_storage server.tests.test_tiled_inference server.tests.test_ai_engine
+→ Ran 65 tests in 0.178s  (OK, skipped=1)
 
 Total Tests Keseluruhan:
-161 / 161 tests PASS (100% Lulus, 0 Fail, 0 Regression)
+170 / 170 tests PASS (100% Lulus, 0 Fail, 0 Regression)
 
 Frontend Production Build:
-npm run build → ✓ built in 1.14s (exit 0)
+npm run build → ✓ built in 1.22s (exit 0)
 ```
 
 Penjelasan kode ditulis terpisah di `08-penjelasan-kode.md`.

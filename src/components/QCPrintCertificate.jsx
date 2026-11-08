@@ -264,6 +264,16 @@ export function QCPrintCertificate({ batch, showPrintButton = false, onPrint }) 
                   : Terverifikasi Digital (Resmi)
                 </Typography>
               </Box>
+              {cert.isMultiAngle && (
+                <Box sx={{ display: 'flex', fontSize: 12 }}>
+                  <Typography sx={{ width: 140, color: '#4b5563', fontSize: 12 }}>
+                    Inspeksi Multi-Sudut
+                  </Typography>
+                  <Typography sx={{ fontWeight: 700, fontSize: 12, color: '#036e45' }}>
+                    : 2-Sisi Terverifikasi (Occlusion-Free)
+                  </Typography>
+                </Box>
+              )}
             </Stack>
           </Box>
         </Stack>

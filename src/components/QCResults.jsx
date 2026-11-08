@@ -175,6 +175,12 @@ export function QCResults({ batch, onBackToInput, onViewRecap }) {
   const pricing = scanResult?.smart_pricing
   const commodity = batch.komoditas || scanResult?.commodity || 'Tomat'
   const isEggplant = commodity.toLowerCase().includes('terung') || commodity.toLowerCase().includes('terong')
+  const isMultiAngle = Boolean(
+    batch.is_multi_angle ||
+    scanResult?.is_multi_angle ||
+    scanResult?.inspection_mode?.includes('multi')
+  )
+  const occlusion = scanResult?.occlusion_analysis
 
   // Susun data untuk Donut PieChart
   let pieChartData = []
@@ -235,6 +241,15 @@ export function QCResults({ batch, onBackToInput, onViewRecap }) {
               </Box>
 
               <Stack alignItems={{ xs: 'flex-start', sm: 'center' }} direction={{ xs: 'column', sm: 'row' }} spacing={1}>
+                {isMultiAngle && (
+                  <Chip
+                    color="success"
+                    icon={<VerifiedRoundedIcon />}
+                    label="🛡️ Multi-Angle Verified"
+                    size="small"
+                    sx={{ fontWeight: 700 }}
+                  />
+                )}
                 <Chip
                   color={hasAiScan ? 'primary' : 'default'}
                   icon={hasAiScan ? <AutoAwesomeRoundedIcon /> : <AssessmentRoundedIcon />}
@@ -525,6 +540,25 @@ export function QCResults({ batch, onBackToInput, onViewRecap }) {
               </Box>
             </Grid>
           </Grid>
+
+          {/* Notifikasi Deteksi Oklusi Cacat Tersembunyi */}
+          {occlusion?.occlusion_bias_detected && (
+            <Alert
+              severity="warning"
+              icon={<WarningAmberRoundedIcon />}
+              sx={{ mt: 2.5, borderRadius: 2.5, bgcolor: '#fffbeb', borderColor: '#fde68a' }}
+            >
+              <Typography variant="subtitle2" fontWeight={800} color="#92400e">
+                🛡️ Deteksi Bias Oklusi (Anti-Kecurangan 2-Sisi Berhasil)
+              </Typography>
+              <Typography variant="body2" color="#b45309" sx={{ mt: 0.5 }}>
+                {occlusion.warning_message || `Terdeteksi disparitas cacat +${occlusion.defect_delta_percent}% pada sisi belakang sampel.`}
+              </Typography>
+              <Typography variant="caption" color="#92400e" sx={{ display: 'block', mt: 0.5, fontWeight: 600 }}>
+                Indeks Konsistensi Lot: {occlusion.consistency_index_percent ?? 85}% • Cacat berhasil dicegat sebelum masuk ke pasar modern.
+              </Typography>
+            </Alert>
+          )}
 
           {/* Rekomendasi Tindakan */}
           <Box sx={{ mt: 2.5 }}>

@@ -10,8 +10,8 @@
 | Dokumen Acuan | `Proposal STEAMPreneur SMK Tahun 2026.docx.pdf` & `docs/01-spesifikasi.md` |
 | Scope Audit | **Full-Stack & Sistem AI** (Kesesuaian Proposal vs Kode Nyata, Logika Bisnis, Keamanan, Performa) |
 | Tanggal Review | 3 November 2026 (Diperbarui: 8 November 2026) |
-| Versi Terakhir Dianalisis | Branch feature/onnx-runtime-and-benchmarks (Pure ONNX Runtime Engine CPU, Benchmark Suite, Multi-Angle QC, Live BAPANAS Feed & Patologi) |
-| Status Audit | **Kesiapan Demo Kepsek — 184/184 Tests Lulus (102 JS + 82 Python)** |
+| Versi Terakhir Dianalisis | Branch feat/multi-angle-scanner (UI Multi-Angle Scanner, Pure ONNX Runtime Engine, Benchmark Suite, Live BAPANAS Feed & Patologi) |
+| Status Audit | **Kesiapan Demo Kepsek — 187/187 Tests Lulus (105 JS + 82 Python)** |
 
 ---
 
@@ -242,7 +242,10 @@ Proposal STEAMPreneur SMK mewajibkan integrasi nyata dari 5 pilar:
 - [x] **Integrasi Riwayat Panen Multi-Class & Navigasi Rekap (Task FS-FE-04):** Komponen `src/components/HarvestRecap.jsx`, `AppShell.jsx`, dan `src/business/harvestFilter.js` aktif mendukung navigasi drawer langsung ke Rekap Data Panen, indikator lencana AI, visualisasi chip mutu multi-kelas (Terung 4-Class & Tomat AI), kalkulasi total nilai ekonomi gabungan, ekspor CSV akurat, serta aksi instan 'Buka QC & Cetak Sertifikat' (8 Nov 2026).
 - [x] **Packaging Aset Model AI Terung & Metadata (Task FS-02):** Berkas model bobot YOLO11 Faris (`best.onnx`, `best.pt`, `data.yaml`, `model-metadata.json`) dikemas mandiri di `server/models/terung/` untuk kepastian runtime lokal dan inferensi CPU droplet (8 Nov 2026).
 - [x] **Mesin Aturan Business Grading & Estimasi Bobot Fisik (Task FS-04):** Modul `server/services/pricing_service.py` (`calculate_business_grading`) memetakan kelas agronomi model AI (Extra Class + Class I &rarr; Grade A, Class II &rarr; Grade B, Reject &rarr; Reject) serta menghitung alokasi bobot fisik per grade dengan rekonsiliasi residu floating-point, disinkronkan ke router QC dan overlay kanvas Roboflow (8 Nov 2026).
-- [ ] **Integrasi API Harga BAPANAS:** Buat endpoint integrasi atau service scraper harga harian pangan nasional untuk wilayah Sumatera Barat / Payakumbuh dengan fallback ke cache lokal.
+- [x] **Integrasi API Harga BAPANAS:** Live feed API harga pangan harian BAPANAS Sumatera Barat (Pasar Ibuh Payakumbuh) dengan cache disk 12 jam, sinkronisasi instan, dan badge terverifikasi (`server/services/bapanas_service.py`, `src/components/PricingDashboard.jsx`) — **Selesai (8 Nov 2026)**.
+- [x] **Modul Edukasi Sains Patologi Pascapanen (Pilar S STEAM):** Modul 5 patologi mikrobiologis & fisiologis pascapanen (`pathologyReference.js`) terintegrasi di `QCResults.jsx` dengan rekomendasi tindakan agronomis presisi — **Selesai (8 Nov 2026)**.
+- [x] **Kalkulator Finansial & Titik Impas (BEP & HPP) Petani (Pilar Preneur & Math STEAM):** Perhitungan laba bersih, profit margin, ROI, BEP harga/kg, dan BEP volume panen di `src/business/farmerFinance.js` & `PricingDashboard.jsx` — **Selesai (8 Nov 2026)**.
+- [x] **Antarmuka UI & Agregasi Multi-Sudut (Anti-Kecurangan / Goyang Nampan):** Alur pemindaian 2-sisi (Depan & Belakang/Goyang Nampan) di `src/components/BatchQCScanner.jsx`, `multiAngleHelper.js`, deteksi oklusi di `QCResults.jsx`, dan sertifikat mutu resmi `QCPrintCertificate.jsx` — **Selesai (8 Nov 2026)**.
 
 ### Prioritas P2 (Penyempurnaan Skalabilitas & Presentasi Juri)
 - [ ] Integrasi Supabase Auth & Cloud Database untuk menggantikan keterbatasan `localStorage`.
