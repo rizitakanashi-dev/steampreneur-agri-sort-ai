@@ -55,6 +55,7 @@ import { saveBatch } from '../business/harvestStorage.js'
 import { REFERENCE_PRICES_PER_KG } from '../business/priceReference.js'
 import { calculateHarvest, calculateHarvestValue } from '../business/harvestCalculation.js'
 import { getTodayDateString } from '../business/harvestValidation.js'
+import { isSceneStationary } from '../utils/imageSimilarity.js'
 
 const rupiahFormatter = new Intl.NumberFormat('id-ID', {
   style: 'currency',
@@ -117,6 +118,7 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm }
   const [imagePreviewFront, setImagePreviewFront] = useState(null)
   const [imageFileBack, setImageFileBack] = useState(null)
   const [imagePreviewBack, setImagePreviewBack] = useState(null)
+  const [cameraFingerprintFront, setCameraFingerprintFront] = useState(null)
   const [activeAngleView, setActiveAngleView] = useState(0) // 0: Sisi Depan, 1: Sisi Belakang
 
   // State proses scan
@@ -149,7 +151,7 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm }
   }
 
   // Handle capture dari Live Camera
-  const handleLiveCameraCapture = async (file, previewUrl) => {
+  const handleLiveCameraCapture = async (file, previewUrl, fingerprint) => {
     if (!isMultiAngleMode) {
       setImageFile(file)
       setImagePreview(previewUrl)
@@ -159,12 +161,16 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm }
       if (multiStep === 1) {
         setImageFileFront(file)
         setImagePreviewFront(previewUrl)
+        setCameraFingerprintFront(fingerprint)
         setScanError('')
         setMultiStep(2)
       } else {
-        if (imagePreviewFront && previewUrl && imagePreviewFront === previewUrl) {
+        if (
+          (imagePreviewFront && previewUrl && imagePreviewFront === previewUrl) ||
+          (cameraFingerprintFront && fingerprint && isSceneStationary(cameraFingerprintFront, fingerprint, 0.045))
+        ) {
           setScanError(
-            'Peringatan Anti-Kecurangan: Foto Sisi 2 identik dengan Sisi 1. Harap goyang nampan panen terlebih dahulu sebelum mengambil foto kedua!'
+            'Peringatan Anti-Kecurangan: Foto Sisi 2 terdeteksi tidak berubah dari Sisi 1 (sampel/kamera statis). Harap goyang nampan panen atau balikkan buah sebelum mengambil foto kedua!'
           )
           return
         }
@@ -323,6 +329,7 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm }
     setImagePreviewFront(null)
     setImageFileBack(null)
     setImagePreviewBack(null)
+    setCameraFingerprintFront(null)
     setMultiStep(1)
     setActiveAngleView(0)
     setScanResult(null)

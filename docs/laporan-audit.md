@@ -500,3 +500,37 @@ flowchart TB
    Buka proyek Roboflow `rizi-takanashi/agri-sort`, perbaiki anotasi dataset agar mencakup **3 komoditas target** (Cabai Rawit Hijau, Terung, Tomat) dan memiliki **label kualitas** (Grade A, Grade B, Reject). Jalankan pelatihan ulang YOLO11 hingga menghasilkan bobot baru yang memang memiliki kapabilitas *grading*.
 2. **Setelah Model Baru Tersedia:**  
    Baru kemudian buat layanan backend FastAPI untuk menjalankan model tersebut, lalu hubungkan dengan komponen kamera di React sesuai arsitektur pada Bagian 12 laporan ini.
+
+---
+
+## 16. Log Pembaruan Audit & Resolusi Bug Lapangan (9 November 2026)
+
+### Temuan B5: Celah Anti-Kecurangan Berkas Kembar & Kamera Langsung (*Live Camera Stationary Fraud*)
+
+| Kode Temuan | Tingkat Keparahan | Komponen Teridentifikasi | Status Resolusi |
+|:---:|:---:|---|:---:|
+| **AUDIT-B5-01** | **KRITIS** | `BatchQCScanner.jsx` (Client-side fallback swallow) | **RESOLVED** |
+| **AUDIT-B5-02** | **TINGGI** | `LiveCameraViewfinder.jsx` (Sensor noise live camera bypass) | **RESOLVED** |
+| **AUDIT-B5-03** | **SEDANG** | `multiAngleHelper.js` (Ketiadaan validasi input kembar) | **RESOLVED** |
+
+#### A. Analisis Akar Masalah (*Root Cause Analysis*)
+1. **Mengapa pada Unggah Berkas sempat masih bisa ke-scan?**
+   - Backend sebenarnya sudah melempar penolakan HTTP 400 (`DUPLICATE_MULTI_ANGLE_IMAGES`) via SHA-256 hash.
+   - Namun di frontend, blok `catch (backendMultiErr)` menelan error penolakan tersebut dan otomatis mengaktifkan *client-side fallback* (2x single-scan terpisah), sehingga pemindaian tetap berhasil dan lolos ke antarmuka.
+2. **Mengapa pada Pas Foto (Live Camera) tidak ada peringatan sama sekali?**
+   - Kamera langsung merekam video stream aktif. Di setiap milidetik, sensor kamera mengalami fluktuasi foton dan *thermal sensor noise*.
+   - Saat diekspor ke JPEG (`toDataURL`), dua jepretan dari adegan yang diam memiliki perbedaan byte biner sekitar 0.1%–0.5%.
+   - Akibatnya, perbandingan teks biner `dataUrl1 === dataUrl2` dan SHA-256 hash menghasilkan `FALSE`, sehingga adegan statis tidak terdeteksi oleh perbandingan biner biasa.
+
+#### B. Rekayasa Solusi (*Engineering Fixes*)
+1. **Modul Analisis Kemiripan Citra (`src/utils/imageSimilarity.js`):**
+   - Mengimplementasikan ekstraksi sidik jari greyscale $16 \times 16$ (256 piksel) dengan formula luma ITU-R BT.601 ($0.299R + 0.587G + 0.114B$).
+   - Menghitung disparitas *Mean Absolute Difference (MAD)*. Jika disparitas antar-jepretan kamera $< 4.5\%$, sistem mengklasifikasikannya sebagai **adegan statis tanpa rotasi sampel** dan langsung menolak jepretan kedua dengan peringatan merah.
+2. **Eliminasi Fallback pada Error Validasi (`BatchQCScanner.jsx`):**
+   - Memastikan bahwa setiap penolakan validasi dari backend (HTTP 400) langsung ditampilkan ke pengguna tanpa pernah jatuh ke pemindaian cadangan.
+3. **Pencegahan Berkas Kembar Instan pada File Picker:**
+   - Membandingkan DataURL langsung pada saat berkas dipilih di dialog browser, sehingga berkas ditolak dan dikosongkan seketika sebelum tombol ditekan.
+4. **Cakupan Pengujian Otomatis:**
+   - Menambahkan berkas uji `tes/imageSimilarity.test.js` (5 skenario uji).
+   - Seluruh **203 unit test** (115 JS + 88 Python) lulus 100%.
+

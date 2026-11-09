@@ -14,6 +14,8 @@ import FlipCameraIosRoundedIcon from '@mui/icons-material/FlipCameraIosRounded'
 import VideocamOffRoundedIcon from '@mui/icons-material/VideocamOffRounded'
 import RefreshRoundedIcon from '@mui/icons-material/RefreshRounded'
 
+import { extractGreyscaleThumbnail } from '../utils/imageSimilarity.js'
+
 /**
  * Komponen Live Camera Viewfinder untuk Agri-Sort AI
  * Mengakses webcam desktop atau kamera HP langsung dengan capture snapshot instan.
@@ -158,13 +160,16 @@ export function LiveCameraViewfinder({ onCapture, disabled = false }) {
       const ctx = canvas.getContext('2d')
       ctx.drawImage(video, 0, 0, w, h)
 
+      const fingerprint = extractGreyscaleThumbnail(canvas, 16)
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.92)
+
       canvas.toBlob(
         (blob) => {
           setIsCapturing(false)
           if (blob && onCapture) {
             const fileName = `live_cam_${Date.now()}.jpg`
             const file = new File([blob], fileName, { type: 'image/jpeg' })
-            onCapture(file, canvas.toDataURL('image/jpeg', 0.92))
+            onCapture(file, dataUrl, fingerprint)
           }
         },
         'image/jpeg',
