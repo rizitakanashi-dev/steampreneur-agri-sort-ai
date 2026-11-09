@@ -162,6 +162,12 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm }
         setScanError('')
         setMultiStep(2)
       } else {
+        if (imagePreviewFront && previewUrl && imagePreviewFront === previewUrl) {
+          setScanError(
+            'Peringatan Anti-Kecurangan: Foto Sisi 2 identik dengan Sisi 1. Harap goyang nampan panen terlebih dahulu sebelum mengambil foto kedua!'
+          )
+          return
+        }
         setImageFileBack(file)
         setImagePreviewBack(previewUrl)
         setScanError('')
@@ -201,6 +207,7 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm }
         setScanError(
           'Peringatan Anti-Kecurangan: Foto Sisi 2 terdeteksi identik dengan Sisi 1 (file kembar). Harap pilih foto berbeda setelah nampan digoyang!'
         )
+        if (fileInputRefBack.current) fileInputRefBack.current.value = ''
         return
       }
     } else if (side === 'front' && imageFileBack) {
@@ -211,6 +218,7 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm }
         setScanError(
           'Peringatan Anti-Kecurangan: Foto Sisi 1 terdeteksi identik dengan Sisi 2 (file kembar). Harap pilih foto berbeda setelah nampan digoyang!'
         )
+        if (fileInputRefFront.current) fileInputRefFront.current.value = ''
         return
       }
     }
@@ -220,6 +228,25 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm }
     const reader = new FileReader()
     reader.onload = (event) => {
       const dataUrl = event.target?.result
+      if (side === 'back' && (imagePreviewFront === dataUrl || (imageFileFront && imageFileFront.size === file.size && imageFileFront.name === file.name))) {
+        setScanError(
+          'Peringatan Anti-Kecurangan: Foto Sisi 2 terdeteksi identik dengan Sisi 1 (file kembar). Harap pilih foto berbeda setelah nampan digoyang!'
+        )
+        setImageFileBack(null)
+        setImagePreviewBack(null)
+        if (fileInputRefBack.current) fileInputRefBack.current.value = ''
+        return
+      }
+      if (side === 'front' && (imagePreviewBack === dataUrl || (imageFileBack && imageFileBack.size === file.size && imageFileBack.name === file.name))) {
+        setScanError(
+          'Peringatan Anti-Kecurangan: Foto Sisi 1 terdeteksi identik dengan Sisi 2 (file kembar). Harap pilih foto berbeda setelah nampan digoyang!'
+        )
+        setImageFileFront(null)
+        setImagePreviewFront(null)
+        if (fileInputRefFront.current) fileInputRefFront.current.value = ''
+        return
+      }
+
       if (side === 'front') {
         setImageFileFront(file)
         setImagePreviewFront(dataUrl)
@@ -423,11 +450,13 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm }
           }
         }
       } catch (backendMultiErr) {
-        // Jika error dari backend adalah validasi anti-kecurangan berkas identik / duplikat, jangan telan errornya!
+        // Jika server mengembalikan error validasi (HTTP 400 atau duplicate), jangan pernah fallback!
         if (
+          backendMultiErr?.status === 400 ||
           backendMultiErr?.code === 'DUPLICATE_MULTI_ANGLE_IMAGES' ||
           backendMultiErr?.message?.toLowerCase().includes('identik') ||
-          backendMultiErr?.message?.toLowerCase().includes('kembar')
+          backendMultiErr?.message?.toLowerCase().includes('kembar') ||
+          backendMultiErr?.message?.toLowerCase().includes('duplicate')
         ) {
           throw backendMultiErr
         }

@@ -27,6 +27,11 @@ export function aggregateMultiAngleScanResults(scanFront, scanBack, weightKg = 1
   if (!scanBack) return { ...scanFront, is_multi_angle: false, angle_count: 1 }
   if (!scanFront) return { ...scanBack, is_multi_angle: false, angle_count: 1 }
 
+  // Deteksi foto / hasil inferensi identik (Pencegahan Kecurangan Berkas Kembar)
+  if (scanFront === scanBack || (scanFront.scan_id && scanFront.scan_id === scanBack.scan_id)) {
+    throw new Error('Berkas foto Sisi 1 dan Sisi 2 identik (file kembar terdeteksi). Harap gunakan foto berbeda setelah nampan digoyang!')
+  }
+
   const infFront = scanFront.inference_result || {}
   const infBack = scanBack.inference_result || {}
 
