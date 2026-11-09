@@ -354,6 +354,7 @@ export function buildCertificateData(batch = {}) {
       referencePricePerKg: refPrice,
     },
     recommendationNote,
+    occlusion: safeBatch.scanResult?.occlusion_analysis || safeBatch.occlusion_analysis || null,
     institution: INSTITUTION_INFO,
   }
 }
