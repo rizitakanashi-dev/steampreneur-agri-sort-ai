@@ -174,6 +174,20 @@ class TestMultiAngleEndpointAPI(unittest.TestCase):
         )
         self.assertEqual(response.status_code, 422)
 
+    def test_scan_multi_duplicate_images_fails(self):
+        """Memastikan pengiriman berkas gambar kembar yang identik ditolak (Anti-Kecurangan)."""
+        response = self.client.post(
+            "/api/v1/qc/scan-multi",
+            files={
+                "image_front": ("front.jpg", self.front_bytes, "image/jpeg"),
+                "image_back": ("front_copy.jpg", self.front_bytes, "image/jpeg"),
+            },
+            data={"commodity": "Terung"},
+        )
+        self.assertEqual(response.status_code, 400)
+        body = response.json()
+        self.assertEqual(body["error"]["code"], "DUPLICATE_MULTI_ANGLE_IMAGES")
+
     def test_scan_multi_invalid_weight_parameter(self):
         """Memastikan bobot negatif memicu respons HTTP 400."""
         response = self.client.post(

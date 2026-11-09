@@ -318,6 +318,15 @@ async def scan_multi_angle_harvest_batch(
             claimed_content_type=image_back.content_type,
         )
 
+        # 1b. Validasi Anti-Kecurangan Berkas Kembar (Duplicate Image Prevention)
+        import hashlib
+        if hashlib.sha256(front_bytes).hexdigest() == hashlib.sha256(back_bytes).hexdigest():
+            raise ImageValidationError(
+                "Berkas foto Sisi 1 dan Sisi 2 identik (file kembar terdeteksi). "
+                "Untuk verifikasi multi-sudut yang sah, goyang nampan secara merata dan unggah foto sisi yang berbeda.",
+                code="DUPLICATE_MULTI_ANGLE_IMAGES",
+            )
+
         # 2. Validasi Parameter Bobot & Penimbang
         if weight_kg is not None and weight_kg <= 0:
             raise ImageValidationError(

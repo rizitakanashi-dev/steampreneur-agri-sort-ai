@@ -316,6 +316,10 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm }
       setScanError('Kedua sisi foto (Depan & Belakang/Goyang Nampan) wajib tersedia.')
       return
     }
+    if (fileFront.size === fileBack.size && fileFront.name === fileBack.name && fileFront.lastModified === fileBack.lastModified) {
+      setScanError('Berkas foto Sisi 1 dan Sisi 2 identik (file kembar terdeteksi). Harap pilih foto berbeda setelah nampan digoyang untuk verifikasi anti-kecurangan!')
+      return
+    }
     setIsScanning(true)
     setScanError('')
     try {
