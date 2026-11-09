@@ -388,16 +388,6 @@ export function QCResults({ batch, onBackToInput, onViewRecap }) {
           </CardContent>
         </Card>
 
-        {/* Toolbar Mode Inspeksi Multi-Sudut (Jika Tersedia Dual-Angle) */}
-        {hasDualPhoto && (
-          <Card elevation={1} sx={{ borderRadius: 3, p: 2, bgcolor: '#f8fafc', border: '1px solid #e2e8f0' }}>
-            <Stack
-              alignItems={{ xs: 'flex-start', md: 'center' }}
-              direction={{ xs: 'column', md: 'row' }}
-              justifyContent="space-between"
-              spacing={2}
-            >
-              <Stack alignItems="center" direction="row" spacing={1.5}>
         {/* Banner Peringatan Status Eksekusi */}
         {executionStatus === 'needs_review' && (
           <Alert
@@ -456,33 +446,16 @@ export function QCResults({ batch, onBackToInput, onViewRecap }) {
           </Alert>
         )}
 
-      {/* Bagian Visual: Canvas Bounding Box & Diagram Donat */}
-      <Grid container spacing={2.5}>
-        {/* Kolom Kiri: Visualisasi Canvas Citra (Jika ada foto) */}
-        {photoUrl && (
-          <Grid size={{ xs: 12, md: 7 }}>
-            <ScanCanvasOverlay
-              commodity={commodity}
-              detections={inference?.detections || []}
-              imageDimensions={inference?.image_dimensions}
-              imageUrl={photoUrl}
-              onSelectDetection={(det) => setSelectedDetection(det)}
-            />
-          </Grid>
-        )}
-
-        {/* Kolom Kanan: Donut Chart Proporsi & Ringkasan Sampel */}
-        <Grid size={{ xs: 12, md: photoUrl ? 5 : 12 }}>
-          <Card elevation={2} sx={{ borderRadius: 3, height: '100%' }}>
-            <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
-              <Stack direction="row" justifyContent="space-between" sx={{ mb: 1.5 }}>
-                <Typography fontWeight={700} variant="h6">
-                  Proporsi Kondisi Sampel
-                </Typography>
-                <Inventory2RoundedIcon color="primary" />
-              </Stack>
-
-              {pieChartData.length > 0 ? (
+        {/* Toolbar Mode Inspeksi Multi-Sudut (Jika Tersedia Dual-Angle) */}
+        {hasDualPhoto && (
+          <Card elevation={1} sx={{ borderRadius: 3, p: 2, bgcolor: '#f8fafc', border: '1px solid #e2e8f0' }}>
+            <Stack
+              alignItems={{ xs: 'flex-start', md: 'center' }}
+              direction={{ xs: 'column', md: 'row' }}
+              justifyContent="space-between"
+              spacing={2}
+            >
+              <Stack alignItems="center" direction="row" spacing={1.5}>
                 <Box
                   sx={{
                     alignItems: 'center',

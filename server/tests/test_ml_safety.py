@@ -120,6 +120,7 @@ class TestMLSafetyRemediation(unittest.TestCase):
     def setUp(self):
         self.client = TestClient(app)
         self.img_bytes = _create_test_image_bytes()
+        self.img_bytes_back = _create_test_image_bytes(color=(140, 190, 80))
 
     # Skenario 1: Terung dengan inference sukses -> 'ai_detected'
     @patch("server.routers.qc.ai_engine")
@@ -274,7 +275,7 @@ class TestMLSafetyRemediation(unittest.TestCase):
             "/api/v1/qc/scan-multi",
             files={
                 "image_front": ("f.jpg", self.img_bytes, "image/jpeg"),
-                "image_back": ("b.jpg", self.img_bytes, "image/jpeg"),
+                "image_back": ("b.jpg", self.img_bytes_back, "image/jpeg"),
             },
             data={"commodity": "Cabai Rawit Hijau"},
         )
@@ -291,7 +292,7 @@ class TestMLSafetyRemediation(unittest.TestCase):
             "/api/v1/qc/scan-multi",
             files={
                 "image_front": ("f.jpg", self.img_bytes, "image/jpeg"),
-                "image_back": ("b.jpg", self.img_bytes, "image/jpeg"),
+                "image_back": ("b.jpg", self.img_bytes_back, "image/jpeg"),
             },
             data={"commodity": "Terung"},
         )
@@ -305,7 +306,7 @@ class TestMLSafetyRemediation(unittest.TestCase):
             "/api/v1/qc/scan-multi",
             files={
                 "image_front": ("f.jpg", self.img_bytes, "image/jpeg"),
-                "image_back": ("b.jpg", self.img_bytes, "image/jpeg"),
+                "image_back": ("b.jpg", self.img_bytes_back, "image/jpeg"),
             },
             data={"commodity": "Terung", "mode": "mock"},
         )
@@ -330,7 +331,7 @@ class TestMLSafetyRemediation(unittest.TestCase):
             "/api/v1/qc/scan-multi",
             files={
                 "image_front": ("f.jpg", self.img_bytes, "image/jpeg"),
-                "image_back": ("b.jpg", self.img_bytes, "image/jpeg"),
+                "image_back": ("b.jpg", self.img_bytes_back, "image/jpeg"),
             },
             data={"commodity": "Terung"},
         )
@@ -361,7 +362,7 @@ class TestMLSafetyRemediation(unittest.TestCase):
             "/api/v1/qc/scan-multi",
             files={
                 "image_front": ("f.jpg", self.img_bytes, "image/jpeg"),
-                "image_back": ("b.jpg", self.img_bytes, "image/jpeg"),
+                "image_back": ("b.jpg", self.img_bytes_back, "image/jpeg"),
             },
             data={"commodity": "Terung"},
         )
@@ -385,7 +386,7 @@ class TestMLSafetyRemediation(unittest.TestCase):
             "/api/v1/qc/scan-multi",
             files={
                 "image_front": ("f.jpg", self.img_bytes, "image/jpeg"),
-                "image_back": ("b.jpg", self.img_bytes, "image/jpeg"),
+                "image_back": ("b.jpg", self.img_bytes_back, "image/jpeg"),
             },
             data={"commodity": "Terung"},
         )
