@@ -221,3 +221,48 @@ test('formatCertificateDate menangani string tanggal tidak valid dengan aman', (
   assert.equal(formatCertificateDate('bukan-tanggal'), 'bukan-tanggal')
   assert.equal(formatCertificateDate(''), '-')
 })
+
+test('buildCertificateData memproses batch Terung 3-Grade v2 dengan akurat', () => {
+  const terungV2Batch = {
+    id: 'SCAN-TRG-V2',
+    tanggal: '2026-11-11',
+    komoditas: 'Terung',
+    beratKg: 10,
+    inference: {
+      commodity: 'terung',
+      object_counts: { total: 5, grade_a: 3, grade_b: 2, reject: 0 },
+      condition_ratios: {
+        grade_a_percent: 60.0,
+        grade_b_percent: 40.0,
+        reject_percent: 0.0,
+      },
+    },
+    pricing: {
+      reference_price_per_kg: 10000,
+      tier_breakdown: {
+        grade_a: { weight_kg: 6.0, subtotal_value: 69000 },
+        grade_b: { weight_kg: 4.0, subtotal_value: 32000 },
+        reject: { weight_kg: 0.0, subtotal_value: 0 },
+      },
+      condition_ratios: {
+        grade_a_percent: 60.0,
+        grade_b_percent: 40.0,
+        reject_percent: 0.0,
+      },
+    },
+  }
+
+  const cert = buildCertificateData(terungV2Batch)
+  assert.equal(cert.modelEngineName, 'Ultralytics YOLO11n (3-Grade Commercial Quality)')
+  assert.equal(cert.grades.length, 3)
+
+  const gradeA = cert.grades.find((g) => g.code === 'GRADE-A')
+  assert.equal(gradeA.ratioPercent, 60.0)
+  assert.equal(gradeA.weightKg, 6.0)
+  assert.equal(gradeA.subtotalRp, 69000)
+
+  const gradeB = cert.grades.find((g) => g.code === 'GRADE-B')
+  assert.equal(gradeB.ratioPercent, 40.0)
+  assert.equal(gradeB.weightKg, 4.0)
+  assert.equal(gradeB.subtotalRp, 32000)
+})
