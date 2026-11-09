@@ -318,19 +318,49 @@ export function buildCertificateData(batch = {}) {
 
   const todayStr = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Jakarta' }).format(new Date())
 
-  const modelEngineName = isEggplant
-    ? 'Ultralytics YOLO11n (4-Class Commercial Quality)'
-    : commodity.toLowerCase().includes('tomat')
-      ? 'Ultralytics YOLO11 (2-Class Fresh/Rotten)'
-      : hasInference
-        ? 'Ultralytics YOLO11 Vision Engine'
-        : 'Sistem Analisis Panen SMKN 4 Payakumbuh'
+  const scanResult = safeBatch.scanResult
+  const execStatus =
+    safeBatch.execution_status ||
+    scanResult?.execution_status ||
+    (safeBatch.is_simulated || scanResult?.is_simulated
+      ? 'simulated'
+      : (hasInference && (isEggplant || commodity.toLowerCase().includes('tomat'))
+        ? 'ai_detected'
+        : 'unsupported'))
 
-  const inspectionMethod = hasInference
-    ? (isMultiAngle
-        ? `Computer Vision AI (Multi-Angle 2-Sisi Terverifikasi) — ${modelEngineName}`
-        : `Computer Vision AI — ${modelEngineName}`)
-    : 'Inspeksi Visual & Model Perhitungan Terstandar'
+  let modelEngineName = 'Pencatatan Mutu Non-AI (Model Belum Didukung)'
+  let inspectionMethod = 'Inspeksi Visual Manual & Model Perhitungan STEAM'
+  let evaluator = 'Sistem Analisis Panen SMKN 4 Payakumbuh'
+
+  if (execStatus === 'ai_detected') {
+    modelEngineName = isEggplant
+      ? 'Ultralytics YOLO11n (4-Class Commercial Quality)'
+      : 'Ultralytics YOLO11 (2-Class Fresh/Rotten)'
+    inspectionMethod = isMultiAngle
+      ? `Computer Vision AI (Multi-Angle 2-Sisi Terverifikasi) — ${modelEngineName}`
+      : `Computer Vision AI (Single-View Terverifikasi) — ${modelEngineName}`
+    evaluator = 'Agri-Sort AI Autonomous Engine (Terverifikasi)'
+  } else if (execStatus === 'needs_review') {
+    modelEngineName = isEggplant
+      ? 'Ultralytics YOLO11n (Perlu Review)'
+      : 'Ultralytics YOLO11 (Perlu Review)'
+    inspectionMethod = isMultiAngle
+      ? 'Computer Vision AI (Multi-Angle 2-Sisi) — Memerlukan Verifikasi Manual'
+      : 'Computer Vision AI — Memerlukan Verifikasi Manual'
+    evaluator = 'Agri-Sort AI Engine & Peninjau Lapangan (Perlu Verifikasi)'
+  } else if (execStatus === 'simulated') {
+    modelEngineName = 'Simulator AI Agri-Sort (Mode Uji / Edukasi)'
+    inspectionMethod = 'Simulasi Digital Sintetis (Non-AI Model)'
+    evaluator = 'Simulator Digital Agri-Sort AI (Mode Uji)'
+  } else if (execStatus === 'model_unavailable') {
+    modelEngineName = 'Sistem Cadangan (Model AI Tidak Tersedia)'
+    inspectionMethod = 'Pencatatan Cadangan Manual (AI Offline / Error)'
+    evaluator = 'Petugas Mutu Lapangan (Pencatatan Cadangan)'
+  } else {
+    modelEngineName = 'Pencatatan Mutu Non-AI (Model Belum Didukung)'
+    inspectionMethod = 'Inspeksi Visual Manual & Model Perhitungan STEAM'
+    evaluator = 'Sistem Analisis Panen SMKN 4 Payakumbuh'
+  }
 
   return {
     registrationId: formatRegistrationId(safeBatch.id),
@@ -339,9 +369,10 @@ export function buildCertificateData(batch = {}) {
     commodity,
     totalWeightKg,
     isMultiAngle,
+    executionStatus: execStatus,
     modelEngineName,
     inspectionMethod,
-    evaluator: hasInference ? 'Agri-Sort AI Autonomous Engine' : 'Sistem Analisis Panen SMKN 4 Payakumbuh',
+    evaluator,
     farmerName: safeBatch.petani || 'Kelompok Tani Mitra SMKN 4 Payakumbuh',
     location: safeBatch.lokasi || 'Kawasan Agribisnis Payakumbuh, Sumatera Barat',
     referencePricePerKg: refPrice,
