@@ -18,12 +18,18 @@ logger = logging.getLogger("agrisort.onnx_engine")
 
 try:
     import numpy as np
+except ImportError:
+    np = None
+
+try:
     from PIL import Image
+except ImportError:
+    Image = None
+
+try:
     import onnxruntime as ort
     ONNX_AVAILABLE = True
 except ImportError:
-    np = None
-    Image = None
     ort = None
     ONNX_AVAILABLE = False
 

@@ -141,11 +141,79 @@ export function aggregateMultiAngleScanResults(scanFront, scanBack, weightKg = 1
         : 'Inspeksi 2-Sisi terverifikasi: Kedua sisi sampel bebas cacat (Mutu Terkonfirmasi Prima).',
   }
 
+  const totalFront = Object.values(countsFront).reduce((a, b) => a + (Number(b) || 0), 0) || 1
+  const totalBack = Object.values(countsBack).reduce((a, b) => a + (Number(b) || 0), 0) || 1
+  const rejectFront = isEggplant ? (countsFront.reject || 0) : (countsFront.rotten_tomato || 0)
+  const rejectBack = isEggplant ? (countsBack.reject || 0) : (countsBack.rotten_tomato || 0)
+  const defectRateFront = (rejectFront / totalFront) * 100
+  const defectRateBack = (rejectBack / totalBack) * 100
+  const disparityPercent = Math.round(Math.abs(defectRateBack - defectRateFront))
+
+  const statusFront = scanFront.execution_status || (scanFront.is_simulated ? 'simulated' : 'ai_detected')
+  const statusBack = scanBack.execution_status || (scanBack.is_simulated ? 'simulated' : 'ai_detected')
+
+  let execution_status = 'ai_detected'
+  let status_details = {
+    code: 'MULTI_ANGLE_OPTIMAL',
+    message: 'Inspeksi multi-sudut berhasil dengan tingkat keyakinan optimal.',
+    is_ai_generated: true,
+    requires_human_confirmation: false,
+  }
+
+  if (statusFront === 'unsupported' || statusBack === 'unsupported') {
+    execution_status = 'unsupported'
+    status_details = {
+      code: 'COMMODITY_UNSUPPORTED',
+      message: `Komoditas '${commodity}' belum didukung model Computer Vision.`,
+      is_ai_generated: false,
+      requires_human_confirmation: true,
+    }
+  } else if (statusFront === 'model_unavailable' && statusBack === 'model_unavailable') {
+    execution_status = 'model_unavailable'
+    status_details = {
+      code: 'MODEL_UNAVAILABLE',
+      message: `Model AI untuk komoditas '${commodity}' tidak tersedia atau gagal dimuat pada kedua sudut.`,
+      is_ai_generated: false,
+      requires_human_confirmation: true,
+    }
+  } else if (statusFront === 'model_unavailable' || statusBack === 'model_unavailable') {
+    execution_status = 'needs_review'
+    const failedSide = statusFront === 'model_unavailable' ? 'depan' : 'belakang'
+    const validSide = statusFront === 'model_unavailable' ? 'belakang' : 'depan'
+    status_details = {
+      code: 'PARTIAL_ANGLE_INFERENCE',
+      message: `Inferensi sudut ${failedSide} tidak tersedia; hasil didasarkan pada sudut ${validSide} dan memerlukan verifikasi manual.`,
+      is_ai_generated: true,
+      requires_human_confirmation: true,
+    }
+  } else if (statusFront === 'simulated' || statusBack === 'simulated') {
+    execution_status = 'simulated'
+    status_details = {
+      code: 'EXPLICIT_SIMULATION',
+      message: 'Mode simulasi multi-sudut diminta secara eksplisit (Non-AI).',
+      is_ai_generated: false,
+      requires_human_confirmation: true,
+    }
+  } else if (statusFront === 'needs_review' || statusBack === 'needs_review' || disparityPercent >= 15) {
+    execution_status = 'needs_review'
+    status_details = {
+      code: disparityPercent >= 15 ? 'OCCLUSION_DISPARITY_DETECTED' : 'QUALITY_WARNING',
+      message: disparityPercent >= 15
+        ? `Terdeteksi disparitas mutu signifikan (+${disparityPercent}%) pada salah satu sudut pandang.`
+        : 'Pemeriksaan multi-sudut memerlukan peninjauan manual.',
+      is_ai_generated: true,
+      requires_human_confirmation: true,
+    }
+  }
+
   return {
     scan_id: `multi_${scanFront.scan_id || Date.now()}`,
     commodity,
     is_multi_angle: true,
     angle_count: 2,
+    execution_status,
+    status_details,
+    is_simulated: execution_status === 'simulated',
     timestamp: new Date().toISOString(),
     inference_result: {
       ...infFront,

@@ -11,8 +11,8 @@ Fitur Utama:
    - Spatial Non-Maximum Suppression (NMS) berbasis IoU untuk agregasi lintas potongan tile.
 2. P1 — Reduksi Ambiguitas Mutu (Class II vs Reject Disambiguation):
    - Mereduksi 18-19% false reject pada terung berlekuk atau bercak permukaan minor.
-   - Penerapan toleransi mutu komersial SNI 01-3162-1992: bercak ringan & kelengkungan bentuk
-     dialokasikan sebagai Mutu Kelas II (Grade B), bukan Afkir (Reject).
+   - Penerapan toleransi mutu komersial UNECE FFV-05 (Aubergines): bercak ringan & kelengkungan bentuk
+     dialokasikan sebagai Mutu Kelas II (Grade B), bukan Afkir (Reject). (Catatan: SNI 01-3162-1992 adalah Tomat Segar, bukan Terung; SNI Terung: NOT VERIFIED).
 """
 
 from typing import Any, Dict, List, Optional, Tuple
@@ -76,7 +76,7 @@ def disambiguate_eggplant_classes(
 ) -> Tuple[str, float, int, bool, Optional[str]]:
     """
     Menyelesaikan ambiguitas klasifikasi antara Class II, Class I, Extra Class, dan Reject
-    sesuai prinsip evaluasi mutu hortikultura (SNI 01-3162-1992).
+    sesuai prinsip evaluasi mutu hortikultura UNECE FFV-05 (standar SNI Terung: NOT VERIFIED).
 
     Mengembalikan:
       (chosen_class_name, chosen_confidence, chosen_class_id, disambiguated, reason)

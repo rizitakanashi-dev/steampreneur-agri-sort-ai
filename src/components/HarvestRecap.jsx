@@ -35,6 +35,7 @@ import PrintRoundedIcon from '@mui/icons-material/PrintRounded'
 import SearchRoundedIcon from '@mui/icons-material/SearchRounded'
 import VerifiedRoundedIcon from '@mui/icons-material/VerifiedRounded'
 import VisibilityRoundedIcon from '@mui/icons-material/VisibilityRounded'
+import WarningAmberRoundedIcon from '@mui/icons-material/WarningAmberRounded'
 import { EMPTY_RECAP_FILTER, calculateBatchTotals, filterBatches, isFilterEmpty, listCommodities, sortBatchesByNewest } from '../business/harvestFilter.js'
 import { downloadCsv } from '../utils/csvExporter.js'
 
@@ -257,24 +258,50 @@ export function HarvestRecap({ batches = [], onSelectBatch }) {
             )}
             {visibleBatches.map((batch) => {
               const estValue = getBatchEstimatedValue(batch)
-              const isAi = Boolean(batch.ai_scan_performed || batch.inference || batch.scanResult)
+              const execStatus =
+                batch.execution_status ||
+                batch.scanResult?.execution_status ||
+                (batch.is_simulated || batch.scanResult?.is_simulated
+                  ? 'simulated'
+                  : (batch.ai_scan_performed ? 'ai_detected' : null))
 
               return (
                 <TableRow hover key={batch.id}>
                   <TableCell>
                     <Stack alignItems="center" direction="row" spacing={0.75}>
                       <Typography fontWeight={700} variant="body2">{batch.id}</Typography>
-                      {isAi ? (
-                        <Tooltip title="Dianalisis menggunakan AI Computer Vision">
+                      {execStatus === 'ai_detected' && (
+                        <Tooltip title="Dianalisis menggunakan AI Computer Vision (Optimal)">
                           <Chip
-                            color="primary"
+                            color="success"
                             icon={<AutoAwesomeRoundedIcon style={{ fontSize: 13 }} />}
                             label="AI"
                             size="small"
                             sx={{ height: 20, fontSize: 10, fontWeight: 700 }}
                           />
                         </Tooltip>
-                      ) : null}
+                      )}
+                      {execStatus === 'needs_review' && (
+                        <Tooltip title="Hasil AI Memerlukan Verifikasi Manual">
+                          <Chip
+                            color="warning"
+                            icon={<WarningAmberRoundedIcon style={{ fontSize: 13 }} />}
+                            label="Review"
+                            size="small"
+                            sx={{ height: 20, fontSize: 10, fontWeight: 700 }}
+                          />
+                        </Tooltip>
+                      )}
+                      {execStatus === 'simulated' && (
+                        <Tooltip title="Data Pengujian Simulasi (Non-AI)">
+                          <Chip
+                            color="info"
+                            label="Simulasi"
+                            size="small"
+                            sx={{ height: 20, fontSize: 10, fontWeight: 700 }}
+                          />
+                        </Tooltip>
+                      )}
                     </Stack>
                     <Typography color="text.secondary" variant="caption">{batch.tanggal}</Typography>
                   </TableCell>
@@ -340,14 +367,42 @@ export function HarvestRecap({ batches = [], onSelectBatch }) {
       <Dialog fullWidth maxWidth="sm" onClose={() => setSelectedBatch(null)} open={Boolean(selectedBatch)}>
         <DialogTitle sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <Typography fontWeight={700} variant="h6">Detail Batch Panen</Typography>
-          {selectedBatch?.ai_scan_performed && (
-            <Chip
-              color="primary"
-              icon={<AutoAwesomeRoundedIcon fontSize="small" />}
-              label="AI Verified"
-              size="small"
-            />
-          )}
+          {(() => {
+            const status =
+              selectedBatch?.execution_status ||
+              selectedBatch?.scanResult?.execution_status ||
+              (selectedBatch?.is_simulated ? 'simulated' : (selectedBatch?.ai_scan_performed ? 'ai_detected' : null))
+            if (status === 'ai_detected') {
+              return (
+                <Chip
+                  color="success"
+                  icon={<AutoAwesomeRoundedIcon fontSize="small" />}
+                  label="AI Optimal"
+                  size="small"
+                />
+              )
+            }
+            if (status === 'needs_review') {
+              return (
+                <Chip
+                  color="warning"
+                  icon={<WarningAmberRoundedIcon fontSize="small" />}
+                  label="Perlu Review"
+                  size="small"
+                />
+              )
+            }
+            if (status === 'simulated') {
+              return (
+                <Chip
+                  color="info"
+                  label="Simulasi"
+                  size="small"
+                />
+              )
+            }
+            return null
+          })()}
         </DialogTitle>
         <DialogContent dividers>
           {selectedBatch && (

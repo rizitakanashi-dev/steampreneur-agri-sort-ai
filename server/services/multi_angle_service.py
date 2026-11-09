@@ -47,18 +47,25 @@ def aggregate_multi_view_qc(
     comm_lower = commodity.strip().lower()
     is_eggplant = "terung" in comm_lower or "terong" in comm_lower or "eggplant" in comm_lower
 
-    # 1. Normalisasi Bobot Sudut Pandang
-    w_sum = max(0.001, weight_front + weight_back)
-    w_f = weight_front / w_sum
-    w_b = weight_back / w_sum
-
-    # 2. Ekstraksi Hitungan Objek Sisi Depan dan Belakang
+    # 1. Ekstraksi Hitungan Objek Sisi Depan dan Belakang
     f_summary = front_raw.get("detection_summary", {})
     b_summary = back_raw.get("detection_summary", {})
     f_counts = f_summary.get("class_counts", {})
     b_counts = b_summary.get("class_counts", {})
     f_total = max(0, f_summary.get("total_objects", 0))
     b_total = max(0, b_summary.get("total_objects", 0))
+
+    # 2. Normalisasi Bobot Sudut Pandang
+    if f_total > 0 and b_total == 0:
+        w_f = 1.0
+        w_b = 0.0
+    elif f_total == 0 and b_total > 0:
+        w_f = 0.0
+        w_b = 1.0
+    else:
+        w_sum = max(0.001, weight_front + weight_back)
+        w_f = weight_front / w_sum
+        w_b = weight_back / w_sum
 
     if is_eggplant:
         # Ekstraksi hitungan Terung 4-Class
@@ -101,22 +108,27 @@ def aggregate_multi_view_qc(
         defect_delta = round(back_defect_index - front_defect_index, 2)
 
         # Evaluasi Bias Oklusi (Sisi belakang lebih rusak dari sisi depan)
-        occlusion_bias_detected = defect_delta >= 15.0
-        if defect_delta >= 30.0:
-            occlusion_severity = "HIGH"
-            warning_msg = (
-                f"Peringatan Kritis Oklusi: Sisi belakang memiliki disparitas cacat signifikan (+{defect_delta}%). "
-                "Potensi kuat buah busuk/cacat disembunyikan di bagian bawah nampan."
-            )
-        elif defect_delta >= 15.0:
-            occlusion_severity = "MODERATE"
-            warning_msg = (
-                f"Perhatian: Terdeteksi tingkat cacat lebih tinggi (+{defect_delta}%) pada sisi belakang/balik. "
-                "Hasil agregasi menggunakan prinsip kehati-hatian QC."
-            )
+        if f_total == 0 or b_total == 0:
+            occlusion_bias_detected = False
+            occlusion_severity = "INCOMPLETE"
+            warning_msg = "Pemeriksaan oklusi 2-sisi tidak lengkap: salah satu sudut pandang tidak mendeteksi objek panen."
         else:
-            occlusion_severity = "NONE"
-            warning_msg = None
+            occlusion_bias_detected = defect_delta >= 15.0
+            if defect_delta >= 30.0:
+                occlusion_severity = "HIGH"
+                warning_msg = (
+                    f"Peringatan Kritis Oklusi: Sisi belakang memiliki disparitas cacat signifikan (+{defect_delta}%). "
+                    "Potensi kuat buah busuk/cacat disembunyikan di bagian bawah nampan."
+                )
+            elif defect_delta >= 15.0:
+                occlusion_severity = "MODERATE"
+                warning_msg = (
+                    f"Perhatian: Terdeteksi tingkat cacat lebih tinggi (+{defect_delta}%) pada sisi belakang/balik. "
+                    "Hasil agregasi menggunakan prinsip kehati-hatian QC."
+                )
+            else:
+                occlusion_severity = "NONE"
+                warning_msg = None
 
         consistency_index = round(max(0.0, 100.0 - abs(back_defect_index - front_defect_index)), 2)
 
@@ -182,21 +194,26 @@ def aggregate_multi_view_qc(
             w_rotten = round(100.0 - w_fresh, 2)
 
         defect_delta = round(r_rb - r_rf, 2)
-        occlusion_bias_detected = defect_delta >= 15.0
-        if defect_delta >= 30.0:
-            occlusion_severity = "HIGH"
-            warning_msg = (
-                f"Peringatan Kritis Oklusi Tomat: Sisi belakang memiliki tingkat tomat busuk (+{defect_delta}%) "
-                "lebih banyak dibandingkan sisi depan."
-            )
-        elif defect_delta >= 15.0:
-            occlusion_severity = "MODERATE"
-            warning_msg = (
-                f"Perhatian: Terdeteksi disparitas tomat busuk (+{defect_delta}%) pada sisi belakang."
-            )
+        if f_total == 0 or b_total == 0:
+            occlusion_bias_detected = False
+            occlusion_severity = "INCOMPLETE"
+            warning_msg = "Pemeriksaan oklusi 2-sisi tidak lengkap: salah satu sudut pandang tidak mendeteksi objek tomat."
         else:
-            occlusion_severity = "NONE"
-            warning_msg = None
+            occlusion_bias_detected = defect_delta >= 15.0
+            if defect_delta >= 30.0:
+                occlusion_severity = "HIGH"
+                warning_msg = (
+                    f"Peringatan Kritis Oklusi Tomat: Sisi belakang memiliki tingkat tomat busuk (+{defect_delta}%) "
+                    "lebih banyak dibandingkan sisi depan."
+                )
+            elif defect_delta >= 15.0:
+                occlusion_severity = "MODERATE"
+                warning_msg = (
+                    f"Perhatian: Terdeteksi disparitas tomat busuk (+{defect_delta}%) pada sisi belakang."
+                )
+            else:
+                occlusion_severity = "NONE"
+                warning_msg = None
 
         consistency_index = round(max(0.0, 100.0 - abs(defect_delta)), 2)
 
