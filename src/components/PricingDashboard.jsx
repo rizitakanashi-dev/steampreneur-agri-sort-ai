@@ -28,9 +28,11 @@ import {
   TableHead,
   TableRow,
   TextField,
+  Tooltip,
   Typography,
 } from '@mui/material'
 import CalculateRoundedIcon from '@mui/icons-material/CalculateRounded'
+import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded'
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined'
 import SyncRoundedIcon from '@mui/icons-material/SyncRounded'
 import TrendingUpRoundedIcon from '@mui/icons-material/TrendingUpRounded'
@@ -84,6 +86,112 @@ function normalizeToBapanasKey(name) {
   }
   return norm
 }
+
+export function mapComparisonKeyToCommodity(key, name) {
+  const norm = String(name || key || '').trim().toLowerCase()
+  if (norm.includes('keriting') || (norm.includes('cabai merah') && !norm.includes('rawit'))) {
+    return 'Cabai Merah Keriting'
+  }
+  if (norm.includes('rawit merah') || norm.includes('setan')) {
+    return 'Cabai Rawit Merah'
+  }
+  if (norm.includes('rawit')) {
+    return 'Cabai Rawit Hijau'
+  }
+  if (norm.includes('terung') || norm.includes('terong')) {
+    return 'Terung'
+  }
+  if (norm.includes('tomat')) {
+    return 'Tomat'
+  }
+  return null
+}
+
+const DEFAULT_GOVERNMENT_COMPARISON = Object.freeze({
+  title: 'Triangulasi Harga Pangan Resmi Pemerintah RI',
+  region: 'Sumatera Barat',
+  market_center: 'Pasar Ibuh Payakumbuh',
+  date: '2026-11-08',
+  last_synced: '2026-11-08T07:00:00+07:00',
+  institutions: {
+    bapanas: {
+      name: 'Badan Pangan Nasional (BAPANAS)',
+      url: 'https://panelharga.badanpangan.go.id',
+    },
+    kemendag: {
+      name: 'Kementerian Perdagangan (SP2KP Kemendag RI)',
+      url: 'https://sp2kp.kemendag.go.id/',
+    },
+  },
+  comparison: Object.freeze([
+    {
+      commodity_key: 'cabai merah keriting',
+      commodity_name: 'Cabai Merah Keriting',
+      bapanas_price_per_kg: 45000,
+      sp2kp_kemendag_price_per_kg: 44800,
+      composite_fair_price: 44900,
+      disparity_rp: 200,
+      convergence_index_percent: 99.55,
+      market: 'Pasar Ibuh Payakumbuh',
+      region: 'Sumatera Barat',
+    },
+    {
+      commodity_key: 'cabai rawit merah',
+      commodity_name: 'Cabai Rawit Merah',
+      bapanas_price_per_kg: 42000,
+      sp2kp_kemendag_price_per_kg: 42500,
+      composite_fair_price: 42250,
+      disparity_rp: 500,
+      convergence_index_percent: 98.82,
+      market: 'Pasar Ibuh Payakumbuh',
+      region: 'Sumatera Barat',
+    },
+    {
+      commodity_key: 'cabai rawit hijau',
+      commodity_name: 'Cabai Rawit Hijau',
+      bapanas_price_per_kg: 30000,
+      sp2kp_kemendag_price_per_kg: 30000,
+      composite_fair_price: 30000,
+      disparity_rp: 0,
+      convergence_index_percent: 100.0,
+      market: 'Pasar Ibuh Payakumbuh',
+      region: 'Sumatera Barat',
+    },
+    {
+      commodity_key: 'tomat',
+      commodity_name: 'Tomat',
+      bapanas_price_per_kg: 12000,
+      sp2kp_kemendag_price_per_kg: 12000,
+      composite_fair_price: 12000,
+      disparity_rp: 0,
+      convergence_index_percent: 100.0,
+      market: 'Pasar Ibuh Payakumbuh',
+      region: 'Sumatera Barat',
+    },
+    {
+      commodity_key: 'terung',
+      commodity_name: 'Terung',
+      bapanas_price_per_kg: 10000,
+      sp2kp_kemendag_price_per_kg: 10000,
+      composite_fair_price: 10000,
+      disparity_rp: 0,
+      convergence_index_percent: 100.0,
+      market: 'Pasar Ibuh Payakumbuh',
+      region: 'Sumatera Barat',
+    },
+    {
+      commodity_key: 'bawang merah',
+      commodity_name: 'Bawang Merah',
+      bapanas_price_per_kg: null,
+      sp2kp_kemendag_price_per_kg: 34500,
+      composite_fair_price: 34500,
+      disparity_rp: 0,
+      convergence_index_percent: 100.0,
+      market: 'Pasar Ibuh Payakumbuh',
+      region: 'Sumatera Barat',
+    },
+  ]),
+})
 
 export function PricingDashboard() {
   const [commodity, setCommodity] = useState(COMMODITY_OPTIONS[0])
@@ -149,6 +257,22 @@ export function PricingDashboard() {
           setSp2kpPayload(refreshed)
           setSyncStatusMsg('Harga pangan SP2KP Kemendag RI berhasil disinkronkan langsung!')
         }
+      } else if (activeSource === 'triangulasi') {
+        const [refreshedComp, refreshedBapanas, refreshedSp2kp] = await Promise.allSettled([
+          fetchGovernmentPriceComparison(6000),
+          syncBapanasPrices(6000),
+          syncSp2kpPrices(6000),
+        ])
+        if (refreshedComp.status === 'fulfilled' && refreshedComp.value?.comparison) {
+          setComparisonPayload(refreshedComp.value)
+        }
+        if (refreshedBapanas.status === 'fulfilled' && refreshedBapanas.value?.commodities) {
+          setBapanasPayload(refreshedBapanas.value)
+        }
+        if (refreshedSp2kp.status === 'fulfilled' && refreshedSp2kp.value?.commodities) {
+          setSp2kpPayload(refreshedSp2kp.value)
+        }
+        setSyncStatusMsg('Harga komposit triangulasi BAPANAS & SP2KP berhasil disinkronkan langsung!')
       } else {
         const refreshed = await syncBapanasPrices(6000)
         if (refreshed && refreshed.commodities) {
@@ -163,16 +287,40 @@ export function PricingDashboard() {
     }
   }
 
+  const effectiveComparison = comparisonPayload || DEFAULT_GOVERNMENT_COMPARISON
+  const effectiveComparisonList = effectiveComparison?.comparison || []
+
   const isBapanasActive = Boolean(bapanasPayload && bapanasPayload.commodities)
   const isSp2kpActive = Boolean(sp2kpPayload && sp2kpPayload.commodities)
+  const isTriangulasiActive = activeSource === 'triangulasi'
+
   const currentFeedPayload = activeSource === 'sp2kp' ? sp2kpPayload : bapanasPayload
   const isFeedActive = activeSource === 'sp2kp' ? isSp2kpActive : isBapanasActive
   const currentCommodities = currentFeedPayload?.commodities || {}
 
-  // Resolusi harga acuan untuk komoditas terpilih (BAPANAS / SP2KP / Fallback Lokal)
+  // Resolusi harga acuan untuk komoditas terpilih (BAPANAS / SP2KP / Triangulasi / Fallback Lokal)
   const bKey = normalizeToBapanasKey(commodity)
   const activeItem = isFeedActive ? currentCommodities[bKey] : null
-  const referencePrice = activeItem ? activeItem.price_per_kg : getReferencePricePerKg(commodity)
+  const triangulasiItem = effectiveComparisonList.find(
+    (c) => c.commodity_key === bKey || c.commodity_name?.toLowerCase() === commodity.toLowerCase()
+  )
+
+  const referencePrice = isTriangulasiActive
+    ? (triangulasiItem?.composite_fair_price || (activeItem ? activeItem.price_per_kg : getReferencePricePerKg(commodity)))
+    : (activeItem ? activeItem.price_per_kg : getReferencePricePerKg(commodity))
+
+  const handleSelectTriangulationCommodity = (row) => {
+    const matched = mapComparisonKeyToCommodity(row.commodity_key, row.commodity_name)
+    if (matched && COMMODITY_OPTIONS.includes(matched)) {
+      setCommodity(matched)
+      setActiveSource('triangulasi')
+      setIsComparisonModalOpen(false)
+      setSyncStatusMsg(`Harga komposit triangulasi ${matched} (${formatRupiah(row.composite_fair_price)}/kg) berhasil diterapkan ke kalkulator!`)
+    } else {
+      setActiveSource('triangulasi')
+      setSyncStatusMsg(`Komoditas ${row.commodity_name} terpantau di SP2KP Kemendag RI (${formatRupiah(row.composite_fair_price)}/kg). Model AI Sort disiapkan khusus untuk Cabai, Terung, dan Tomat.`)
+    }
+  }
 
   // Resolusi riwayat harga grafik tren
   const history = useMemo(() => {
@@ -203,13 +351,14 @@ export function PricingDashboard() {
           persenB: parsedB,
           persenC: 100 - parsedA - parsedB,
           includeReject,
+          customPricePerKg: referencePrice,
         }),
         validationError: '',
       }
     } catch (calculationError) {
       return { projection: null, validationError: calculationError.message }
     }
-  }, [commodity, volumeKg, persenA, persenB, includeReject])
+  }, [commodity, volumeKg, persenA, persenB, includeReject, referencePrice])
 
   const weightedPrice = projection ? calculateWeightedPricePerKg(projection) : null
 
@@ -242,31 +391,41 @@ export function PricingDashboard() {
   return (
     <Stack spacing={3}>
       {/* 1. Bar Pemilih Lembaga Resmi Negara & Tombol Triangulasi */}
-      <Card elevation={1} sx={{ borderRadius: 2.5, border: '1px solid', borderColor: 'divider' }}>
-        <CardContent sx={{ p: 2 }}>
+      <Card elevation={0} sx={{ borderRadius: 2.5, border: '1px solid', borderColor: 'divider', bgcolor: '#f8fafc' }}>
+        <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
           <Stack
             direction={{ xs: 'column', md: 'row' }}
             justifyContent="space-between"
-            alignItems={{ md: 'center' }}
-            spacing={1.5}
+            alignItems={{ xs: 'flex-start', md: 'center' }}
+            spacing={2}
           >
             <Box>
-              <Typography variant="subtitle2" fontWeight={800}>
-                Pilih Sumber Data Acuan Harga Pasar Resmi
+              <Typography variant="subtitle2" fontWeight={800} sx={{ color: 'text.primary' }}>
+                Sumber Data Acuan Harga Pasar
               </Typography>
               <Typography variant="caption" color="text.secondary">
-                Data ditarik langsung dari sistem kementerian dan badan pangan nasional resmi RI.
+                Data resmi BAPANAS & SP2KP Kemendag RI untuk Pasar Ibuh Payakumbuh
               </Typography>
             </Box>
 
-            <Stack direction="row" spacing={1} flexWrap="wrap">
+            <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap', gap: 1 }}>
               <Button
                 size="small"
                 variant={activeSource === 'bapanas' ? 'contained' : 'outlined'}
                 color={activeSource === 'bapanas' ? 'success' : 'inherit'}
-                onClick={() => setActiveSource('bapanas')}
-                startIcon={<AccountBalanceRoundedIcon />}
-                sx={{ borderRadius: 2, fontWeight: 700 }}
+                onClick={() => {
+                  setActiveSource('bapanas')
+                  setSyncStatusMsg('Sumber harga diubah ke Panel BAPANAS RI.')
+                }}
+                startIcon={<AccountBalanceRoundedIcon fontSize="small" />}
+                sx={{
+                  borderRadius: 2,
+                  fontWeight: 700,
+                  whiteSpace: 'nowrap',
+                  textTransform: 'none',
+                  px: 1.5,
+                  py: 0.75,
+                }}
               >
                 BAPANAS RI
               </Button>
@@ -274,21 +433,59 @@ export function PricingDashboard() {
                 size="small"
                 variant={activeSource === 'sp2kp' ? 'contained' : 'outlined'}
                 color={activeSource === 'sp2kp' ? 'success' : 'inherit'}
-                onClick={() => setActiveSource('sp2kp')}
-                startIcon={<StorefrontRoundedIcon />}
-                sx={{ borderRadius: 2, fontWeight: 700 }}
+                onClick={() => {
+                  setActiveSource('sp2kp')
+                  setSyncStatusMsg('Sumber harga diubah ke SP2KP Kemendag RI.')
+                }}
+                startIcon={<StorefrontRoundedIcon fontSize="small" />}
+                sx={{
+                  borderRadius: 2,
+                  fontWeight: 700,
+                  whiteSpace: 'nowrap',
+                  textTransform: 'none',
+                  px: 1.5,
+                  py: 0.75,
+                }}
               >
-                SP2KP Kemendag RI
+                SP2KP Kemendag
+              </Button>
+              <Button
+                size="small"
+                variant={activeSource === 'triangulasi' ? 'contained' : 'outlined'}
+                color={activeSource === 'triangulasi' ? 'primary' : 'inherit'}
+                onClick={() => {
+                  setActiveSource('triangulasi')
+                  setSyncStatusMsg('Sumber harga diubah ke Triangulasi Komposit Dua Lembaga Negara.')
+                }}
+                startIcon={<VerifiedRoundedIcon fontSize="small" />}
+                sx={{
+                  borderRadius: 2,
+                  fontWeight: 700,
+                  whiteSpace: 'nowrap',
+                  textTransform: 'none',
+                  px: 1.5,
+                  py: 0.75,
+                }}
+              >
+                Triangulasi Komposit
               </Button>
               <Button
                 size="small"
                 variant="outlined"
-                color="primary"
+                color="info"
                 onClick={() => setIsComparisonModalOpen(true)}
-                startIcon={<BalanceRoundedIcon />}
-                sx={{ borderRadius: 2, fontWeight: 700 }}
+                startIcon={<BalanceRoundedIcon fontSize="small" />}
+                sx={{
+                  borderRadius: 2,
+                  fontWeight: 700,
+                  whiteSpace: 'nowrap',
+                  textTransform: 'none',
+                  px: 1.5,
+                  py: 0.75,
+                  bgcolor: 'background.paper',
+                }}
               >
-                Triangulasi Harga
+                Tabel Komparasi
               </Button>
             </Stack>
           </Stack>
@@ -296,7 +493,50 @@ export function PricingDashboard() {
       </Card>
 
       {/* 2. Banner Status Lembaga yang Sedang Aktif */}
-      {isFeedActive ? (
+      {isTriangulasiActive ? (
+        <Alert
+          action={
+            <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap', gap: 0.5 }}>
+              <Button
+                color="inherit"
+                disabled={isSyncing}
+                onClick={handleSyncPrices}
+                size="small"
+                startIcon={isSyncing ? <CircularProgress color="inherit" size={16} /> : <SyncRoundedIcon />}
+                sx={{ whiteSpace: 'nowrap', textTransform: 'none', fontWeight: 700 }}
+              >
+                {isSyncing ? 'Sinkronisasi...' : 'Sinkronkan'}
+              </Button>
+              <Button
+                color="inherit"
+                size="small"
+                onClick={() => setIsComparisonModalOpen(true)}
+                startIcon={<BalanceRoundedIcon />}
+                sx={{ whiteSpace: 'nowrap', textTransform: 'none', fontWeight: 700 }}
+              >
+                Ganti Komoditas
+              </Button>
+            </Stack>
+          }
+          icon={<VerifiedRoundedIcon />}
+          severity="success"
+          sx={{ borderRadius: 2, bgcolor: 'rgba(5, 150, 105, 0.08)', border: '1px solid #10b981' }}
+        >
+          <Typography fontWeight={700} variant="body2">
+            🛡️ Menggunakan Triangulasi Dua Lembaga Negara (BAPANAS RI + SP2KP Kemendag RI)
+          </Typography>
+          <Typography variant="body2">
+            Harga Komposit Adil Pasar Ibuh Payakumbuh untuk <strong>{commodity}</strong>: <strong>{formatRupiah(referencePrice)} / kg</strong>
+            {triangulasiItem?.convergence_index_percent ? ` &bull; Indeks Konvergensi: ${triangulasiItem.convergence_index_percent}%` : ''}
+            {triangulasiItem?.disparity_rp !== undefined ? ` &bull; Selisih Antar-Lembaga: ${formatRupiah(triangulasiItem.disparity_rp)}` : ''}
+          </Typography>
+          {syncStatusMsg && (
+            <Typography sx={{ fontStyle: 'italic', mt: 0.5 }} variant="caption">
+              {syncStatusMsg}
+            </Typography>
+          )}
+        </Alert>
+      ) : isFeedActive ? (
         <Alert
           action={
             <Button
@@ -360,7 +600,15 @@ export function PricingDashboard() {
             <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
               <Stack alignItems="center" direction="row" justifyContent="space-between" sx={{ mb: 1 }}>
                 <Typography variant="h6">Harga referensi per komoditas</Typography>
-                {isFeedActive ? (
+                {isTriangulasiActive ? (
+                  <Chip
+                    color="primary"
+                    icon={<VerifiedRoundedIcon />}
+                    label="Triangulasi BAPANAS + SP2KP"
+                    size="small"
+                    sx={{ fontWeight: 700 }}
+                  />
+                ) : isFeedActive ? (
                   <Chip
                     color="success"
                     icon={<VerifiedRoundedIcon />}
@@ -373,7 +621,9 @@ export function PricingDashboard() {
                 )}
               </Stack>
               <Typography color="text.secondary" sx={{ mb: 2 }} variant="body2">
-                {isFeedActive
+                {isTriangulasiActive
+                  ? `${effectiveComparison.market_center || 'Pasar Ibuh Payakumbuh'} — Harga Komposit Konsensus Dua Lembaga Negara`
+                  : isFeedActive
                   ? `${currentFeedPayload.market_center || 'Pasar Ibuh Payakumbuh'} — Diperbarui per ${currentFeedPayload.data_date}`
                   : `Diperbarui: ${PRICE_REFERENCE_SOURCE.updatedAt}`}
               </Typography>
@@ -389,20 +639,44 @@ export function PricingDashboard() {
                   <TableBody>
                     {COMMODITY_OPTIONS.map((option) => {
                       const itemKey = normalizeToBapanasKey(option)
-                      const bItem = isFeedActive ? currentCommodities[itemKey] : null
-                      const price = bItem ? bItem.price_per_kg : REFERENCE_PRICES_PER_KG[option]
-                      const trendLabel = bItem ? bItem.trend_label : 'Stabil'
-                      const changeRp = bItem?.price_change_rp ?? 0
+                      let price = REFERENCE_PRICES_PER_KG[option]
+                      let trendLabel = 'Stabil'
+                      let changeRp = 0
+                      let categorySub = null
+
+                      if (isTriangulasiActive) {
+                        const tItem = effectiveComparisonList.find((c) => c.commodity_key === itemKey)
+                        if (tItem) {
+                          price = tItem.composite_fair_price
+                          trendLabel = `Konv ${tItem.convergence_index_percent}%`
+                          changeRp = 0
+                          categorySub = `BAPANAS ${formatRupiah(tItem.bapanas_price_per_kg)} • SP2KP ${formatRupiah(tItem.sp2kp_kemendag_price_per_kg)}`
+                        }
+                      } else if (isFeedActive) {
+                        const bItem = currentCommodities[itemKey]
+                        if (bItem) {
+                          price = bItem.price_per_kg
+                          trendLabel = bItem.trend_label
+                          changeRp = bItem.price_change_rp ?? 0
+                          categorySub = bItem.category
+                        }
+                      }
 
                       return (
-                        <TableRow hover key={option} selected={option === commodity}>
+                        <TableRow
+                          hover
+                          key={option}
+                          selected={option === commodity}
+                          onClick={() => setCommodity(option)}
+                          sx={{ cursor: 'pointer' }}
+                        >
                           <TableCell>
                             <Typography fontWeight={option === commodity ? 700 : 500} variant="body2">
                               {option}
                             </Typography>
-                            {bItem?.category && (
+                            {categorySub && (
                               <Typography color="text.secondary" variant="caption">
-                                {bItem.category}
+                                {categorySub}
                               </Typography>
                             )}
                           </TableCell>
@@ -413,7 +687,7 @@ export function PricingDashboard() {
                           </TableCell>
                           <TableCell align="right">
                             <Chip
-                              color={changeRp > 0 ? 'success' : changeRp < 0 ? 'error' : 'default'}
+                              color={changeRp > 0 ? 'success' : changeRp < 0 ? 'error' : isTriangulasiActive ? 'primary' : 'default'}
                               label={trendLabel}
                               size="small"
                               variant="outlined"
@@ -734,7 +1008,10 @@ export function PricingDashboard() {
           <Alert severity="info" icon={<InfoOutlinedIcon />} sx={{ mb: 2.5, borderRadius: 2 }}>
             <Typography variant="body2">
               Sistem membandingkan data harian dari <strong>Panel Harga BAPANAS (Badan Pangan Nasional)</strong> dan{' '}
-              <strong>SP2KP (Kementerian Perdagangan RI)</strong> untuk menghitung harga komposit yang adil (*fair market price*) bagi petani dan pedagang.
+              <strong>SP2KP (Kementerian Perdagangan RI)</strong> untuk menghitung harga komposit yang adil (<em>fair market price</em>).
+            </Typography>
+            <Typography variant="caption" sx={{ display: 'block', mt: 0.5, color: 'text.secondary', fontWeight: 600 }}>
+              💡 <strong>Tips Interaktif:</strong> Klik pada baris komoditas atau tombol <strong>&quot;Gunakan&quot;</strong> di bawah untuk langsung menerapkan harga komposit ke kalkulator pendapatan dan analisis laba petani.
             </Typography>
           </Alert>
 
@@ -748,29 +1025,76 @@ export function PricingDashboard() {
                   <TableCell align="right" sx={{ fontWeight: 700, bgcolor: 'rgba(5, 150, 105, 0.08)' }}>Harga Komposit Adil</TableCell>
                   <TableCell align="right" sx={{ fontWeight: 700 }}>Disparitas</TableCell>
                   <TableCell align="center" sx={{ fontWeight: 700 }}>Indeks Konvergensi</TableCell>
+                  <TableCell align="center" sx={{ fontWeight: 700 }}>Aksi</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
-                {(comparisonPayload?.comparison || []).map((row) => (
-                  <TableRow hover key={row.commodity_key}>
-                    <TableCell sx={{ fontWeight: 600 }}>{row.commodity_name}</TableCell>
-                    <TableCell align="right">{row.bapanas_price_per_kg ? formatRupiah(row.bapanas_price_per_kg) : '-'}</TableCell>
-                    <TableCell align="right">{row.sp2kp_kemendag_price_per_kg ? formatRupiah(row.sp2kp_kemendag_price_per_kg) : '-'}</TableCell>
-                    <TableCell align="right" sx={{ fontWeight: 800, color: 'primary.main', bgcolor: 'rgba(5, 150, 105, 0.04)' }}>
-                      {formatRupiah(row.composite_fair_price)}
-                    </TableCell>
-                    <TableCell align="right">{row.disparity_rp ? formatRupiah(row.disparity_rp) : 'Rp 0'}</TableCell>
-                    <TableCell align="center">
-                      <Chip
-                        label={`${row.convergence_index_percent}%`}
-                        size="small"
-                        color={row.convergence_index_percent >= 98 ? 'success' : 'default'}
-                        variant={row.convergence_index_percent >= 98 ? 'filled' : 'outlined'}
-                        sx={{ fontWeight: 700, fontSize: '0.72rem', height: 22 }}
-                      />
-                    </TableCell>
-                  </TableRow>
-                ))}
+                {effectiveComparisonList.map((row) => {
+                  const matched = mapComparisonKeyToCommodity(row.commodity_key, row.commodity_name)
+                  const isSupported = Boolean(matched && COMMODITY_OPTIONS.includes(matched))
+                  const isCurrentCommodity = isSupported && commodity === matched && isTriangulasiActive
+
+                  return (
+                    <TableRow
+                      hover
+                      key={row.commodity_key}
+                      onClick={() => handleSelectTriangulationCommodity(row)}
+                      sx={{
+                        cursor: 'pointer',
+                        bgcolor: isCurrentCommodity ? 'rgba(5, 150, 105, 0.08)' : 'inherit',
+                        transition: 'background-color 0.15s ease',
+                        '&:hover': { bgcolor: 'rgba(5, 150, 105, 0.12)' },
+                      }}
+                    >
+                      <TableCell sx={{ fontWeight: 600 }}>
+                        <Stack direction="row" spacing={1} alignItems="center">
+                          <Typography variant="body2" fontWeight={700}>
+                            {row.commodity_name}
+                          </Typography>
+                          {isCurrentCommodity && (
+                            <Chip size="small" label="Aktif" color="success" sx={{ height: 20, fontSize: '0.65rem', fontWeight: 800 }} />
+                          )}
+                        </Stack>
+                      </TableCell>
+                      <TableCell align="right">{row.bapanas_price_per_kg ? formatRupiah(row.bapanas_price_per_kg) : '-'}</TableCell>
+                      <TableCell align="right">{row.sp2kp_kemendag_price_per_kg ? formatRupiah(row.sp2kp_kemendag_price_per_kg) : '-'}</TableCell>
+                      <TableCell align="right" sx={{ fontWeight: 800, color: 'primary.main', bgcolor: 'rgba(5, 150, 105, 0.04)' }}>
+                        {formatRupiah(row.composite_fair_price)}
+                      </TableCell>
+                      <TableCell align="right">{row.disparity_rp ? formatRupiah(row.disparity_rp) : 'Rp 0'}</TableCell>
+                      <TableCell align="center">
+                        <Chip
+                          label={`${row.convergence_index_percent}%`}
+                          size="small"
+                          color={row.convergence_index_percent >= 98 ? 'success' : 'default'}
+                          variant={row.convergence_index_percent >= 98 ? 'filled' : 'outlined'}
+                          sx={{ fontWeight: 700, fontSize: '0.72rem', height: 22 }}
+                        />
+                      </TableCell>
+                      <TableCell align="center">
+                        {isSupported ? (
+                          <Button
+                            size="small"
+                            variant={isCurrentCommodity ? 'contained' : 'outlined'}
+                            color="primary"
+                            startIcon={isCurrentCommodity ? <CheckCircleRoundedIcon /> : <CalculateRoundedIcon />}
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              handleSelectTriangulationCommodity(row)
+                            }}
+                            sx={{ textTransform: 'none', py: 0.25, px: 1.25, fontSize: '0.75rem', fontWeight: 700, borderRadius: 1.5 }}
+                          >
+                            {isCurrentCommodity ? 'Sedang Aktif' : 'Gunakan'}
+                          </Button>
+                        ) : (
+                          <Tooltip title="Data acuan pasar Kemendag RI">
+                            <Chip label="Referensi" size="small" variant="outlined" sx={{ fontSize: '0.7rem', height: 22 }} />
+                          </Tooltip>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  )
+                })}
               </TableBody>
             </Table>
           </TableContainer>

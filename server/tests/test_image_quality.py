@@ -6,12 +6,18 @@ Dokumen Acuan: docs/rencana-kerja-ml-engineer.md (Bab 8B Poin 2)
 
 from io import BytesIO
 import unittest
-import numpy as np
+try:
+    import numpy as np
+    from server.utils.image_quality import analyze_image_quality, apply_clahe_enhancement
+    HAS_DEPS = True
+except ImportError:
+    np = None
+    HAS_DEPS = False
+
 from PIL import Image
 
-from server.utils.image_quality import analyze_image_quality, apply_clahe_enhancement
 
-
+@unittest.skipUnless(HAS_DEPS, "NumPy / OpenCV tidak terpasang di environment ini")
 class TestImageQualityAndCLAHE(unittest.TestCase):
     """Pengujian deteksi ketajaman, pencahayaan, dan peningkatan citra CLAHE."""
 

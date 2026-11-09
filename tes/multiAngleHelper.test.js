@@ -78,3 +78,20 @@ test('aggregateMultiAngleScanResults fallback jika salah satu sudut null', () =>
   assert.throws(() => aggregateMultiAngleScanResults(null, null))
 })
 
+test('aggregateMultiAngleScanResults menolak jika scanFront dan scanBack identik', () => {
+  const scanFront = {
+    scan_id: 'scan_001',
+    commodity: 'Terung',
+    inference_result: {
+      object_counts: { extra_class: 4, class_1: 2, class_2: 0, reject: 0 },
+      detections: [{ id: 1, class_name: 'Extra Class' }],
+    },
+    smart_pricing: { price_per_kg: 10000 },
+  }
+
+  assert.throws(
+    () => aggregateMultiAngleScanResults(scanFront, scanFront, 15, 'Terung'),
+    /identik|kembar/i
+  )
+})
+
