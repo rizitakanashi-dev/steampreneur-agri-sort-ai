@@ -192,6 +192,29 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm }
       return
     }
 
+    // Pengecekan instan anti-kecurangan berkas kembar antara Sisi 1 dan Sisi 2
+    if (side === 'back' && imageFileFront) {
+      if (
+        imageFileFront.size === file.size &&
+        (imageFileFront.name === file.name || imageFileFront.lastModified === file.lastModified)
+      ) {
+        setScanError(
+          'Peringatan Anti-Kecurangan: Foto Sisi 2 terdeteksi identik dengan Sisi 1 (file kembar). Harap pilih foto berbeda setelah nampan digoyang!'
+        )
+        return
+      }
+    } else if (side === 'front' && imageFileBack) {
+      if (
+        imageFileBack.size === file.size &&
+        (imageFileBack.name === file.name || imageFileBack.lastModified === file.lastModified)
+      ) {
+        setScanError(
+          'Peringatan Anti-Kecurangan: Foto Sisi 1 terdeteksi identik dengan Sisi 2 (file kembar). Harap pilih foto berbeda setelah nampan digoyang!'
+        )
+        return
+      }
+    }
+
     setScanError('')
     setScanResult(null)
     const reader = new FileReader()
@@ -316,10 +339,18 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm }
       setScanError('Kedua sisi foto (Depan & Belakang/Goyang Nampan) wajib tersedia.')
       return
     }
-    if (fileFront.size === fileBack.size && fileFront.name === fileBack.name && fileFront.lastModified === fileBack.lastModified) {
-      setScanError('Berkas foto Sisi 1 dan Sisi 2 identik (file kembar terdeteksi). Harap pilih foto berbeda setelah nampan digoyang untuk verifikasi anti-kecurangan!')
+
+    const isSameSize = fileFront.size > 0 && fileFront.size === fileBack.size
+    const isSamePreview = Boolean(previewFront && previewBack && previewFront === previewBack)
+    const isSameMeta = fileFront.name === fileBack.name || fileFront.lastModified === fileBack.lastModified
+
+    if (isSamePreview || (isSameSize && isSameMeta)) {
+      setScanError(
+        'Peringatan Anti-Kecurangan: Berkas foto Sisi 1 dan Sisi 2 identik (file kembar terdeteksi). Harap pilih foto berbeda setelah nampan digoyang untuk verifikasi anti-kecurangan!'
+      )
       return
     }
+
     setIsScanning(true)
     setScanError('')
     try {
@@ -349,34 +380,34 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm }
               object_counts: isEgg
                 ? {
                     extra_class:
-                      agg.combined_object_counts?.extra_class_combined ??
-                      d.front_view?.object_counts?.['extra-class'] ??
-                      0,
-                    class_1:
-                      agg.combined_object_counts?.class_1_combined ??
-                      d.front_view?.object_counts?.['class-1'] ??
-                      0,
-                    class_2:
-                      agg.combined_object_counts?.class_2_combined ??
-                      d.front_view?.object_counts?.['class-2'] ??
-                      0,
-                    reject:
-                      agg.combined_object_counts?.reject_combined ??
-                      d.front_view?.object_counts?.reject ??
-                      0,
-                    total: agg.combined_object_counts?.total_samples_observed ?? 1,
-                  }
-                : {
-                    fresh_tomato:
-                      agg.combined_object_counts?.fresh_tomato_combined ??
-                      d.front_view?.object_counts?.['fresh-tomato'] ??
-                      0,
-                    rotten_tomato:
-                      agg.combined_object_counts?.rotten_tomato_combined ??
-                      d.front_view?.object_counts?.['rotten-tomato'] ??
-                      0,
-                    total: agg.combined_object_counts?.total_samples_observed ?? 1,
-                  },
+                    agg.combined_object_counts?.extra_class_combined ??
+                    d.front_view?.object_counts?.['extra-class'] ??
+                    0,
+                  class_1:
+                    agg.combined_object_counts?.class_1_combined ??
+                    d.front_view?.object_counts?.['class-1'] ??
+                    0,
+                  class_2:
+                    agg.combined_object_counts?.class_2_combined ??
+                    d.front_view?.object_counts?.['class-2'] ??
+                    0,
+                  reject:
+                    agg.combined_object_counts?.reject_combined ??
+                    d.front_view?.object_counts?.reject ??
+                    0,
+                  total: agg.combined_object_counts?.total_samples_observed ?? 1,
+                }
+              : {
+                  fresh_tomato:
+                    agg.combined_object_counts?.fresh_tomato_combined ??
+                    d.front_view?.object_counts?.['fresh-tomato'] ??
+                    0,
+                  rotten_tomato:
+                    agg.combined_object_counts?.rotten_tomato_combined ??
+                    d.front_view?.object_counts?.['rotten-tomato'] ??
+                    0,
+                  total: agg.combined_object_counts?.total_samples_observed ?? 1,
+                },
               condition_ratios: agg.weighted_condition_ratios || d.smart_pricing?.condition_ratios || {},
               detections: d.front_view?.detections || [],
               detections_front: d.front_view?.detections || [],
@@ -392,6 +423,14 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm }
           }
         }
       } catch (backendMultiErr) {
+        // Jika error dari backend adalah validasi anti-kecurangan berkas identik / duplikat, jangan telan errornya!
+        if (
+          backendMultiErr?.code === 'DUPLICATE_MULTI_ANGLE_IMAGES' ||
+          backendMultiErr?.message?.toLowerCase().includes('identik') ||
+          backendMultiErr?.message?.toLowerCase().includes('kembar')
+        ) {
+          throw backendMultiErr
+        }
         console.warn('Backend multi-scan fallback to client aggregation:', backendMultiErr)
       }
 
