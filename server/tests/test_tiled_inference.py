@@ -58,7 +58,7 @@ class TestTiledInferenceAndDisambiguation(unittest.TestCase):
     def test_disambiguation_margin_calibrated_to_class2(self):
         """
         P1: Memverifikasi jika Reject bersaing ketat dengan Class II (selisih < 0.20),
-        sistem mengalokasikan ke Class II (Toleransi Mutu SNI 01-3162-1992).
+        sistem mengalokasikan ke Class II (Toleransi Mutu Komersial UNECE FFV-05; SNI Terung: NOT VERIFIED).
         """
         cluster = [
             {"class_name": "Reject", "conf": 0.44, "cls_id": 3},

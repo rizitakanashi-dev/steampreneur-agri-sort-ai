@@ -22,6 +22,8 @@ import AssessmentRoundedIcon from '@mui/icons-material/AssessmentRounded'
 import AutoAwesomeRoundedIcon from '@mui/icons-material/AutoAwesomeRounded'
 import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded'
 import CloseRoundedIcon from '@mui/icons-material/CloseRounded'
+import ErrorOutlineRoundedIcon from '@mui/icons-material/ErrorOutlineRounded'
+import HelpOutlineRoundedIcon from '@mui/icons-material/HelpOutlineRounded'
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined'
 import Inventory2RoundedIcon from '@mui/icons-material/Inventory2Rounded'
 import LocalShippingRoundedIcon from '@mui/icons-material/LocalShippingRounded'
@@ -182,6 +184,16 @@ export function QCResults({ batch, onBackToInput, onViewRecap }) {
   )
   const occlusion = scanResult?.occlusion_analysis
 
+  const executionStatus =
+    batch.execution_status ||
+    scanResult?.execution_status ||
+    (batch.is_simulated || scanResult?.is_simulated
+      ? 'simulated'
+      : (hasAiScan && (isEggplant || commodity.toLowerCase().includes('tomat'))
+        ? 'ai_detected'
+        : 'unsupported'))
+  const statusDetails = batch.status_details || scanResult?.status_details || {}
+
   // Susun data untuk Donut PieChart
   let pieChartData = []
   if (hasAiScan && inference) {
@@ -226,7 +238,7 @@ export function QCResults({ batch, onBackToInput, onViewRecap }) {
             >
               <Box>
                 <Stack alignItems="center" direction="row" spacing={1.25}>
-                  {hasAiScan ? (
+                  {executionStatus === 'ai_detected' ? (
                     <AutoAwesomeRoundedIcon color="primary" sx={{ fontSize: 28 }} />
                   ) : (
                     <AssessmentRoundedIcon color="primary" sx={{ fontSize: 28 }} />
@@ -241,7 +253,7 @@ export function QCResults({ batch, onBackToInput, onViewRecap }) {
               </Box>
 
               <Stack alignItems={{ xs: 'flex-start', sm: 'center' }} direction={{ xs: 'column', sm: 'row' }} spacing={1}>
-                {isMultiAngle && (
+                {isMultiAngle && executionStatus === 'ai_detected' && (
                   <Chip
                     color="success"
                     icon={<VerifiedRoundedIcon />}
@@ -250,13 +262,69 @@ export function QCResults({ batch, onBackToInput, onViewRecap }) {
                     sx={{ fontWeight: 700 }}
                   />
                 )}
-                <Chip
-                  color={hasAiScan ? 'primary' : 'default'}
-                  icon={hasAiScan ? <AutoAwesomeRoundedIcon /> : <AssessmentRoundedIcon />}
-                  label={hasAiScan ? 'AI Computer Vision' : 'Manual Calculation'}
-                  size="small"
-                  sx={{ fontWeight: 700 }}
-                />
+                {isMultiAngle && executionStatus === 'needs_review' && (
+                  <Chip
+                    color="warning"
+                    icon={<WarningAmberRoundedIcon />}
+                    label="Multi-Angle (Perlu Review)"
+                    size="small"
+                    sx={{ fontWeight: 700 }}
+                  />
+                )}
+                {isMultiAngle && executionStatus === 'simulated' && (
+                  <Chip
+                    color="info"
+                    icon={<AssessmentRoundedIcon />}
+                    label="Multi-Angle (Simulasi)"
+                    size="small"
+                    sx={{ fontWeight: 700 }}
+                  />
+                )}
+                {executionStatus === 'ai_detected' && (
+                  <Chip
+                    color="success"
+                    icon={<VerifiedRoundedIcon />}
+                    label="AI Computer Vision (Optimal)"
+                    size="small"
+                    sx={{ fontWeight: 700 }}
+                  />
+                )}
+                {executionStatus === 'needs_review' && (
+                  <Chip
+                    color="warning"
+                    icon={<WarningAmberRoundedIcon />}
+                    label="Perlu Verifikasi Manual"
+                    size="small"
+                    sx={{ fontWeight: 700 }}
+                  />
+                )}
+                {executionStatus === 'simulated' && (
+                  <Chip
+                    color="info"
+                    icon={<AssessmentRoundedIcon />}
+                    label="Simulasi (Non-AI)"
+                    size="small"
+                    sx={{ fontWeight: 700 }}
+                  />
+                )}
+                {executionStatus === 'unsupported' && (
+                  <Chip
+                    color="default"
+                    icon={<HelpOutlineRoundedIcon />}
+                    label="Model AI Belum Didukung"
+                    size="small"
+                    sx={{ fontWeight: 700 }}
+                  />
+                )}
+                {executionStatus === 'model_unavailable' && (
+                  <Chip
+                    color="error"
+                    icon={<ErrorOutlineRoundedIcon />}
+                    label="Model AI Tidak Tersedia"
+                    size="small"
+                    sx={{ fontWeight: 700 }}
+                  />
+                )}
                 <Button
                   color="primary"
                   onClick={() => setIsCertModalOpen(true)}
@@ -276,6 +344,64 @@ export function QCResults({ batch, onBackToInput, onViewRecap }) {
             </Stack>
           </CardContent>
         </Card>
+
+        {/* Banner Peringatan Status Eksekusi */}
+        {executionStatus === 'needs_review' && (
+          <Alert
+            severity="warning"
+            icon={<WarningAmberRoundedIcon />}
+            sx={{ borderRadius: 2.5, bgcolor: '#fffbeb', borderColor: '#fde68a' }}
+          >
+            <Typography variant="subtitle2" fontWeight={800} color="#92400e">
+              ⚠️ Perlu Verifikasi Manual Petugas
+            </Typography>
+            <Typography variant="body2" color="#b45309" sx={{ mt: 0.5 }}>
+              {statusDetails.message || 'Tingkat keyakinan deteksi rendah atau citra kurang optimal. Harap periksa kondisi fisik sampel secara langsung sebelum transaksi.'}
+            </Typography>
+          </Alert>
+        )}
+        {executionStatus === 'unsupported' && (
+          <Alert
+            severity="info"
+            icon={<InfoOutlinedIcon />}
+            sx={{ borderRadius: 2.5, bgcolor: '#f0f9ff', borderColor: '#bae6fd' }}
+          >
+            <Typography variant="subtitle2" fontWeight={800} color="#0369a1">
+              ℹ️ Pencatatan Mutu Manual ({commodity})
+            </Typography>
+            <Typography variant="body2" color="#0c4a6e" sx={{ mt: 0.5 }}>
+              {statusDetails.message || `Komoditas ${commodity} belum didukung oleh model Computer Vision AI. Hasil grading dan estimasi harga menggunakan acuan standar pasar manual.`}
+            </Typography>
+          </Alert>
+        )}
+        {executionStatus === 'model_unavailable' && (
+          <Alert
+            severity="error"
+            icon={<ErrorOutlineRoundedIcon />}
+            sx={{ borderRadius: 2.5, bgcolor: '#fef2f2', borderColor: '#fecaca' }}
+          >
+            <Typography variant="subtitle2" fontWeight={800} color="#991b1b">
+              ⛔ Model AI Tidak Dapat Digunakan
+            </Typography>
+            <Typography variant="body2" color="#b91c1c" sx={{ mt: 0.5 }}>
+              {statusDetails.message || `Model AI untuk ${commodity} tidak tersedia di server atau mengalami kendala runtime. Menampilkan data estimasi acuan lokal.`}
+            </Typography>
+          </Alert>
+        )}
+        {executionStatus === 'simulated' && (
+          <Alert
+            severity="info"
+            icon={<InfoOutlinedIcon />}
+            sx={{ borderRadius: 2.5, bgcolor: '#f8fafc', borderColor: '#e2e8f0' }}
+          >
+            <Typography variant="subtitle2" fontWeight={800} color="#334155">
+              🔬 Hasil Simulasi Pengujian (Non-AI)
+            </Typography>
+            <Typography variant="body2" color="#475569" sx={{ mt: 0.5 }}>
+              {statusDetails.message || 'Hasil pemindaian ini merupakan data sintetis simulasi untuk keperluan uji coba/demonstrasi non-AI.'}
+            </Typography>
+          </Alert>
+        )}
 
       {/* Bagian Visual: Canvas Bounding Box & Diagram Donat */}
       <Grid container spacing={2.5}>

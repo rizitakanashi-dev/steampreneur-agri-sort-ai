@@ -45,6 +45,8 @@ import CloseRoundedIcon from '@mui/icons-material/CloseRounded'
 import FlipCameraAndroidRoundedIcon from '@mui/icons-material/FlipCameraAndroidRounded'
 import ShieldRoundedIcon from '@mui/icons-material/ShieldRounded'
 import WarningAmberRoundedIcon from '@mui/icons-material/WarningAmberRounded'
+import ErrorOutlineRoundedIcon from '@mui/icons-material/ErrorOutlineRounded'
+import HelpOutlineRoundedIcon from '@mui/icons-material/HelpOutlineRounded'
 
 import { LiveCameraViewfinder } from './LiveCameraViewfinder.jsx'
 import { ScanCanvasOverlay } from './ScanCanvasOverlay.jsx'
@@ -440,12 +442,15 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm }
     let persenB = 0
     let persenC = 0
 
+    const execStatus = scanResult.execution_status || (scanResult.is_simulated ? 'simulated' : 'ai_detected')
+    const statusDetails = scanResult.status_details || {}
+
     if (scanResult.business_grading?.grade_breakdown) {
       const gb = scanResult.business_grading.grade_breakdown
       persenA = Math.round(gb.grade_a_percent || 0)
       persenB = Math.round(gb.grade_b_percent || 0)
       persenC = Math.round(gb.reject_percent || 0)
-    } else if (selectedCommodity.toLowerCase().includes('terung')) {
+    } else if (selectedCommodity.toLowerCase().includes('terung') || selectedCommodity.toLowerCase().includes('terong')) {
       const extra = inf?.object_counts?.extra_class || 0
       const c1 = inf?.object_counts?.class_1 || 0
       const c2 = inf?.object_counts?.class_2 || 0
@@ -453,18 +458,34 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm }
       persenA = Math.round(((extra + c1) / (totalObjs || 1)) * 100)
       persenB = Math.round((c2 / (totalObjs || 1)) * 100)
       persenC = Math.round((rej / (totalObjs || 1)) * 100)
-    } else {
+    } else if (selectedCommodity.toLowerCase().includes('tomat')) {
       const fresh = inf?.object_counts?.fresh_tomato || 0
       const rotten = inf?.object_counts?.rotten_tomato || 0
       persenA = Math.round((fresh / (totalObjs || 1)) * 100)
       persenB = 0
       persenC = Math.round((rotten / (totalObjs || 1)) * 100)
+    } else {
+      // Komoditas non-model (misal Cabai Rawit Hijau) - gunakan estimasi default manual
+      persenA = 100
+      persenB = 0
+      persenC = 0
     }
 
     // Defensive clamping mencegah error floating rounding (misal 51% + 50% = 101%)
     if (persenA + persenC > 100) {
       persenC = Math.max(0, 100 - persenA)
     }
+
+    const defaultNote =
+      execStatus === 'ai_detected'
+        ? 'Dipindai otomatis via Batch QC Scanner'
+        : execStatus === 'needs_review'
+        ? `Perlu Verifikasi Manual: ${statusDetails.reason || 'Kondisi gambar / keyakinan deteksi perlu ditinjau'}`
+        : execStatus === 'simulated'
+        ? 'Hasil inspeksi simulasi (Non-AI)'
+        : execStatus === 'unsupported'
+        ? `Komoditas ${selectedCommodity} belum didukung model AI`
+        : 'Model AI tidak dapat digunakan / offline'
 
     const calculatedInput = {
       tanggal: getTodayDateString(),
@@ -473,7 +494,7 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm }
       kesegaranPersen: persenA,
       cacatPersen: persenC,
       ukuran: 'Sedang',
-      catatan: saveNotes || 'Dipindai otomatis via Batch QC Scanner',
+      catatan: saveNotes || defaultNote,
     }
 
     const calculation = calculateHarvest(calculatedInput)
@@ -492,7 +513,10 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm }
       fotoNama: scanResult.is_multi_angle
         ? `${selectedCommodity.toLowerCase()}_multi_scan.jpg`
         : (imageFile?.name || `${selectedCommodity.toLowerCase()}_scan.jpg`),
-      ai_scan_performed: true,
+      ai_scan_performed: execStatus === 'ai_detected',
+      execution_status: execStatus,
+      status_details: statusDetails,
+      is_simulated: execStatus === 'simulated',
       inference: inf,
       pricing: pricing,
       scanResult: scanResult,
@@ -518,10 +542,13 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm }
     }
   }
 
-  const isEggplant = selectedCommodity.toLowerCase().includes('terung')
+  const isEggplant = selectedCommodity.toLowerCase().includes('terung') || selectedCommodity.toLowerCase().includes('terong')
+  const isTomato = selectedCommodity.toLowerCase().includes('tomat')
   const inference = scanResult?.inference_result
   const counts = inference?.object_counts || {}
   const pricing = scanResult?.smart_pricing
+  const execStatus = scanResult?.execution_status || (scanResult?.is_simulated ? 'simulated' : (scanResult?.inference_result ? (isEggplant || isTomato ? 'ai_detected' : 'unsupported') : 'unsupported'))
+  const statusDetails = scanResult?.status_details || {}
 
   // Deteksi apakah model menghasilkan 1 bounding box raksasa yang menutupi seluruh gambar
   const firstBox = inference?.detections?.[0]?.box
@@ -571,8 +598,14 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm }
                 </Typography>
                 <Chip
                   size="small"
-                  label={isEggplant ? 'Rekomendasi Terung: 0.20' : 'Rekomendasi Tomat: 0.35'}
-                  color="info"
+                  label={
+                    isEggplant
+                      ? 'Rekomendasi Terung: 0.20'
+                      : isTomato
+                      ? 'Rekomendasi Tomat: 0.35'
+                      : 'Komoditas Belum Didukung AI'
+                  }
+                  color={isEggplant || isTomato ? 'info' : 'default'}
                   variant="outlined"
                 />
               </Stack>
@@ -760,7 +793,9 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm }
               <Typography variant="caption" sx={{ display: 'block', mt: 0.25, color: '#15803d' }}>
                 {isEggplant
                   ? 'Model mendeteksi mutu buah per butir. Untuk akurasi optimal, ambil 2–5 buah sampel dari keranjang dan letakkan berjajar di atas nampan/alas datar (hindari tumpukan padat pasar berlapis).'
-                  : 'Arahkan kamera tegak lurus (top-down view) dengan pencahayaan memadai agar buah terdeteksi jelas.'}
+                  : isTomato
+                  ? 'Arahkan kamera tegak lurus (top-down view) dengan pencahayaan memadai agar buah terdeteksi jelas.'
+                  : 'Komoditas ini belum didukung model Computer Vision resmi. Silakan lakukan pemeriksaan fisik secara manual.'}
               </Typography>
             </Alert>
 
@@ -1211,7 +1246,33 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm }
           )}
 
           {/* Bar Kontrol Aksi Atas Hasil Scan */}
-          <Card elevation={2} sx={{ borderRadius: 3, bgcolor: '#f0fdf4', border: '1px solid #bbf7d0' }}>
+          <Card
+            elevation={2}
+            sx={{
+              borderRadius: 3,
+              bgcolor:
+                execStatus === 'model_unavailable'
+                  ? '#fef2f2'
+                  : execStatus === 'needs_review'
+                  ? '#fffbeb'
+                  : execStatus === 'simulated'
+                  ? '#eff6ff'
+                  : execStatus === 'unsupported'
+                  ? '#f8fafc'
+                  : '#f0fdf4',
+              border: '1px solid',
+              borderColor:
+                execStatus === 'model_unavailable'
+                  ? '#fecaca'
+                  : execStatus === 'needs_review'
+                  ? '#fde68a'
+                  : execStatus === 'simulated'
+                  ? '#bfdbfe'
+                  : execStatus === 'unsupported'
+                  ? '#e2e8f0'
+                  : '#bbf7d0',
+            }}
+          >
             <CardContent sx={{ p: 2 }}>
               <Stack
                 direction={{ xs: 'column', sm: 'row' }}
@@ -1220,15 +1281,47 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm }
                 spacing={1.5}
               >
                 <Stack direction="row" spacing={1.5} alignItems="center">
-                  <CheckCircleRoundedIcon color="success" sx={{ fontSize: 32 }} />
+                  {execStatus === 'model_unavailable' ? (
+                    <ErrorOutlineRoundedIcon color="error" sx={{ fontSize: 32 }} />
+                  ) : execStatus === 'needs_review' ? (
+                    <WarningAmberRoundedIcon color="warning" sx={{ fontSize: 32 }} />
+                  ) : execStatus === 'simulated' ? (
+                    <AssessmentRoundedIcon color="info" sx={{ fontSize: 32 }} />
+                  ) : execStatus === 'unsupported' ? (
+                    <HelpOutlineRoundedIcon color="action" sx={{ fontSize: 32 }} />
+                  ) : (
+                    <CheckCircleRoundedIcon color="success" sx={{ fontSize: 32 }} />
+                  )}
                   <Box>
                     <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
-                      <Typography variant="subtitle1" fontWeight={800} color="#166534">
+                      <Typography
+                        variant="subtitle1"
+                        fontWeight={800}
+                        color={
+                          execStatus === 'model_unavailable'
+                            ? '#991b1b'
+                            : execStatus === 'needs_review'
+                            ? '#92400e'
+                            : execStatus === 'simulated'
+                            ? '#1e40af'
+                            : execStatus === 'unsupported'
+                            ? '#334155'
+                            : '#166534'
+                        }
+                      >
                         {scanResult.is_multi_angle
-                          ? `Inspeksi Multi-Sudut (2 Sisi) Berhasil — ${selectedCommodity}`
-                          : `Deteksi AI Berhasil — ${selectedCommodity}`}
+                          ? `Inspeksi Multi-Sudut (2 Sisi) — ${selectedCommodity}`
+                          : execStatus === 'ai_detected'
+                          ? `Deteksi AI Berhasil — ${selectedCommodity}`
+                          : execStatus === 'needs_review'
+                          ? `Hasil Scan Perlu Verifikasi — ${selectedCommodity}`
+                          : execStatus === 'simulated'
+                          ? `Inspeksi Mode Simulasi — ${selectedCommodity}`
+                          : execStatus === 'unsupported'
+                          ? `Komoditas Belum Didukung AI — ${selectedCommodity}`
+                          : `Model AI Tidak Tersedia — ${selectedCommodity}`}
                       </Typography>
-                      {scanResult.is_multi_angle && (
+                      {scanResult.is_multi_angle && execStatus === 'ai_detected' && (
                         <Chip
                           icon={<ShieldRoundedIcon />}
                           label="🛡️ Multi-Angle Verified"
@@ -1237,9 +1330,74 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm }
                           sx={{ fontWeight: 800 }}
                         />
                       )}
+                      {scanResult.is_multi_angle && execStatus === 'needs_review' && (
+                        <Chip
+                          icon={<WarningAmberRoundedIcon />}
+                          label="Multi-Angle (Perlu Review)"
+                          size="small"
+                          color="warning"
+                          sx={{ fontWeight: 700 }}
+                        />
+                      )}
+                      {scanResult.is_multi_angle && execStatus === 'simulated' && (
+                        <Chip
+                          icon={<AssessmentRoundedIcon />}
+                          label="Multi-Angle (Simulasi)"
+                          size="small"
+                          color="info"
+                          sx={{ fontWeight: 700 }}
+                        />
+                      )}
+                      {execStatus === 'ai_detected' && (
+                        <Chip
+                          icon={<VerifiedRoundedIcon />}
+                          label="AI Computer Vision (Optimal)"
+                          size="small"
+                          color="success"
+                          sx={{ fontWeight: 700 }}
+                        />
+                      )}
+                      {execStatus === 'needs_review' && (
+                        <Chip
+                          icon={<WarningAmberRoundedIcon />}
+                          label="Perlu Verifikasi Manual"
+                          size="small"
+                          color="warning"
+                          sx={{ fontWeight: 700 }}
+                        />
+                      )}
+                      {execStatus === 'simulated' && (
+                        <Chip
+                          icon={<AssessmentRoundedIcon />}
+                          label="Simulasi (Non-AI)"
+                          size="small"
+                          color="info"
+                          sx={{ fontWeight: 700 }}
+                        />
+                      )}
+                      {execStatus === 'unsupported' && (
+                        <Chip
+                          icon={<HelpOutlineRoundedIcon />}
+                          label="Model AI Belum Didukung"
+                          size="small"
+                          color="default"
+                          sx={{ fontWeight: 700 }}
+                        />
+                      )}
+                      {execStatus === 'model_unavailable' && (
+                        <Chip
+                          icon={<ErrorOutlineRoundedIcon />}
+                          label="Model AI Tidak Tersedia"
+                          size="small"
+                          color="error"
+                          sx={{ fontWeight: 700 }}
+                        />
+                      )}
                     </Stack>
                     <Typography variant="caption" color="text.secondary">
-                      Waktu Inferensi: {inference?.inference_time_ms || 0} ms &bull; Total Terdeteksi: {inference?.detections?.length || 0} butir
+                      {inference
+                        ? `Waktu Inferensi: ${inference?.inference_time_ms || 0} ms • Total Terdeteksi: ${inference?.detections?.length || 0} butir`
+                        : 'Tidak ada inferensi visual langsung (manual / non-AI).'}
                     </Typography>
                   </Box>
                 </Stack>
@@ -1279,6 +1437,67 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm }
               </Stack>
             </CardContent>
           </Card>
+
+          {/* Banner Peringatan Status Eksekusi */}
+          {execStatus === 'needs_review' && (
+            <Alert
+              severity="warning"
+              icon={<WarningAmberRoundedIcon />}
+              sx={{ borderRadius: 2.5, bgcolor: '#fffbeb', borderColor: '#fde68a' }}
+            >
+              <Typography variant="subtitle2" fontWeight={800} color="#92400e">
+                ⚠️ Perlu Verifikasi Manual Petugas
+              </Typography>
+              <Typography variant="body2" color="#b45309" sx={{ mt: 0.5 }}>
+                {statusDetails.message || statusDetails.reason || 'Hasil inferensi memiliki tingkat keyakinan rendah atau kondisi gambar memerlukan peninjauan visual langsung oleh petugas lapangan.'}
+              </Typography>
+            </Alert>
+          )}
+
+          {execStatus === 'simulated' && (
+            <Alert
+              severity="info"
+              icon={<AssessmentRoundedIcon />}
+              sx={{ borderRadius: 2.5, bgcolor: '#eff6ff', borderColor: '#bfdbfe' }}
+            >
+              <Typography variant="subtitle2" fontWeight={800} color="#1e40af">
+                ℹ️ Hasil Inspeksi Simulasi (Testing / Non-AI)
+              </Typography>
+              <Typography variant="body2" color="#1d4ed8" sx={{ mt: 0.5 }}>
+                Hasil ini dihasilkan melalui generator simulasi pengujian dan bukan merupakan inferensi model Computer Vision aktual.
+              </Typography>
+            </Alert>
+          )}
+
+          {execStatus === 'unsupported' && (
+            <Alert
+              severity="info"
+              icon={<HelpOutlineRoundedIcon />}
+              sx={{ borderRadius: 2.5, bgcolor: '#f8fafc', borderColor: '#cbd5e1' }}
+            >
+              <Typography variant="subtitle2" fontWeight={800} color="#334155">
+                ℹ️ Komoditas Belum Didukung Model AI
+              </Typography>
+              <Typography variant="body2" color="#475569" sx={{ mt: 0.5 }}>
+                Komoditas <strong>{selectedCommodity}</strong> belum memiliki model Computer Vision terverifikasi. Rekomendasi mutu dan harga didasarkan pada standar komoditas manual.
+              </Typography>
+            </Alert>
+          )}
+
+          {execStatus === 'model_unavailable' && (
+            <Alert
+              severity="error"
+              icon={<ErrorOutlineRoundedIcon />}
+              sx={{ borderRadius: 2.5, bgcolor: '#fef2f2', borderColor: '#fecaca' }}
+            >
+              <Typography variant="subtitle2" fontWeight={800} color="#991b1b">
+                🚫 Model AI Tidak Tersedia / Gangguan Inferensi
+              </Typography>
+              <Typography variant="body2" color="#b91c1c" sx={{ mt: 0.5 }}>
+                {statusDetails.message || 'Model AI untuk komoditas ini gagal dimuat atau mengalami kendala saat eksekusi. Silakan hubungi admin atau lakukan penilaian mutu secara manual.'}
+              </Typography>
+            </Alert>
+          )}
 
           {/* Notifikasi Edukasi jika terdeteksi tumpukan padat sebagai 1 box global */}
           {isGlobalBoundingBox && (
@@ -1436,7 +1655,7 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm }
                     </Box>
                   </Grid>
                 </Grid>
-              ) : (
+              ) : isTomato ? (
                 // 2 KELAS TOMAT
                 <Grid container spacing={2}>
                   <Grid size={{ xs: 6, sm: 6 }}>
@@ -1467,6 +1686,18 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm }
                     </Box>
                   </Grid>
                 </Grid>
+              ) : (
+                // KOMODITAS BELUM DIDUKUNG (MISAL CABAI RAWIT HIJAU)
+                <Box sx={{ p: 3, borderRadius: 2, bgcolor: '#f8fafc', border: '1px dashed #cbd5e1', textAlign: 'center' }}>
+                  <HelpOutlineRoundedIcon sx={{ fontSize: 36, color: 'text.secondary', mb: 1 }} />
+                  <Typography variant="subtitle1" fontWeight={700} color="text.primary">
+                    Pemisahan Kelas Mutu Visual Belum Didukung AI
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary" sx={{ maxWidth: 480, mx: 'auto', mt: 0.5 }}>
+                    Komoditas <strong>{selectedCommodity}</strong> belum memiliki model pendeteksi cacat otomatis.
+                    Klasifikasi mutu dan estimasi harga menggunakan parameter acuan manual.
+                  </Typography>
+                </Box>
               )}
 
               {/* Rekomendasi Pintar Smart Pricing */}
@@ -1563,7 +1794,10 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm }
                 komoditas: selectedCommodity,
                 beratKg: Number(saveWeight ? saveWeight.replace(',', '.') : 10) || 10,
                 fotoKeranjang: scanResult.imagePreview,
-                ai_scan_performed: true,
+                ai_scan_performed: execStatus === 'ai_detected',
+                execution_status: execStatus,
+                status_details: statusDetails,
+                is_simulated: execStatus === 'simulated',
                 inference: inference,
                 pricing: pricing,
                 scanResult: scanResult,
