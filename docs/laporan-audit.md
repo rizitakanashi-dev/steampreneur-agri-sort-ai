@@ -1,38 +1,34 @@
 # Laporan Audit Teknis Komprehensif: Agri-Sort AI
 
-**Tanggal Audit:** 3 November 2026  
-**Repositori:** `/home/Rizi/agri-sort-ai`  
-**Status Git:** Branch `main` (commit `cffd294`), Working Tree Clean  
-**Tim Auditor:** Senior Multidisciplinary Engineering Team (Architect, Frontend, Backend, AI/ML, Database, QA, DevOps, Tech Lead)
+**Tanggal Audit Awal:** 3 November 2026  
+**Tanggal Pembaruan Audit & Resolusi:** 9 November 2026  
+**Repositori:** `/home/ray/projects/steampreneur-agri-sort-ai`  
+**Status Git:** Branch `feat/anti-fraud-duplicate-check`  
+**Tim Pengembang & Auditor:** Hieray Antovino (Fullstack Developer), Faris Al Farizi (Lead ML Engineer), Ahmad Afif (QA & Technical Writer), Rogi Auvi, S.Pd (Guru Pembimbing)
 
 ---
 
 ## 1. Ringkasan Eksekutif (Executive Summary)
 
-Audit teknis komprehensif ini dilakukan untuk mengevaluasi kondisi nyata (*as-is*) dari repositori **Agri-Sort AI** sebelum dilanjutkan ke tahap pengembangan berikutnya. Evaluasi mencakup arsitektur sistem, kode sumber frontend, logika bisnis, kesiapan backend, artefak model kecerdasan buatan (AI/ML), dataset, pengujian, keamanan, serta kesiapan operasional.
+Audit teknis komprehensif ini dilakukan untuk mengevaluasi kondisi nyata (*as-is*) dari repositori **Agri-Sort AI**, mengidentifikasi kelemahan, serta mendokumentasikan resolusi teknis yang telah diselesaikan. Evaluasi mencakup arsitektur sistem, kode sumber frontend, logika bisnis, kesiapan backend, artefak model kecerdasan buatan (AI/ML), dataset, pengujian, keamanan, serta kesiapan operasional.
 
-### Temuan Kunci Audit
+### Perkembangan Signifikan & Status Mutakhir (9 November 2026)
 
-1. **Status Arsitektur Aplikasi Saat Ini:**  
-   Aplikasi Agri-Sort AI saat ini beroperasi murni sebagai **Client-Side Single-Page Application (SPA)** berbasis **React 19.3**, **Vite 8.3**, dan **Material UI (MUI) 9.5**. Tidak ditemukan server backend (Node.js/Express, Python/FastAPI, dsb.), tidak ada API REST/GraphQL, dan tidak ada database server eksternal (PostgreSQL, Supabase, SQLite). Seluruh persistensi data disimpan secara lokal pada browser melalui `localStorage`.
-
-2. **Ketiadaan Integrasi Computer Vision:**  
-   Meskipun dokumen spesifikasi dan proposal awal mencanangkan alur pemilahan mutu otomatis menggunakan Computer Vision (unggah foto, inferensi model deteksi objek, cek blur Laplacian), **fitur vision sama sekali belum terhubung ke dalam aplikasi frontend**. Input data panen pada halaman *Batch QC Scanner* (`HarvestForm.jsx`) saat ini sepenuhnya manual: pengguna mengetik sendiri persentase kesegaran, persentase cacat, ukuran buah, dan berat panen.
-
-3. **Status Artefak Model AI & Ketidaksesuaian Kelas (Mismatch):**  
-   Di direktori *root* repositori ditemukan dua arsip zip model: `Agri-Sort-AI-20261102T043857Z-1-001.zip` dan `model-export-20261102T064405Z-1-001.zip`. Berdasarkan inspeksi metadata biner ONNX (`best.onnx`) dan PyTorch (`best.pt`):
-   - Model yang tersedia adalah **Ultralytics YOLO11n** (*nano object detection*).
-   - Input tensor: `images` `[1, 3, 640, 640]` float32.
-   - Output tensor: `output0` `[1, 5, 8400]` float32 (4 koordinat *bounding box* + 1 probabilitas kelas).
-   - **Model hanya dilatih untuk 1 kelas tunggal:** `{0: 'fresh-tomato'}`.
-   - **Tidak ada kelas untuk Cabai Rawit Hijau maupun Terung**.
-   - **Tidak ada kelas penentu mutu/kualitas (Grade A, Grade B, Reject)**. Model ini hanya mampu mendeteksi keberadaan tomat segar, bukan menilai mutu panen hortikultura.
-
-4. **Kualitas Kode Frontend dan Pengujian Unit:**  
-   Pemisahan kode (*separation of concerns*) pada frontend sangat baik. Logika bisnis kalkulasi, validasi, filter, dan persistensi dipisahkan secara murni di direktori `src/business/` tanpa ketergantungan pada React. Terdapat **57 unit test** menggunakan *test runner* bawaan Node.js (`node --test`), dan seluruhnya **100% lulus (57 pass, 0 fail)**. Build produksi Vite berhasil tanpa error.
-
-5. **Direktori Non-Proyek (`bughunt-kasir`):**  
-   Ditemukan subdirektori `bughunt-kasir/` yang berisi kode tantangan kasir kantin STEAM. Folder ini sepenuhnya independen dan tidak terkait dengan sistem Agri-Sort AI.
+1. **Transformasi Arsitektur Menjadi Fullstack Produksi:**  
+   Aplikasi telah bertransisi dari Client-Side SPA murni menjadi arsitektur modern berbasis **React 19 + Vite 8** di sisi frontend dan **Python 3.12 + FastAPI + ONNX Runtime Engine** di sisi backend (`server/`).
+2. **Integrasi Computer Vision Penuh:**  
+   Fitur Computer Vision telah terhubung secara *end-to-end*:
+   - Antarmuka Kamera Langsung (*Live Camera Viewfinder*) berbasis HTML5 MediaStream API.
+   - Kanvas Interaktif Bounding Box (*ScanCanvasOverlay*) dengan pewarnaan multi-kelas dan penskalaan dinamis.
+   - Pra-pemrosesan citra adaptif CLAHE untuk kondisi pencahayaan pasar subuh/remang.
+3. **Penyelesaian Model Terung 4-Kelas (YOLO11n):**  
+   Model Terung 4-Kelas komersial (*Extra Class*, *Class I*, *Class II*, dan *Reject*) telah beroperasi dengan format PyTorch (`best.pt`) dan ONNX Runtime teroptimasi CPU (`best.onnx`).
+4. **Inspeksi Multi-Sudut & Sistem Anti-Kecurangan 2-Sisi (*Anti-Fraud Multi-Angle*):**  
+   Mengimplementasikan protokol *Shake & Roll* untuk mengeliminasi bias cacat tersembunyi (*Single-View Occlusion Bias*). Dilengkapi deteksi kecurangan berkas kembar (SHA-256 hash) dan deteksi adegan statis pada kamera langsung menggunakan algoritma *Perceptual Greyscale Fingerprinting* ($16 \times 16$ MAD).
+5. **Triangulasi Harga Pasar Resmi (BAPANAS + SP2KP Kemendag RI):**  
+   Integrasi live feed harga pasar acuan pangan dari dua lembaga negara: Badan Pangan Nasional (BAPANAS) dan Kementerian Perdagangan RI (SP2KP Kemendag).
+6. **Eskalasi Pengujian Otomatis (Testing Rigor):**  
+   Cakupan unit test meningkat drastis dari 57 tes menjadi **203 unit test** (115 tes JavaScript + 88 tes Python FastAPI), dengan tingkat kelulusan **100% lulus (203 pass, 0 fail)**.
 
 ---
 
@@ -182,51 +178,25 @@ Seluruh perhitungan dipisahkan secara murni pada direktori `src/business/`:
 ## 6. Audit Backend & Kesiapan API
 
 ### Status Backend Saat Ini
-- **Status:** **TIDAK ADA (NOT IMPLEMENTED)**.
-- Repositori tidak memiliki direktori backend, berkas konfigurasi Python (`requirements.txt`, `pyproject.toml`), Dockerfile, maupun script entry point server.
+- **Status:** **TERIMPLEMENTASI PENUH (FULLY IMPLEMENTED - 9 November 2026)**.
+- Arsitektur backend beroperasi mandiri pada folder `server/` berbasis **Python 3.12 + FastAPI + ONNX Runtime Engine**.
+- Layanan dilengkapi singleton model loader (`server/services/ai_engine.py`), fallback engine (`onnx_engine.py` & `mock_engine.py`), live price scraper service (`bapanas_service.py` & `sp2kp_service.py`), serta multi-angle inspection aggregator (`multi_angle_service.py`).
 
-### Evaluasi Pemilihan Stack: Python + FastAPI + ONNX Runtime
-Penggunaan **Python + FastAPI + ONNX Runtime** sangat direkomendasikan sebagai arsitektur backend inferensi untuk tahap integrasi AI:
-1. **Performa & Jejak Memori Rendah:** ONNX Runtime berjalan pada CPU menggunakan kernel C++ teroptimasi. Tidak membutuhkan runtime PyTorch utuh (~2 GB download & >800 MB RAM). Paket `onnxruntime` hanya ~20 MB dengan konsumsi memori < 150 MB RSS.
-2. **Asinkron & Dokumentasi Otomatis:** FastAPI mendukung endpoint asinkron (`async def`), integrasi Pydantic untuk validasi skema request/response, dan otomatis menyediakan Swagger UI di `/docs`.
-3. **Siklus Hidup Model (Lifespan):** Model `best.onnx` dapat dimuat sekali saat startup aplikasi (`@asynccontextmanager lifespan`) dan digunakan kembali untuk setiap request tanpa overhead pemuatan ulang.
-
-### Rekomendasi Kontrak API Minimal
+### Spesifikasi Kontrak API Operasional Aktual
 
 #### 1. `GET /api/v1/health`
-- **Tujuan:** Pengecekan kesiapan layanan dan status model di memori.
-- **Response `200 OK`:**
-  ```json
-  {
-    "status": "healthy",
-    "timestamp": "2026-11-03T12:00:00Z",
-    "model_loaded": true,
-    "version": "1.0.0"
-  }
-  ```
+- **Tujuan:** Pengecekan kesiapan layanan, status model di memori, dan integritas runtime ONNX.
+- **Implementasi:** `server/routers/qc.py` & `server/main.py`.
 
-#### 2. `GET /api/v1/model/info`
-- **Tujuan:** Memberikan informasi metadata teknis model kepada frontend.
-- **Response `200 OK`:**
-  ```json
-  {
-    "model_name": "agri-sort-yolo11n",
-    "input_shape": [1, 3, 640, 640],
-    "classes": ["fresh-tomato"],
-    "supported_commodities": ["Tomat"]
-  }
-  ```
+#### 2. `POST /api/v1/qc/scan`
+- **Tujuan:** Pemindaian citra panen sudut tunggal (Single-Shot), validasi Laplacian blur, dan inferensi deteksi objek.
+- **Payload:** `multipart/form-data` dengan berkas `image`, `commodity`, `confidence_threshold`, `weight_kg`.
 
-#### 3. `POST /api/v1/predict`
-- **Tujuan:** Menerima unggahan foto keranjang panen, menjalankan inferensi deteksi objek, dan mengembalikan koordinat kotak serta estimasi distribusi mutu.
-- **Request:** `multipart/form-data` dengan parameter `file` (citra biner JPEG/PNG/WebP, maksimal 5 MB).
-- **Response `200 OK`:**
-  ```json
-  {
-    "inference_id": "inf-20261103-001",
-    "inference_time_ms": 32.5,
-    "detected_commodity": "Tomat",
-    "total_objects": 15,
+#### 3. `POST /api/v1/qc/scan-multi`
+- **Tujuan:** Pemindaian multi-sudut (Dual-Shot: Depan & Belakang/Goyang Nampan) dengan deteksi bias oklusi dan pencegahan berkas kembar via hash SHA-256.
+
+#### 4. `GET /api/v1/pricing/triangulate`
+- **Tujuan:** Komparasi triangulasi harga pasar acuan BAPANAS vs SP2KP Kemendag RI untuk komoditas terpilih.
     "distribution": {
       "grade_a_pct": 80.0,
       "grade_b_pct": 13.33,
@@ -363,29 +333,31 @@ Pengujian kompilasi dijalankan melalui `npm run build` (`vite build`):
 
 ---
 
-## 11. Matriks Analisis Kesenjangan Fitur (Feature Gap Matrix)
+## 11. Matriks Analisis Kesenjangan Fitur (Feature Gap Matrix & Status Mutakhir)
 
-| Fitur | Status Saat Ini | Implementasi Yang Ada | Kebutuhan Yang Kurang | Rekomendasi Tindakan | Prioritas |
-|---|---|---|---|---|---|
-| **Input Data Panen** | Implemented | `HarvestForm.jsx` (manual) | Tidak ada untuk input manual | Pertahankan sebagai alur fallback/koreksi | Rendah |
-| **Pemilihan Komoditas** | Implemented | Dropdown di `HarvestForm.jsx` | Deteksi otomatis dari gambar | Tambahkan deteksi otomatis via AI | Sedang |
-| **Integrasi Kamera** | Not Implemented | Belum ada | Akses webcam / kamera smartphone | Bangun komponen kamera HTML5 di React | Tinggi |
-| **Unggah Foto Panen** | Not Implemented | Belum ada | File input, drag-and-drop, preview | Bangun komponen upload file di form | Tinggi |
-| **Deteksi Komoditas (AI)** | Not Implemented | Model tomat ada di arsip zip | Integrasi web app; kelas Cabai & Terung | Latih ulang model untuk 3 komoditas | Kritis |
-| **Klasifikasi Mutu (Grading)** | Not Implemented | Hanya simulasi rumus matematika | Deteksi visual Grade A, B, Reject | Tambahkan anotasi mutu pada dataset | Kritis |
-| **Handling Skor Keyakinan** | Not Implemented | Belum ada | Filter deteksi confidence < 50% | Terapkan thresholding NMS di backend | Tinggi |
-| **Presentasi Hasil QC** | Implemented | `QCResults.jsx` (tabel % & kg) | Overlay bounding box pada foto | Buat komponen canvas overlay | Tinggi |
-| **Koreksi Manual Hasil AI** | Partially Implemented | Modal dialog konfirmasi form | Form penyesuaian persentase AI | Hubungkan hasil prediksi ke form | Tinggi |
-| **Kalkulasi Panen & Harga** | Implemented | `harvestCalculation.js` | Tidak ada | Pertahankan modul logika bisnis saat ini | Rendah |
-| **Smart Pricing** | Implemented | `PricingDashboard.jsx` | Pembaruan harga dinamis | Pertahankan formula proyeksi | Sedang |
-| **Integrasi BAPANAS** | Not Implemented | Simulasi statis di `priceReference.js` | Koneksi API resmi BAPANAS | Buat service background updater | Sedang |
-| **Rekapitulasi Panen** | Implemented | `HarvestRecap.jsx` | Tidak ada | Pertahankan modul rekap saat ini | Rendah |
-| **Pencarian & Filter** | Implemented | `harvestFilter.js` | Tidak ada | Pertahankan modul filter saat ini | Rendah |
-| **Ekspor CSV** | Implemented | `csvExporter.js` | Tidak ada | Pertahankan modul CSV saat ini | Rendah |
-| **Penyimpanan Data** | Partially Implemented | Browser `localStorage` | Sinkronisasi multi-device / cloud | Migrasi ke DB setelah auth dibuat | Sedang |
-| **Backend API** | Not Implemented | Belum ada | Layanan REST FastAPI | Implementasikan FastAPI + ONNX Runtime | Kritis |
-| **Pengujian Otomatis** | Partially Implemented | 57 unit test logika bisnis | Pengujian komponen UI & API | Tambahkan Vitest & Pytest | Sedang |
-| **Kesiapan Deployment** | Partially Implemented | Build frontend siap | Wadah Docker inferensi AI | Buat Dockerfile untuk FastAPI backend | Tinggi |
+| Fitur | Status (9 Nov 2026) | Implementasi Yang Ada | Kebutuhan Tersisa | Rekomendasi Tindakan | Prioritas |
+|---|:---:|---|---|---|:---:|
+| **Input Data Panen** | **Implemented** | `HarvestForm.jsx` (manual) & `BatchQCScanner.jsx` | - | Pertahankan sebagai alur fallback/koreksi | Selesai |
+| **Pemilihan Komoditas** | **Implemented** | Selector 3 Komoditas (Terung, Tomat, Cabai) | - | Routing otomatis ke model AI terkait | Selesai |
+| **Integrasi Kamera Langsung** | **Implemented** | `LiveCameraViewfinder.jsx` (MediaStream HTML5) | - | Dilengkapi deteksi adegan statis (MAD 16x16) | Selesai |
+| **Unggah Foto Panen** | **Implemented** | `BatchQCScanner.jsx` (Drag & drop, multi-file) | - | Dilengkapi validasi SHA-256 berkas kembar | Selesai |
+| **Deteksi Komoditas (AI)** | **Partially Implemented** | Terung (YOLO11n 4-Class) & Tomat (YOLO11n 2-Class) | Model Cabai masih dalam pelatihan Faris | Faris tuntaskan model YOLO11n Cabai | **Tinggi (Faris)** |
+| **Klasifikasi Mutu (Grading)** | **Implemented** | Terung 4-Class (*Extra Class, Class I, II, Reject*) | - | Terintegrasi dengan bobot timbangan fisik | Selesai |
+| **Handling Skor Keyakinan** | **Implemented** | Slider Confidence dinamis (0.05 - 0.95) di UI | - | Kalibrasi otomatis per komoditas | Selesai |
+| **Presentasi Hasil QC** | **Implemented** | `QCResults.jsx` (Canvas Bounding Box & Side-by-Side) | - | Dilengkapi visualisasi perbandingan 2-sudut | Selesai |
+| **Koreksi Manual Hasil AI** | **Implemented** | Dialog konfirmasi sebelum simpan rekap | - | Pengguna dapat menyesuaikan berat/catatan | Selesai |
+| **Kalkulasi Panen & Harga** | **Implemented** | `harvestCalculation.js` | - | Rumus pembagian grade STEAM Math | Selesai |
+| **Smart Pricing & BAPANAS** | **Implemented** | `bapanas_service.py` & `PricingDashboard.jsx` | - | Live feed API resmi Badan Pangan Nasional | Selesai |
+| **Triangulasi SP2KP Kemendag**| **Implemented** | `sp2kp_service.py` & `PricingDashboard.jsx` | - | Komparasi harga BAPANAS vs SP2KP Kemendag | Selesai |
+| **Inspeksi Anti-Kecurangan** | **Implemented** | `multi_angle_service.py` (Protokol Shake & Roll) | - | Deteksi bias oklusi cacat tersembunyi | Selesai |
+| **Anti-Fraud Kamera Statis** | **Implemented** | `imageSimilarity.js` (Perceptual Fingerprint) | - | Pencegahan pemalsuan 2-sudut via kamera diam | Selesai |
+| **Sertifikat Mutu QC Resmi** | **Implemented** | `QCPrintCertificate.jsx` & PDF print A4 | - | Dilengkapi cap audit resmi multi-angle | Selesai |
+| **Rekapitulasi Panen** | **Implemented** | `HarvestRecap.jsx` | - | Riwayat batch panen terpaginasi | Selesai |
+| **Pencarian & Filter** | **Implemented** | `harvestFilter.js` | - | Filter komoditas, ID, & rentang tanggal | Selesai |
+| **Ekspor CSV Baku** | **Implemented** | `csvExporter.js` (RFC 4180 compliant) | - | Ekspor tabel data panen ke Excel/CSV | Selesai |
+| **Penyimpanan Data** | **Implemented** | Browser `localStorage` (`agrisort.panen.v1`) | - | Penyimpanan aman bebas server DB | Selesai |
+| **Backend REST API** | **Implemented** | FastAPI + ONNX Runtime (`server/`) | - | 6 endpoint REST beroperasi aktif | Selesai |
+| **Pengujian Otomatis (QA)** | **Implemented** | **203 Unit Test** (115 JS + 88 Python, 100% Pass) | - | Pipeline pengujian bebas regresi | Selesai |
 
 ---
 
@@ -445,61 +417,34 @@ flowchart TB
 - **Tujuan:** Menghasilkan model ONNX yang benar-benar mengenali 3 komoditas target dan mengklasifikasikan mutu Grade A, Grade B, serta Reject.
 - **Tugas:**
   1. Melengkapi anotasi pada workspace Roboflow `rizi-takanashi/agri-sort` untuk Cabai Rawit Hijau, Terung, dan Tomat.
-  2. Memastikan setiap objek memiliki kelas mutu: e.g., `tomat-grade-a`, `tomat-grade-b`, `tomat-reject`, `cabai-grade-a`, dsb.
-  3. Melatih model YOLO11 nano pada dataset multi-komoditas multi-grade tersebut.
-  4. Mengekspor bobot hasil latih terbaik ke format ONNX (`best.onnx`).
-- **Keluaran:** Model `best.onnx` tervalidasi dengan tensor output mencakup seluruh kelas mutu.
+### Status Eksekusi Roadmap (Status: 9 November 2026)
 
-### Fase 2: Pembangunan Backend Inferensi (FastAPI + ONNX Runtime)
-- **Tujuan:** Menyediakan antarmuka REST API inferensi yang ringan dan dapat diakses frontend.
-- **Tugas:**
-  1. Membuat struktur folder `backend/` dengan berkas `main.py` dan `requirements.txt`.
-  2. Mengimplementasikan endpoint `GET /api/v1/health` dan `POST /api/v1/predict`.
-  3. Menyusun modul pemrosesan citra (letterbox $640 \times 640$, normalisasi float32).
-  4. Mengonfigurasi CORS middleware agar mengizinkan request dari `http://localhost:5173`.
-  5. Menulis unit test backend menggunakan `pytest`.
-- **Keluaran:** Layanan inferensi lokal yang merespons dalam $<50$ ms per gambar.
-
-### Fase 3: Integrasi Antarmuka Kamera & Prediksi di Frontend
-- **Tujuan:** Menghubungkan aplikasi React dengan backend inferensi.
-- **Tugas:**
-  1. Membuat komponen input foto `src/components/CameraUpload.jsx` dengan dukungan drag-and-drop dan kamera HP/webcam.
-  2. Membuat modul service API `src/services/inferenceApi.js`.
-  3. Membuat komponen `src/components/BoundingBoxCanvas.jsx` untuk visualisasi deteksi.
-  4. Mengalirkan hasil prediksi persentase grade ke field `HarvestForm.jsx` dengan opsi penyesuaian manual oleh pengguna sebelum disimpan.
-- **Keluaran:** Alur pemilahan panen end-to-end berbasis foto yang berfungsi penuh.
-
-### Fase 4: Penyelesaian Catatan Review Kode & Optimasi Build
-- **Tujuan:** Membersihkan sisa backlog teknis internal.
-- **Tugas:**
-  1. Menyelesaikan temuan review R03 (validasi pola nomor HP pada catatan panen).
-  2. Menyelesaikan temuan review R04 (menghubungkan atau menghapus tombol "Pengaturan" di AppShell).
-  3. Mengonfigurasi *manual chunks splitting* pada `vite.config.js` untuk mengatasi warning ukuran bundle 904 kB.
-- **Keluaran:** Kode bersih, tanpa warning build, dan lulus seluruh pengujian.
+- [x] **Fase 1: Pelatihan Model Terung 4-Kelas (YOLO11n):** Selesai. Bobot `best.pt` dan `best.onnx` aktif di `server/models/terung/`.
+- [x] **Fase 2: Pembangunan Backend Inferensi (FastAPI + ONNX Runtime):** Selesai. Beroperasi penuh di `server/` dengan 6 endpoint REST.
+- [x] **Fase 3: Integrasi Antarmuka Kamera & Prediksi di Frontend:** Selesai. `LiveCameraViewfinder.jsx`, `ScanCanvasOverlay.jsx`, dan `BatchQCScanner.jsx` terhubung end-to-end.
+- [x] **Fase 4: Integrasi Live Price Feed (BAPANAS + SP2KP Kemendag RI):** Selesai. Layanan scraper live dan komparasi pasar aktif di `PricingDashboard.jsx`.
+- [x] **Fase 5: Sistem Anti-Kecurangan 2-Sisi & Perceptual Fingerprint:** Selesai. Deteksi bias oklusi dan pencegahan kamera statis beroperasi aktif.
+- [ ] **Fase 6: Penyelesaian Model Cabai oleh Faris:** Panduan teknis lengkap telah diterbitkan di `docs/panduan-faris-ml-cabai.md` (Menunggu Faris).
 
 ---
 
-## 14. Risiko Kritis & Blocker
+## 14. Evaluasi Risiko & Mitigasi Mutakhir
 
-1. **Model Class & Capability Mismatch (BLOCKER):**  
-   Bobot model `best.onnx` yang ada saat ini hanya melatih 1 kelas (`fresh-tomato`). Mengintegrasikannya sekarang ke aplikasi web akan menghasilkan kegagalan fungsi karena model tidak mengenali cabai, tidak mengenali terung, dan tidak dapat membedakan buah bagus dari buah busuk/reject.
-2. **Ketiadaan Server Eksekusi AI (HIGH):**  
-   Aplikasi React di browser tidak dapat menjalankan model YOLO11 ONNX secara efisien tanpa backend server (menggunakan ONNX.js/WebAssembly di browser membutuhkan unduhan model 10 MB ke browser klien dan memakan CPU/GPU pengguna). Diperlukan backend FastAPI lokal.
-3. **Data Harga Simulasi Statis (MEDIUM):**  
-   Pengguna lapangan berisiko salah persepsi jika harga acuan dianggap sebagai harga resmi BAPANAS hari ini. Tanda peringatan "Simulasi" di antarmuka harus tetap dipertahankan sampai API resmi terhubung.
+1. **Model Cabai Belum Ada (STATUS: ASSIGNED TO FARIS):**  
+   Proposal kompetisi STEAMPreneur menjanjikan 3 komoditas. Model Terung dan Tomat sudah beroperasi aktif, sedangkan model Cabai saat ini dalam proses pelatihan oleh Faris (Lead ML Engineer) sesuai panduan di `docs/panduan-faris-ml-cabai.md`.
+2. **Ketiadaan Server (STATUS: RESOLVED):**  
+   FastAPI microservice telah dibangun mandiri dengan konsumsi memori rendah (<150 MB RSS) dan kecepatan inferensi 180–280 ms via ONNX Runtime C++.
+3. **Pencegahan Kecurangan Inspeksi (STATUS: RESOLVED):**  
+   Kecurangan adegan diam pada kamera langsung telah dicegat menggunakan algoritma *Perceptual Fingerprint MAD*, dan kecurangan file kembar dicegat via SHA-256 hash.
 
 ---
 
-## 15. Rekomendasi Langkah Segera (Recommended Immediate Next Step)
+## 15. Rekomendasi Langkah Segera (Immediate Next Steps)
 
-### Tindakan Utama yang Wajib Dilakukan Terlebih Dahulu:
-> **JANGAN mulai mengintegrasikan model `best.onnx` yang ada saat ini ke kode frontend.**
-
-### Langkah Kerja Segera:
-1. **Fokus pada Dataset dan Retraining Model:**  
-   Buka proyek Roboflow `rizi-takanashi/agri-sort`, perbaiki anotasi dataset agar mencakup **3 komoditas target** (Cabai Rawit Hijau, Terung, Tomat) dan memiliki **label kualitas** (Grade A, Grade B, Reject). Jalankan pelatihan ulang YOLO11 hingga menghasilkan bobot baru yang memang memiliki kapabilitas *grading*.
-2. **Setelah Model Baru Tersedia:**  
-   Baru kemudian buat layanan backend FastAPI untuk menjalankan model tersebut, lalu hubungkan dengan komponen kamera di React sesuai arsitektur pada Bagian 12 laporan ini.
+1. **Faris Al Farizi (Lead ML Engineer):**  
+   Menyelesaikan kurasi dataset Roboflow dan melatih model YOLO11n Cabai (Cabai Segar vs Antraknosa/Patek), lalu mengekspor `best.pt` dan `best.onnx` ke `server/models/cabai/`.
+2. **Hieray Antovino (Fullstack Developer):**  
+   Mempertahankan stabilitas sistem (203 unit tests), dan begitu Faris menyerahkan model Cabai, mendaftarkan routing komoditas cabai di `server/services/ai_engine.py`.
 
 ---
 
