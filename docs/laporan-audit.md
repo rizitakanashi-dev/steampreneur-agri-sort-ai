@@ -593,5 +593,27 @@ flowchart TB
 - **Total Tests:** 242 unit tests lulus tanpa kegagalan.
 - **Kompilasi Vite:** Berhasil bersih dalam 1.41 detik.
 
+---
+
+### Temuan B10: Integrasi Metrik Dinamis & Pintasan Panen Terakhir di Dashboard (11 November 2026)
+
+| Kode Temuan | Tingkat Keparahan | Komponen Teridentifikasi | Status Resolusi |
+|:---:|:---:|---|:---:|
+| **AUDIT-B10-01** | **SEDANG** | `src/App.jsx` (`DashboardPreview` sebelumnya menampilkan metrik statis teks "Lokal", label "Simulasi", dan ketiadaan pintasan batch panen terakhir) | **RESOLVED** |
+
+#### A. Analisis Masalah & Peningkatan
+1. **Metrik Statis pada Halaman Utama (`DashboardPreview`):**
+   Kartu metrik sebelumnya menampilkan teks hardcoded "Lokal" terlepas dari berapa banyak batch yang sudah tersimpan di browser petani. Kami menghubungkan `batches.length` riil secara dinamis sehingga petani langsung melihat jumlah batch tersimpan.
+2. **Konektivitas Harga Live BAPANAS di Halaman Utama:**
+   Tabel harga acuan pada Dashboard kini otomatis memanggil data live BAPANAS Pasar Ibuh Payakumbuh (`fetchBapanasLive`) saat komponen dimuat, menggantikan label statis "Simulasi" dengan badge hijau "BAPANAS Terverifikasi".
+3. **Kartu Aktivitas Panen Terakhir (*Recent Harvest Activity*):**
+   Jika terdapat riwayat panen, kolom kanan Dashboard langsung menyajikan kartu ringkas batch terakhir (ID batch, komoditas, bobot kg, estimasi nilai total Rp) lengkap dengan tombol aksi satu klik *"Buka Hasil & Sertifikat"*.
+
+#### B. Hasil Verifikasi
+- **Frontend Tests:** 128 / 128 tests lulus (100%).
+- **Backend Tests:** 114 / 114 tests lulus (100%).
+- **Total Tests:** 242 unit tests lulus tanpa kegagalan.
+- **Kompilasi Vite:** Berhasil bersih dalam 1.14 detik.
+
 
 
