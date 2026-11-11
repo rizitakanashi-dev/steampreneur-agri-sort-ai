@@ -77,6 +77,14 @@ export function buildCertificateData(batch = {}) {
     safeBatch.inference?.commodity === 'terung' ||
     safeBatch.scanResult?.commodity === 'Terung'
 
+  const isChili =
+    (commodity.toLowerCase().includes('cabai') ||
+      commodity.toLowerCase().includes('chili') ||
+      commodity.toLowerCase().includes('cabe') ||
+      safeBatch.inference?.commodity === 'cabai' ||
+      safeBatch.scanResult?.commodity === 'Cabai') &&
+    !commodity.toLowerCase().includes('cabai rawit hijau')
+
   const isMultiAngle = Boolean(
     safeBatch.is_multi_angle ||
     safeBatch.scanResult?.is_multi_angle ||
@@ -205,6 +213,77 @@ export function buildCertificateData(batch = {}) {
         status: 'Pakan Ternak / Kompos Organik',
       },
     ]
+  } else if (
+    isChili &&
+    (tier.grade_a ||
+      ratios.grade_a_percent !== undefined ||
+      counts.grade_a !== undefined ||
+      hasInference)
+  ) {
+    // 3-Class Chili Grading (YOLO11n 3-Kelas Mutu Cabai)
+    const totalCount =
+      Number(counts.total) ||
+      ((Number(counts.grade_a) || 0) +
+        (Number(counts.grade_b) || 0) +
+        (Number(counts.reject) || 0)) ||
+      1
+
+    const aRatio = Number(
+      ratios.grade_a_percent ??
+      (tier.grade_a?.weight_kg ? (tier.grade_a.weight_kg / (totalWeightKg || 1)) * 100 : 0) ??
+      (counts.grade_a !== undefined ? (Number(counts.grade_a) / totalCount) * 100 : 0)
+    )
+    const bRatio = Number(
+      ratios.grade_b_percent ??
+      (tier.grade_b?.weight_kg ? (tier.grade_b.weight_kg / (totalWeightKg || 1)) * 100 : 0) ??
+      (counts.grade_b !== undefined ? (Number(counts.grade_b) / totalCount) * 100 : 0)
+    )
+    const rejRatio = Number(
+      ratios.reject_percent ??
+      (tier.reject?.weight_kg ? (tier.reject.weight_kg / (totalWeightKg || 1)) * 100 : 0) ??
+      (counts.reject !== undefined ? (Number(counts.reject) / totalCount) * 100 : 0)
+    )
+
+    const aWeight = Number(tier.grade_a?.weight_kg ?? (totalWeightKg * (aRatio / 100)))
+    const bWeight = Number(tier.grade_b?.weight_kg ?? (totalWeightKg * (bRatio / 100)))
+    const rejWeight = Number(tier.reject?.weight_kg ?? (totalWeightKg * (rejRatio / 100)))
+
+    const aPrice = Math.round(refPrice * 1.15)
+    const bPrice = Math.round(refPrice * 0.80)
+    const rejPrice = 0
+
+    grades = [
+      {
+        code: 'GRADE-A',
+        label: 'Grade A (Mutu Utama)',
+        desc: 'Cabai segar, warna cerah merata, bebas bercak atau busuk tangkai',
+        ratioPercent: aRatio,
+        weightKg: Number(aWeight.toFixed(2)),
+        pricePerKg: aPrice,
+        subtotalRp: Number(tier.grade_a?.subtotal_value ?? Math.round(aWeight * aPrice)),
+        status: 'Pasar Modern & Ekspor',
+      },
+      {
+        code: 'GRADE-B',
+        label: 'Grade B (Mutu Standar)',
+        desc: 'Bercak ringan permukaan, ukuran wajar, daging cabai padat',
+        ratioPercent: bRatio,
+        weightKg: Number(bWeight.toFixed(2)),
+        pricePerKg: bPrice,
+        subtotalRp: Number(tier.grade_b?.subtotal_value ?? Math.round(bWeight * bPrice)),
+        status: 'Pasar Tradisional & Horeka',
+      },
+      {
+        code: 'REJECT',
+        label: 'Reject (Afkir / Rusak)',
+        desc: 'Antraknosa / patek, busuk basah, lubang hama lalat buah',
+        ratioPercent: rejRatio,
+        weightKg: Number(rejWeight.toFixed(2)),
+        pricePerKg: rejPrice,
+        subtotalRp: 0,
+        status: 'Pemisahan Mutu (Afkir)',
+      },
+    ]
   } else if (hasInference && (ratios.fresh_ratio_percent !== undefined || ratios.fresh_percent !== undefined || counts.fresh_tomato !== undefined)) {
     // Tomat 2-Class AI Scan
     const freshCount = Number(counts.fresh_tomato ?? counts.fresh ?? 0)
@@ -324,7 +403,7 @@ export function buildCertificateData(batch = {}) {
     scanResult?.execution_status ||
     (safeBatch.is_simulated || scanResult?.is_simulated
       ? 'simulated'
-      : (hasInference && (isEggplant || commodity.toLowerCase().includes('tomat'))
+      : (hasInference && (isEggplant || commodity.toLowerCase().includes('tomat') || isChili)
         ? 'ai_detected'
         : 'unsupported'))
 
@@ -335,6 +414,8 @@ export function buildCertificateData(batch = {}) {
   if (execStatus === 'ai_detected') {
     modelEngineName = isEggplant
       ? 'Ultralytics YOLO11n (4-Class Commercial Quality)'
+      : isChili
+      ? 'Ultralytics YOLO11n (3-Class Chili Quality)'
       : 'Ultralytics YOLO11 (2-Class Fresh/Rotten)'
     inspectionMethod = isMultiAngle
       ? `Computer Vision AI (Multi-Angle 2-Sisi Terverifikasi) — ${modelEngineName}`
@@ -343,6 +424,8 @@ export function buildCertificateData(batch = {}) {
   } else if (execStatus === 'needs_review') {
     modelEngineName = isEggplant
       ? 'Ultralytics YOLO11n (Perlu Review)'
+      : isChili
+      ? 'Ultralytics YOLO11n (Cabai - Perlu Review)'
       : 'Ultralytics YOLO11 (Perlu Review)'
     inspectionMethod = isMultiAngle
       ? 'Computer Vision AI (Multi-Angle 2-Sisi) — Memerlukan Verifikasi Manual'

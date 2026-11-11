@@ -71,6 +71,16 @@ function formatRupiah(val) {
 
 const COMMODITIES = [
   {
+    id: 'Cabai',
+    name: 'Cabai (Chili)',
+    badge: 'YOLO11 3-Class',
+    badgeColor: 'error',
+    classes: ['Grade A', 'Grade B', 'Reject'],
+    defaultConf: 0.35,
+    emoji: '🌶️',
+    supported: true,
+  },
+  {
     id: 'Terung',
     name: 'Terung (Eggplant)',
     badge: 'YOLO11 3-Class',
@@ -97,7 +107,7 @@ const COMMODITIES = [
     badgeColor: 'default',
     classes: ['Grade A', 'Grade B', 'Reject'],
     defaultConf: 0.35,
-    emoji: '🌶️',
+    emoji: '🌱',
     supported: false,
   },
 ]
@@ -623,10 +633,15 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm }
 
   const isEggplant = selectedCommodity.toLowerCase().includes('terung') || selectedCommodity.toLowerCase().includes('terong')
   const isTomato = selectedCommodity.toLowerCase().includes('tomat')
+  const isChili =
+    (selectedCommodity.toLowerCase().includes('cabai') ||
+      selectedCommodity.toLowerCase().includes('chili') ||
+      selectedCommodity.toLowerCase().includes('cabe')) &&
+    !selectedCommodity.toLowerCase().includes('cabai rawit hijau')
   const inference = scanResult?.inference_result
   const counts = inference?.object_counts || {}
   const pricing = scanResult?.smart_pricing
-  const execStatus = scanResult?.execution_status || (scanResult?.is_simulated ? 'simulated' : (scanResult?.inference_result ? (isEggplant || isTomato ? 'ai_detected' : 'unsupported') : 'unsupported'))
+  const execStatus = scanResult?.execution_status || (scanResult?.is_simulated ? 'simulated' : (scanResult?.inference_result ? (isEggplant || isTomato || isChili ? 'ai_detected' : 'unsupported') : 'unsupported'))
   const statusDetails = scanResult?.status_details || {}
 
   // Deteksi apakah model menghasilkan 1 bounding box raksasa yang menutupi seluruh gambar
@@ -680,11 +695,13 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm }
                   label={
                     isEggplant
                       ? 'Rekomendasi Terung: 0.20'
+                      : isChili
+                      ? 'Rekomendasi Cabai: 0.35'
                       : isTomato
                       ? 'Rekomendasi Tomat: 0.35'
                       : 'Komoditas Belum Didukung AI'
                   }
-                  color={isEggplant || isTomato ? 'info' : 'default'}
+                  color={isEggplant || isTomato || isChili ? 'info' : 'default'}
                   variant="outlined"
                 />
               </Stack>
@@ -872,6 +889,8 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm }
               <Typography variant="caption" sx={{ display: 'block', mt: 0.25, color: '#15803d' }}>
                 {isEggplant
                   ? 'Model mendeteksi mutu buah per butir. Untuk akurasi optimal, ambil 2–5 buah sampel dari keranjang dan letakkan berjajar di atas nampan/alas datar (hindari tumpukan padat pasar berlapis).'
+                  : isChili
+                  ? 'Model mendeteksi mutu cabai per butir (Grade A, Grade B, Reject). Letakkan cabai berjajar rapi di atas nampan dengan pencahayaan memadai.'
                   : isTomato
                   ? 'Arahkan kamera tegak lurus (top-down view) dengan pencahayaan memadai agar buah terdeteksi jelas.'
                   : 'Komoditas ini belum didukung model Computer Vision resmi. Silakan lakukan pemeriksaan fisik secara manual.'}
@@ -1675,8 +1694,8 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm }
                 Distribusi Mutu Hasil Deteksi ({selectedCommodity})
               </Typography>
 
-              {isEggplant ? (
-                // 3 KELAS TERUNG (Grade A, Grade B, Reject)
+              {isEggplant || isChili ? (
+                // 3 KELAS (Grade A, Grade B, Reject)
                 <Grid container spacing={2}>
                   <Grid size={{ xs: 12, sm: 4 }}>
                     <Box sx={{ p: 2, borderRadius: 2, bgcolor: 'rgba(16, 185, 129, 0.08)', border: '1px solid #10b981' }}>

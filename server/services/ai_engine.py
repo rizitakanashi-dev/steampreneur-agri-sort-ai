@@ -71,6 +71,21 @@ class YOLOInferenceEngine:
             except Exception:
                 pass
 
+        # Deteksi konfigurasi model cabai dari server/models/cabai/data.yaml
+        cabai_primary_pt = os.path.join(self.base_dir, "server", "models", "cabai", "best.pt")
+        cabai_pt_path = cabai_primary_pt if os.path.exists(cabai_primary_pt) else None
+        cabai_classes = ["Grade A", "Grade B", "Reject"]
+        cabai_yaml = os.path.join(self.base_dir, "server", "models", "cabai", "data.yaml")
+        if os.path.exists(cabai_yaml):
+            try:
+                import yaml
+                with open(cabai_yaml, "r", encoding="utf-8") as yf:
+                    ydata = yaml.safe_load(yf)
+                    if ydata and "names" in ydata and isinstance(ydata["names"], list):
+                        cabai_classes = ydata["names"]
+            except Exception:
+                pass
+
         self.model_configs = {
             "terung": {
                 "name": "Agri-Sort Eggplant Quality Detection",
@@ -85,6 +100,13 @@ class YOLOInferenceEngine:
                 "path": os.path.join(self.base_dir, "model-export", "weights", "best.pt"),
                 "onnx_path": os.path.join(self.base_dir, "model-export", "weights", "best.onnx"),
                 "expected_classes": ["fresh-tomato", "rotten-tomato"],
+            },
+            "cabai": {
+                "name": "Agri-Sort Chili Quality Detection",
+                "version": "2.0.0",
+                "path": cabai_pt_path,
+                "onnx_path": os.path.join(self.base_dir, "server", "models", "cabai", "best.onnx"),
+                "expected_classes": cabai_classes,
             },
         }
 
@@ -102,6 +124,8 @@ class YOLOInferenceEngine:
             comm_key = "terung"
         elif "tomat" in comm_lower or "tomato" in comm_lower:
             comm_key = "tomat"
+        elif "cabai" in comm_lower or "chili" in comm_lower or "chilli" in comm_lower or "cabe" in comm_lower:
+            comm_key = "cabai"
         else:
             raise ValueError(f"Komoditas '{commodity}' tidak didukung oleh model AI saat ini.")
 

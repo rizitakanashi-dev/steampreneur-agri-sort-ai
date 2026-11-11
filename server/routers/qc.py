@@ -19,6 +19,7 @@ from server.services.pricing_service import (
     calculate_business_grading,
     calculate_economic_projection,
     calculate_eggplant_economic_projection,
+    calculate_chili_economic_projection,
     get_commodity_pricing,
 )
 from server.services.storage_service import storage_service
@@ -73,6 +74,7 @@ async def scan_harvest_batch(
         comm_key = commodity.strip().lower()
         is_tomato = "tomat" in comm_key
         is_eggplant = "terung" in comm_key or "terong" in comm_key or "eggplant" in comm_key
+        is_cabai = ("cabai" in comm_key or "chili" in comm_key or "cabe" in comm_key) and not ("cabai rawit hijau" in comm_key)
         width = file_info["dimensions"]["width"]
         height = file_info["dimensions"]["height"]
 
@@ -84,8 +86,8 @@ async def scan_harvest_batch(
         is_blurry = quality_info.get("is_blurry", False)
         is_extreme_exp = quality_info.get("is_overexposed", False) or quality_info.get("is_underexposed", False)
 
-        # 4. Validasi Komoditas: Model saat ini mendukung Tomat (2-kelas) dan Terung (4-kelas)
-        if not (is_tomato or is_eggplant):
+        # 4. Validasi Komoditas: Model saat ini mendukung Tomat, Terung, dan Cabai
+        if not (is_tomato or is_eggplant or is_cabai):
             execution_status = "unsupported"
             status_details = {
                 "code": "COMMODITY_UNSUPPORTED",
@@ -355,6 +357,61 @@ async def scan_harvest_batch(
                 },
             }
 
+        elif is_cabai:
+            class_counts = raw_detection["detection_summary"]["class_counts"]
+            total_objs = raw_detection["detection_summary"]["total_objects"]
+            grade_a_count = class_counts.get("Grade A", 0) or class_counts.get("grade-a", 0)
+            grade_b_count = class_counts.get("Grade B", 0) or class_counts.get("grade-b", 0)
+            reject_count = class_counts.get("reject", 0) or class_counts.get("Reject", 0)
+
+            pricing_info = calculate_chili_economic_projection(
+                weight_kg=weight_kg,
+                grade_a_count=grade_a_count,
+                grade_b_count=grade_b_count,
+                reject_count=reject_count,
+                commodity_name=commodity,
+            )
+
+            business_grading = calculate_business_grading(
+                commodity=commodity,
+                weight_kg=weight_kg,
+                ratios=pricing_info["condition_ratios"],
+            )
+
+            result_data = {
+                "status": "success",
+                "data": {
+                    "scan_id": scan_id,
+                    "timestamp": timestamp,
+                    "execution_status": execution_status,
+                    "status_details": status_details,
+                    "is_simulated": is_simulated,
+                    "commodity": commodity,
+                    "ai_supported": True,
+                    "actual_weight_kg": weight_kg,
+                    "image_quality": quality_info,
+                    "grading_system": "3-class (Grade A, Grade B, Reject)",
+                    "inference_result": {
+                        "model_version": raw_detection["model_version"],
+                        "inference_time_ms": raw_detection["inference_time_ms"],
+                        "image_dimensions": {"width": width, "height": height},
+                        "detections": raw_detection["detections"],
+                        "slicing_applied": raw_detection["detection_summary"].get("slicing_applied", False),
+                        "dense_box_suppressed": raw_detection["detection_summary"].get("dense_box_suppressed", False),
+                        "disambiguated_count": raw_detection["detection_summary"].get("disambiguated_count", 0),
+                        "object_counts": {
+                            "total": total_objs,
+                            "grade_a": grade_a_count,
+                            "grade_b": grade_b_count,
+                            "reject": reject_count,
+                        },
+                        "condition_ratios": pricing_info["condition_ratios"],
+                    },
+                    "business_grading": business_grading,
+                    "smart_pricing": pricing_info,
+                },
+            }
+
         else:
             class_counts = raw_detection["detection_summary"]["class_counts"]
             total_objs = raw_detection["detection_summary"]["total_objects"]
@@ -540,12 +597,13 @@ async def scan_multi_angle_harvest_batch(
         comm_key = commodity.strip().lower()
         is_tomato = "tomat" in comm_key
         is_eggplant = "terung" in comm_key or "terong" in comm_key or "eggplant" in comm_key
+        is_cabai = ("cabai" in comm_key or "chili" in comm_key or "cabe" in comm_key) and not ("cabai rawit hijau" in comm_key)
 
         scan_id = f"scan_multi_{datetime.now(timezone.utc).strftime('%Y%m%d')}_{uuid.uuid4().hex[:6]}"
         timestamp = datetime.now(timezone.utc).isoformat()
 
         # 5. Validasi Komoditas untuk Multi-Angle
-        if not (is_tomato or is_eggplant):
+        if not (is_tomato or is_eggplant or is_cabai):
             execution_status = "unsupported"
             status_details = {
                 "code": "COMMODITY_UNSUPPORTED",

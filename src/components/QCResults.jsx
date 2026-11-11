@@ -184,6 +184,11 @@ export function QCResults({ batch, onBackToInput, onViewRecap }) {
   const pricing = scanResult?.smart_pricing
   const commodity = batch.komoditas || scanResult?.commodity || 'Tomat'
   const isEggplant = commodity.toLowerCase().includes('terung') || commodity.toLowerCase().includes('terong')
+  const isChili =
+    (commodity.toLowerCase().includes('cabai') ||
+      commodity.toLowerCase().includes('chili') ||
+      commodity.toLowerCase().includes('cabe')) &&
+    !commodity.toLowerCase().includes('cabai rawit hijau')
   const isMultiAngle = Boolean(
     batch.is_multi_angle ||
     scanResult?.is_multi_angle ||
@@ -196,7 +201,7 @@ export function QCResults({ batch, onBackToInput, onViewRecap }) {
     scanResult?.execution_status ||
     (batch.is_simulated || scanResult?.is_simulated
       ? 'simulated'
-      : (hasAiScan && (isEggplant || commodity.toLowerCase().includes('tomat'))
+      : (hasAiScan && (isEggplant || commodity.toLowerCase().includes('tomat') || isChili)
         ? 'ai_detected'
         : 'unsupported'))
   const statusDetails = batch.status_details || scanResult?.status_details || {}
@@ -205,7 +210,7 @@ export function QCResults({ batch, onBackToInput, onViewRecap }) {
   let pieChartData = []
   if (hasAiScan && inference) {
     const counts = inference.object_counts || {}
-    if (isEggplant && (counts.grade_a || counts.grade_b || counts.extra_class || counts.class_1 || counts.class_2 || counts.reject)) {
+    if ((isEggplant || isChili) && (counts.grade_a || counts.grade_b || counts.extra_class || counts.class_1 || counts.class_2 || counts.reject)) {
       const gradeACount = counts.grade_a ?? ((counts.extra_class || 0) + (counts.class_1 || 0))
       const gradeBCount = counts.grade_b ?? (counts.class_2 || 0)
       pieChartData = [
@@ -784,8 +789,8 @@ export function QCResults({ batch, onBackToInput, onViewRecap }) {
             Indikator Mutu Deteksi ({commodity})
           </Typography>
 
-          {hasAiScan && isEggplant ? (
-            // Indikator 3 Kelas Terung (Grade A, Grade B, Reject)
+          {hasAiScan && (isEggplant || isChili) ? (
+            // Indikator 3 Kelas (Grade A, Grade B, Reject)
             <Stack direction={{ xs: 'column', sm: 'row' }} flexWrap="wrap" gap={2}>
               <QualityIndicator
                 color="#059669"
