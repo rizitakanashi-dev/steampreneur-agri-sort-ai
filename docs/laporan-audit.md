@@ -517,10 +517,13 @@ flowchart TB
 |:---:|:---:|---|:---:|
 | **AUDIT-B7-01** | **SEDANG** | `src/components/QCResults.jsx` (Potensi tampilan kartu 0% pada model Terung 3-Grade v2) | **RESOLVED** |
 | **AUDIT-B7-02** | **SEDANG** | `src/utils/qcCertificateHelper.js` (Ketiadaan dukungan cetak sertifikat Terung 3-Grade) | **RESOLVED** |
+| **AUDIT-B7-03** | **TINGGI** | `src/components/HarvestRecap.jsx` (Distribusi Grade Terung kosong/hilang di tabel rekap akibat mismatch key `_ratio_percent` vs `_percent` & ketiadaan dukungan 3-Grade) | **RESOLVED** |
 
 #### A. Analisis Akar Masalah (*Root Cause Analysis*)
 1. Faris Al Farizi (Lead ML) memperbarui model deteksi Terung ke versi 2.0.0 (`best.onnx` & `best.pt`) dengan arsitektur 3-Grade langsung (`Grade A`, `Grade B`, `Reject`).
 2. Komponen frontend sebelumnya hanya memiliki hardcoded logic untuk 4 kelas UNECE FFV-05 (`extra_class`, `class_1`, `class_2`, `reject`). Jika model mengembalikan `grade_a` dan `grade_b`, antarmuka pengguna Donut Chart dan kartu mutu berpotensi menampilkan nilai kosong (0%).
+3. **Bug Kolom Distribusi Grade di `HarvestRecap.jsx`:**
+   Komponen `BatchGradeDistribution` sebelumnya membaca properti `ratios.extra_class_ratio_percent`, padahal payload backend menghasilkan `extra_class_percent` atau `grade_a_percent`. Akibatnya, nilai selalu dievaluasi sebagai `undefined` dan komponen `<GradeChip>` me-return `null`, menyebabkan kolom distribusi grade terung tampak kosong melompong di tabel rekap.
 
 #### B. Rekayasa Solusi (*Engineering Fixes*)
 1. **Dukungan Adaptif 3-Grade & 4-Class di `QCResults.jsx`:**
@@ -528,9 +531,11 @@ flowchart TB
    - Tetap mempertahankan fallback 4-kelas untuk riwayat pindaian lama (*zero breaking changes*).
 2. **Ekspansi Modul Sertifikat Resmi (`qcCertificateHelper.js`):**
    - Menambahkan builder data sertifikat `hasTerung3Grade` dengan kode mutu `GRADE-A`, `GRADE-B`, dan `REJECT`, lengkap dengan kalkulasi finansial multiplier dan status distribusi pasar.
-3. **Hasil Pengujian & Verifikasi:**
+3. **Normalisasi Ekstraksi Distribusi Mutu di Rekap (`HarvestRecap.jsx`):**
+   - Menyelaraskan pembacaan key `grade_a_percent`, `grade_b_percent`, dan `reject_percent` untuk Terung v2, serta fallback ke `extra_class_percent` (v1) dan `batch.hasil`.
+4. **Hasil Pengujian & Verifikasi:**
    - Menambahkan unit test baru di `tes/qcCertificateHelper.test.js` (`buildCertificateData memproses batch Terung 3-Grade v2 dengan akurat`).
-   - Total **240 unit test lulus 100% (127 JS + 113 Python)**, kompilasi Vite selesai dalam **1.02 detik**.
+   - Total **240 unit test lulus 100% (127 JS + 113 Python)**, kompilasi Vite selesai dalam **1.04 detik**.
 
 
 
