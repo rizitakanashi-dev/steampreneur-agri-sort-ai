@@ -115,3 +115,27 @@ test('angka bulat dan nilai Rupiah tidak berubah oleh pembulatan desimal', () =>
   assert.ok(!csv.includes('946080.0'), 'bilangan bulat tidak boleh diberi desimal')
   assert.ok(csv.includes(',72,'), 'berat bulat harus tetap 72')
 })
+
+test('CSV mengekspor data batch AI scan dari tier_breakdown saat hasil kosong', () => {
+  const aiBatch = {
+    id: 'panen-ai-terung',
+    tanggal: '2026-11-11',
+    komoditas: 'Terung',
+    beratKg: 50,
+    ukuran: 'Sedang',
+    catatan: 'Batch AI Scan v2',
+    pricing: {
+      estimated_economic_value: 520000,
+      tier_breakdown: {
+        grade_a: { ratio_percent: 70, weight_kg: 35, subtotal_value: 402500 },
+        grade_b: { ratio_percent: 20, weight_kg: 10, subtotal_value: 80000 },
+        reject: { ratio_percent: 10, weight_kg: 5, subtotal_value: 0 },
+      },
+    },
+  }
+  const csv = buildHarvestCsv([aiBatch])
+  assert.ok(csv.includes('panen-ai-terung'))
+  assert.ok(csv.includes(',70,20,10,')) // persenA, persenB, persenC
+  assert.ok(csv.includes(',35,10,5,')) // beratA, beratB, beratC
+  assert.ok(csv.includes(',402500,80000,0,520000,')) // nilaiA, nilaiB, nilaiC, totalNilai
+})

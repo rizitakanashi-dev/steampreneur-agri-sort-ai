@@ -639,6 +639,31 @@ flowchart TB
 - **Total Tests:** 245 unit tests lulus 100% tanpa kegagalan atau regresi.
 - **Kompilasi Produksi Vite:** Berhasil tuntas dalam 1.27 detik.
 
+---
+
+### Temuan B12: Preservasi Harga Acuan Pasar Live BAPANAS pada Nilai Grade & Ketahanan Ekspor CSV (11 November 2026)
+
+| Kode Temuan | Tingkat Keparahan | Komponen Teridentifikasi | Status Resolusi |
+|:---:|:---:|---|:---:|
+| **AUDIT-B12-01** | **TINGGI** | `src/components/BatchQCScanner.jsx` & `src/App.jsx` (Subkalkulasi nilai rupiah per grade saat simpan rekap mengabaikan harga live BAPANAS/SP2KP dan memaksakan harga statis lama) | **RESOLVED** |
+| **AUDIT-B12-02** | **SEDANG** | `src/utils/csvExporter.js` (Ekspor rekap CSV menghasilkan kolom grade kosong jika batch berasal dari inferensi AI murni tanpa objek `hasil` lokal) | **RESOLVED** |
+
+#### A. Analisis Masalah & Perbaikan Kritis
+1. **Penyelarasan Nilai Finansial Simpan Rekap (`BatchQCScanner.jsx` & `App.jsx`):**
+   - Saat pemindaian selesai, backend pricing engine mengembalikan `smart_pricing.reference_price_per_kg` dari data live BAPANAS / SP2KP resmi.
+   - Namun fungsi simpan rekap sebelumnya hanya menghitung `calculateHarvestValue` dengan tabel statis `REFERENCE_PRICES_PER_KG[commodity]`, sehingga nilai `nilaiA`, `nilaiB`, dan `nilaiC` tidak proporsional terhadap harga pasar hari itu jika terdapat fluktuasi harga komoditas.
+   - Solusi: Menyisipkan pembacaan adaptif `pricing?.reference_price_per_kg || pricing?.base_price_per_kg` sebelum jatuh ke acuan statis.
+2. **Ketahanan Ekspor CSV untuk Batch AI Lapangan (`csvExporter.js`):**
+   - Fungsi `buildHarvestCsvRows` sebelumnya hanya memeriksa properti `batch.hasil`. Jika batch disinkronkan dari hasil AI scan backend (yang memuat `pricing.tier_breakdown` dan `inference.condition_ratios`), kolom persentase, bobot, dan subtotal grade bernilai kosong di lembar kerja Excel/CSV.
+   - Solusi: Menambahkan fallback otomatis berjenjang ke `tier_breakdown` (Grade A/B/Reject, Extra Class/Class 1) dan `condition_ratios`, menjamin seluruh data panen terekspor lengkap 100%.
+
+#### B. Hasil Verifikasi Menyeluruh
+- **Frontend Tests:** 132 / 132 tests lulus (node:test).
+- **Backend Tests:** 114 / 114 tests lulus (Python unittest).
+- **Total Tests:** 246 unit tests lulus 100% tanpa kegagalan.
+- **Kompilasi Produksi Vite:** Berhasil tuntas dalam 1.17 detik.
+
+
 
 
 

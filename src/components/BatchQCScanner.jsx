@@ -585,7 +585,11 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm }
     }
 
     const calculation = calculateHarvest(calculatedInput)
-    const basePrice = REFERENCE_PRICES_PER_KG[selectedCommodity] || 12000
+    const basePrice =
+      pricing?.reference_price_per_kg ||
+      pricing?.base_price_per_kg ||
+      REFERENCE_PRICES_PER_KG[selectedCommodity] ||
+      12000
     const valueCalc = calculateHarvestValue({
       ...calculatedInput,
       hargaAcuanPerKg: basePrice,

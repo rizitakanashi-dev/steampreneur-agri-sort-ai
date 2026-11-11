@@ -375,9 +375,14 @@ function App() {
 
   const handleHarvestConfirm = (input) => {
     const calculation = calculateHarvest(input)
+    const basePrice =
+      input.scanResult?.smart_pricing?.reference_price_per_kg ||
+      input.scanResult?.smart_pricing?.base_price_per_kg ||
+      REFERENCE_PRICES_PER_KG[input.komoditas] ||
+      12000
     const valueCalculation = calculateHarvestValue({
       ...input,
-      hargaAcuanPerKg: REFERENCE_PRICES_PER_KG[input.komoditas],
+      hargaAcuanPerKg: basePrice,
     })
     const isAiScan = Boolean(input.scanResult?.inference_result)
     const savedBatch = saveBatch({
