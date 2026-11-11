@@ -487,7 +487,9 @@ export function buildCertificateData(batch = {}) {
 
   if (execStatus === 'ai_detected') {
     modelEngineName = isEggplant
-      ? 'Ultralytics YOLO11n (4-Class Commercial Quality)'
+      ? (hasTerung3Grade
+          ? 'Ultralytics YOLO11n (3-Grade Commercial Quality)'
+          : 'Ultralytics YOLO11n (4-Class Commercial Quality)')
       : isChili
       ? 'Ultralytics YOLO11n (3-Class Chili Quality)'
       : 'Ultralytics YOLO11 (2-Class Fresh/Rotten)'

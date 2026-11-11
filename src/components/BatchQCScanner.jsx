@@ -1737,22 +1737,6 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm }
                       </Typography>
                     </Box>
                   </Grid>
-                ) : (
-                  // 4 KELAS TERUNG (Model v1: Extra, Class 1, Class 2, Reject)
-                  <Grid container spacing={2}>
-                    <Grid size={{ xs: 6, sm: 3 }}>
-                      <Box sx={{ p: 2, borderRadius: 2, bgcolor: 'rgba(5, 150, 105, 0.08)', border: '1px solid #059669' }}>
-                        <Typography variant="caption" fontWeight={700} color="#059669">
-                          Extra Class (Super)
-                        </Typography>
-                        <Typography variant="h5" fontWeight={800} color="#059669">
-                          {counts.extra_class || 0} <Typography component="span" variant="caption">butir</Typography>
-                        </Typography>
-                        <Typography variant="caption" color="text.secondary">
-                          {pricing?.condition_ratios?.extra_class_percent || 0}% proporsi
-                        </Typography>
-                      </Box>
-                    </Grid>
 
                   <Grid size={{ xs: 12, sm: 4 }}>
                     <Box sx={{ p: 2, borderRadius: 2, bgcolor: 'rgba(220, 38, 38, 0.08)', border: '1px solid #dc2626' }}>
@@ -1767,7 +1751,7 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm }
                       </Typography>
                     </Box>
                   </Grid>
-                )
+                </Grid>
               ) : isTomato ? (
                 // 2 KELAS TOMAT
                 <Grid container spacing={2}>
