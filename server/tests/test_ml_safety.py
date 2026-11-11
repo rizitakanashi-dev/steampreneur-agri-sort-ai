@@ -14,10 +14,16 @@ Memverifikasi kepatuhan terhadap P0 ML Safety & Grading Rubric Validation:
 from io import BytesIO
 import unittest
 from unittest.mock import patch
-from fastapi.testclient import TestClient
 from PIL import Image
 
-from server.main import app
+try:
+    from fastapi.testclient import TestClient
+    from server.main import app
+    HAS_FASTAPI = True
+except ImportError:
+    TestClient = None
+    app = None
+    HAS_FASTAPI = False
 
 
 def _create_test_image_bytes(color=(120, 180, 70), size=(640, 640)) -> bytes:
@@ -116,6 +122,7 @@ def _mock_tomat_inference_result(confidence=0.91):
     }
 
 
+@unittest.skipUnless(HAS_FASTAPI, "FastAPI atau TestClient tidak terpasang")
 class TestMLSafetyRemediation(unittest.TestCase):
     def setUp(self):
         self.client = TestClient(app)

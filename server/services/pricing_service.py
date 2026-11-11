@@ -334,6 +334,18 @@ def calculate_eggplant_economic_projection(
         )
 
     tier_breakdown = {
+        "grade_a": {
+            "ratio_percent": round(extra_ratio + class1_ratio, 2),
+            "weight_kg": round((w_extra or 0) + (w_class1 or 0), 2) if (valid_weight is not None and total_samples > 0) else None,
+            "price_per_kg": round(base_price * 1.15),
+            "subtotal_value": round((val_extra or 0) + (val_class1 or 0)) if (valid_weight is not None and total_samples > 0) else None,
+        },
+        "grade_b": {
+            "ratio_percent": class2_ratio,
+            "weight_kg": round(w_class2, 2) if (valid_weight is not None and total_samples > 0) else None,
+            "price_per_kg": round(base_price * 0.80),
+            "subtotal_value": round(val_class2) if (valid_weight is not None and total_samples > 0) else None,
+        },
         "extra_class": {
             "ratio_percent": extra_ratio,
             "weight_kg": round(w_extra, 2) if (valid_weight is not None and total_samples > 0) else None,
@@ -430,7 +442,7 @@ def calculate_business_grading(
     if is_eggplant:
         # Jika ratios memuat pembagian 3-Grade langsung (Grade A, Grade B, Reject)
         has_direct_grades = ("grade_a_percent" in ratios or "grade_a_ratio_percent" in ratios) and (
-            "extra_class_percent" not in ratios and "class_1_percent" not in ratios
+            ratios.get("class_1_percent") in (None, 0, 0.0)
         )
         if has_direct_grades:
             grade_a_pct = round(float(ratios.get("grade_a_percent", ratios.get("grade_a_ratio_percent", 0.0))), 2)

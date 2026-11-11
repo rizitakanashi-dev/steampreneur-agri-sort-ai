@@ -415,24 +415,32 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm }
             inference_result: {
               object_counts: isEgg
                 ? {
+                    grade_a:
+                      agg.combined_object_counts?.grade_a_combined ??
+                      d.front_view?.object_counts?.['grade-a'] ??
+                      ((agg.combined_object_counts?.extra_class_combined || 0) + (agg.combined_object_counts?.class_1_combined || 0)),
+                    grade_b:
+                      agg.combined_object_counts?.grade_b_combined ??
+                      d.front_view?.object_counts?.['grade-b'] ??
+                      (agg.combined_object_counts?.class_2_combined || 0),
                     extra_class:
-                    agg.combined_object_counts?.extra_class_combined ??
-                    d.front_view?.object_counts?.['extra-class'] ??
-                    0,
-                  class_1:
-                    agg.combined_object_counts?.class_1_combined ??
-                    d.front_view?.object_counts?.['class-1'] ??
-                    0,
-                  class_2:
-                    agg.combined_object_counts?.class_2_combined ??
-                    d.front_view?.object_counts?.['class-2'] ??
-                    0,
-                  reject:
-                    agg.combined_object_counts?.reject_combined ??
-                    d.front_view?.object_counts?.reject ??
-                    0,
-                  total: agg.combined_object_counts?.total_samples_observed ?? 1,
-                }
+                      agg.combined_object_counts?.extra_class_combined ??
+                      d.front_view?.object_counts?.['extra-class'] ??
+                      0,
+                    class_1:
+                      agg.combined_object_counts?.class_1_combined ??
+                      d.front_view?.object_counts?.['class-1'] ??
+                      0,
+                    class_2:
+                      agg.combined_object_counts?.class_2_combined ??
+                      d.front_view?.object_counts?.['class-2'] ??
+                      0,
+                    reject:
+                      agg.combined_object_counts?.reject_combined ??
+                      d.front_view?.object_counts?.reject ??
+                      0,
+                    total: agg.combined_object_counts?.total_samples_observed ?? 1,
+                  }
               : {
                   fresh_tomato:
                     agg.combined_object_counts?.fresh_tomato_combined ??
@@ -530,12 +538,11 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm }
       persenB = Math.round(gb.grade_b_percent || 0)
       persenC = Math.round(gb.reject_percent || 0)
     } else if (selectedCommodity.toLowerCase().includes('terung') || selectedCommodity.toLowerCase().includes('terong')) {
-      const extra = inf?.object_counts?.extra_class || 0
-      const c1 = inf?.object_counts?.class_1 || 0
-      const c2 = inf?.object_counts?.class_2 || 0
+      const gradeA = inf?.object_counts?.grade_a ?? ((inf?.object_counts?.extra_class || 0) + (inf?.object_counts?.class_1 || 0))
+      const gradeB = inf?.object_counts?.grade_b ?? (inf?.object_counts?.class_2 || 0)
       const rej = inf?.object_counts?.reject || 0
-      persenA = Math.round(((extra + c1) / (totalObjs || 1)) * 100)
-      persenB = Math.round((c2 / (totalObjs || 1)) * 100)
+      persenA = Math.round((gradeA / (totalObjs || 1)) * 100)
+      persenB = Math.round((gradeB / (totalObjs || 1)) * 100)
       persenC = Math.round((rej / (totalObjs || 1)) * 100)
     } else if (selectedCommodity.toLowerCase().includes('tomat')) {
       const fresh = inf?.object_counts?.fresh_tomato || 0
@@ -551,9 +558,10 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm }
     }
 
     // Defensive clamping mencegah error floating rounding (misal 51% + 50% = 101%)
-    if (persenA + persenC > 100) {
-      persenC = Math.max(0, 100 - persenA)
+    if (persenA + persenB > 100) {
+      persenB = Math.max(0, 100 - persenA)
     }
+    persenC = Math.max(0, 100 - persenA - persenB)
 
     const defaultNote =
       execStatus === 'ai_detected'
@@ -570,8 +578,8 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm }
       tanggal: getTodayDateString(),
       komoditas: selectedCommodity,
       beratKg: parsedWeight,
-      kesegaranPersen: persenA,
-      cacatPersen: persenC,
+      gradeA: persenA,
+      gradeB: persenB,
       ukuran: 'Sedang',
       catatan: saveNotes || defaultNote,
     }
@@ -625,6 +633,10 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm }
   const isTomato = selectedCommodity.toLowerCase().includes('tomat')
   const inference = scanResult?.inference_result
   const counts = inference?.object_counts || {}
+  const isDirect3Grade =
+    isEggplant &&
+    (counts.grade_a !== undefined || counts.grade_b !== undefined) &&
+    !counts.class_1
   const pricing = scanResult?.smart_pricing
   const execStatus = scanResult?.execution_status || (scanResult?.is_simulated ? 'simulated' : (scanResult?.inference_result ? (isEggplant || isTomato ? 'ai_detected' : 'unsupported') : 'unsupported'))
   const statusDetails = scanResult?.status_details || {}
@@ -1676,64 +1688,111 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm }
               </Typography>
 
               {isEggplant ? (
-                // 4 KELAS TERUNG
-                <Grid container spacing={2}>
-                  <Grid size={{ xs: 6, sm: 3 }}>
-                    <Box sx={{ p: 2, borderRadius: 2, bgcolor: 'rgba(5, 150, 105, 0.08)', border: '1px solid #059669' }}>
-                      <Typography variant="caption" fontWeight={700} color="#059669">
-                        Extra Class (Super)
-                      </Typography>
-                      <Typography variant="h5" fontWeight={800} color="#059669">
-                        {counts.extra_class || 0} <Typography component="span" variant="caption">butir</Typography>
-                      </Typography>
-                      <Typography variant="caption" color="text.secondary">
-                        {pricing?.condition_ratios?.extra_class_percent || 0}% proporsi
-                      </Typography>
-                    </Box>
-                  </Grid>
+                isDirect3Grade ? (
+                  // 3 KELAS TERUNG (Model v2: Grade A, Grade B, Reject)
+                  <Grid container spacing={2}>
+                    <Grid size={{ xs: 12, sm: 4 }}>
+                      <Box sx={{ p: 2, borderRadius: 2, bgcolor: 'rgba(5, 150, 105, 0.08)', border: '1px solid #059669' }}>
+                        <Typography variant="caption" fontWeight={700} color="#059669">
+                          Grade A (Mutu Prima)
+                        </Typography>
+                        <Typography variant="h5" fontWeight={800} color="#059669">
+                          {counts.grade_a || 0} <Typography component="span" variant="caption">butir</Typography>
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          {pricing?.condition_ratios?.grade_a_percent ?? pricing?.condition_ratios?.extra_class_percent ?? 0}% proporsi
+                        </Typography>
+                      </Box>
+                    </Grid>
 
-                  <Grid size={{ xs: 6, sm: 3 }}>
-                    <Box sx={{ p: 2, borderRadius: 2, bgcolor: 'rgba(2, 132, 199, 0.08)', border: '1px solid #0284c7' }}>
-                      <Typography variant="caption" fontWeight={700} color="#0284c7">
-                        Class 1 (Standar)
-                      </Typography>
-                      <Typography variant="h5" fontWeight={800} color="#0284c7">
-                        {counts.class_1 || 0} <Typography component="span" variant="caption">butir</Typography>
-                      </Typography>
-                      <Typography variant="caption" color="text.secondary">
-                        {pricing?.condition_ratios?.class_1_percent || 0}% proporsi
-                      </Typography>
-                    </Box>
-                  </Grid>
+                    <Grid size={{ xs: 12, sm: 4 }}>
+                      <Box sx={{ p: 2, borderRadius: 2, bgcolor: 'rgba(217, 119, 6, 0.08)', border: '1px solid #d97706' }}>
+                        <Typography variant="caption" fontWeight={700} color="#d97706">
+                          Grade B (Mutu Pasar)
+                        </Typography>
+                        <Typography variant="h5" fontWeight={800} color="#d97706">
+                          {counts.grade_b || 0} <Typography component="span" variant="caption">butir</Typography>
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          {pricing?.condition_ratios?.grade_b_percent ?? pricing?.condition_ratios?.class_2_percent ?? 0}% proporsi
+                        </Typography>
+                      </Box>
+                    </Grid>
 
-                  <Grid size={{ xs: 6, sm: 3 }}>
-                    <Box sx={{ p: 2, borderRadius: 2, bgcolor: 'rgba(217, 119, 6, 0.08)', border: '1px solid #d97706' }}>
-                      <Typography variant="caption" fontWeight={700} color="#d97706">
-                        Class 2 (Lokal)
-                      </Typography>
-                      <Typography variant="h5" fontWeight={800} color="#d97706">
-                        {counts.class_2 || 0} <Typography component="span" variant="caption">butir</Typography>
-                      </Typography>
-                      <Typography variant="caption" color="text.secondary">
-                        {pricing?.condition_ratios?.class_2_percent || 0}% proporsi
-                      </Typography>
-                    </Box>
+                    <Grid size={{ xs: 12, sm: 4 }}>
+                      <Box sx={{ p: 2, borderRadius: 2, bgcolor: 'rgba(220, 38, 38, 0.08)', border: '1px solid #dc2626' }}>
+                        <Typography variant="caption" fontWeight={700} color="#dc2626">
+                          Reject (Afkir)
+                        </Typography>
+                        <Typography variant="h5" fontWeight={800} color="#dc2626">
+                          {counts.reject || 0} <Typography component="span" variant="caption">butir</Typography>
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          {pricing?.condition_ratios?.reject_percent || 0}% proporsi
+                        </Typography>
+                      </Box>
+                    </Grid>
                   </Grid>
+                ) : (
+                  // 4 KELAS TERUNG (Model v1: Extra, Class 1, Class 2, Reject)
+                  <Grid container spacing={2}>
+                    <Grid size={{ xs: 6, sm: 3 }}>
+                      <Box sx={{ p: 2, borderRadius: 2, bgcolor: 'rgba(5, 150, 105, 0.08)', border: '1px solid #059669' }}>
+                        <Typography variant="caption" fontWeight={700} color="#059669">
+                          Extra Class (Super)
+                        </Typography>
+                        <Typography variant="h5" fontWeight={800} color="#059669">
+                          {counts.extra_class || 0} <Typography component="span" variant="caption">butir</Typography>
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          {pricing?.condition_ratios?.extra_class_percent || 0}% proporsi
+                        </Typography>
+                      </Box>
+                    </Grid>
 
-                  <Grid size={{ xs: 6, sm: 3 }}>
-                    <Box sx={{ p: 2, borderRadius: 2, bgcolor: 'rgba(220, 38, 38, 0.08)', border: '1px solid #dc2626' }}>
-                      <Typography variant="caption" fontWeight={700} color="#dc2626">
-                        Reject (Afkir)
-                      </Typography>
-                      <Typography variant="h5" fontWeight={800} color="#dc2626">
-                        {counts.reject || 0} <Typography component="span" variant="caption">butir</Typography>
-                      </Typography>
-                      <Typography variant="caption" color="text.secondary">
-                        {pricing?.condition_ratios?.reject_percent || 0}% proporsi
-                      </Typography>
-                    </Box>
+                    <Grid size={{ xs: 6, sm: 3 }}>
+                      <Box sx={{ p: 2, borderRadius: 2, bgcolor: 'rgba(2, 132, 199, 0.08)', border: '1px solid #0284c7' }}>
+                        <Typography variant="caption" fontWeight={700} color="#0284c7">
+                          Class 1 (Standar)
+                        </Typography>
+                        <Typography variant="h5" fontWeight={800} color="#0284c7">
+                          {counts.class_1 || 0} <Typography component="span" variant="caption">butir</Typography>
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          {pricing?.condition_ratios?.class_1_percent || 0}% proporsi
+                        </Typography>
+                      </Box>
+                    </Grid>
+
+                    <Grid size={{ xs: 6, sm: 3 }}>
+                      <Box sx={{ p: 2, borderRadius: 2, bgcolor: 'rgba(217, 119, 6, 0.08)', border: '1px solid #d97706' }}>
+                        <Typography variant="caption" fontWeight={700} color="#d97706">
+                          Class 2 (Lokal)
+                        </Typography>
+                        <Typography variant="h5" fontWeight={800} color="#d97706">
+                          {counts.class_2 || 0} <Typography component="span" variant="caption">butir</Typography>
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          {pricing?.condition_ratios?.class_2_percent || 0}% proporsi
+                        </Typography>
+                      </Box>
+                    </Grid>
+
+                    <Grid size={{ xs: 6, sm: 3 }}>
+                      <Box sx={{ p: 2, borderRadius: 2, bgcolor: 'rgba(220, 38, 38, 0.08)', border: '1px solid #dc2626' }}>
+                        <Typography variant="caption" fontWeight={700} color="#dc2626">
+                          Reject (Afkir)
+                        </Typography>
+                        <Typography variant="h5" fontWeight={800} color="#dc2626">
+                          {counts.reject || 0} <Typography component="span" variant="caption">butir</Typography>
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          {pricing?.condition_ratios?.reject_percent || 0}% proporsi
+                        </Typography>
+                      </Box>
+                    </Grid>
                   </Grid>
-                </Grid>
+                )
               ) : isTomato ? (
                 // 2 KELAS TOMAT
                 <Grid container spacing={2}>

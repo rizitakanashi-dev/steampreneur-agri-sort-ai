@@ -68,7 +68,12 @@ def aggregate_multi_view_qc(
         w_b = weight_back / w_sum
 
     if is_eggplant:
-        # Ekstraksi hitungan Terung 4-Class
+        # Ekstraksi hitungan Terung: Dukung 3-Grade v2 (Grade A, Grade B, Reject) & 4-Class v1
+        ga_f = f_counts.get("Grade A", 0) or f_counts.get("grade-a", 0) or f_counts.get("grade_a", 0)
+        gb_f = f_counts.get("Grade B", 0) or f_counts.get("grade-b", 0) or f_counts.get("grade_b", 0)
+        ga_b = b_counts.get("Grade A", 0) or b_counts.get("grade-a", 0) or b_counts.get("grade_a", 0)
+        gb_b = b_counts.get("Grade B", 0) or b_counts.get("grade-b", 0) or b_counts.get("grade_b", 0)
+
         ef = f_counts.get("extra-class", 0) or f_counts.get("Extra Class", 0)
         c1f = f_counts.get("class-1", 0) or f_counts.get("Class I", 0) or f_counts.get("Class 1", 0)
         c2f = f_counts.get("class-2", 0) or f_counts.get("Class II", 0) or f_counts.get("Class 2", 0)
@@ -78,6 +83,15 @@ def aggregate_multi_view_qc(
         c1b = b_counts.get("class-1", 0) or b_counts.get("Class I", 0) or b_counts.get("Class 1", 0)
         c2b = b_counts.get("class-2", 0) or b_counts.get("Class II", 0) or b_counts.get("Class 2", 0)
         rb = b_counts.get("reject", 0) or b_counts.get("Reject", 0)
+
+        is_3grade = (ga_f > 0 or gb_f > 0 or ga_b > 0 or gb_b > 0) and ef == 0 and c1f == 0 and c2f == 0 and eb == 0 and c1b == 0 and c2b == 0
+        if is_3grade:
+            ef = ga_f
+            c1f = 0
+            c2f = gb_f
+            eb = ga_b
+            c1b = 0
+            c2b = gb_b
 
         # Rasio per sudut (%)
         r_ef = (ef / f_total * 100.0) if f_total > 0 else 0.0
@@ -154,6 +168,9 @@ def aggregate_multi_view_qc(
             "class_2_percent": w_class2,
             "reject_percent": w_reject,
         }
+        if is_3grade:
+            pricing_info["condition_ratios"]["grade_a_percent"] = w_extra
+            pricing_info["condition_ratios"]["grade_b_percent"] = w_class2
 
         business_grading = calculate_business_grading(
             commodity="Terung",
@@ -166,6 +183,8 @@ def aggregate_multi_view_qc(
             "total_samples_observed": f_total + b_total,
             "front_view_total": f_total,
             "back_view_total": b_total,
+            "grade_a_combined": (ga_f + ga_b) if is_3grade else (ef + eb + c1f + c1b),
+            "grade_b_combined": (gb_f + gb_b) if is_3grade else (c2f + c2b),
             "extra_class_combined": ef + eb,
             "class_1_combined": c1f + c1b,
             "class_2_combined": c2f + c2b,

@@ -205,7 +205,18 @@ export function QCResults({ batch, onBackToInput, onViewRecap }) {
   let pieChartData = []
   if (hasAiScan && inference) {
     const counts = inference.object_counts || {}
-    if (isEggplant && (counts.extra_class || counts.class_1 || counts.class_2 || counts.reject)) {
+    const isDirect3Grade =
+      (counts.grade_a !== undefined || counts.grade_b !== undefined) &&
+      !counts.class_1 &&
+      (Number(counts.grade_a) > 0 || Number(counts.grade_b) > 0 || Number(counts.reject) > 0)
+
+    if (isEggplant && isDirect3Grade) {
+      pieChartData = [
+        { id: 0, value: Number(counts.grade_a) || 0, label: 'Grade A', color: '#059669' },
+        { id: 1, value: Number(counts.grade_b) || 0, label: 'Grade B', color: '#d97706' },
+        { id: 2, value: Number(counts.reject) || 0, label: 'Reject', color: '#dc2626' },
+      ].filter((d) => d.value > 0)
+    } else if (isEggplant && (counts.extra_class || counts.class_1 || counts.class_2 || counts.reject)) {
       pieChartData = [
         { id: 0, value: counts.extra_class || 0, label: 'Extra Class', color: '#059669' },
         { id: 1, value: counts.class_1 || 0, label: 'Class 1', color: '#0284c7' },
@@ -388,64 +399,6 @@ export function QCResults({ batch, onBackToInput, onViewRecap }) {
           </CardContent>
         </Card>
 
-        {/* Banner Peringatan Status Eksekusi */}
-        {executionStatus === 'needs_review' && (
-          <Alert
-            severity="warning"
-            icon={<WarningAmberRoundedIcon />}
-            sx={{ borderRadius: 2.5, bgcolor: '#fffbeb', borderColor: '#fde68a' }}
-          >
-            <Typography variant="subtitle2" fontWeight={800} color="#92400e">
-              ⚠️ Perlu Verifikasi Manual Petugas
-            </Typography>
-            <Typography variant="body2" color="#b45309" sx={{ mt: 0.5 }}>
-              {statusDetails.message || 'Tingkat keyakinan deteksi rendah atau citra kurang optimal. Harap periksa kondisi fisik sampel secara langsung sebelum transaksi.'}
-            </Typography>
-          </Alert>
-        )}
-        {executionStatus === 'unsupported' && (
-          <Alert
-            severity="info"
-            icon={<InfoOutlinedIcon />}
-            sx={{ borderRadius: 2.5, bgcolor: '#f0f9ff', borderColor: '#bae6fd' }}
-          >
-            <Typography variant="subtitle2" fontWeight={800} color="#0369a1">
-              ℹ️ Pencatatan Mutu Manual ({commodity})
-            </Typography>
-            <Typography variant="body2" color="#0c4a6e" sx={{ mt: 0.5 }}>
-              {statusDetails.message || `Komoditas ${commodity} belum didukung oleh model Computer Vision AI. Hasil grading dan estimasi harga menggunakan acuan standar pasar manual.`}
-            </Typography>
-          </Alert>
-        )}
-        {executionStatus === 'model_unavailable' && (
-          <Alert
-            severity="error"
-            icon={<ErrorOutlineRoundedIcon />}
-            sx={{ borderRadius: 2.5, bgcolor: '#fef2f2', borderColor: '#fecaca' }}
-          >
-            <Typography variant="subtitle2" fontWeight={800} color="#991b1b">
-              ⛔ Model AI Tidak Dapat Digunakan
-            </Typography>
-            <Typography variant="body2" color="#b91c1c" sx={{ mt: 0.5 }}>
-              {statusDetails.message || `Model AI untuk ${commodity} tidak tersedia di server atau mengalami kendala runtime. Menampilkan data estimasi acuan lokal.`}
-            </Typography>
-          </Alert>
-        )}
-        {executionStatus === 'simulated' && (
-          <Alert
-            severity="info"
-            icon={<InfoOutlinedIcon />}
-            sx={{ borderRadius: 2.5, bgcolor: '#f8fafc', borderColor: '#e2e8f0' }}
-          >
-            <Typography variant="subtitle2" fontWeight={800} color="#334155">
-              🔬 Hasil Simulasi Pengujian (Non-AI)
-            </Typography>
-            <Typography variant="body2" color="#475569" sx={{ mt: 0.5 }}>
-              {statusDetails.message || 'Hasil pemindaian ini merupakan data sintetis simulasi untuk keperluan uji coba/demonstrasi non-AI.'}
-            </Typography>
-          </Alert>
-        )}
-
         {/* Toolbar Mode Inspeksi Multi-Sudut (Jika Tersedia Dual-Angle) */}
         {hasDualPhoto && (
           <Card elevation={1} sx={{ borderRadius: 3, p: 2, bgcolor: '#f8fafc', border: '1px solid #e2e8f0' }}>
@@ -503,6 +456,64 @@ export function QCResults({ batch, onBackToInput, onViewRecap }) {
               </ToggleButtonGroup>
             </Stack>
           </Card>
+        )}
+
+        {/* Banner Peringatan Status Eksekusi */}
+        {executionStatus === 'needs_review' && (
+          <Alert
+            severity="warning"
+            icon={<WarningAmberRoundedIcon />}
+            sx={{ borderRadius: 2.5, bgcolor: '#fffbeb', borderColor: '#fde68a' }}
+          >
+            <Typography variant="subtitle2" fontWeight={800} color="#92400e">
+              ⚠️ Perlu Verifikasi Manual Petugas
+            </Typography>
+            <Typography variant="body2" color="#b45309" sx={{ mt: 0.5 }}>
+              {statusDetails.message || 'Tingkat keyakinan deteksi rendah atau citra kurang optimal. Harap periksa kondisi fisik sampel secara langsung sebelum transaksi.'}
+            </Typography>
+          </Alert>
+        )}
+        {executionStatus === 'unsupported' && (
+          <Alert
+            severity="info"
+            icon={<InfoOutlinedIcon />}
+            sx={{ borderRadius: 2.5, bgcolor: '#f0f9ff', borderColor: '#bae6fd' }}
+          >
+            <Typography variant="subtitle2" fontWeight={800} color="#0369a1">
+              ℹ️ Pencatatan Mutu Manual ({commodity})
+            </Typography>
+            <Typography variant="body2" color="#0c4a6e" sx={{ mt: 0.5 }}>
+              {statusDetails.message || `Komoditas ${commodity} belum didukung oleh model Computer Vision AI. Hasil grading dan estimasi harga menggunakan acuan standar pasar manual.`}
+            </Typography>
+          </Alert>
+        )}
+        {executionStatus === 'model_unavailable' && (
+          <Alert
+            severity="error"
+            icon={<ErrorOutlineRoundedIcon />}
+            sx={{ borderRadius: 2.5, bgcolor: '#fef2f2', borderColor: '#fecaca' }}
+          >
+            <Typography variant="subtitle2" fontWeight={800} color="#991b1b">
+              ⛔ Model AI Tidak Dapat Digunakan
+            </Typography>
+            <Typography variant="body2" color="#b91c1c" sx={{ mt: 0.5 }}>
+              {statusDetails.message || `Model AI untuk ${commodity} tidak tersedia di server atau mengalami kendala runtime. Menampilkan data estimasi acuan lokal.`}
+            </Typography>
+          </Alert>
+        )}
+        {executionStatus === 'simulated' && (
+          <Alert
+            severity="info"
+            icon={<InfoOutlinedIcon />}
+            sx={{ borderRadius: 2.5, bgcolor: '#f8fafc', borderColor: '#e2e8f0' }}
+          >
+            <Typography variant="subtitle2" fontWeight={800} color="#334155">
+              🔬 Hasil Simulasi Pengujian (Non-AI)
+            </Typography>
+            <Typography variant="body2" color="#475569" sx={{ mt: 0.5 }}>
+              {statusDetails.message || 'Hasil pemindaian ini merupakan data sintetis simulasi untuk keperluan uji coba/demonstrasi non-AI.'}
+            </Typography>
+          </Alert>
         )}
 
       {/* Bagian Visual: Canvas Bounding Box & Diagram Donat */}
@@ -784,37 +795,72 @@ export function QCResults({ batch, onBackToInput, onViewRecap }) {
           </Typography>
 
           {hasAiScan && isEggplant ? (
-            // Indikator 4 Kelas Terung
-            <Stack direction={{ xs: 'column', sm: 'row' }} flexWrap="wrap" gap={2}>
-              <QualityIndicator
-                color="#059669"
-                count={inference?.object_counts?.extra_class || 0}
-                icon={AssessmentRoundedIcon}
-                label="Extra Class (Super)"
-                percentage={pricing?.condition_ratios?.extra_class_percent || 0}
-              />
-              <QualityIndicator
-                color="#0284c7"
-                count={inference?.object_counts?.class_1 || 0}
-                icon={AssessmentRoundedIcon}
-                label="Class 1 (Standar)"
-                percentage={pricing?.condition_ratios?.class_1_percent || 0}
-              />
-              <QualityIndicator
-                color="#d97706"
-                count={inference?.object_counts?.class_2 || 0}
-                icon={AssessmentRoundedIcon}
-                label="Class 2 (Lokal)"
-                percentage={pricing?.condition_ratios?.class_2_percent || 0}
-              />
-              <QualityIndicator
-                color="#dc2626"
-                count={inference?.object_counts?.reject || 0}
-                icon={RecyclingRoundedIcon}
-                label="Reject (Afkir)"
-                percentage={pricing?.condition_ratios?.reject_percent || 0}
-              />
-            </Stack>
+            // Indikator Terung: 3-Grade Langsung (Model v2) atau 4-Kelas (Model v1)
+            (inference?.object_counts?.grade_a !== undefined || inference?.object_counts?.grade_b !== undefined) &&
+            !inference?.object_counts?.class_1 ? (
+              <Stack direction={{ xs: 'column', sm: 'row' }} flexWrap="wrap" gap={2}>
+                <QualityIndicator
+                  color="#059669"
+                  count={inference?.object_counts?.grade_a || 0}
+                  icon={AssessmentRoundedIcon}
+                  label="Grade A (Mutu Prima)"
+                  percentage={
+                    pricing?.condition_ratios?.grade_a_percent ??
+                    pricing?.condition_ratios?.extra_class_percent ??
+                    0
+                  }
+                />
+                <QualityIndicator
+                  color="#d97706"
+                  count={inference?.object_counts?.grade_b || 0}
+                  icon={AssessmentRoundedIcon}
+                  label="Grade B (Mutu Pasar)"
+                  percentage={
+                    pricing?.condition_ratios?.grade_b_percent ??
+                    pricing?.condition_ratios?.class_2_percent ??
+                    0
+                  }
+                />
+                <QualityIndicator
+                  color="#dc2626"
+                  count={inference?.object_counts?.reject || 0}
+                  icon={RecyclingRoundedIcon}
+                  label="Reject (Afkir)"
+                  percentage={pricing?.condition_ratios?.reject_percent || 0}
+                />
+              </Stack>
+            ) : (
+              <Stack direction={{ xs: 'column', sm: 'row' }} flexWrap="wrap" gap={2}>
+                <QualityIndicator
+                  color="#059669"
+                  count={inference?.object_counts?.extra_class || 0}
+                  icon={AssessmentRoundedIcon}
+                  label="Extra Class (Super)"
+                  percentage={pricing?.condition_ratios?.extra_class_percent || 0}
+                />
+                <QualityIndicator
+                  color="#0284c7"
+                  count={inference?.object_counts?.class_1 || 0}
+                  icon={AssessmentRoundedIcon}
+                  label="Class 1 (Standar)"
+                  percentage={pricing?.condition_ratios?.class_1_percent || 0}
+                />
+                <QualityIndicator
+                  color="#d97706"
+                  count={inference?.object_counts?.class_2 || 0}
+                  icon={AssessmentRoundedIcon}
+                  label="Class 2 (Lokal)"
+                  percentage={pricing?.condition_ratios?.class_2_percent || 0}
+                />
+                <QualityIndicator
+                  color="#dc2626"
+                  count={inference?.object_counts?.reject || 0}
+                  icon={RecyclingRoundedIcon}
+                  label="Reject (Afkir)"
+                  percentage={pricing?.condition_ratios?.reject_percent || 0}
+                />
+              </Stack>
+            )
           ) : hasAiScan ? (
             // Indikator 2 Kelas Tomat
             <Stack direction={{ xs: 'column', sm: 'row' }} flexWrap="wrap" gap={2}>
