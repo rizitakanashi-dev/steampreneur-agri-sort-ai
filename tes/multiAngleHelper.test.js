@@ -95,3 +95,52 @@ test('aggregateMultiAngleScanResults menolak jika scanFront dan scanBack identik
   )
 })
 
+test('aggregateMultiAngleScanResults menggabungkan deteksi Terung 3-grade v2 dari 2 sisi', () => {
+  const scanFront = {
+    scan_id: 'scan_v2_001',
+    commodity: 'Terung',
+    inference_result: {
+      object_counts: { grade_a: 6, grade_b: 2, reject: 0 },
+      detections: [{ id: 1, class_name: 'Grade A' }],
+    },
+    smart_pricing: { price_per_kg: 12000 },
+  }
+
+  const scanBack = {
+    scan_id: 'scan_v2_002',
+    commodity: 'Terung',
+    inference_result: {
+      object_counts: { grade_a: 4, grade_b: 2, reject: 1 },
+      detections: [{ id: 1, class_name: 'Reject' }],
+    },
+    smart_pricing: { price_per_kg: 12000 },
+  }
+
+  const result = aggregateMultiAngleScanResults(scanFront, scanBack, 20, 'Terung')
+
+  assert.equal(result.is_multi_angle, true)
+  assert.equal(result.angle_count, 2)
+  // Rata-rata Grade A: (6 + 4)/2 = 5
+  assert.equal(result.inference_result.object_counts.grade_a, 5)
+  // Rata-rata Grade B: (2 + 2)/2 = 2
+  assert.equal(result.inference_result.object_counts.grade_b, 2)
+  // Zero-defect escape: reject = max(0, 1) = 1
+  assert.equal(result.inference_result.object_counts.reject, 1)
+
+  // Total samples = 5 + 2 + 1 = 8
+  // Grade A = 5/8 * 100 = 62.5%
+  // Grade B = 2/8 * 100 = 25.0%
+  // Reject = 1/8 * 100 = 12.5%
+  assert.equal(result.inference_result.condition_ratios.grade_a_percent, 62.5)
+  assert.equal(result.inference_result.condition_ratios.grade_b_percent, 25.0)
+  assert.equal(result.inference_result.condition_ratios.reject_percent, 12.5)
+
+  // Bisnis grading dan bobot
+  assert.equal(result.business_grading.grade_percentages.gradeA, 62.5)
+  assert.equal(result.business_grading.grade_percentages.gradeB, 25.0)
+  assert.equal(result.business_grading.grade_percentages.reject, 12.5)
+  assert.equal(result.business_grading.weights.gradeA, 12.5) // 20 * 62.5% = 12.5 kg
+  assert.equal(result.business_grading.weights.gradeB, 5.0)  // 20 * 25.0% = 5.0 kg
+  assert.equal(result.business_grading.weights.reject, 2.5)  // 20 * 12.5% = 2.5 kg
+})
+

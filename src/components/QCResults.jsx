@@ -394,64 +394,6 @@ export function QCResults({ batch, onBackToInput, onViewRecap }) {
           </CardContent>
         </Card>
 
-        {/* Banner Peringatan Status Eksekusi */}
-        {executionStatus === 'needs_review' && (
-          <Alert
-            severity="warning"
-            icon={<WarningAmberRoundedIcon />}
-            sx={{ borderRadius: 2.5, bgcolor: '#fffbeb', borderColor: '#fde68a' }}
-          >
-            <Typography variant="subtitle2" fontWeight={800} color="#92400e">
-              ⚠️ Perlu Verifikasi Manual Petugas
-            </Typography>
-            <Typography variant="body2" color="#b45309" sx={{ mt: 0.5 }}>
-              {statusDetails.message || 'Tingkat keyakinan deteksi rendah atau citra kurang optimal. Harap periksa kondisi fisik sampel secara langsung sebelum transaksi.'}
-            </Typography>
-          </Alert>
-        )}
-        {executionStatus === 'unsupported' && (
-          <Alert
-            severity="info"
-            icon={<InfoOutlinedIcon />}
-            sx={{ borderRadius: 2.5, bgcolor: '#f0f9ff', borderColor: '#bae6fd' }}
-          >
-            <Typography variant="subtitle2" fontWeight={800} color="#0369a1">
-              ℹ️ Pencatatan Mutu Manual ({commodity})
-            </Typography>
-            <Typography variant="body2" color="#0c4a6e" sx={{ mt: 0.5 }}>
-              {statusDetails.message || `Komoditas ${commodity} belum didukung oleh model Computer Vision AI. Hasil grading dan estimasi harga menggunakan acuan standar pasar manual.`}
-            </Typography>
-          </Alert>
-        )}
-        {executionStatus === 'model_unavailable' && (
-          <Alert
-            severity="error"
-            icon={<ErrorOutlineRoundedIcon />}
-            sx={{ borderRadius: 2.5, bgcolor: '#fef2f2', borderColor: '#fecaca' }}
-          >
-            <Typography variant="subtitle2" fontWeight={800} color="#991b1b">
-              ⛔ Model AI Tidak Dapat Digunakan
-            </Typography>
-            <Typography variant="body2" color="#b91c1c" sx={{ mt: 0.5 }}>
-              {statusDetails.message || `Model AI untuk ${commodity} tidak tersedia di server atau mengalami kendala runtime. Menampilkan data estimasi acuan lokal.`}
-            </Typography>
-          </Alert>
-        )}
-        {executionStatus === 'simulated' && (
-          <Alert
-            severity="info"
-            icon={<InfoOutlinedIcon />}
-            sx={{ borderRadius: 2.5, bgcolor: '#f8fafc', borderColor: '#e2e8f0' }}
-          >
-            <Typography variant="subtitle2" fontWeight={800} color="#334155">
-              🔬 Hasil Simulasi Pengujian (Non-AI)
-            </Typography>
-            <Typography variant="body2" color="#475569" sx={{ mt: 0.5 }}>
-              {statusDetails.message || 'Hasil pemindaian ini merupakan data sintetis simulasi untuk keperluan uji coba/demonstrasi non-AI.'}
-            </Typography>
-          </Alert>
-        )}
-
         {/* Toolbar Mode Inspeksi Multi-Sudut (Jika Tersedia Dual-Angle) */}
         {hasDualPhoto && (
           <Card elevation={1} sx={{ borderRadius: 3, p: 2, bgcolor: '#f8fafc', border: '1px solid #e2e8f0' }}>
@@ -509,6 +451,64 @@ export function QCResults({ batch, onBackToInput, onViewRecap }) {
               </ToggleButtonGroup>
             </Stack>
           </Card>
+        )}
+
+        {/* Banner Peringatan Status Eksekusi */}
+        {executionStatus === 'needs_review' && (
+          <Alert
+            severity="warning"
+            icon={<WarningAmberRoundedIcon />}
+            sx={{ borderRadius: 2.5, bgcolor: '#fffbeb', borderColor: '#fde68a' }}
+          >
+            <Typography variant="subtitle2" fontWeight={800} color="#92400e">
+              ⚠️ Perlu Verifikasi Manual Petugas
+            </Typography>
+            <Typography variant="body2" color="#b45309" sx={{ mt: 0.5 }}>
+              {statusDetails.message || 'Tingkat keyakinan deteksi rendah atau citra kurang optimal. Harap periksa kondisi fisik sampel secara langsung sebelum transaksi.'}
+            </Typography>
+          </Alert>
+        )}
+        {executionStatus === 'unsupported' && (
+          <Alert
+            severity="info"
+            icon={<InfoOutlinedIcon />}
+            sx={{ borderRadius: 2.5, bgcolor: '#f0f9ff', borderColor: '#bae6fd' }}
+          >
+            <Typography variant="subtitle2" fontWeight={800} color="#0369a1">
+              ℹ️ Pencatatan Mutu Manual ({commodity})
+            </Typography>
+            <Typography variant="body2" color="#0c4a6e" sx={{ mt: 0.5 }}>
+              {statusDetails.message || `Komoditas ${commodity} belum didukung oleh model Computer Vision AI. Hasil grading dan estimasi harga menggunakan acuan standar pasar manual.`}
+            </Typography>
+          </Alert>
+        )}
+        {executionStatus === 'model_unavailable' && (
+          <Alert
+            severity="error"
+            icon={<ErrorOutlineRoundedIcon />}
+            sx={{ borderRadius: 2.5, bgcolor: '#fef2f2', borderColor: '#fecaca' }}
+          >
+            <Typography variant="subtitle2" fontWeight={800} color="#991b1b">
+              ⛔ Model AI Tidak Dapat Digunakan
+            </Typography>
+            <Typography variant="body2" color="#b91c1c" sx={{ mt: 0.5 }}>
+              {statusDetails.message || `Model AI untuk ${commodity} tidak tersedia di server atau mengalami kendala runtime. Menampilkan data estimasi acuan lokal.`}
+            </Typography>
+          </Alert>
+        )}
+        {executionStatus === 'simulated' && (
+          <Alert
+            severity="info"
+            icon={<InfoOutlinedIcon />}
+            sx={{ borderRadius: 2.5, bgcolor: '#f8fafc', borderColor: '#e2e8f0' }}
+          >
+            <Typography variant="subtitle2" fontWeight={800} color="#334155">
+              🔬 Hasil Simulasi Pengujian (Non-AI)
+            </Typography>
+            <Typography variant="body2" color="#475569" sx={{ mt: 0.5 }}>
+              {statusDetails.message || 'Hasil pemindaian ini merupakan data sintetis simulasi untuk keperluan uji coba/demonstrasi non-AI.'}
+            </Typography>
+          </Alert>
         )}
 
       {/* Bagian Visual: Canvas Bounding Box & Diagram Donat */}

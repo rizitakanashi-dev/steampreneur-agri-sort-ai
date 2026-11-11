@@ -479,3 +479,95 @@ flowchart TB
    - Menambahkan berkas uji `tes/imageSimilarity.test.js` (5 skenario uji).
    - Seluruh **203 unit test** (115 JS + 88 Python) lulus 100%.
 
+---
+
+### Temuan B6: Resolusi Tangled Merge Conflict & Standarisasi Test Suite Pasca Sinkronisasi `main` (9 November 2026)
+
+| Kode Temuan | Tingkat Keparahan | Komponen Teridentifikasi | Status Resolusi |
+|:---:|:---:|---|:---:|
+| **AUDIT-B6-01** | **KRITIS** | `src/components/QCResults.jsx` (Syntax Error Vite Build akibat resolusi konflik merge) | **RESOLVED** |
+| **AUDIT-B6-02** | **TINGGI** | `server/tests/test_ml_safety.py` (Uncaught `ModuleNotFoundError: No module named 'fastapi'` di runner sistem) | **RESOLVED** |
+
+#### A. Analisis Akar Masalah (*Root Cause Analysis*)
+1. **Mengapa terjadi syntax error di `QCResults.jsx`?**
+   - Saat menggabungkan commit `main` (PR #10: *ML Safety Remediation*) ke dalam branch `feat/sp2kp-kemendag-api`, terjadi resolusi konflik merge manual pada bagian antarmuka inspeksi.
+   - Blok penutup Toolbar Inspeksi Multi-Sudut (`<ToggleButtonGroup>...</Card>`) terdorong ke dalam blok kondisional Donut Chart tunggal (`pieChartData.length > 0`), memecah hirarki tag JSX dan memunculkan error Vite: `Adjacent JSX elements must be wrapped in an enclosing tag`.
+2. **Mengapa runner backend gagal mengeksekusi `test_ml_safety.py`?**
+   - Modul `test_ml_safety.py` mengimpor `TestClient` dan `server.main` di tingkat atas skrip (*top-level import*) tanpa blok pelindung `try ... except ImportError`. Pada lingkungan runner CI atau Python lokal tanpa dependensi FastAPI aktif, impor ini melempar `ImportError` yang menggagalkan seluruh suite pengujian.
+
+#### B. Rekayasa Solusi (*Engineering Fixes*)
+1. **Restorasi Hirarki Tag JSX `QCResults.jsx`:**
+   - Menata ulang urutan rendering secara berjenjang:
+     1. Toolbar Mode Inspeksi Multi-Sudut (`hasDualPhoto`).
+     2. Banner Status Eksekusi ML Safety (`needs_review`, `unsupported`, `model_unavailable`, `simulated`).
+     3. Tampilan Visual: Mode perbandingan 2-Sisi Bersandingan (`viewAngleMode === 'compare'`) atau tampilan inspeksi citra tunggal dengan Donut Chart.
+   - Hasil kompilasi Vite: **Lulus 100% tanpa error dalam 1.12 detik**.
+2. **Defensive Import & Test Skipping pada `test_ml_safety.py`:**
+   - Menyelaraskan impor dengan pola arsitektur `test_multi_angle_qc.py` menggunakan `HAS_FASTAPI` flag dan `@unittest.skipUnless(HAS_FASTAPI, "FastAPI atau TestClient tidak terpasang")`.
+3. **Cakupan Pengujian Terkini (Total 240 Unit Tests):**
+   - **Frontend:** 127/127 tests lulus (node:test).
+   - **Backend:** 113/113 tests lulus (Python unittest).
+   - **Status Kesiapan:** Siap deploy dan siap presentasi di hadapan juri STEAMPreneur 2026.
+
+---
+
+### Temuan B7: Harmonisasi Terung v2 3-Grade & Pembaruan Sertifikat Mutu (11 November 2026)
+
+| Kode Temuan | Tingkat Keparahan | Komponen Teridentifikasi | Status Resolusi |
+|:---:|:---:|---|:---:|
+| **AUDIT-B7-01** | **SEDANG** | `src/components/QCResults.jsx` (Potensi tampilan kartu 0% pada model Terung 3-Grade v2) | **RESOLVED** |
+| **AUDIT-B7-02** | **SEDANG** | `src/utils/qcCertificateHelper.js` (Ketiadaan dukungan cetak sertifikat Terung 3-Grade) | **RESOLVED** |
+| **AUDIT-B7-03** | **TINGGI** | `src/components/HarvestRecap.jsx` (Distribusi Grade Terung kosong/hilang di tabel rekap akibat mismatch key `_ratio_percent` vs `_percent` & ketiadaan dukungan 3-Grade) | **RESOLVED** |
+
+#### A. Analisis Akar Masalah (*Root Cause Analysis*)
+1. Faris Al Farizi (Lead ML) memperbarui model deteksi Terung ke versi 2.0.0 (`best.onnx` & `best.pt`) dengan arsitektur 3-Grade langsung (`Grade A`, `Grade B`, `Reject`).
+2. Komponen frontend sebelumnya hanya memiliki hardcoded logic untuk 4 kelas UNECE FFV-05 (`extra_class`, `class_1`, `class_2`, `reject`). Jika model mengembalikan `grade_a` dan `grade_b`, antarmuka pengguna Donut Chart dan kartu mutu berpotensi menampilkan nilai kosong (0%).
+3. **Bug Kolom Distribusi Grade di `HarvestRecap.jsx`:**
+   Komponen `BatchGradeDistribution` sebelumnya membaca properti `ratios.extra_class_ratio_percent`, padahal payload backend menghasilkan `extra_class_percent` atau `grade_a_percent`. Akibatnya, nilai selalu dievaluasi sebagai `undefined` dan komponen `<GradeChip>` me-return `null`, menyebabkan kolom distribusi grade terung tampak kosong melompong di tabel rekap.
+
+#### B. Rekayasa Solusi (*Engineering Fixes*)
+1. **Dukungan Adaptif 3-Grade & 4-Class di `QCResults.jsx`:**
+   - Menambahkan deteksi format otomatis (`isDirect3Grade`). Jika model mendeteksi 3-Grade, sistem menampilkan kartu **Grade A (Mutu Prima)**, **Grade B (Mutu Pasar)**, dan **Reject (Afkir)** serta memetakan warna Donut Chart secara presisi.
+   - Tetap mempertahankan fallback 4-kelas untuk riwayat pindaian lama (*zero breaking changes*).
+2. **Ekspansi Modul Sertifikat Resmi (`qcCertificateHelper.js`):**
+   - Menambahkan builder data sertifikat `hasTerung3Grade` dengan kode mutu `GRADE-A`, `GRADE-B`, dan `REJECT`, lengkap dengan kalkulasi finansial multiplier dan status distribusi pasar.
+3. **Normalisasi Ekstraksi Distribusi Mutu di Rekap (`HarvestRecap.jsx`):**
+   - Menyelaraskan pembacaan key `grade_a_percent`, `grade_b_percent`, dan `reject_percent` untuk Terung v2, serta fallback ke `extra_class_percent` (v1) dan `batch.hasil`.
+4. **Hasil Pengujian & Verifikasi:**
+   - Menambahkan unit test baru di `tes/qcCertificateHelper.test.js` (`buildCertificateData memproses batch Terung 3-Grade v2 dengan akurat`).
+   - Total **240 unit test lulus 100% (127 JS + 113 Python)**, kompilasi Vite selesai dalam **1.04 detik**.
+
+---
+
+### Temuan B8: Audit Presisi Distribusi Grade Pemindaian (Scan & Multi-Angle) untuk Produksi Luas (11 November 2026)
+
+| Kode Temuan | Tingkat Keparahan | Komponen Teridentifikasi | Status Resolusi |
+|:---:|:---:|---|:---:|
+| **AUDIT-B8-01** | **KRITIS** | `src/components/BatchQCScanner.jsx` (Kartu pratinjau distribusi mutu pasca-scan masih hardcode 4-kelas, menampilkan 0 butir saat memindai model Terung v2) | **RESOLVED** |
+| **AUDIT-B8-02** | **KRITIS** | `src/business/multiAngleHelper.js` & `server/services/multi_angle_service.py` (Agregasi 2-sisi gagal mengekstrak kelas `grade_a` & `grade_b` v2, menyebabkan kalkulasi proporsi reject 100%) | **RESOLVED** |
+| **AUDIT-B8-03** | **TINGGI** | `src/components/BatchQCScanner.jsx` & `server/services/pricing_service.py` (Harmonisasi matematis input direct grades ke `calculateHarvest` dan `tier_breakdown` pricing backend) | **RESOLVED** |
+
+#### A. Analisis Akar Masalah (*Root Cause Analysis*)
+1. **Kegagalan Kartu Pratinjau Langsung Scanner (`BatchQCScanner.jsx`):**
+   Meskipun komponen hasil riwayat (`QCResults.jsx`) sudah diselaraskan pada B7, antarmuka pemindaian aktif (`BatchQCScanner.jsx`) masih memiliki grid statis 4-kelas (`extra_class`, `class_1`, `class_2`, `reject`). Ketika petani/pengguna memindai Terung dengan model v2, kartu Extra Class, Class 1, dan Class 2 selalu bernilai 0 butir (0%), menciptakan kebingungan seolah sistem tidak mendeteksi buah.
+2. **Kecacatan Agregasi Multi-Sudut 2-Sisi (*Multi-Angle Occlusion Trap*):**
+   Fungsi agregator multi-sudut frontend (`multiAngleHelper.js`) dan backend (`multi_angle_service.py`) mengekstrak deteksi dengan membaca properti spesifik model v1 (`extra_class`, `class_1`, `class_2`). Ketika objek yang masuk berupa kelas v2 (`grade_a`, `grade_b`), rata-rata keduanya bernilai 0, sehingga seluruh populasi tereduksi menjadi 0% Grade A/B dan 100% Reject.
+3. **Preservasi Matematis Input Simpan Rekap:**
+   Fungsi `handleConfirmSaveToRecap` sebelumnya melewatkan parameter `kesegaranPersen` dan `cacatPersen` ke `calculateHarvest`, yang mendistorsi proporsi Grade A & Grade B akibat formula kesegaran non-linier. Mengirimkan `gradeA` dan `gradeB` langsung menjamin konservasi 1:1 antara hitungan objek deteksi AI dan tabel rekap panen.
+
+#### B. Rekayasa Solusi (*Engineering Fixes*)
+1. **Dukungan Adaptif Pratinjau Mutu Langsung di `BatchQCScanner.jsx`:**
+   - Menambahkan deteksi `isDirect3Grade`. Jika model 3-Grade aktif, antarmuka merender 3 kartu responsif (Grade A Mutu Prima, Grade B Mutu Pasar, Reject Afkir) dengan bobot persentase proporsional.
+   - Jika model 4-kelas lama aktif, sistem merender 4 kartu UNECE.
+2. **Ekspansi Agregator Multi-Sudut Frontend & Backend:**
+   - Di `src/business/multiAngleHelper.js`: Menambahkan percabangan `isDirect3Grade` untuk menghitung rata-rata `grade_a`, `grade_b`, dan zero-defect escape pada `reject`, serta memetakan bobot grade fisik secara presisi.
+   - Di `server/services/multi_angle_service.py`: Menambahkan ekstraksi `Grade A`, `Grade B`, normalisasi rasio tertimbang, serta menyertakan `grade_a_combined` dan `grade_b_combined` pada `combined_object_counts`.
+   - Di `server/services/pricing_service.py`: Menyempurnakan `calculate_business_grading` agar membaca `grade_a_percent` secara eksplisit dan menambahkan `tier_breakdown` untuk Grade A (multiplier 1.15) dan Grade B (multiplier 0.80).
+3. **Hasil Pengujian & Verifikasi Menyeluruh:**
+   - Menambahkan unit test baru di `tes/multiAngleHelper.test.js` (`aggregateMultiAngleScanResults menggabungkan deteksi Terung 3-grade v2 dari 2 sisi`).
+   - Menambahkan unit test baru di `server/tests/test_multi_angle_qc.py` (`test_aggregate_terung_3grade_v2`).
+   - **Total 242 Unit Tests Lulus 100% (128 JS + 114 Python, 0 failed)**.
+   - Kompilasi produksi Vite sukses bersih tanpa peringatan sintaks dalam **962 ms**.
+
+
+

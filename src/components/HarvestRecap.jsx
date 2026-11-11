@@ -79,36 +79,86 @@ function BatchGradeDistribution({ batch }) {
 
   const hasInference = Boolean(batch?.inference || batch?.ai_scan_performed)
 
-  if (isEggplant && (batch?.inference?.condition_ratios || batch?.pricing?.tier_breakdown)) {
-    const ratios = batch.inference?.condition_ratios || {}
+  const ratios =
+    batch?.inference?.condition_ratios ||
+    batch?.pricing?.condition_ratios ||
+    batch?.scanResult?.smart_pricing?.condition_ratios ||
+    batch?.scanResult?.inference_result?.condition_ratios ||
+    {}
+
+  // 1. Cek apakah Terung 3-Grade (Model v2: Grade A, Grade B, Reject)
+  const isDirect3Grade =
+    isEggplant &&
+    (ratios.grade_a_percent !== undefined ||
+      ratios.grade_b_percent !== undefined ||
+      batch?.inference?.object_counts?.grade_a !== undefined) &&
+    ratios.class_1_percent === undefined &&
+    batch?.inference?.object_counts?.class_1 === undefined
+
+  if (isDirect3Grade) {
+    const valA = ratios.grade_a_percent ?? batch?.hasil?.persenA
+    const valB = ratios.grade_b_percent ?? batch?.hasil?.persenB
+    const valRej = ratios.reject_percent ?? ratios.reject_ratio_percent ?? batch?.hasil?.persenC
+
     return (
       <Stack direction="row" flexWrap="wrap">
-        <GradeChip color="success" label="Extra" value={ratios.extra_class_ratio_percent} />
-        <GradeChip color="info" label="Class 1" value={ratios.class_1_ratio_percent} />
-        <GradeChip color="warning" label="Class 2" value={ratios.class_2_ratio_percent} />
-        <GradeChip color="error" label="Reject" value={ratios.reject_ratio_percent} />
+        <GradeChip color="success" label="Grade A" value={valA} />
+        <GradeChip color="warning" label="Grade B" value={valB} />
+        <GradeChip color="error" label="Reject" value={valRej} />
       </Stack>
     )
   }
 
-  if (hasInference && batch?.inference?.condition_ratios) {
-    const ratios = batch.inference.condition_ratios
+  // 2. Cek apakah Terung 4-Class (Model v1: Extra, Class 1, Class 2, Reject)
+  const has4Class =
+    isEggplant &&
+    (ratios.extra_class_percent !== undefined ||
+      ratios.extra_class_ratio_percent !== undefined ||
+      ratios.class_1_percent !== undefined ||
+      ratios.class_1_ratio_percent !== undefined ||
+      batch?.pricing?.tier_breakdown?.extra_class !== undefined)
+
+  if (has4Class) {
+    const valExtra = ratios.extra_class_percent ?? ratios.extra_class_ratio_percent
+    const valC1 = ratios.class_1_percent ?? ratios.class_1_ratio_percent
+    const valC2 = ratios.class_2_percent ?? ratios.class_2_ratio_percent
+    const valRej = ratios.reject_percent ?? ratios.reject_ratio_percent
+
     return (
       <Stack direction="row" flexWrap="wrap">
-        <GradeChip color="success" label="Segar" value={ratios.fresh_ratio_percent} />
-        <GradeChip color="error" label="Busuk" value={ratios.rotten_ratio_percent} />
+        <GradeChip color="success" label="Extra" value={valExtra} />
+        <GradeChip color="info" label="Class 1" value={valC1} />
+        <GradeChip color="warning" label="Class 2" value={valC2} />
+        <GradeChip color="error" label="Reject" value={valRej} />
       </Stack>
     )
   }
 
+  // 3. Tomat 2-Class (Segar vs Busuk)
+  if (hasInference && (ratios.fresh_ratio_percent !== undefined || ratios.fresh_percent !== undefined)) {
+    const valFresh = ratios.fresh_ratio_percent ?? ratios.fresh_percent
+    const valRotten = ratios.rotten_ratio_percent ?? ratios.rotten_percent
+    return (
+      <Stack direction="row" flexWrap="wrap">
+        <GradeChip color="success" label="Segar" value={valFresh} />
+        <GradeChip color="error" label="Busuk" value={valRotten} />
+      </Stack>
+    )
+  }
+
+  // 4. Fallback ke batch.hasil (Grade A, Grade B, Reject)
   const result = batch?.hasil || {}
-  return (
-    <Stack direction="row" flexWrap="wrap">
-      <GradeChip color="success" label="A" value={result.persenA} />
-      <GradeChip color="warning" label="B" value={result.persenB} />
-      <GradeChip color="error" label="Reject" value={result.persenC} />
-    </Stack>
-  )
+  if (result.persenA !== undefined || result.persenB !== undefined || result.persenC !== undefined) {
+    return (
+      <Stack direction="row" flexWrap="wrap">
+        <GradeChip color="success" label="A" value={result.persenA} />
+        <GradeChip color="warning" label="B" value={result.persenB} />
+        <GradeChip color="error" label="Reject" value={result.persenC} />
+      </Stack>
+    )
+  }
+
+  return <Typography color="text.secondary" variant="caption">-</Typography>
 }
 
 export function HarvestRecap({ batches = [], onSelectBatch }) {

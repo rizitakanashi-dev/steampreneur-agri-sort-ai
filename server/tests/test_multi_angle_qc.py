@@ -117,6 +117,49 @@ class TestMultiAngleQCAggregation(unittest.TestCase):
         self.assertAlmostEqual(ratios["fresh_ratio_percent"], 70.0, places=1)
         self.assertAlmostEqual(ratios["rotten_ratio_percent"], 30.0, places=1)
 
+    def test_aggregate_terung_3grade_v2(self):
+        """Memverifikasi agregasi multi-sudut untuk model Terung 3-Grade v2 (Grade A, Grade B, Reject)."""
+        front_raw = {
+            "detection_summary": {
+                "total_objects": 10,
+                "class_counts": {"Grade A": 7, "Grade B": 3, "Reject": 0},
+            }
+        }
+        back_raw = {
+            "detection_summary": {
+                "total_objects": 10,
+                "class_counts": {"Grade A": 5, "Grade B": 3, "Reject": 2},
+            }
+        }
+        res = aggregate_multi_view_qc(
+            front_raw=front_raw,
+            back_raw=back_raw,
+            commodity="Terung",
+            weight_kg=20.0,
+            weight_front=0.5,
+            weight_back=0.5,
+        )
+
+        ratios = res["weighted_condition_ratios"]
+        # Grade A: (70 + 50)/2 = 60.0%
+        self.assertEqual(ratios["grade_a_percent"], 60.0)
+        # Grade B: (30 + 30)/2 = 30.0%
+        self.assertEqual(ratios["grade_b_percent"], 30.0)
+        # Reject: (0 + 20)/2 = 10.0%
+        self.assertEqual(ratios["reject_percent"], 10.0)
+
+        # Combined counts
+        combined = res["combined_object_counts"]
+        self.assertEqual(combined["grade_a_combined"], 12)
+        self.assertEqual(combined["grade_b_combined"], 6)
+        self.assertEqual(combined["reject_combined"], 2)
+
+        # Business grading
+        bg = res["business_grading"]["grade_breakdown"]
+        self.assertEqual(bg["grade_a_percent"], 60.0)
+        self.assertEqual(bg["grade_b_percent"], 30.0)
+        self.assertEqual(bg["reject_percent"], 10.0)
+
 
 @unittest.skipUnless(HAS_FASTAPI, "FastAPI tidak terpasang di environment ini")
 class TestMultiAngleEndpointAPI(unittest.TestCase):

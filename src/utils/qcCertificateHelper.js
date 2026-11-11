@@ -118,6 +118,12 @@ export function buildCertificateData(batch = {}) {
 
   let grades = []
 
+  const hasTerung3Grade =
+    isEggplant &&
+    ((counts.grade_a !== undefined || counts.grade_b !== undefined) &&
+      !counts.class_1 &&
+      !counts.extra_class)
+
   const hasTerungData =
     isEggplant &&
     (tier.extra_class ||
@@ -126,7 +132,75 @@ export function buildCertificateData(batch = {}) {
       counts.extra_class !== undefined ||
       hasInference)
 
-  if (hasTerungData) {
+  if (hasTerung3Grade) {
+    // 3-Grade Terung Commercial Grading (YOLO11n v2: Grade A, Grade B, Reject)
+    const totalCount =
+      Number(counts.total) ||
+      ((Number(counts.grade_a) || 0) +
+        (Number(counts.grade_b) || 0) +
+        (Number(counts.reject) || 0)) ||
+      1
+
+    const gradeARatio = Number(
+      ratios.grade_a_percent ??
+      ratios.grade_a_ratio_percent ??
+      (tier.grade_a?.weight_kg ? (tier.grade_a.weight_kg / (totalWeightKg || 1)) * 100 : 0) ??
+      (counts.grade_a !== undefined ? (Number(counts.grade_a) / totalCount) * 100 : 0)
+    )
+    const gradeBRatio = Number(
+      ratios.grade_b_percent ??
+      ratios.grade_b_ratio_percent ??
+      (tier.grade_b?.weight_kg ? (tier.grade_b.weight_kg / (totalWeightKg || 1)) * 100 : 0) ??
+      (counts.grade_b !== undefined ? (Number(counts.grade_b) / totalCount) * 100 : 0)
+    )
+    const rejRatio = Number(
+      ratios.reject_percent ??
+      ratios.reject_ratio_percent ??
+      (tier.reject?.weight_kg ? (tier.reject.weight_kg / (totalWeightKg || 1)) * 100 : 0) ??
+      (counts.reject !== undefined ? (Number(counts.reject) / totalCount) * 100 : 0)
+    )
+
+    const gradeAWeight = Number(tier.grade_a?.weight_kg ?? (totalWeightKg * (gradeARatio / 100)))
+    const gradeBWeight = Number(tier.grade_b?.weight_kg ?? (totalWeightKg * (gradeBRatio / 100)))
+    const rejWeight = Number(tier.reject?.weight_kg ?? (totalWeightKg * (rejRatio / 100)))
+
+    const gradeAPrice = Math.round(refPrice * 1.15)
+    const gradeBPrice = Math.round(refPrice * 0.80)
+    const rejPrice = 0
+
+    grades = [
+      {
+        code: 'GRADE-A',
+        label: 'Grade A (Mutu Prima)',
+        desc: 'Bentuk proporsional lurus, warna ungu mengkilap, segar tanpa cacat fisik',
+        ratioPercent: gradeARatio,
+        weightKg: Number(gradeAWeight.toFixed(2)),
+        pricePerKg: gradeAPrice,
+        subtotalRp: Number(tier.grade_a?.subtotal_value ?? Math.round(gradeAWeight * gradeAPrice)),
+        status: 'Supermarket Modern & Horeka',
+      },
+      {
+        code: 'GRADE-B',
+        label: 'Grade B (Mutu Pasar)',
+        desc: 'Kelengkungan wajar <15%, warna cerah, sedikit goresan mikro superfisial',
+        ratioPercent: gradeBRatio,
+        weightKg: Number(gradeBWeight.toFixed(2)),
+        pricePerKg: gradeBPrice,
+        subtotalRp: Number(tier.grade_b?.subtotal_value ?? Math.round(gradeBWeight * gradeBPrice)),
+        status: 'Pasar Tradisional & Grosir',
+      },
+      {
+        code: 'REJECT',
+        label: 'Reject (Afkir / Rusak)',
+        desc: 'Busuk basah, lubang hama/ulat, busuk tangkai lunak',
+        ratioPercent: rejRatio,
+        weightKg: Number(rejWeight.toFixed(2)),
+        pricePerKg: rejPrice,
+        subtotalRp: 0,
+        status: 'Pakan Ternak / Kompos Organik',
+      },
+    ]
+  } else if (hasTerungData) {
     // 4-Class Terung Grading (YOLO11n 4-Kelas Komersial)
     const totalCount =
       Number(counts.total) ||
