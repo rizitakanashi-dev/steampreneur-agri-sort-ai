@@ -306,9 +306,10 @@ function FoundationPage({
   }
 
   if (activePage === 'results') {
+    const currentBatch = selectedBatch || (batches && batches.length > 0 ? batches[batches.length - 1] : null)
     return (
       <QCResults
-        batch={selectedBatch}
+        batch={currentBatch}
         onBackToInput={onBackToInput}
         onViewRecap={onViewRecap}
         initialOpenCertificate={openCertModal}

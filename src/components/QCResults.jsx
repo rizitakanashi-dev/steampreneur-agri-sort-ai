@@ -44,6 +44,7 @@ import { ScanCanvasOverlay } from './ScanCanvasOverlay.jsx'
 import { QCPrintCertificate } from './QCPrintCertificate.jsx'
 import { PostHarvestPathologyCards } from './PostHarvestPathologyCards.jsx'
 import { getClassTheme } from '../utils/canvasOverlayHelper.js'
+import { calculateHarvest, calculateHarvestValue } from '../business/harvestCalculation.js'
 
 const numberFormatter = new Intl.NumberFormat('id-ID', { maximumFractionDigits: 2 })
 const rupiahFormatter = new Intl.NumberFormat('id-ID', {
@@ -157,7 +158,7 @@ export function QCResults({ batch, onBackToInput, onViewRecap, initialOpenCertif
     }
   }, [initialOpenCertificate, batch?.id])
 
-  if (!batch || (!batch.hasil && !batch.scanResult && !batch.inference && !batch.pricing)) {
+  if (!batch || (!batch.hasil && !batch.scanResult && !batch.inference && !batch.pricing && !batch.kesegaranPersen && !batch.beratKg && !batch.id)) {
     return (
       <Box
         sx={{
@@ -184,7 +185,29 @@ export function QCResults({ batch, onBackToInput, onViewRecap, initialOpenCertif
     )
   }
 
-  const hasil = batch.hasil || {}
+  let derivedHasil = batch.hasil
+  if (!derivedHasil && (batch.kesegaranPersen !== undefined || batch.gradeA !== undefined)) {
+    try {
+      const calc = calculateHarvest(batch)
+      const valCalc = calculateHarvestValue(batch)
+      derivedHasil = {
+        persenA: calc.persentase.gradeA,
+        persenB: calc.persentase.gradeB,
+        persenC: calc.persentase.reject,
+        beratA: calc.beratKg.gradeA,
+        beratB: calc.beratKg.gradeB,
+        beratC: calc.beratKg.reject,
+        nilaiA: valCalc.nilai.gradeA,
+        nilaiB: valCalc.nilai.gradeB,
+        nilaiC: valCalc.nilai.reject,
+        totalNilai: valCalc.totalNilai,
+      }
+    } catch {
+      // Abaikan jika kalkulasi fallback tidak dapat diproses
+    }
+  }
+
+  const hasil = derivedHasil || {}
   const scanResult = batch.scanResult || {}
   const hasAiScan = Boolean(
     scanResult.inference_result ||

@@ -29,6 +29,7 @@ import {
   Tooltip,
   Typography,
 } from '@mui/material'
+import AssessmentRoundedIcon from '@mui/icons-material/AssessmentRounded'
 import AutoAwesomeRoundedIcon from '@mui/icons-material/AutoAwesomeRounded'
 import DownloadRoundedIcon from '@mui/icons-material/DownloadRounded'
 import FilterAltOffRoundedIcon from '@mui/icons-material/FilterAltOffRounded'
@@ -373,6 +374,18 @@ export function HarvestRecap({ batches = [], onSelectBatch, onDeleteBatch }) {
                   <TableCell align="center">
                     <Stack direction="row" justifyContent="center" spacing={0.5}>
                       {onSelectBatch && (
+                        <Tooltip title="Buka Hasil Analisis QC">
+                          <IconButton
+                            aria-label={`Buka Analisis QC ${batch.id}`}
+                            color="success"
+                            onClick={() => onSelectBatch(batch, { openCertificate: false })}
+                            size="small"
+                          >
+                            <AssessmentRoundedIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                      )}
+                      {onSelectBatch && (
                         <Tooltip title="Buka Hasil QC & Cetak Sertifikat">
                           <IconButton
                             aria-label={`Buka QC ${batch.id}`}
@@ -516,17 +529,31 @@ export function HarvestRecap({ batches = [], onSelectBatch, onDeleteBatch }) {
           <Stack direction="row" spacing={1}>
             <Button onClick={() => setSelectedBatch(null)} variant="outlined">Tutup</Button>
             {onSelectBatch && selectedBatch && (
-              <Button
-                onClick={() => {
-                  const b = selectedBatch
-                  setSelectedBatch(null)
-                  onSelectBatch(b, { openCertificate: true })
-                }}
-                startIcon={<PrintRoundedIcon />}
-                variant="contained"
-              >
-                Buka QC & Cetak Sertifikat
-              </Button>
+              <>
+                <Button
+                  color="success"
+                  onClick={() => {
+                    const b = selectedBatch
+                    setSelectedBatch(null)
+                    onSelectBatch(b, { openCertificate: false })
+                  }}
+                  startIcon={<AssessmentRoundedIcon />}
+                  variant="outlined"
+                >
+                  Buka Analisis QC
+                </Button>
+                <Button
+                  onClick={() => {
+                    const b = selectedBatch
+                    setSelectedBatch(null)
+                    onSelectBatch(b, { openCertificate: true })
+                  }}
+                  startIcon={<PrintRoundedIcon />}
+                  variant="contained"
+                >
+                  Cetak Sertifikat
+                </Button>
+              </>
             )}
           </Stack>
         </DialogActions>

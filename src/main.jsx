@@ -15,7 +15,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
 )
 
 // Registrasi Service Worker untuk Kesiapan Lapangan Offline Petani (PWA)
-if (typeof window !== 'undefined' && 'serviceWorker' in navigator && process.env.NODE_ENV === 'production') {
+if (typeof window !== 'undefined' && 'serviceWorker' in navigator && import.meta.env?.PROD) {
   window.addEventListener('load', () => {
     navigator.serviceWorker
       .register('/sw.js')
