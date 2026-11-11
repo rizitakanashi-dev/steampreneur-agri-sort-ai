@@ -266,3 +266,30 @@ test('buildCertificateData memproses batch Terung 3-Grade v2 dengan akurat', () 
   assert.equal(gradeB.weightKg, 4.0)
   assert.equal(gradeB.subtotalRp, 32000)
 })
+
+test('buildCertificateData mengisi executionStatus dan modelEngineName secara tepat untuk mode manual / unsupported', () => {
+  const manualBatch = {
+    id: 'panen-manual-cabai',
+    tanggal: '2026-11-11',
+    komoditas: 'Cabai Rawit Hijau',
+    beratKg: 25,
+    hasil: {
+      persenA: 80,
+      persenB: 20,
+      persenC: 0,
+      beratA: 20,
+      beratB: 5,
+      beratC: 0,
+      nilaiA: 660000,
+      nilaiB: 135000,
+      nilaiC: 0,
+      totalNilai: 795000,
+    },
+  }
+
+  const cert = buildCertificateData(manualBatch)
+  assert.equal(cert.executionStatus, 'unsupported')
+  assert.equal(cert.modelEngineName, 'Pencatatan Mutu Non-AI (Model Belum Didukung)')
+  assert.equal(cert.evaluator, 'Sistem Analisis Panen SMKN 4 Payakumbuh')
+  assert.equal(cert.grades.length, 3)
+})

@@ -690,6 +690,31 @@ flowchart TB
 - **Total Tests:** 246 unit tests lulus 100% tanpa kegagalan.
 - **Kompilasi Produksi Vite:** Berhasil tuntas dalam 1.46 detik.
 
+---
+
+### Temuan B14: Isolasi Media Cetak A4 & Eliminasi Duplikasi Halaman Cetak Sertifikat Mutu (11 November 2026)
+
+| Kode Temuan | Tingkat Keparahan | Komponen Teridentifikasi | Status Resolusi |
+|:---:|:---:|---|:---:|
+| **AUDIT-B14-01** | **SEDANG** | `src/index.css` & `src/components/QCPrintCertificate.jsx` (MUI Dialog modal tidak disembunyikan dalam `@media print`, menyebabkan duplikasi 2 lembar sertifikat saat mencetak dari dalam dialog pratinjau) | **RESOLVED** |
+
+#### A. Analisis Masalah & Perbaikan Kritis
+1. **Akar Masalah Duplikasi Halaman Cetak:**
+   - Ketika pengguna membuka modal *"Pratinjau Sertifikat Uji Mutu Digital"* dan menekan tombol *"Cetak / Simpan PDF (A4)"*, perintah `window.print()` dipanggil.
+   - Di dalam stylesheet `@media print`, elemen `.qc-print-only` diaktifkan (`display: block !important`). Namun, container portal `.MuiDialog-root` tidak disembunyikan.
+   - Akibatnya, peramban mencetak dua sertifikat sekaligus: sertifikat pertama dari kontainer dasar `.qc-print-only`, dan sertifikat kedua dari modal dialog MUI lengkap dengan kontainer header dan footer dialog, menghasilkan 2 lembar cetak ganda yang boros kertas dan tidak rapi.
+2. **Solusi Rekayasa:**
+   - Menambahkan `.MuiDialog-root` ke daftar elemen yang disembunyikan secara absolut (`display: none !important`) pada `@media print`.
+   - Menjadikan `.qc-print-only` sebagai sumber tunggal sertifikat cetak resmi berstandar A4 portrait ($210 \times 297$ mm).
+   - Menyelaraskan stempel mesin: status deteksi AI menampilkan stempel resmi `SMART QC VERIFIED`, sedangkan pencatatan manual menampilkan `QC TERVERIFIKASI` dengan nama model/metode yang relevan.
+
+#### B. Hasil Verifikasi Menyeluruh
+- **Frontend Tests:** 133 / 133 tests lulus (node:test).
+- **Backend Tests:** 114 / 114 tests lulus (Python unittest).
+- **Total Tests:** 247 unit tests lulus 100% tanpa kegagalan.
+- **Kompilasi Produksi Vite:** Berhasil tuntas dalam 1.56 detik.
+
+
 
 
 

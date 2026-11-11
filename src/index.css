@@ -42,7 +42,7 @@ body {
     width: 100% !important;
   }
 
-  /* Sembunyikan semua elemen chrome navigasi, toolbar, tombol, dan tampilan layar */
+  /* Sembunyikan semua elemen chrome navigasi, toolbar, tombol, modal dialog, dan tampilan layar */
   header,
   nav,
   aside,
@@ -51,6 +51,7 @@ body {
   .MuiDrawer-root,
   .MuiAppBar-root,
   .MuiBackdrop-root,
+  .MuiDialog-root,
   .qc-screen-only {
     display: none !important;
   }
