@@ -83,10 +83,12 @@ export function ScanCanvasOverlay({
       return
     }
 
-    const originalDims = imageDimensions || {
-      width: imgRef.current?.naturalWidth || 1280,
-      height: imgRef.current?.naturalHeight || 720,
-    }
+    const naturalW = imgRef.current?.naturalWidth
+    const naturalH = imgRef.current?.naturalHeight
+    const originalDims =
+      naturalW && naturalH
+        ? { width: naturalW, height: naturalH }
+        : imageDimensions || { width: 1280, height: 720 }
 
     const displayDims = {
       width: canvas.width,
@@ -111,10 +113,12 @@ export function ScanCanvasOverlay({
     const clickX = e.clientX - rect.left
     const clickY = e.clientY - rect.top
 
-    const originalDims = imageDimensions || {
-      width: imgRef.current?.naturalWidth || 1280,
-      height: imgRef.current?.naturalHeight || 720,
-    }
+    const naturalW = imgRef.current?.naturalWidth
+    const naturalH = imgRef.current?.naturalHeight
+    const originalDims =
+      naturalW && naturalH
+        ? { width: naturalW, height: naturalH }
+        : imageDimensions || { width: 1280, height: 720 }
 
     const displayDims = {
       width: canvasRef.current.width,
@@ -212,38 +216,50 @@ export function ScanCanvasOverlay({
           cursor: showAnnotations && detections.length > 0 ? 'pointer' : 'default',
           display: 'flex',
           justifyContent: 'center',
+          alignItems: 'center',
           position: 'relative',
           width: '100%',
+          overflow: 'hidden',
+          p: { xs: 0, sm: 1 },
         }}
       >
-        <img
-          alt={`Keranjang Panen ${commodity}`}
-          onLoad={updateCanvasSize}
-          ref={imgRef}
-          src={imageUrl}
-          style={{
-            display: 'block',
-            maxHeight: '650px',
+        <Box
+          sx={{
+            display: 'inline-block',
+            position: 'relative',
+            lineHeight: 0,
             maxWidth: '100%',
-            objectFit: 'contain',
-            width: '100%',
           }}
-        />
+        >
+          <img
+            alt={`Keranjang Panen ${commodity}`}
+            onLoad={updateCanvasSize}
+            ref={imgRef}
+            src={imageUrl}
+            style={{
+              display: 'block',
+              maxHeight: '650px',
+              maxWidth: '100%',
+              width: 'auto',
+              height: 'auto',
+            }}
+          />
 
-        <canvas
-          height={canvasDimensions.height}
-          onClick={handleCanvasClick}
-          ref={canvasRef}
-          style={{
-            height: '100%',
-            left: 0,
-            pointerEvents: 'auto',
-            position: 'absolute',
-            top: 0,
-            width: '100%',
-          }}
-          width={canvasDimensions.width}
-        />
+          <canvas
+            height={canvasDimensions.height}
+            onClick={handleCanvasClick}
+            ref={canvasRef}
+            style={{
+              height: '100%',
+              left: 0,
+              pointerEvents: 'auto',
+              position: 'absolute',
+              top: 0,
+              width: '100%',
+            }}
+            width={canvasDimensions.width}
+          />
+        </Box>
       </Box>
 
       {/* Petunjuk Interaksi Pengguna */}
