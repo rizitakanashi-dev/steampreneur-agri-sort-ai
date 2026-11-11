@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#047857"/>
+      <stop offset="100%" stop-color="#064e3b"/>
+    </linearGradient>
+    <linearGradient id="leafGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#34d399"/>
+      <stop offset="100%" stop-color="#10b981"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background Rounded Rect -->
+  <rect width="512" height="512" rx="128" fill="url(#bgGrad)"/>
+
+  <!-- Scanning Reticle Corners -->
+  <path d="M 96 176 L 96 112 A 16 16 0 0 1 112 96 L 176 96" fill="none" stroke="#a7f3d0" stroke-width="24" stroke-linecap="round"/>
+  <path d="M 336 96 L 400 96 A 16 16 0 0 1 416 112 L 416 176" fill="none" stroke="#a7f3d0" stroke-width="24" stroke-linecap="round"/>
+  <path d="M 416 336 L 416 400 A 16 16 0 0 1 400 416 L 336 416" fill="none" stroke="#a7f3d0" stroke-width="24" stroke-linecap="round"/>
+  <path d="M 176 416 L 112 416 A 16 16 0 0 1 96 400 L 96 336" fill="none" stroke="#a7f3d0" stroke-width="24" stroke-linecap="round"/>
+
+  <!-- Horizontal Scanning Beam Line -->
+  <line x1="96" y1="256" x2="416" y2="256" stroke="#fbbf24" stroke-width="8" stroke-dasharray="16 12" stroke-linecap="round" opacity="0.85"/>
+
+  <!-- Sprout / Horti Plant Icon -->
+  <path d="M 256 384 C 256 312 256 248 256 200" fill="none" stroke="#f0fdf4" stroke-width="22" stroke-linecap="round"/>
+  <!-- Left Leaf -->
+  <path d="M 256 280 C 200 280 152 248 160 192 C 216 184 256 232 256 280 Z" fill="url(#leafGrad)"/>
+  <!-- Right Leaf -->
+  <path d="M 256 230 C 312 230 360 198 352 142 C 296 134 256 182 256 230 Z" fill="#6ee7b7"/>
+
+  <!-- AI Sparkle Badge -->
+  <path d="M 376 344 L 388 368 L 412 380 L 388 392 L 376 416 L 364 392 L 340 380 L 364 368 Z" fill="#f59e0b"/>
+</svg>
+

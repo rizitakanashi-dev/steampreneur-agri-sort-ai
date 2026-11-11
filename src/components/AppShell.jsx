@@ -36,7 +36,7 @@ const navigationItems = [
   { id: 'pricing', label: 'Harga Pasar', icon: PriceCheckRoundedIcon },
 ]
 
-export function AppShell({ activePage, onNavigate, children }) {
+export function AppShell({ activePage, onNavigate, onDataChanged, children }) {
   const theme = useTheme()
   const isDesktop = useMediaQuery(theme.breakpoints.up('md'))
   const [mobileOpen, setMobileOpen] = useState(false)
@@ -204,7 +204,11 @@ export function AppShell({ activePage, onNavigate, children }) {
       </Box>
 
       {/* DIALOG PENGATURAN & INFO SISTEM STEAMPRENEUR */}
-      <SettingsDialog open={settingsOpen} onClose={() => setSettingsOpen(false)} />
+      <SettingsDialog
+        open={settingsOpen}
+        onClose={() => setSettingsOpen(false)}
+        onDataChanged={onDataChanged}
+      />
     </Box>
   )
 }

@@ -103,11 +103,20 @@ export function HarvestForm({ onSave }) {
         setScanResult(response.data)
         const inf = response.data.inference_result
         if (inf) {
-          if (inf.condition_ratios?.fresh_ratio_percent !== undefined) {
+          const ratios = inf.condition_ratios || {}
+          if (ratios.fresh_ratio_percent !== undefined) {
             setForm((prev) => ({
               ...prev,
-              kesegaranPersen: String(Math.round(inf.condition_ratios.fresh_ratio_percent)),
-              cacatPersen: String(Math.round(inf.condition_ratios.rotten_ratio_percent)),
+              kesegaranPersen: String(Math.round(ratios.fresh_ratio_percent)),
+              cacatPersen: String(Math.round(ratios.rotten_ratio_percent || 0)),
+            }))
+          } else if (ratios.grade_a_percent !== undefined || ratios.extra_class_percent !== undefined) {
+            const gradeAPct = ratios.grade_a_percent ?? ((ratios.extra_class_percent || 0) + (ratios.class_1_percent || 0))
+            const rejectPct = ratios.reject_percent || 0
+            setForm((prev) => ({
+              ...prev,
+              kesegaranPersen: String(Math.round(gradeAPct)),
+              cacatPersen: String(Math.round(rejectPct)),
             }))
           }
           setScanNotice(
@@ -326,7 +335,7 @@ export function HarvestForm({ onSave }) {
                         {isScanning ? 'Memindai Citra dengan AI...' : 'Pindai Mutu Otomatis dengan AI'}
                       </Button>
                       <Typography variant="caption" color="text.secondary">
-                        Model: {form.komoditas?.toLowerCase().includes('terung') ? 'Terung (4-Kelas)' : 'Tomat (2-Kelas)'}
+                        Model: {form.komoditas?.toLowerCase().includes('terung') ? 'Terung (3-Grade / 4-Kelas)' : 'Tomat (2-Kelas)'}
                       </Typography>
                     </Stack>
                   </Box>

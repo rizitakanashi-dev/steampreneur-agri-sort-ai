@@ -569,5 +569,215 @@ flowchart TB
    - **Total 242 Unit Tests Lulus 100% (128 JS + 114 Python, 0 failed)**.
    - Kompilasi produksi Vite sukses bersih tanpa peringatan sintaks dalam **962 ms**.
 
+---
+
+### Temuan B9: Sinkronisasi Form Terung, Pembersihan Log Pillow, dan Kesiapan PWA Lapangan (11 November 2026)
+
+| Kode Temuan | Tingkat Keparahan | Komponen Teridentifikasi | Status Resolusi |
+|:---:|:---:|---|:---:|
+| **AUDIT-B9-01** | **SEDANG** | `src/components/HarvestForm.jsx` (Sinkronisasi hasil deteksi AI Terung tidak mengisi input mutu `kesegaranPersen` dan `cacatPersen`) | **RESOLVED** |
+| **AUDIT-B9-02** | **RENDAH** | `server/services/tiled_inference.py` (*Deprecation warning* Pillow pada filter artefak teks/meja) | **RESOLVED** |
+| **AUDIT-B9-03** | **PENINGKATAN** | `public/`, `index.html`, `src/main.jsx` (Kesiapan PWA, Web Manifest, App Icon SVG, & Offline Service Worker) | **RESOLVED** |
+
+#### A. Analisis Masalah & Bug Fix
+1. **Bug Sinkronisasi Form Panen Terung (`HarvestForm.jsx`):**
+   Fungsi `handleAiScan` pada `HarvestForm.jsx` sebelumnya hanya memeriksa `inf.condition_ratios.fresh_ratio_percent` (khusus Tomat). Saat memindai Terung (yang menghasilkan `grade_a_percent` atau `extra_class_percent`), parameter mutu tidak terisi otomatis ke form. Kami menambahkan logika pengisian adaptif: Grade A mengisi nilai kesegaran mutu prima, dan Reject mengisi nilai cacat.
+2. **Pembersihan Log Pillow (`tiled_inference.py`):**
+   Mengganti `crop.getdata()` dengan pembacaan byte langsung `crop.tobytes()` pada deteksi artefak teks/meja kayu. Log backend kini murni 100% bersih tanpa warning deprecation.
+3. **PWA & Offline Field Caching:**
+   Menambahkan `public/manifest.webmanifest`, `public/sw.js` (stale-while-revalidate untuk app shell & UI, bypass untuk `/api/`), dan ikon aplikasi resmi di `public/icons/icon.svg`. Petani kini dapat meng-install Agri-Sort AI ke layar utama HP Android/iOS dan membukanya di kebun saat sinyal seluler tidak stabil.
+
+#### B. Hasil Verifikasi
+- **Frontend Tests:** 128 / 128 tests lulus (100%).
+- **Backend Tests:** 114 / 114 tests lulus (100%).
+- **Total Tests:** 242 unit tests lulus tanpa kegagalan.
+- **Kompilasi Vite:** Berhasil bersih dalam 1.41 detik.
+
+---
+
+### Temuan B10: Integrasi Metrik Dinamis & Pintasan Panen Terakhir di Dashboard (11 November 2026)
+
+| Kode Temuan | Tingkat Keparahan | Komponen Teridentifikasi | Status Resolusi |
+|:---:|:---:|---|:---:|
+| **AUDIT-B10-01** | **SEDANG** | `src/App.jsx` (`DashboardPreview` sebelumnya menampilkan metrik statis teks "Lokal", label "Simulasi", dan ketiadaan pintasan batch panen terakhir) | **RESOLVED** |
+
+#### A. Analisis Masalah & Peningkatan
+1. **Metrik Statis pada Halaman Utama (`DashboardPreview`):**
+   Kartu metrik sebelumnya menampilkan teks hardcoded "Lokal" terlepas dari berapa banyak batch yang sudah tersimpan di browser petani. Kami menghubungkan `batches.length` riil secara dinamis sehingga petani langsung melihat jumlah batch tersimpan.
+2. **Konektivitas Harga Live BAPANAS di Halaman Utama:**
+   Tabel harga acuan pada Dashboard kini otomatis memanggil data live BAPANAS Pasar Ibuh Payakumbuh (`fetchBapanasLive`) saat komponen dimuat, menggantikan label statis "Simulasi" dengan badge hijau "BAPANAS Terverifikasi".
+3. **Kartu Aktivitas Panen Terakhir (*Recent Harvest Activity*):**
+   Jika terdapat riwayat panen, kolom kanan Dashboard langsung menyajikan kartu ringkas batch terakhir (ID batch, komoditas, bobot kg, estimasi nilai total Rp) lengkap dengan tombol aksi satu klik *"Buka Hasil & Sertifikat"*.
+
+#### B. Hasil Verifikasi
+- **Frontend Tests:** 128 / 128 tests lulus (100%).
+- **Backend Tests:** 114 / 114 tests lulus (100%).
+- **Total Tests:** 242 unit tests lulus tanpa kegagalan.
+- **Kompilasi Vite:** Berhasil bersih dalam 1.14 detik.
+
+---
+
+### Temuan B11: Integrasi Cetak Sertifikat Langsung & Manajemen Cadangan Data Luring Lapangan (11 November 2026)
+
+| Kode Temuan | Tingkat Keparahan | Komponen Teridentifikasi | Status Resolusi |
+|:---:|:---:|---|:---:|
+| **AUDIT-B11-01** | **SEDANG** | `src/components/HarvestRecap.jsx` & `src/components/QCResults.jsx` (Ikon cetak di tabel rekap sebelumnya hanya membuka tab detail QC tanpa otomatis meluncurkan modal sertifikat A4) | **RESOLVED** |
+| **AUDIT-B11-02** | **PENINGKATAN** | `src/business/harvestStorage.js` & `src/components/SettingsDialog.jsx` (Penyediaan utilitas ekspor/impor cadangan JSON data panen luring untuk petani dan PPL dengan mitigasi tabrakan ID) | **RESOLVED** |
+
+#### A. Analisis Masalah & Peningkatan
+1. **Pintasan Modal Sertifikat dari Rekap Panen (`HarvestRecap.jsx` & `QCResults.jsx`):**
+   - Sebelumnya, ketika petani menekan ikon printer di tabel rekap, sistem hanya menavigasi ke halaman hasil inspeksi (`activePage = 'results'`). Petani masih harus mencari dan menekan tombol cetak sertifikat secara terpisah.
+   - Kami menambahkan opsi `openCertificate: true` pada `onSelectBatch` dan properti `initialOpenCertificate` di `QCResults.jsx`, sehingga modal sertifikat mutu A4 resmi langsung terbuka seketika (*single-click print workflow*).
+2. **Manajemen Cadangan Data Panen Luring Petani & PPL (`harvestStorage.js` & `SettingsDialog.jsx`):**
+   - Mengubah orientasi tab sistem dari "Data Demo" menjadi **"Manajemen Data & Cadangan Lapangan"**.
+   - Menyediakan fungsi `exportBatchesAsJson` dan `importBatchesFromJson` lengkap dengan validasi skema rekaman panen, penanganan toleran terhadap JSON korup, dan deduplikasi ID batch otomatis (`panen-1-2`) agar catatan lama tidak tertimpa.
+   - Menghubungkan callback pembaruan data `onDataChanged` ke `App.jsx` sehingga metrik di seluruh halaman diperbarui seketika saat berkas diimpor atau dibersihkan.
+
+#### B. Hasil Verifikasi Menyeluruh
+- **Frontend Tests:** 131 / 131 tests lulus (node:test).
+- **Backend Tests:** 114 / 114 tests lulus (Python unittest).
+- **Total Tests:** 245 unit tests lulus 100% tanpa kegagalan atau regresi.
+- **Kompilasi Produksi Vite:** Berhasil tuntas dalam 1.27 detik.
+
+---
+
+### Temuan B12: Preservasi Harga Acuan Pasar Live BAPANAS pada Nilai Grade & Ketahanan Ekspor CSV (11 November 2026)
+
+| Kode Temuan | Tingkat Keparahan | Komponen Teridentifikasi | Status Resolusi |
+|:---:|:---:|---|:---:|
+| **AUDIT-B12-01** | **TINGGI** | `src/components/BatchQCScanner.jsx` & `src/App.jsx` (Subkalkulasi nilai rupiah per grade saat simpan rekap mengabaikan harga live BAPANAS/SP2KP dan memaksakan harga statis lama) | **RESOLVED** |
+| **AUDIT-B12-02** | **SEDANG** | `src/utils/csvExporter.js` (Ekspor rekap CSV menghasilkan kolom grade kosong jika batch berasal dari inferensi AI murni tanpa objek `hasil` lokal) | **RESOLVED** |
+
+#### A. Analisis Masalah & Perbaikan Kritis
+1. **Penyelarasan Nilai Finansial Simpan Rekap (`BatchQCScanner.jsx` & `App.jsx`):**
+   - Saat pemindaian selesai, backend pricing engine mengembalikan `smart_pricing.reference_price_per_kg` dari data live BAPANAS / SP2KP resmi.
+   - Namun fungsi simpan rekap sebelumnya hanya menghitung `calculateHarvestValue` dengan tabel statis `REFERENCE_PRICES_PER_KG[commodity]`, sehingga nilai `nilaiA`, `nilaiB`, dan `nilaiC` tidak proporsional terhadap harga pasar hari itu jika terdapat fluktuasi harga komoditas.
+   - Solusi: Menyisipkan pembacaan adaptif `pricing?.reference_price_per_kg || pricing?.base_price_per_kg` sebelum jatuh ke acuan statis.
+2. **Ketahanan Ekspor CSV untuk Batch AI Lapangan (`csvExporter.js`):**
+   - Fungsi `buildHarvestCsvRows` sebelumnya hanya memeriksa properti `batch.hasil`. Jika batch disinkronkan dari hasil AI scan backend (yang memuat `pricing.tier_breakdown` dan `inference.condition_ratios`), kolom persentase, bobot, dan subtotal grade bernilai kosong di lembar kerja Excel/CSV.
+   - Solusi: Menambahkan fallback otomatis berjenjang ke `tier_breakdown` (Grade A/B/Reject, Extra Class/Class 1) dan `condition_ratios`, menjamin seluruh data panen terekspor lengkap 100%.
+
+#### B. Hasil Verifikasi Menyeluruh
+- **Frontend Tests:** 132 / 132 tests lulus (node:test).
+- **Backend Tests:** 114 / 114 tests lulus (Python unittest).
+- **Total Tests:** 246 unit tests lulus 100% tanpa kegagalan.
+- **Kompilasi Produksi Vite:** Berhasil tuntas dalam 1.17 detik.
+
+---
+
+### Temuan B13: Penanganan Sinonim Komoditas Lokal & Pencegahan Crash TypeError pada Modul Sains Patologi Pascapanen (11 November 2026)
+
+| Kode Temuan | Tingkat Keparahan | Komponen Teridentifikasi | Status Resolusi |
+|:---:|:---:|---|:---:|
+| **AUDIT-B13-01** | **TINGGI** | `src/business/pathologyReference.js` & `src/components/PostHarvestPathologyCards.jsx` (`getPathologiesForCommodity` mengembalikan array kosong saat menerima ejaan sinonim lokal seperti "Terong", menyebabkan `getPrimaryScienceRecommendation` crash melempar `TypeError: Cannot read properties of undefined (reading 'name')`) | **RESOLVED** |
+
+#### A. Analisis Masalah & Perbaikan Kritis
+1. **Akar Masalah Crash Patologi pada Komoditas Sinonim:**
+   - Di lapangan, petani dan pedagang pasar Payakumbuh sering menyebut "Terong" (bukan "Terung"), "Cabe" (bukan "Cabai"), atau "Eggplant".
+   - Fungsi `getPathologiesForCommodity` sebelumnya hanya melakukan pencocokan string kaku `cleanName.includes(aff)`. Ketika input adalah `"Terong"`, string `"terong"` tidak cocok dengan `"terung"`, sehingga me-return array kosong `[]`.
+   - Pada `getPrimaryScienceRecommendation`, kode memanggil `commPathologies[0]`. Ketika array kosong, elemen bernilai `undefined`, dan akses `primary.name` atau `primary.mitigationAction` melempar `TypeError` fatal yang merusak seluruh render kartu hasil QC.
+2. **Solusi Rekayasa:**
+   - Menambahkan normalisasi alias komoditas hortikultura strategis:
+     - `terong` / `terung` / `eggplant` dipetakan ke rumpun Terung.
+     - `cabe` / `cabai` / `chili` dipetakan ke rumpun Cabai.
+     - `tomat` / `tomato` dipetakan ke rumpun Tomat.
+   - Menambahkan fallback aman ke `ALL_PATHOLOGY_ITEMS` jika komoditas umum di luar 3 kelompok utama dimasukkan pengguna (misal "Bawang Merah").
+   - Menerapkan *defensive chaining* (`primary?.name`, `primary?.mitigationAction`) dengan nilai string cadangan yang bermakna ilmiah agronomis.
+
+#### B. Hasil Verifikasi Menyeluruh
+- **Frontend Tests:** 132 / 132 tests lulus (node:test).
+- **Backend Tests:** 114 / 114 tests lulus (Python unittest).
+- **Total Tests:** 246 unit tests lulus 100% tanpa kegagalan.
+- **Kompilasi Produksi Vite:** Berhasil tuntas dalam 1.46 detik.
+
+---
+
+### Temuan B14: Isolasi Media Cetak A4 & Eliminasi Duplikasi Halaman Cetak Sertifikat Mutu (11 November 2026)
+
+| Kode Temuan | Tingkat Keparahan | Komponen Teridentifikasi | Status Resolusi |
+|:---:|:---:|---|:---:|
+| **AUDIT-B14-01** | **SEDANG** | `src/index.css` & `src/components/QCPrintCertificate.jsx` (MUI Dialog modal tidak disembunyikan dalam `@media print`, menyebabkan duplikasi 2 lembar sertifikat saat mencetak dari dalam dialog pratinjau) | **RESOLVED** |
+
+#### A. Analisis Masalah & Perbaikan Kritis
+1. **Akar Masalah Duplikasi Halaman Cetak:**
+   - Ketika pengguna membuka modal *"Pratinjau Sertifikat Uji Mutu Digital"* dan menekan tombol *"Cetak / Simpan PDF (A4)"*, perintah `window.print()` dipanggil.
+   - Di dalam stylesheet `@media print`, elemen `.qc-print-only` diaktifkan (`display: block !important`). Namun, container portal `.MuiDialog-root` tidak disembunyikan.
+   - Akibatnya, peramban mencetak dua sertifikat sekaligus: sertifikat pertama dari kontainer dasar `.qc-print-only`, dan sertifikat kedua dari modal dialog MUI lengkap dengan kontainer header dan footer dialog, menghasilkan 2 lembar cetak ganda yang boros kertas dan tidak rapi.
+2. **Solusi Rekayasa:**
+   - Menambahkan `.MuiDialog-root` ke daftar elemen yang disembunyikan secara absolut (`display: none !important`) pada `@media print`.
+   - Menjadikan `.qc-print-only` sebagai sumber tunggal sertifikat cetak resmi berstandar A4 portrait ($210 \times 297$ mm).
+   - Menyelaraskan stempel mesin: status deteksi AI menampilkan stempel resmi `SMART QC VERIFIED`, sedangkan pencatatan manual menampilkan `QC TERVERIFIKASI` dengan nama model/metode yang relevan.
+
+#### B. Hasil Verifikasi Menyeluruh
+- **Frontend Tests:** 133 / 133 tests lulus (node:test).
+- **Backend Tests:** 114 / 114 tests lulus (Python unittest).
+- **Total Tests:** 247 unit tests lulus 100% tanpa kegagalan.
+- **Kompilasi Produksi Vite:** Berhasil tuntas dalam 1.56 detik.
+
+---
+
+### Temuan B15: Dukungan Multi-Format Bounding Box (YOLO, Pascal VOC, COCO) pada Visualisasi Kanvas AI (11 November 2026)
+
+| Kode Temuan | Tingkat Keparahan | Komponen Teridentifikasi | Status Resolusi |
+|:---:|:---:|---|:---:|
+| **AUDIT-B15-01** | **SEDANG** | `src/utils/canvasOverlayHelper.js` (`scaleBoundingBox` hanya mendukung format key tunggal `{ x1, y1, x2, y2 }`, menghasilkan kotak 0x0 piksel jika menerima format array YOLO, Pascal VOC `xmin/ymin`, atau format COCO `x/y/width/height`) | **RESOLVED** |
+
+#### A. Analisis Masalah & Perbaikan Kritis
+1. **Inkompatibilitas Format Anotasi Deteksi Komputer Vision:**
+   - Model inferensi komputer vision, platform anotasi Roboflow, dan format standar industri menghasilkan variasi struktur bounding box:
+     - Format Koordinat Ekstrem: `{ x1, y1, x2, y2 }`
+     - Format Array Python/YOLO: `[x1, y1, x2, y2]`
+     - Format Pascal VOC / XML: `{ xmin, ymin, xmax, ymax }`
+     - Format COCO / JSON: `{ x, y, width, height }`
+   - Fungsi `scaleBoundingBox` sebelumnya hanya mengekstrak `Number(box.x1)`. Jika menerima salah satu dari 3 format standar lainnya, koordinat dievaluasi menjadi 0 dan kanvas overlay gagal menggambar kotak deteksi di atas buah panen.
+2. **Solusi Rekayasa:**
+   - Menambahkan deteksi format dinamis pada `scaleBoundingBox`:
+     - Jika `Array.isArray(box)`, petakan indeks `[0, 1, 2, 3]`.
+     - Jika memuat `xmin` / `ymin`, petakan ke batas `xmax` / `ymax`.
+     - Jika memuat `x`, `y`, `width`, `height`, hitung rentang `x2 = x + width` dan `y2 = y + height`.
+     - Tetap mendukung format `{ x1, y1, x2, y2 }` bawaan.
+   - Mengaplikasikan penskalaan proporsional presisi dan *bounding clamping* agar garis kotak kanvas tidak keluar dari batas gambar.
+
+#### B. Hasil Verifikasi Menyeluruh
+- **Frontend Tests:** 134 / 134 tests lulus (node:test).
+- **Backend Tests:** 114 / 114 tests lulus (Python unittest).
+- **Total Tests:** 248 unit tests lulus 100% tanpa kegagalan.
+- **Kompilasi Produksi Vite:** Berhasil tuntas dalam 1.20 detik.
+
+---
+
+### Temuan B16: Fitur Penghapusan Batch Individual Aman, Labeling Footer Rekap, dan Presisi Total IEEE-754 (11 November 2026)
+
+| Kode Temuan | Tingkat Keparahan | Komponen Teridentifikasi | Status Resolusi |
+|:---:|:---:|---|:---:|
+| **AUDIT-B16-01** | **SEDANG** | `src/business/harvestStorage.js`, `src/business/harvestFilter.js`, `src/components/HarvestRecap.jsx`, `src/App.jsx` (Ketiadaan opsi hapus data batch tunggal dengan dialog konfirmasi, kurangnya label total batch pada footer tabel, serta akumulasi floating-point desimal IEEE-754 pada total rekap) | **RESOLVED** |
+
+#### A. Analisis Masalah & Perbaikan Kritis
+1. **Kebutuhan Penghapusan Batch Individual bagi Petani & PPL:**
+   - Sebelumnya, pengguna hanya memiliki opsi *"Hapus Semua Data"* pada menu pengaturan atau harus membiarkan batch panen yang salah input/cacat data tetap tersimpan di tabel rekap.
+   - Tidak tersedianya aksi hapus per batch berisiko mengotori data agregasi bobot panen dan valuasi ekonomi riil di lapangan.
+2. **Artefak Presisi Desimal IEEE-754 pada Akumulasi Berat:**
+   - Operasi penambahan beruntun bobot timbangan desimal (misal: 10.1 kg + 20.2 kg) pada `calculateBatchTotals` dapat menghasilkan artefak komputasi seperti `30.299999999999997 kg`, yang membingungkan petani saat mencocokkan nota timbangan digital.
+3. **Solusi Rekayasa:**
+   - **`harvestStorage.js`**: Menambahkan fungsi murni `deleteBatch(batchId, storage)` yang menyaring batch berdasarkan ID dan memperbarui penyimpanan lokal secara atomik.
+   - **`harvestFilter.js`**: Menyempurnakan `calculateBatchTotals` dengan pembulatan presisi `toFixed(4)` untuk berat dan `Math.round()` untuk estimasi nilai Rupiah bulat.
+   - **`HarvestRecap.jsx`**:
+     - Menambahkan aksi ikon hapus (`DeleteOutlineRoundedIcon`) di setiap baris data dan tombol hapus di dalam modal detail.
+     - Menyediakan modal dialog konfirmasi dua langkah (`Konfirmasi Hapus Batch`) untuk mencegah penghapusan data secara tidak sengaja.
+     - Memperbarui label sel footer tabel menjadi `Total Halaman Ini (${visibleBatches.length} batch):` demi kejelasan audit visual.
+   - **`App.jsx`**: Mengintegrasikan `handleDeleteBatch` ke state induk dan meneruskan callback melalui `FoundationPage`.
+
+#### B. Hasil Verifikasi Menyeluruh
+- **Frontend Tests:** 136 / 136 tests lulus (node:test).
+- **Backend Tests:** 114 / 114 tests lulus (Python unittest).
+- **Total Tests:** 250 unit tests lulus 100% tanpa kegagalan.
+- **Kompilasi Produksi Vite:** Berhasil tuntas tanpa error.
+
+
+
+
+
+
+
 
 

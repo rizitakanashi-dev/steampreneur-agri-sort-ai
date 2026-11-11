@@ -21,11 +21,15 @@ import AutoAwesomeRoundedIcon from '@mui/icons-material/AutoAwesomeRounded'
 import CameraAltRoundedIcon from '@mui/icons-material/CameraAltRounded'
 import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded'
 import GrassRoundedIcon from '@mui/icons-material/GrassRounded'
+import Inventory2RoundedIcon from '@mui/icons-material/Inventory2Rounded'
 import LocalShippingRoundedIcon from '@mui/icons-material/LocalShippingRounded'
 import TrendingUpRoundedIcon from '@mui/icons-material/TrendingUpRounded'
+import VerifiedRoundedIcon from '@mui/icons-material/VerifiedRounded'
+import VisibilityRoundedIcon from '@mui/icons-material/VisibilityRounded'
 import { calculateHarvest, calculateHarvestValue } from './business/harvestCalculation.js'
-import { readBatches, saveBatch } from './business/harvestStorage.js'
+import { deleteBatch, readBatches, saveBatch } from './business/harvestStorage.js'
 import { COMMODITY_OPTIONS, PRICE_REFERENCE_SOURCE, REFERENCE_PRICES_PER_KG } from './business/priceReference.js'
+import { fetchBapanasLive } from './services/scanService.js'
 import { AppShell } from './components/AppShell.jsx'
 import { BatchQCScanner } from './components/BatchQCScanner.jsx'
 import { HarvestForm } from './components/HarvestForm.jsx'
@@ -73,12 +77,56 @@ function MetricCard({ detail, icon: Icon, label, value, color }) {
   )
 }
 
-function DashboardPreview({ onNavigate }) {
+function DashboardPreview({ onNavigate, batches = [], onSelectBatch }) {
+  const [bapanasData, setBapanasData] = useState(null)
+
+  useEffect(() => {
+    let isMounted = true
+    fetchBapanasLive(4000)
+      .then((data) => {
+        if (isMounted && data?.commodities) {
+          setBapanasData(data)
+        }
+      })
+      .catch(() => {
+        // Fallback anggun ke harga acuan lokal tanpa melempar exception
+      })
+    return () => {
+      isMounted = false
+    }
+  }, [])
+
+  const dynamicMetrics = [
+    {
+      label: 'Batch tersimpan',
+      value: `${batches.length} Batch`,
+      detail: batches.length > 0 ? 'Tersimpan di browser ini' : 'Belum ada batch dicatat',
+      icon: LocalShippingRoundedIcon,
+      color: '#036e45',
+    },
+    {
+      label: 'Komoditas terdaftar',
+      value: `${COMMODITY_OPTIONS.length} Komoditas`,
+      detail: 'Terung, Tomat, Cabai',
+      icon: AutoAwesomeRoundedIcon,
+      color: '#2f7299',
+    },
+    {
+      label: 'Sumber acuan harga',
+      value: bapanasData ? 'BAPANAS Live' : 'BAPANAS & SP2KP',
+      detail: bapanasData?.market_center || 'Panel Pangan & Kemendag RI',
+      icon: TrendingUpRoundedIcon,
+      color: '#036e45',
+    },
+  ]
+
+  const lastBatch = batches.length > 0 ? batches[batches.length - 1] : null
+
   return (
     <>
       <Card sx={{ background: 'linear-gradient(135deg, #036e45 0%, #0b8a5a 100%)', color: 'common.white', mb: 2.5, overflow: 'hidden', position: 'relative' }}>
         <CardContent sx={{ p: { xs: 2.5, sm: 3.5 }, position: 'relative', zIndex: 1 }}>
-      <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" spacing={2}>
+          <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" spacing={2}>
             <Box sx={{ maxWidth: { xs: '100%', sm: 560 } }}>
               <Chip icon={<CheckCircleRoundedIcon />} label="Sistem siap digunakan" size="small" sx={{ bgcolor: 'rgba(255,255,255,.16)', color: 'common.white', mb: 2, '& .MuiChip-icon': { color: '#b8e7d5' } }} />
               <Typography sx={{ fontSize: { xs: 26, sm: 34 }, fontWeight: 800, letterSpacing: '-0.035em', lineHeight: 1.1 }} variant="h4">
@@ -102,24 +150,44 @@ function DashboardPreview({ onNavigate }) {
       </Card>
 
       <Grid container spacing={2} sx={{ mb: 2.5 }}>
-        {metrics.map((metric) => <Grid key={metric.label} size={{ xs: 12, sm: 4 }}><MetricCard {...metric} /></Grid>)}
+        {dynamicMetrics.map((metric) => <Grid key={metric.label} size={{ xs: 12, sm: 4 }}><MetricCard {...metric} /></Grid>)}
       </Grid>
 
       <Grid container spacing={2}>
         <Grid size={{ xs: 12, md: 7 }}>
           <Card sx={{ height: '100%' }}>
             <CardContent sx={{ p: { xs: 2, sm: 2.5 } }}>
-              <Stack direction="row" justifyContent="space-between" sx={{ mb: 2 }}>
-                <Box><Typography variant="h6">Harga acuan pasar</Typography><Typography color="text.secondary" variant="caption">Sumber: simulasi, diperbarui {PRICE_REFERENCE_SOURCE.updatedAt}</Typography></Box>
-                <Chip color="warning" label="Simulasi" size="small" variant="outlined" />
+              <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
+                <Box>
+                  <Typography variant="h6">Harga acuan pasar</Typography>
+                  <Typography color="text.secondary" variant="caption">
+                    {bapanasData ? `Panel BAPANAS • ${bapanasData.market_center}` : `Acuan Pasar • Diperbarui ${PRICE_REFERENCE_SOURCE.updatedAt}`}
+                  </Typography>
+                </Box>
+                {bapanasData ? (
+                  <Chip color="success" icon={<CheckCircleRoundedIcon />} label="BAPANAS Terverifikasi" size="small" />
+                ) : (
+                  <Chip color="default" label="Acuan BAPANAS Payakumbuh" size="small" variant="outlined" />
+                )}
               </Stack>
               <Stack spacing={1}>
-                {COMMODITY_OPTIONS.map((commodity) => (
-                  <Stack alignItems="center" direction="row" justifyContent="space-between" key={commodity} sx={{ borderBottom: '1px solid', borderColor: 'divider', py: 1.25 }}>
-                    <Stack direction="row" spacing={1.25} sx={{ alignItems: 'center' }}><Box sx={{ bgcolor: 'primary.light', borderRadius: '50%', height: 8, width: 8 }} /><Typography fontWeight={600} variant="body2">{commodity}</Typography></Stack>
-                    <Stack alignItems="flex-end"><Typography fontWeight={700} variant="body2">{formatRupiah(REFERENCE_PRICES_PER_KG[commodity])}</Typography><Typography color="text.secondary" variant="caption">per kg</Typography></Stack>
-                  </Stack>
-                ))}
+                {COMMODITY_OPTIONS.map((commodity) => {
+                  const bapanasKey = commodity.toLowerCase()
+                  const livePrice = bapanasData?.commodities?.[bapanasKey]?.price_per_kg
+                  const priceToShow = livePrice || REFERENCE_PRICES_PER_KG[commodity]
+                  return (
+                    <Stack alignItems="center" direction="row" justifyContent="space-between" key={commodity} sx={{ borderBottom: '1px solid', borderColor: 'divider', py: 1.25 }}>
+                      <Stack direction="row" spacing={1.25} sx={{ alignItems: 'center' }}>
+                        <Box sx={{ bgcolor: 'primary.light', borderRadius: '50%', height: 8, width: 8 }} />
+                        <Typography fontWeight={600} variant="body2">{commodity}</Typography>
+                      </Stack>
+                      <Stack alignItems="flex-end">
+                        <Typography fontWeight={700} variant="body2">{formatRupiah(priceToShow)}</Typography>
+                        <Typography color="text.secondary" variant="caption">per kg</Typography>
+                      </Stack>
+                    </Stack>
+                  )
+                })}
               </Stack>
             </CardContent>
           </Card>
@@ -127,9 +195,61 @@ function DashboardPreview({ onNavigate }) {
         <Grid size={{ xs: 12, md: 5 }}>
           <Card sx={{ height: '100%' }}>
             <CardContent sx={{ p: { xs: 2, sm: 2.5 } }}>
-              <Stack direction="row" spacing={1.25} sx={{ alignItems: 'center', mb: 1 }}><CameraAltRoundedIcon color="primary" fontSize="small" /><Typography variant="h6">Alur berikutnya</Typography></Stack>
-              <Typography color="text.secondary" variant="body2">Masukkan data batch untuk melihat distribusi Grade A, B, dan Reject.</Typography>
-              <Button endIcon={<ArrowForwardRoundedIcon />} fullWidth onClick={() => onNavigate('scanner')} sx={{ mt: 2 }} variant="outlined">Buka QC Scanner</Button>
+              {lastBatch ? (
+                <Stack spacing={1.5}>
+                  <Stack direction="row" justifyContent="space-between" alignItems="center">
+                    <Typography variant="h6">Batch Panen Terakhir</Typography>
+                    <Chip color="primary" label={lastBatch.id} size="small" variant="outlined" />
+                  </Stack>
+                  <Box sx={{ p: 2, bgcolor: '#f8fafc', borderRadius: 2, border: '1px solid', borderColor: 'divider' }}>
+                    <Typography variant="subtitle1" fontWeight={700} color="primary.dark">
+                      {lastBatch.komoditas}
+                    </Typography>
+                    <Stack direction="row" justifyContent="space-between" sx={{ mt: 1 }}>
+                      <Typography variant="body2" color="text.secondary">Berat Total:</Typography>
+                      <Typography variant="body2" fontWeight={600}>{lastBatch.beratKg} kg</Typography>
+                    </Stack>
+                    <Stack direction="row" justifyContent="space-between" sx={{ mt: 0.5 }}>
+                      <Typography variant="body2" color="text.secondary">Estimasi Nilai:</Typography>
+                      <Typography variant="body2" fontWeight={700} color="success.main">
+                        {formatRupiah(lastBatch.pricing?.estimated_economic_value ?? lastBatch.hasil?.totalNilai)}
+                      </Typography>
+                    </Stack>
+                    <Stack direction="row" justifyContent="space-between" sx={{ mt: 0.5 }}>
+                      <Typography variant="caption" color="text.secondary">Tanggal:</Typography>
+                      <Typography variant="caption">{lastBatch.tanggal || '-'}</Typography>
+                    </Stack>
+                  </Box>
+                  <Button
+                    endIcon={<VisibilityRoundedIcon />}
+                    fullWidth
+                    onClick={() => {
+                      if (typeof onSelectBatch === 'function') {
+                        onSelectBatch(lastBatch)
+                      } else {
+                        onNavigate('results')
+                      }
+                    }}
+                    sx={{ mt: 1 }}
+                    variant="contained"
+                  >
+                    Buka Hasil &amp; Sertifikat
+                  </Button>
+                </Stack>
+              ) : (
+                <>
+                  <Stack direction="row" spacing={1.25} sx={{ alignItems: 'center', mb: 1 }}>
+                    <CameraAltRoundedIcon color="primary" fontSize="small" />
+                    <Typography variant="h6">Mulai Pemeriksaan</Typography>
+                  </Stack>
+                  <Typography color="text.secondary" variant="body2">
+                    Belum ada batch panen yang disimpan. Gunakan scanner untuk memeriksa mutu panen dan rekomendasi harga.
+                  </Typography>
+                  <Button endIcon={<ArrowForwardRoundedIcon />} fullWidth onClick={() => onNavigate('scanner')} sx={{ mt: 2 }} variant="outlined">
+                    Buka QC Scanner
+                  </Button>
+                </>
+              )}
             </CardContent>
           </Card>
         </Grid>
@@ -148,11 +268,15 @@ function FoundationPage({
   onViewRecap,
   onSelectBatch,
   onBatchSaved,
+  onDeleteBatch,
+  openCertModal = false,
 }) {
   const [showManualForm, setShowManualForm] = useState(false)
   const page = pages[activePage]
 
-  if (activePage === 'overview') return <DashboardPreview onNavigate={onNavigate} />
+  if (activePage === 'overview') {
+    return <DashboardPreview onNavigate={onNavigate} batches={batches} onSelectBatch={onSelectBatch} />
+  }
 
   if (activePage === 'scanner') {
     return (
@@ -181,8 +305,19 @@ function FoundationPage({
     )
   }
 
-  if (activePage === 'results') return <QCResults batch={selectedBatch} onBackToInput={onBackToInput} onViewRecap={onViewRecap} />
-  if (activePage === 'results-list') return <HarvestRecap batches={batches} onSelectBatch={onSelectBatch} />
+  if (activePage === 'results') {
+    return (
+      <QCResults
+        batch={selectedBatch}
+        onBackToInput={onBackToInput}
+        onViewRecap={onViewRecap}
+        initialOpenCertificate={openCertModal}
+      />
+    )
+  }
+  if (activePage === 'results-list') {
+    return <HarvestRecap batches={batches} onSelectBatch={onSelectBatch} onDeleteBatch={onDeleteBatch} />
+  }
   if (activePage === 'pricing') return <PricingDashboard />
   return (
     <Card>
@@ -201,6 +336,7 @@ function App() {
   const [activePage, setActivePage] = useState('overview')
   const [batches, setBatches] = useState([])
   const [selectedBatch, setSelectedBatch] = useState(null)
+  const [openCertModal, setOpenCertModal] = useState(false)
   const [harvestMessage, setHarvestMessage] = useState('')
   const page = pages[activePage]
 
@@ -213,28 +349,53 @@ function App() {
   const handleNavigate = (pageId) => {
     setActivePage(pageId)
     setHarvestMessage('')
+    setOpenCertModal(false)
   }
 
   const handleBackToInput = () => {
     setHarvestMessage('')
+    setOpenCertModal(false)
     setActivePage('scanner')
   }
 
   const handleViewRecap = () => {
     setHarvestMessage('')
+    setOpenCertModal(false)
     setActivePage('results-list')
   }
 
-  const handleSelectBatch = (batch) => {
+  const handleSelectBatch = (batch, options = {}) => {
     setSelectedBatch(batch)
+    setOpenCertModal(Boolean(options?.openCertificate))
     setActivePage('results')
+  }
+
+  const handleDataChanged = () => {
+    const storedBatches = readBatches()
+    setBatches(storedBatches)
+    setSelectedBatch(storedBatches[storedBatches.length - 1] || null)
+  }
+
+  const handleDeleteBatch = (batchId) => {
+    deleteBatch(batchId)
+    const storedBatches = readBatches()
+    setBatches(storedBatches)
+    if (selectedBatch?.id === batchId) {
+      setSelectedBatch(storedBatches[storedBatches.length - 1] || null)
+    }
+    setHarvestMessage(`Batch ${batchId} berhasil dihapus dari rekap data panen.`)
   }
 
   const handleHarvestConfirm = (input) => {
     const calculation = calculateHarvest(input)
+    const basePrice =
+      input.scanResult?.smart_pricing?.reference_price_per_kg ||
+      input.scanResult?.smart_pricing?.base_price_per_kg ||
+      REFERENCE_PRICES_PER_KG[input.komoditas] ||
+      12000
     const valueCalculation = calculateHarvestValue({
       ...input,
-      hargaAcuanPerKg: REFERENCE_PRICES_PER_KG[input.komoditas],
+      hargaAcuanPerKg: basePrice,
     })
     const isAiScan = Boolean(input.scanResult?.inference_result)
     const savedBatch = saveBatch({
@@ -263,7 +424,11 @@ function App() {
   }
 
   return (
-    <AppShell activePage={activePage} onNavigate={handleNavigate}>
+    <AppShell
+      activePage={activePage}
+      onNavigate={handleNavigate}
+      onDataChanged={handleDataChanged}
+    >
       <Container maxWidth="lg" sx={{ px: { xs: 1.5, sm: 2, md: 3 }, py: { xs: 2.5, sm: 3.5, md: 4.5 } }}>
         <PageHeader eyebrow="Agri-Sort AI / Precision Agriculture" title={page.title} description={page.description} />
         {harvestMessage && <Alert onClose={() => setHarvestMessage('')} severity="success" sx={{ mb: 2 }}>{harvestMessage}</Alert>}
@@ -276,6 +441,8 @@ function App() {
           onSelectBatch={handleSelectBatch}
           onViewRecap={handleViewRecap}
           selectedBatch={selectedBatch}
+          openCertModal={openCertModal}
+          onDeleteBatch={handleDeleteBatch}
           onBatchSaved={(newBatch) => {
             setBatches((current) => [...current, newBatch])
             setSelectedBatch(newBatch)

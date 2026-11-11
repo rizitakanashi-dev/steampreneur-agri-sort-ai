@@ -13,3 +13,17 @@ ReactDOM.createRoot(document.getElementById('root')).render(
     </ThemeProvider>
   </React.StrictMode>,
 )
+
+// Registrasi Service Worker untuk Kesiapan Lapangan Offline Petani (PWA)
+if (typeof window !== 'undefined' && 'serviceWorker' in navigator && process.env.NODE_ENV === 'production') {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker
+      .register('/sw.js')
+      .then((reg) => {
+        // Service worker terdaftar sukses
+      })
+      .catch((err) => {
+        // Gagal registrasi service worker (abaikan tanpa mengganggu UI)
+      })
+  })
+}
