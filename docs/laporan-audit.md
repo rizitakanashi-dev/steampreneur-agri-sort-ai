@@ -714,6 +714,37 @@ flowchart TB
 - **Total Tests:** 247 unit tests lulus 100% tanpa kegagalan.
 - **Kompilasi Produksi Vite:** Berhasil tuntas dalam 1.56 detik.
 
+---
+
+### Temuan B15: Dukungan Multi-Format Bounding Box (YOLO, Pascal VOC, COCO) pada Visualisasi Kanvas AI (11 November 2026)
+
+| Kode Temuan | Tingkat Keparahan | Komponen Teridentifikasi | Status Resolusi |
+|:---:|:---:|---|:---:|
+| **AUDIT-B15-01** | **SEDANG** | `src/utils/canvasOverlayHelper.js` (`scaleBoundingBox` hanya mendukung format key tunggal `{ x1, y1, x2, y2 }`, menghasilkan kotak 0x0 piksel jika menerima format array YOLO, Pascal VOC `xmin/ymin`, atau format COCO `x/y/width/height`) | **RESOLVED** |
+
+#### A. Analisis Masalah & Perbaikan Kritis
+1. **Inkompatibilitas Format Anotasi Deteksi Komputer Vision:**
+   - Model inferensi komputer vision, platform anotasi Roboflow, dan format standar industri menghasilkan variasi struktur bounding box:
+     - Format Koordinat Ekstrem: `{ x1, y1, x2, y2 }`
+     - Format Array Python/YOLO: `[x1, y1, x2, y2]`
+     - Format Pascal VOC / XML: `{ xmin, ymin, xmax, ymax }`
+     - Format COCO / JSON: `{ x, y, width, height }`
+   - Fungsi `scaleBoundingBox` sebelumnya hanya mengekstrak `Number(box.x1)`. Jika menerima salah satu dari 3 format standar lainnya, koordinat dievaluasi menjadi 0 dan kanvas overlay gagal menggambar kotak deteksi di atas buah panen.
+2. **Solusi Rekayasa:**
+   - Menambahkan deteksi format dinamis pada `scaleBoundingBox`:
+     - Jika `Array.isArray(box)`, petakan indeks `[0, 1, 2, 3]`.
+     - Jika memuat `xmin` / `ymin`, petakan ke batas `xmax` / `ymax`.
+     - Jika memuat `x`, `y`, `width`, `height`, hitung rentang `x2 = x + width` dan `y2 = y + height`.
+     - Tetap mendukung format `{ x1, y1, x2, y2 }` bawaan.
+   - Mengaplikasikan penskalaan proporsional presisi dan *bounding clamping* agar garis kotak kanvas tidak keluar dari batas gambar.
+
+#### B. Hasil Verifikasi Menyeluruh
+- **Frontend Tests:** 134 / 134 tests lulus (node:test).
+- **Backend Tests:** 114 / 114 tests lulus (Python unittest).
+- **Total Tests:** 248 unit tests lulus 100% tanpa kegagalan.
+- **Kompilasi Produksi Vite:** Berhasil tuntas dalam 1.20 detik.
+
+
 
 
 
