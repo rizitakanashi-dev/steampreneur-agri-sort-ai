@@ -100,16 +100,6 @@ const COMMODITIES = [
     emoji: '🍅',
     supported: true,
   },
-  {
-    id: 'Cabai Rawit Hijau',
-    name: 'Cabai Rawit Hijau',
-    badge: 'Pencatatan Lapangan',
-    badgeColor: 'default',
-    classes: ['Grade A', 'Grade B', 'Reject'],
-    defaultConf: 0.35,
-    emoji: '🌱',
-    supported: false,
-  },
 ]
 
 export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm }) {
