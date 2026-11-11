@@ -35,3 +35,8 @@ CLAUDE.md
 
 # Large archives & temporary model dumps
 *.zip
+
+# ML Training artifacts, root weights, and datasets
+runs/
+/yolo*.pt
+Eggplant-Quality-Grades-*/
