@@ -109,6 +109,14 @@ def normalize_commodity_key(name: str) -> str:
     key = " ".join(name.strip().lower().split())
     if key == "terong":
         return "terung"
+    if "cabai rawit hijau" in key:
+        return "cabai rawit hijau"
+    if "cabai rawit merah" in key:
+        return "cabai rawit merah"
+    if "cabai merah keriting" in key or "cabai merah" in key:
+        return "cabai merah keriting"
+    if key in ["cabai", "cabe", "chili", "chilli"]:
+        return "cabai merah keriting"
     return key
 
 
@@ -261,7 +269,8 @@ def calculate_eggplant_economic_projection(
     - Reject: Multiplier 0.00
     """
     # Harmonisasi input 3-Grade (Grade A, Grade B, Reject) dengan format 4-Kelas
-    if (grade_a_count > 0 or grade_b_count > 0) and extra_count == 0 and class1_count == 0 and class2_count == 0:
+    is_3grade_mode = (grade_a_count > 0 or grade_b_count > 0) and extra_count == 0 and class1_count == 0 and class2_count == 0
+    if is_3grade_mode:
         extra_count = grade_a_count
         class1_count = 0
         class2_count = grade_b_count
@@ -320,6 +329,19 @@ def calculate_eggplant_economic_projection(
             "Tidak ada objek terung yang terdeteksi dengan ambang batas keyakinan saat ini. "
             "Pastikan pencahayaan cukup dan foto keranjang fokus pada permukaan terung."
         )
+    elif is_3grade_mode:
+        if reject_count > 0:
+            rec_note = (
+                f"Mutu Terdistribusi 3-Kelas: {marketable_ratio}% terung layak jual "
+                f"(Grade A: {extra_ratio}%, Grade B: {class2_ratio}%). "
+                f"Segera pisahkan {reject_count} butir reject untuk menjaga standar mutu dan menyelamatkan potensi Rp {estimated_value or 0:,}."
+            )
+        else:
+            rec_note = (
+                f"Mutu Sangat Baik: 100% sampel terung tergolong mutu komersial tanpa reject "
+                f"(Grade A: {extra_ratio}%, Grade B: {class2_ratio}%). "
+                f"Potensi pendapatan mencapai Rp {estimated_value or 0:,}."
+            )
     elif reject_count > 0:
         rec_note = (
             f"Mutu Terdistribusi 4-Kelas: {marketable_ratio}% terung layak jual "
@@ -408,6 +430,138 @@ def calculate_eggplant_economic_projection(
     }
 
 
+def calculate_chili_economic_projection(
+    weight_kg: Optional[float],
+    grade_a_count: int = 0,
+    grade_b_count: int = 0,
+    reject_count: int = 0,
+    region: str = "Sumatera Barat",
+    commodity_name: str = "cabai",
+) -> Dict[str, Any]:
+    """
+    Menghitung estimasi nilai ekonomi Cabai 3-Grade (Grade A, Grade B, Reject):
+    - Grade A: Multiplier 1.15 (+15% premi kualitas)
+    - Grade B: Multiplier 0.80 (-20% diskon toleransi fisik)
+    - Reject: Multiplier 0.00
+    """
+    pricing = get_commodity_pricing(commodity_name, region)
+    base_price = pricing["price_per_kg"] if pricing.get("price_per_kg", 0) > 0 else 45000
+
+    total_samples = max(0, grade_a_count + grade_b_count + reject_count)
+
+    valid_weight: Optional[float] = None
+    try:
+        if weight_kg is not None:
+            w = float(weight_kg)
+            if not math.isnan(w) and not math.isinf(w) and w > 0:
+                valid_weight = w
+    except (TypeError, ValueError):
+        valid_weight = None
+
+    if total_samples > 0:
+        a_ratio = round((grade_a_count / total_samples) * 100, 2)
+        b_ratio = round((grade_b_count / total_samples) * 100, 2)
+        rej_ratio = round((reject_count / total_samples) * 100, 2)
+    else:
+        a_ratio = b_ratio = rej_ratio = 0.0
+
+    marketable_ratio = round(a_ratio + b_ratio, 2)
+
+    estimated_value: Optional[int] = None
+    potential_loss: Optional[int] = None
+    max_potential_value: Optional[int] = None
+
+    w_a = w_b = w_rej = 0.0
+    val_a = val_b = 0.0
+
+    if valid_weight is not None:
+        if total_samples > 0:
+            w_a = valid_weight * (grade_a_count / total_samples)
+            w_b = valid_weight * (grade_b_count / total_samples)
+            w_rej = valid_weight * (reject_count / total_samples)
+
+            val_a = w_a * (base_price * 1.15)
+            val_b = w_b * (base_price * 0.80)
+
+            estimated_value = round(val_a + val_b)
+            potential_loss = round(w_rej * base_price)
+        else:
+            estimated_value = 0
+            potential_loss = 0
+
+        max_potential_value = round(valid_weight * (base_price * 1.15))
+
+    if total_samples == 0:
+        rec_note = (
+            f"Tidak ada objek {pricing['canonical_name']} yang terdeteksi dengan ambang batas keyakinan saat ini. "
+            "Pastikan pencahayaan cukup dan foto nampan fokus pada permukaan cabai."
+        )
+    elif reject_count > 0:
+        rec_note = (
+            f"Mutu Terdistribusi 3-Kelas: {marketable_ratio}% cabai layak jual "
+            f"(Grade A: {a_ratio}%, Grade B: {b_ratio}%). "
+            f"Segera pisahkan {reject_count} butir reject untuk menjaga standar mutu dan menyelamatkan potensi Rp {estimated_value or 0:,}."
+        )
+    else:
+        rec_note = (
+            f"Mutu Sangat Baik: 100% sampel cabai tergolong mutu komersial tanpa reject "
+            f"(Grade A: {a_ratio}%, Grade B: {b_ratio}%). "
+            f"Potensi pendapatan mencapai Rp {estimated_value or 0:,}."
+        )
+
+    tier_breakdown = {
+        "grade_a": {
+            "ratio_percent": a_ratio,
+            "weight_kg": round(w_a, 2) if (valid_weight is not None and total_samples > 0) else None,
+            "price_per_kg": round(base_price * 1.15),
+            "subtotal_value": round(val_a) if (valid_weight is not None and total_samples > 0) else None,
+        },
+        "grade_b": {
+            "ratio_percent": b_ratio,
+            "weight_kg": round(w_b, 2) if (valid_weight is not None and total_samples > 0) else None,
+            "price_per_kg": round(base_price * 0.80),
+            "subtotal_value": round(val_b) if (valid_weight is not None and total_samples > 0) else None,
+        },
+        "reject": {
+            "ratio_percent": rej_ratio,
+            "weight_kg": round(w_rej, 2) if (valid_weight is not None and total_samples > 0) else None,
+            "price_per_kg": 0,
+            "subtotal_value": 0,
+        },
+    }
+
+    return {
+        "commodity": pricing["canonical_name"],
+        "reference_price_per_kg": base_price,
+        "currency": pricing["currency"],
+        "price_unit": pricing["price_unit"],
+        "region": pricing["region"],
+        "price_source": pricing["price_source"],
+        "data_date": pricing["data_date"],
+        "data_status": pricing["data_status"],
+        "estimated_economic_value": estimated_value,
+        "potential_loss_value": potential_loss,
+        "max_potential_value": max_potential_value,
+        "tier_breakdown": tier_breakdown,
+        "grade_multipliers": {
+            "grade_a": 1.15,
+            "grade_b": 0.80,
+            "reject": 0.00,
+        },
+        "condition_ratios": {
+            "grade_a_percent": a_ratio,
+            "grade_b_percent": b_ratio,
+            "reject_percent": rej_ratio,
+            "marketable_percent": marketable_ratio,
+        },
+        "value_calculation_method": (
+            "Kalkulasi 3-Grade Cabai: Bobot x Rasio Kelas x Harga Acuan x Bobot Mutu (STEAM 3-Class Model)"
+        ),
+        "recommendation_note": rec_note,
+        "is_known_commodity": True,
+    }
+
+
 def calculate_business_grading(
     commodity: str,
     weight_kg: Optional[float],
@@ -459,6 +613,11 @@ def calculate_business_grading(
             grade_b_pct = round(c2_pct, 2)
             reject_pct = round(rej_pct, 2)
             rule_desc = "Extra Class & Class I -> Grade A, Class II -> Grade B, Reject -> Reject"
+    elif "cabai" in comm or "chili" in comm or "cabe" in comm:
+        grade_a_pct = round(float(ratios.get("grade_a_percent", 0.0)), 2)
+        grade_b_pct = round(float(ratios.get("grade_b_percent", 0.0)), 2)
+        reject_pct = round(float(ratios.get("reject_percent", 0.0)), 2)
+        rule_desc = "Grade A -> Grade A, Grade B -> Grade B, Reject -> Reject"
     else:
         fresh_pct = float(ratios.get("fresh_ratio_percent", ratios.get("fresh_ratio", 0.0)))
         rotten_pct = float(ratios.get("rotten_ratio_percent", ratios.get("rotten_ratio", 0.0)))

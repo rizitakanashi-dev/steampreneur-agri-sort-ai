@@ -1,0 +1,13 @@
+train: ../train/images
+val: ../valid/images
+test: ../test/images
+
+nc: 3
+names: ['Grade A', 'Grade B', 'Reject']
+
+roboflow:
+  workspace: rizi-takanashi
+  project: chili-data-set-v4-r9wwe
+  version: 2
+  license: CC BY 4.0
+  url: https://app.roboflow.com/rizi-takanashi/chili-data-set-v4-r9wwe/2

@@ -170,6 +170,47 @@ test('buildCertificateData memproses batch Tomat AI scan dengan akurat', () => {
   assert.equal(cert.financials.totalRevenue, 480000)
 })
 
+test('buildCertificateData memproses batch Cabai 3-Class AI scan dengan akurat', () => {
+  const cabaiBatch = {
+    id: 'CBI-001',
+    tanggal: '2026-11-11',
+    komoditas: 'Cabai',
+    beratKg: 10,
+    inference: {
+      commodity: 'cabai',
+      object_counts: { grade_a: 7, grade_b: 2, reject: 1 },
+      condition_ratios: {
+        grade_a_percent: 70.0,
+        grade_b_percent: 20.0,
+        reject_percent: 10.0,
+      },
+    },
+    pricing: {
+      reference_price_per_kg: 45000,
+      estimated_economic_value: 434250,
+      potential_loss_value: 45000,
+      tier_breakdown: {
+        grade_a: { ratio_percent: 70.0, weight_kg: 7.0, price_per_kg: 51750, subtotal_value: 362250 },
+        grade_b: { ratio_percent: 20.0, weight_kg: 2.0, price_per_kg: 36000, subtotal_value: 72000 },
+        reject: { ratio_percent: 10.0, weight_kg: 1.0, price_per_kg: 0, subtotal_value: 0 },
+      },
+    },
+  }
+
+  const cert = buildCertificateData(cabaiBatch)
+  assert.equal(cert.modelEngineName, 'Ultralytics YOLO11n (3-Class Chili Quality)')
+  assert.equal(cert.grades.length, 3)
+  assert.equal(cert.grades[0].code, 'GRADE-A')
+  assert.equal(cert.grades[0].ratioPercent, 70.0)
+  assert.equal(cert.grades[0].weightKg, 7.0)
+  assert.equal(cert.grades[1].code, 'GRADE-B')
+  assert.equal(cert.grades[1].ratioPercent, 20.0)
+  assert.equal(cert.grades[1].weightKg, 2.0)
+  assert.equal(cert.grades[2].code, 'REJECT')
+  assert.equal(cert.grades[2].ratioPercent, 10.0)
+  assert.equal(cert.grades[2].weightKg, 1.0)
+})
+
 test('buildCertificateData memproses batch Manual Calculation dengan akurat', () => {
   const manualBatch = {
     id: 'MNL-001',

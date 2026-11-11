@@ -116,6 +116,56 @@ class TestModelIntegrationAndBusinessGrading(unittest.TestCase):
         self.assertEqual(ew["grade_b_kg"], 0.0)
         self.assertEqual(ew["reject_kg"], 20.0)
 
+    def test_calculate_business_grading_cabai(self):
+        """Memverifikasi formula pemetaan 3-Grade langsung Cabai (Grade A, Grade B, Reject)"""
+        ratios = {
+            "grade_a_percent": 70.0,
+            "grade_b_percent": 20.0,
+            "reject_percent": 10.0,
+        }
+        res = calculate_business_grading(commodity="Cabai", weight_kg=20.0, ratios=ratios)
+
+        self.assertEqual(
+            res["preliminary_mapping_rule"],
+            "Grade A -> Grade A, Grade B -> Grade B, Reject -> Reject",
+        )
+        self.assertEqual(res["grade_breakdown"]["grade_a_percent"], 70.0)
+        self.assertEqual(res["grade_breakdown"]["grade_b_percent"], 20.0)
+        self.assertEqual(res["grade_breakdown"]["reject_percent"], 10.0)
+        self.assertEqual(res["estimated_weights_kg"]["grade_a_kg"], 14.0)
+        self.assertEqual(res["estimated_weights_kg"]["grade_b_kg"], 4.0)
+        self.assertEqual(res["estimated_weights_kg"]["reject_kg"], 2.0)
+
+    def test_cabai_model_artifacts_presence(self):
+        """Memverifikasi artefak model Cabai 3-kelas lengkap di server/models/cabai/"""
+        base_dir = os.path.join(os.path.dirname(__file__), "..", "models", "cabai")
+        self.assertTrue(os.path.isdir(base_dir), "Direktori server/models/cabai harus ada")
+
+        onnx_file = os.path.join(base_dir, "best.onnx")
+        self.assertTrue(os.path.isfile(onnx_file), "best.onnx harus ada")
+        self.assertGreater(os.path.getsize(onnx_file), 1_000_000, "best.onnx harus > 1MB")
+
+        pt_file = os.path.join(base_dir, "best.pt")
+        self.assertTrue(os.path.isfile(pt_file), "best.pt harus ada")
+        self.assertGreater(os.path.getsize(pt_file), 1_000_000, "best.pt harus > 1MB")
+
+        yaml_file = os.path.join(base_dir, "data.yaml")
+        self.assertTrue(os.path.isfile(yaml_file), "data.yaml harus ada")
+        with open(yaml_file, "r") as f:
+            content = f.read()
+            self.assertIn("Grade A", content)
+            self.assertIn("Grade B", content)
+            self.assertIn("Reject", content)
+
+        meta_file = os.path.join(base_dir, "model-metadata.json")
+        self.assertTrue(os.path.isfile(meta_file), "model-metadata.json harus ada")
+        with open(meta_file, "r") as f:
+            meta = json.load(f)
+            self.assertEqual(meta["model"]["name"], "Agri-Sort Chili Quality Detection")
+            self.assertEqual(meta["dataset"]["classes"]["0"], "Grade A")
+            self.assertEqual(meta["dataset"]["classes"]["1"], "Grade B")
+            self.assertEqual(meta["dataset"]["classes"]["2"], "Reject")
+
     def test_calculate_business_grading_edge_cases(self):
         """Memverifikasi ketahanan matematis terhadap None/invalid weight dan empty ratios"""
         # Bobot None

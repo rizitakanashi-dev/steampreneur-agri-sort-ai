@@ -190,6 +190,11 @@ export function QCResults({ batch, onBackToInput, onViewRecap, initialOpenCertif
   const pricing = scanResult?.smart_pricing
   const commodity = batch.komoditas || scanResult?.commodity || 'Tomat'
   const isEggplant = commodity.toLowerCase().includes('terung') || commodity.toLowerCase().includes('terong')
+  const isChili =
+    (commodity.toLowerCase().includes('cabai') ||
+      commodity.toLowerCase().includes('chili') ||
+      commodity.toLowerCase().includes('cabe')) &&
+    !commodity.toLowerCase().includes('cabai rawit hijau')
   const isMultiAngle = Boolean(
     batch.is_multi_angle ||
     scanResult?.is_multi_angle ||
@@ -202,7 +207,7 @@ export function QCResults({ batch, onBackToInput, onViewRecap, initialOpenCertif
     scanResult?.execution_status ||
     (batch.is_simulated || scanResult?.is_simulated
       ? 'simulated'
-      : (hasAiScan && (isEggplant || commodity.toLowerCase().includes('tomat'))
+      : (hasAiScan && (isEggplant || commodity.toLowerCase().includes('tomat') || isChili)
         ? 'ai_detected'
         : 'unsupported'))
   const statusDetails = batch.status_details || scanResult?.status_details || {}
@@ -211,23 +216,13 @@ export function QCResults({ batch, onBackToInput, onViewRecap, initialOpenCertif
   let pieChartData = []
   if (hasAiScan && inference) {
     const counts = inference.object_counts || {}
-    const isDirect3Grade =
-      (counts.grade_a !== undefined || counts.grade_b !== undefined) &&
-      !counts.class_1 &&
-      (Number(counts.grade_a) > 0 || Number(counts.grade_b) > 0 || Number(counts.reject) > 0)
-
-    if (isEggplant && isDirect3Grade) {
+    if ((isEggplant || isChili) && (counts.grade_a || counts.grade_b || counts.extra_class || counts.class_1 || counts.class_2 || counts.reject)) {
+      const gradeACount = counts.grade_a ?? ((counts.extra_class || 0) + (counts.class_1 || 0))
+      const gradeBCount = counts.grade_b ?? (counts.class_2 || 0)
       pieChartData = [
-        { id: 0, value: Number(counts.grade_a) || 0, label: 'Grade A', color: '#059669' },
-        { id: 1, value: Number(counts.grade_b) || 0, label: 'Grade B', color: '#d97706' },
-        { id: 2, value: Number(counts.reject) || 0, label: 'Reject', color: '#dc2626' },
-      ].filter((d) => d.value > 0)
-    } else if (isEggplant && (counts.extra_class || counts.class_1 || counts.class_2 || counts.reject)) {
-      pieChartData = [
-        { id: 0, value: counts.extra_class || 0, label: 'Extra Class', color: '#059669' },
-        { id: 1, value: counts.class_1 || 0, label: 'Class 1', color: '#0284c7' },
-        { id: 2, value: counts.class_2 || 0, label: 'Class 2', color: '#d97706' },
-        { id: 3, value: counts.reject || 0, label: 'Reject', color: '#dc2626' },
+        { id: 0, value: gradeACount, label: 'Grade A', color: '#059669' },
+        { id: 1, value: gradeBCount, label: 'Grade B', color: '#d97706' },
+        { id: 2, value: counts.reject || 0, label: 'Reject', color: '#dc2626' },
       ].filter((d) => d.value > 0)
     } else if (counts.fresh_tomato || counts.rotten_tomato) {
       pieChartData = [
@@ -800,73 +795,41 @@ export function QCResults({ batch, onBackToInput, onViewRecap, initialOpenCertif
             Indikator Mutu Deteksi ({commodity})
           </Typography>
 
-          {hasAiScan && isEggplant ? (
-            // Indikator Terung: 3-Grade Langsung (Model v2) atau 4-Kelas (Model v1)
-            (inference?.object_counts?.grade_a !== undefined || inference?.object_counts?.grade_b !== undefined) &&
-            !inference?.object_counts?.class_1 ? (
-              <Stack direction={{ xs: 'column', sm: 'row' }} flexWrap="wrap" gap={2}>
-                <QualityIndicator
-                  color="#059669"
-                  count={inference?.object_counts?.grade_a || 0}
-                  icon={AssessmentRoundedIcon}
-                  label="Grade A (Mutu Prima)"
-                  percentage={
-                    pricing?.condition_ratios?.grade_a_percent ??
-                    pricing?.condition_ratios?.extra_class_percent ??
-                    0
-                  }
-                />
-                <QualityIndicator
-                  color="#d97706"
-                  count={inference?.object_counts?.grade_b || 0}
-                  icon={AssessmentRoundedIcon}
-                  label="Grade B (Mutu Pasar)"
-                  percentage={
-                    pricing?.condition_ratios?.grade_b_percent ??
-                    pricing?.condition_ratios?.class_2_percent ??
-                    0
-                  }
-                />
-                <QualityIndicator
-                  color="#dc2626"
-                  count={inference?.object_counts?.reject || 0}
-                  icon={RecyclingRoundedIcon}
-                  label="Reject (Afkir)"
-                  percentage={pricing?.condition_ratios?.reject_percent || 0}
-                />
-              </Stack>
-            ) : (
-              <Stack direction={{ xs: 'column', sm: 'row' }} flexWrap="wrap" gap={2}>
-                <QualityIndicator
-                  color="#059669"
-                  count={inference?.object_counts?.extra_class || 0}
-                  icon={AssessmentRoundedIcon}
-                  label="Extra Class (Super)"
-                  percentage={pricing?.condition_ratios?.extra_class_percent || 0}
-                />
-                <QualityIndicator
-                  color="#0284c7"
-                  count={inference?.object_counts?.class_1 || 0}
-                  icon={AssessmentRoundedIcon}
-                  label="Class 1 (Standar)"
-                  percentage={pricing?.condition_ratios?.class_1_percent || 0}
-                />
-                <QualityIndicator
-                  color="#d97706"
-                  count={inference?.object_counts?.class_2 || 0}
-                  icon={AssessmentRoundedIcon}
-                  label="Class 2 (Lokal)"
-                  percentage={pricing?.condition_ratios?.class_2_percent || 0}
-                />
-                <QualityIndicator
-                  color="#dc2626"
-                  count={inference?.object_counts?.reject || 0}
-                  icon={RecyclingRoundedIcon}
-                  label="Reject (Afkir)"
-                  percentage={pricing?.condition_ratios?.reject_percent || 0}
-                />
-              </Stack>
-            )
+          {hasAiScan && (isEggplant || isChili) ? (
+            // Indikator 3 Kelas (Grade A, Grade B, Reject)
+            <Stack direction={{ xs: 'column', sm: 'row' }} flexWrap="wrap" gap={2}>
+              <QualityIndicator
+                color="#059669"
+                count={
+                  inference?.object_counts?.grade_a ??
+                  ((inference?.object_counts?.extra_class || 0) + (inference?.object_counts?.class_1 || 0))
+                }
+                icon={AssessmentRoundedIcon}
+                label="Grade A (Mutu Utama)"
+                percentage={
+                  pricing?.condition_ratios?.grade_a_percent ??
+                  ((pricing?.condition_ratios?.extra_class_percent || 0) +
+                    (pricing?.condition_ratios?.class_1_percent || 0))
+                }
+              />
+              <QualityIndicator
+                color="#d97706"
+                count={inference?.object_counts?.grade_b ?? (inference?.object_counts?.class_2 || 0)}
+                icon={AssessmentRoundedIcon}
+                label="Grade B (Mutu Standar)"
+                percentage={
+                  pricing?.condition_ratios?.grade_b_percent ??
+                  (pricing?.condition_ratios?.class_2_percent || 0)
+                }
+              />
+              <QualityIndicator
+                color="#dc2626"
+                count={inference?.object_counts?.reject || 0}
+                icon={RecyclingRoundedIcon}
+                label="Reject (Afkir)"
+                percentage={pricing?.condition_ratios?.reject_percent || 0}
+              />
+            </Stack>
           ) : hasAiScan ? (
             // Indikator 2 Kelas Tomat
             <Stack direction={{ xs: 'column', sm: 'row' }} flexWrap="wrap" gap={2}>

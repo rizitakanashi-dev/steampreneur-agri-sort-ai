@@ -51,6 +51,15 @@ class TestYOLOInferenceEngine(unittest.TestCase):
             f"Berkas model Tomat best.pt tidak ditemukan di: {tomat_cfg['path']}",
         )
 
+        # Verifikasi konfigurasi Cabai
+        self.assertIn("cabai", configs)
+        cabai_cfg = configs["cabai"]
+        self.assertEqual(cabai_cfg["expected_classes"], ["Grade A", "Grade B", "Reject"])
+        self.assertTrue(
+            os.path.exists(cabai_cfg["path"]),
+            f"Berkas model Cabai best.pt tidak ditemukan di: {cabai_cfg['path']}",
+        )
+
     def test_class_slug_normalization(self):
         """Memverifikasi pemetaan nama kelas asli model Terung dan Tomat ke format slug frontend."""
         test_cases = [
