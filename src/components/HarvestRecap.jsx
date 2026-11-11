@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import {
+  Alert,
   Box,
   Button,
   Chip,
@@ -78,6 +79,11 @@ function BatchGradeDistribution({ batch }) {
     commodity.toLowerCase().includes('terung') ||
     commodity.toLowerCase().includes('terong') ||
     batch?.inference?.commodity === 'terung'
+  const isChili =
+    commodity.toLowerCase().includes('cabai') ||
+    commodity.toLowerCase().includes('chili') ||
+    commodity.toLowerCase().includes('cabe') ||
+    batch?.inference?.commodity === 'cabai'
 
   const hasInference = Boolean(batch?.inference || batch?.ai_scan_performed)
 
@@ -88,9 +94,9 @@ function BatchGradeDistribution({ batch }) {
     batch?.scanResult?.inference_result?.condition_ratios ||
     {}
 
-  // 1. Cek apakah Terung 3-Grade (Model v2: Grade A, Grade B, Reject)
+  // 1. Cek apakah Terung atau Cabai 3-Grade (Model v2: Grade A, Grade B, Reject)
   const isDirect3Grade =
-    isEggplant &&
+    (isEggplant || isChili) &&
     (ratios.grade_a_percent !== undefined ||
       ratios.grade_b_percent !== undefined ||
       batch?.inference?.object_counts?.grade_a !== undefined) &&

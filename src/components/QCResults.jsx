@@ -157,7 +157,7 @@ export function QCResults({ batch, onBackToInput, onViewRecap, initialOpenCertif
     }
   }, [initialOpenCertificate, batch?.id])
 
-  if (!batch?.hasil && !batch?.scanResult) {
+  if (!batch || (!batch.hasil && !batch.scanResult && !batch.inference && !batch.pricing)) {
     return (
       <Box
         sx={{
@@ -184,11 +184,17 @@ export function QCResults({ batch, onBackToInput, onViewRecap, initialOpenCertif
     )
   }
 
-  const { hasil, scanResult } = batch
-  const hasAiScan = Boolean(scanResult?.inference_result)
-  const inference = scanResult?.inference_result
-  const pricing = scanResult?.smart_pricing
-  const commodity = batch.komoditas || scanResult?.commodity || 'Tomat'
+  const hasil = batch.hasil || {}
+  const scanResult = batch.scanResult || {}
+  const hasAiScan = Boolean(
+    scanResult.inference_result ||
+    batch.inference ||
+    batch.ai_scan_performed ||
+    batch.execution_status === 'ai_detected'
+  )
+  const inference = scanResult.inference_result || batch.inference || {}
+  const pricing = scanResult.smart_pricing || batch.pricing || {}
+  const commodity = batch.komoditas || scanResult.commodity || 'Tomat'
   const isEggplant = commodity.toLowerCase().includes('terung') || commodity.toLowerCase().includes('terong')
   const isChili =
     (commodity.toLowerCase().includes('cabai') ||
@@ -855,22 +861,22 @@ export function QCResults({ batch, onBackToInput, onViewRecap, initialOpenCertif
                 color="#289d67"
                 icon={AssessmentRoundedIcon}
                 label="Grade A"
-                percentage={hasil.persenA}
-                weight={hasil.beratA}
+                percentage={hasil.persenA ?? 0}
+                weight={hasil.beratA ?? 0}
               />
               <QualityIndicator
                 color="#c68f2f"
                 icon={AssessmentRoundedIcon}
                 label="Grade B"
-                percentage={hasil.persenB}
-                weight={hasil.beratB}
+                percentage={hasil.persenB ?? 0}
+                weight={hasil.beratB ?? 0}
               />
               <QualityIndicator
                 color="#a94f46"
                 icon={RecyclingRoundedIcon}
                 label="Reject"
-                percentage={hasil.persenC}
-                weight={hasil.beratC}
+                percentage={hasil.persenC ?? 0}
+                weight={hasil.beratC ?? 0}
               />
             </Stack>
           )}
