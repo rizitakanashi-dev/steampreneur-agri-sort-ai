@@ -18,6 +18,7 @@ from server.services.pricing_service import (
     calculate_business_grading,
     calculate_economic_projection,
     calculate_eggplant_economic_projection,
+    calculate_chili_economic_projection,
 )
 
 
@@ -46,6 +47,7 @@ def aggregate_multi_view_qc(
     """
     comm_lower = commodity.strip().lower()
     is_eggplant = "terung" in comm_lower or "terong" in comm_lower or "eggplant" in comm_lower
+    is_chili = "cabai" in comm_lower or "chili" in comm_lower or "cabe" in comm_lower
 
     # 1. Ekstraksi Hitungan Objek Sisi Depan dan Belakang
     f_summary = front_raw.get("detection_summary", {})
@@ -188,6 +190,94 @@ def aggregate_multi_view_qc(
             "extra_class_combined": ef + eb,
             "class_1_combined": c1f + c1b,
             "class_2_combined": c2f + c2b,
+            "reject_combined": rf + rb,
+        }
+
+    elif is_chili:
+        af = f_counts.get("Grade A", 0) or f_counts.get("grade-a", 0)
+        bf = f_counts.get("Grade B", 0) or f_counts.get("grade-b", 0)
+        rf = f_counts.get("reject", 0) or f_counts.get("Reject", 0)
+
+        ab = b_counts.get("Grade A", 0) or b_counts.get("grade-a", 0)
+        bb = b_counts.get("Grade B", 0) or b_counts.get("grade-b", 0)
+        rb = b_counts.get("reject", 0) or b_counts.get("Reject", 0)
+
+        r_af = (af / f_total * 100.0) if f_total > 0 else 0.0
+        r_bf = (bf / f_total * 100.0) if f_total > 0 else 0.0
+        r_rf = (rf / f_total * 100.0) if f_total > 0 else 0.0
+
+        r_ab = (ab / b_total * 100.0) if b_total > 0 else 0.0
+        r_bb = (bb / b_total * 100.0) if b_total > 0 else 0.0
+        r_rb = (rb / b_total * 100.0) if b_total > 0 else 0.0
+
+        w_a = round(w_f * r_af + w_b * r_ab, 2)
+        w_b_pct = round(w_f * r_bf + w_b * r_bb, 2)
+        w_reject = round(w_f * r_rf + w_b * r_rb, 2)
+
+        r_sum = w_a + w_b_pct + w_reject
+        if r_sum > 0 and abs(r_sum - 100.0) > 0.01:
+            diff = 100.0 - r_sum
+            w_b_pct = round(w_b_pct + diff, 2)
+
+        front_defect_index = r_rf + (0.5 * r_bf)
+        back_defect_index = r_rb + (0.5 * r_bb)
+        defect_delta = round(back_defect_index - front_defect_index, 2)
+
+        if f_total == 0 or b_total == 0:
+            occlusion_bias_detected = False
+            occlusion_severity = "INCOMPLETE"
+            warning_msg = "Pemeriksaan oklusi 2-sisi tidak lengkap: salah satu sudut pandang tidak mendeteksi objek cabai."
+        else:
+            occlusion_bias_detected = defect_delta >= 15.0
+            if defect_delta >= 30.0:
+                occlusion_severity = "HIGH"
+                warning_msg = (
+                    f"Peringatan Kritis Oklusi Cabai: Sisi belakang memiliki disparitas cacat signifikan (+{defect_delta}%). "
+                    "Potensi kuat cabai busuk disembunyikan di bagian bawah nampan."
+                )
+            elif defect_delta >= 15.0:
+                occlusion_severity = "MODERATE"
+                warning_msg = (
+                    f"Perhatian: Terdeteksi tingkat cacat lebih tinggi (+{defect_delta}%) pada sisi belakang/balik cabai."
+                )
+            else:
+                occlusion_severity = "NONE"
+                warning_msg = None
+
+        consistency_index = round(max(0.0, 100.0 - abs(back_defect_index - front_defect_index)), 2)
+
+        eff_total = max(f_total, b_total) or 1
+        eff_a = int(round((w_a / 100.0) * eff_total))
+        eff_b = int(round((w_b_pct / 100.0) * eff_total))
+        eff_rej = max(0, eff_total - (eff_a + eff_b))
+
+        pricing_info = calculate_chili_economic_projection(
+            weight_kg=weight_kg,
+            grade_a_count=eff_a,
+            grade_b_count=eff_b,
+            reject_count=eff_rej,
+            commodity_name=commodity,
+        )
+        pricing_info["condition_ratios"] = {
+            "grade_a_percent": w_a,
+            "grade_b_percent": w_b_pct,
+            "reject_percent": w_reject,
+            "marketable_percent": round(w_a + w_b_pct, 2),
+        }
+
+        business_grading = calculate_business_grading(
+            commodity=commodity,
+            weight_kg=weight_kg,
+            ratios=pricing_info["condition_ratios"],
+        )
+
+        condition_ratios = pricing_info["condition_ratios"]
+        combined_counts = {
+            "total_samples_observed": f_total + b_total,
+            "front_view_total": f_total,
+            "back_view_total": b_total,
+            "grade_a_combined": af + ab,
+            "grade_b_combined": bf + bb,
             "reject_combined": rf + rb,
         }
 

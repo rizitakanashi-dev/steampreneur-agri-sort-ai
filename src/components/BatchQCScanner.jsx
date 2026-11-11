@@ -71,12 +71,22 @@ function formatRupiah(val) {
 
 const COMMODITIES = [
   {
+    id: 'Cabai',
+    name: 'Cabai (Chili)',
+    badge: 'YOLO11 3-Class',
+    badgeColor: 'error',
+    classes: ['Grade A', 'Grade B', 'Reject'],
+    defaultConf: 0.35,
+    emoji: '🌶️',
+    supported: true,
+  },
+  {
     id: 'Terung',
     name: 'Terung (Eggplant)',
-    badge: 'YOLO11 4-Class',
+    badge: 'YOLO11 3-Class',
     badgeColor: 'primary',
-    classes: ['Extra Class', 'Class I', 'Class II', 'Reject'],
-    defaultConf: 0.20,
+    classes: ['Grade A', 'Grade B', 'Reject'],
+    defaultConf: 0.35,
     emoji: '🍆',
     supported: true,
   },
@@ -89,16 +99,6 @@ const COMMODITIES = [
     defaultConf: 0.35,
     emoji: '🍅',
     supported: true,
-  },
-  {
-    id: 'Cabai Rawit Hijau',
-    name: 'Cabai Rawit Hijau',
-    badge: 'Pencatatan Lapangan',
-    badgeColor: 'default',
-    classes: ['Grade A', 'Grade B', 'Reject'],
-    defaultConf: 0.35,
-    emoji: '🌶️',
-    supported: false,
   },
 ]
 
@@ -631,6 +631,11 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm }
 
   const isEggplant = selectedCommodity.toLowerCase().includes('terung') || selectedCommodity.toLowerCase().includes('terong')
   const isTomato = selectedCommodity.toLowerCase().includes('tomat')
+  const isChili =
+    (selectedCommodity.toLowerCase().includes('cabai') ||
+      selectedCommodity.toLowerCase().includes('chili') ||
+      selectedCommodity.toLowerCase().includes('cabe')) &&
+    !selectedCommodity.toLowerCase().includes('cabai rawit hijau')
   const inference = scanResult?.inference_result
   const counts = inference?.object_counts || {}
   const isDirect3Grade =
@@ -638,7 +643,7 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm }
     (counts.grade_a !== undefined || counts.grade_b !== undefined) &&
     !counts.class_1
   const pricing = scanResult?.smart_pricing
-  const execStatus = scanResult?.execution_status || (scanResult?.is_simulated ? 'simulated' : (scanResult?.inference_result ? (isEggplant || isTomato ? 'ai_detected' : 'unsupported') : 'unsupported'))
+  const execStatus = scanResult?.execution_status || (scanResult?.is_simulated ? 'simulated' : (scanResult?.inference_result ? (isEggplant || isTomato || isChili ? 'ai_detected' : 'unsupported') : 'unsupported'))
   const statusDetails = scanResult?.status_details || {}
 
   // Deteksi apakah model menghasilkan 1 bounding box raksasa yang menutupi seluruh gambar
@@ -692,11 +697,13 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm }
                   label={
                     isEggplant
                       ? 'Rekomendasi Terung: 0.20'
+                      : isChili
+                      ? 'Rekomendasi Cabai: 0.35'
                       : isTomato
                       ? 'Rekomendasi Tomat: 0.35'
                       : 'Komoditas Belum Didukung AI'
                   }
-                  color={isEggplant || isTomato ? 'info' : 'default'}
+                  color={isEggplant || isTomato || isChili ? 'info' : 'default'}
                   variant="outlined"
                 />
               </Stack>
@@ -884,6 +891,8 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm }
               <Typography variant="caption" sx={{ display: 'block', mt: 0.25, color: '#15803d' }}>
                 {isEggplant
                   ? 'Model mendeteksi mutu buah per butir. Untuk akurasi optimal, ambil 2–5 buah sampel dari keranjang dan letakkan berjajar di atas nampan/alas datar (hindari tumpukan padat pasar berlapis).'
+                  : isChili
+                  ? 'Model mendeteksi mutu cabai per butir (Grade A, Grade B, Reject). Letakkan cabai berjajar rapi di atas nampan dengan pencahayaan memadai.'
                   : isTomato
                   ? 'Arahkan kamera tegak lurus (top-down view) dengan pencahayaan memadai agar buah terdeteksi jelas.'
                   : 'Komoditas ini belum didukung model Computer Vision resmi. Silakan lakukan pemeriksaan fisik secara manual.'}
@@ -1603,7 +1612,7 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm }
               <Typography variant="body2" color="#b45309" sx={{ mt: 0.5 }}>
                 Model mendeteksi seluruh area keranjang sebagai 1 sampel global dengan label{' '}
                 <strong>{firstBox ? inference?.detections?.[0]?.class_name : 'Reject'}</strong>.
-                Untuk menghitung persentase butir per butir (Extra Class, Class I, Class II, dan Reject),
+                Untuk menghitung persentase butir per butir (Grade A, Grade B, dan Reject),
                 disarankan mengambil <strong>2–5 buah sampel terung</strong> dan meletakkannya berjajar di atas
                 nampan/meja datar (tidak bertumpuk tebal).
               </Typography>
@@ -1687,51 +1696,42 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm }
                 Distribusi Mutu Hasil Deteksi ({selectedCommodity})
               </Typography>
 
-              {isEggplant ? (
-                isDirect3Grade ? (
-                  // 3 KELAS TERUNG (Model v2: Grade A, Grade B, Reject)
-                  <Grid container spacing={2}>
-                    <Grid size={{ xs: 12, sm: 4 }}>
-                      <Box sx={{ p: 2, borderRadius: 2, bgcolor: 'rgba(5, 150, 105, 0.08)', border: '1px solid #059669' }}>
-                        <Typography variant="caption" fontWeight={700} color="#059669">
-                          Grade A (Mutu Prima)
-                        </Typography>
-                        <Typography variant="h5" fontWeight={800} color="#059669">
-                          {counts.grade_a || 0} <Typography component="span" variant="caption">butir</Typography>
-                        </Typography>
-                        <Typography variant="caption" color="text.secondary">
-                          {pricing?.condition_ratios?.grade_a_percent ?? pricing?.condition_ratios?.extra_class_percent ?? 0}% proporsi
-                        </Typography>
-                      </Box>
-                    </Grid>
+              {isEggplant || isChili ? (
+                // 3 KELAS (Grade A, Grade B, Reject)
+                <Grid container spacing={2}>
+                  <Grid size={{ xs: 12, sm: 4 }}>
+                    <Box sx={{ p: 2, borderRadius: 2, bgcolor: 'rgba(16, 185, 129, 0.08)', border: '1px solid #10b981' }}>
+                      <Typography variant="caption" fontWeight={700} color="#059669">
+                        Grade A (Mutu Utama)
+                      </Typography>
+                      <Typography variant="h5" fontWeight={800} color="#059669">
+                        {counts.grade_a ?? ((counts.extra_class || 0) + (counts.class_1 || 0))}{' '}
+                        <Typography component="span" variant="caption">butir</Typography>
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        {pricing?.condition_ratios?.grade_a_percent ??
+                          ((pricing?.condition_ratios?.extra_class_percent || 0) +
+                            (pricing?.condition_ratios?.class_1_percent || 0))}
+                        % proporsi
+                      </Typography>
+                    </Box>
+                  </Grid>
 
-                    <Grid size={{ xs: 12, sm: 4 }}>
-                      <Box sx={{ p: 2, borderRadius: 2, bgcolor: 'rgba(217, 119, 6, 0.08)', border: '1px solid #d97706' }}>
-                        <Typography variant="caption" fontWeight={700} color="#d97706">
-                          Grade B (Mutu Pasar)
-                        </Typography>
-                        <Typography variant="h5" fontWeight={800} color="#d97706">
-                          {counts.grade_b || 0} <Typography component="span" variant="caption">butir</Typography>
-                        </Typography>
-                        <Typography variant="caption" color="text.secondary">
-                          {pricing?.condition_ratios?.grade_b_percent ?? pricing?.condition_ratios?.class_2_percent ?? 0}% proporsi
-                        </Typography>
-                      </Box>
-                    </Grid>
-
-                    <Grid size={{ xs: 12, sm: 4 }}>
-                      <Box sx={{ p: 2, borderRadius: 2, bgcolor: 'rgba(220, 38, 38, 0.08)', border: '1px solid #dc2626' }}>
-                        <Typography variant="caption" fontWeight={700} color="#dc2626">
-                          Reject (Afkir)
-                        </Typography>
-                        <Typography variant="h5" fontWeight={800} color="#dc2626">
-                          {counts.reject || 0} <Typography component="span" variant="caption">butir</Typography>
-                        </Typography>
-                        <Typography variant="caption" color="text.secondary">
-                          {pricing?.condition_ratios?.reject_percent || 0}% proporsi
-                        </Typography>
-                      </Box>
-                    </Grid>
+                  <Grid size={{ xs: 12, sm: 4 }}>
+                    <Box sx={{ p: 2, borderRadius: 2, bgcolor: 'rgba(245, 158, 11, 0.08)', border: '1px solid #f59e0b' }}>
+                      <Typography variant="caption" fontWeight={700} color="#d97706">
+                        Grade B (Mutu Standar)
+                      </Typography>
+                      <Typography variant="h5" fontWeight={800} color="#d97706">
+                        {counts.grade_b ?? (counts.class_2 || 0)}{' '}
+                        <Typography component="span" variant="caption">butir</Typography>
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        {pricing?.condition_ratios?.grade_b_percent ??
+                          (pricing?.condition_ratios?.class_2_percent || 0)}
+                        % proporsi
+                      </Typography>
+                    </Box>
                   </Grid>
                 ) : (
                   // 4 KELAS TERUNG (Model v1: Extra, Class 1, Class 2, Reject)
@@ -1750,47 +1750,18 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm }
                       </Box>
                     </Grid>
 
-                    <Grid size={{ xs: 6, sm: 3 }}>
-                      <Box sx={{ p: 2, borderRadius: 2, bgcolor: 'rgba(2, 132, 199, 0.08)', border: '1px solid #0284c7' }}>
-                        <Typography variant="caption" fontWeight={700} color="#0284c7">
-                          Class 1 (Standar)
-                        </Typography>
-                        <Typography variant="h5" fontWeight={800} color="#0284c7">
-                          {counts.class_1 || 0} <Typography component="span" variant="caption">butir</Typography>
-                        </Typography>
-                        <Typography variant="caption" color="text.secondary">
-                          {pricing?.condition_ratios?.class_1_percent || 0}% proporsi
-                        </Typography>
-                      </Box>
-                    </Grid>
-
-                    <Grid size={{ xs: 6, sm: 3 }}>
-                      <Box sx={{ p: 2, borderRadius: 2, bgcolor: 'rgba(217, 119, 6, 0.08)', border: '1px solid #d97706' }}>
-                        <Typography variant="caption" fontWeight={700} color="#d97706">
-                          Class 2 (Lokal)
-                        </Typography>
-                        <Typography variant="h5" fontWeight={800} color="#d97706">
-                          {counts.class_2 || 0} <Typography component="span" variant="caption">butir</Typography>
-                        </Typography>
-                        <Typography variant="caption" color="text.secondary">
-                          {pricing?.condition_ratios?.class_2_percent || 0}% proporsi
-                        </Typography>
-                      </Box>
-                    </Grid>
-
-                    <Grid size={{ xs: 6, sm: 3 }}>
-                      <Box sx={{ p: 2, borderRadius: 2, bgcolor: 'rgba(220, 38, 38, 0.08)', border: '1px solid #dc2626' }}>
-                        <Typography variant="caption" fontWeight={700} color="#dc2626">
-                          Reject (Afkir)
-                        </Typography>
-                        <Typography variant="h5" fontWeight={800} color="#dc2626">
-                          {counts.reject || 0} <Typography component="span" variant="caption">butir</Typography>
-                        </Typography>
-                        <Typography variant="caption" color="text.secondary">
-                          {pricing?.condition_ratios?.reject_percent || 0}% proporsi
-                        </Typography>
-                      </Box>
-                    </Grid>
+                  <Grid size={{ xs: 12, sm: 4 }}>
+                    <Box sx={{ p: 2, borderRadius: 2, bgcolor: 'rgba(220, 38, 38, 0.08)', border: '1px solid #dc2626' }}>
+                      <Typography variant="caption" fontWeight={700} color="#dc2626">
+                        Reject (Afkir)
+                      </Typography>
+                      <Typography variant="h5" fontWeight={800} color="#dc2626">
+                        {counts.reject || 0} <Typography component="span" variant="caption">butir</Typography>
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        {pricing?.condition_ratios?.reject_percent || 0}% proporsi
+                      </Typography>
+                    </Box>
                   </Grid>
                 )
               ) : isTomato ? (
