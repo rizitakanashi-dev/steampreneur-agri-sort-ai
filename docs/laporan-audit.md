@@ -537,5 +537,37 @@ flowchart TB
    - Menambahkan unit test baru di `tes/qcCertificateHelper.test.js` (`buildCertificateData memproses batch Terung 3-Grade v2 dengan akurat`).
    - Total **240 unit test lulus 100% (127 JS + 113 Python)**, kompilasi Vite selesai dalam **1.04 detik**.
 
+---
+
+### Temuan B8: Audit Presisi Distribusi Grade Pemindaian (Scan & Multi-Angle) untuk Produksi Luas (11 November 2026)
+
+| Kode Temuan | Tingkat Keparahan | Komponen Teridentifikasi | Status Resolusi |
+|:---:|:---:|---|:---:|
+| **AUDIT-B8-01** | **KRITIS** | `src/components/BatchQCScanner.jsx` (Kartu pratinjau distribusi mutu pasca-scan masih hardcode 4-kelas, menampilkan 0 butir saat memindai model Terung v2) | **RESOLVED** |
+| **AUDIT-B8-02** | **KRITIS** | `src/business/multiAngleHelper.js` & `server/services/multi_angle_service.py` (Agregasi 2-sisi gagal mengekstrak kelas `grade_a` & `grade_b` v2, menyebabkan kalkulasi proporsi reject 100%) | **RESOLVED** |
+| **AUDIT-B8-03** | **TINGGI** | `src/components/BatchQCScanner.jsx` & `server/services/pricing_service.py` (Harmonisasi matematis input direct grades ke `calculateHarvest` dan `tier_breakdown` pricing backend) | **RESOLVED** |
+
+#### A. Analisis Akar Masalah (*Root Cause Analysis*)
+1. **Kegagalan Kartu Pratinjau Langsung Scanner (`BatchQCScanner.jsx`):**
+   Meskipun komponen hasil riwayat (`QCResults.jsx`) sudah diselaraskan pada B7, antarmuka pemindaian aktif (`BatchQCScanner.jsx`) masih memiliki grid statis 4-kelas (`extra_class`, `class_1`, `class_2`, `reject`). Ketika petani/pengguna memindai Terung dengan model v2, kartu Extra Class, Class 1, dan Class 2 selalu bernilai 0 butir (0%), menciptakan kebingungan seolah sistem tidak mendeteksi buah.
+2. **Kecacatan Agregasi Multi-Sudut 2-Sisi (*Multi-Angle Occlusion Trap*):**
+   Fungsi agregator multi-sudut frontend (`multiAngleHelper.js`) dan backend (`multi_angle_service.py`) mengekstrak deteksi dengan membaca properti spesifik model v1 (`extra_class`, `class_1`, `class_2`). Ketika objek yang masuk berupa kelas v2 (`grade_a`, `grade_b`), rata-rata keduanya bernilai 0, sehingga seluruh populasi tereduksi menjadi 0% Grade A/B dan 100% Reject.
+3. **Preservasi Matematis Input Simpan Rekap:**
+   Fungsi `handleConfirmSaveToRecap` sebelumnya melewatkan parameter `kesegaranPersen` dan `cacatPersen` ke `calculateHarvest`, yang mendistorsi proporsi Grade A & Grade B akibat formula kesegaran non-linier. Mengirimkan `gradeA` dan `gradeB` langsung menjamin konservasi 1:1 antara hitungan objek deteksi AI dan tabel rekap panen.
+
+#### B. Rekayasa Solusi (*Engineering Fixes*)
+1. **Dukungan Adaptif Pratinjau Mutu Langsung di `BatchQCScanner.jsx`:**
+   - Menambahkan deteksi `isDirect3Grade`. Jika model 3-Grade aktif, antarmuka merender 3 kartu responsif (Grade A Mutu Prima, Grade B Mutu Pasar, Reject Afkir) dengan bobot persentase proporsional.
+   - Jika model 4-kelas lama aktif, sistem merender 4 kartu UNECE.
+2. **Ekspansi Agregator Multi-Sudut Frontend & Backend:**
+   - Di `src/business/multiAngleHelper.js`: Menambahkan percabangan `isDirect3Grade` untuk menghitung rata-rata `grade_a`, `grade_b`, dan zero-defect escape pada `reject`, serta memetakan bobot grade fisik secara presisi.
+   - Di `server/services/multi_angle_service.py`: Menambahkan ekstraksi `Grade A`, `Grade B`, normalisasi rasio tertimbang, serta menyertakan `grade_a_combined` dan `grade_b_combined` pada `combined_object_counts`.
+   - Di `server/services/pricing_service.py`: Menyempurnakan `calculate_business_grading` agar membaca `grade_a_percent` secara eksplisit dan menambahkan `tier_breakdown` untuk Grade A (multiplier 1.15) dan Grade B (multiplier 0.80).
+3. **Hasil Pengujian & Verifikasi Menyeluruh:**
+   - Menambahkan unit test baru di `tes/multiAngleHelper.test.js` (`aggregateMultiAngleScanResults menggabungkan deteksi Terung 3-grade v2 dari 2 sisi`).
+   - Menambahkan unit test baru di `server/tests/test_multi_angle_qc.py` (`test_aggregate_terung_3grade_v2`).
+   - **Total 242 Unit Tests Lulus 100% (128 JS + 114 Python, 0 failed)**.
+   - Kompilasi produksi Vite sukses bersih tanpa peringatan sintaks dalam **962 ms**.
+
 
 
