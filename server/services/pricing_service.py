@@ -261,7 +261,8 @@ def calculate_eggplant_economic_projection(
     - Reject: Multiplier 0.00
     """
     # Harmonisasi input 3-Grade (Grade A, Grade B, Reject) dengan format 4-Kelas
-    if (grade_a_count > 0 or grade_b_count > 0) and extra_count == 0 and class1_count == 0 and class2_count == 0:
+    is_3grade_mode = (grade_a_count > 0 or grade_b_count > 0) and extra_count == 0 and class1_count == 0 and class2_count == 0
+    if is_3grade_mode:
         extra_count = grade_a_count
         class1_count = 0
         class2_count = grade_b_count
@@ -320,6 +321,19 @@ def calculate_eggplant_economic_projection(
             "Tidak ada objek terung yang terdeteksi dengan ambang batas keyakinan saat ini. "
             "Pastikan pencahayaan cukup dan foto keranjang fokus pada permukaan terung."
         )
+    elif is_3grade_mode:
+        if reject_count > 0:
+            rec_note = (
+                f"Mutu Terdistribusi 3-Kelas: {marketable_ratio}% terung layak jual "
+                f"(Grade A: {extra_ratio}%, Grade B: {class2_ratio}%). "
+                f"Segera pisahkan {reject_count} butir reject untuk menjaga standar mutu dan menyelamatkan potensi Rp {estimated_value or 0:,}."
+            )
+        else:
+            rec_note = (
+                f"Mutu Sangat Baik: 100% sampel terung tergolong mutu komersial tanpa reject "
+                f"(Grade A: {extra_ratio}%, Grade B: {class2_ratio}%). "
+                f"Potensi pendapatan mencapai Rp {estimated_value or 0:,}."
+            )
     elif reject_count > 0:
         rec_note = (
             f"Mutu Terdistribusi 4-Kelas: {marketable_ratio}% terung layak jual "

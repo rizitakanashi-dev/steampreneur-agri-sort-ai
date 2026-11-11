@@ -205,12 +205,13 @@ export function QCResults({ batch, onBackToInput, onViewRecap }) {
   let pieChartData = []
   if (hasAiScan && inference) {
     const counts = inference.object_counts || {}
-    if (isEggplant && (counts.extra_class || counts.class_1 || counts.class_2 || counts.reject)) {
+    if (isEggplant && (counts.grade_a || counts.grade_b || counts.extra_class || counts.class_1 || counts.class_2 || counts.reject)) {
+      const gradeACount = counts.grade_a ?? ((counts.extra_class || 0) + (counts.class_1 || 0))
+      const gradeBCount = counts.grade_b ?? (counts.class_2 || 0)
       pieChartData = [
-        { id: 0, value: counts.extra_class || 0, label: 'Extra Class', color: '#059669' },
-        { id: 1, value: counts.class_1 || 0, label: 'Class 1', color: '#0284c7' },
-        { id: 2, value: counts.class_2 || 0, label: 'Class 2', color: '#d97706' },
-        { id: 3, value: counts.reject || 0, label: 'Reject', color: '#dc2626' },
+        { id: 0, value: gradeACount, label: 'Grade A', color: '#059669' },
+        { id: 1, value: gradeBCount, label: 'Grade B', color: '#d97706' },
+        { id: 2, value: counts.reject || 0, label: 'Reject', color: '#dc2626' },
       ].filter((d) => d.value > 0)
     } else if (counts.fresh_tomato || counts.rotten_tomato) {
       pieChartData = [
@@ -784,28 +785,31 @@ export function QCResults({ batch, onBackToInput, onViewRecap }) {
           </Typography>
 
           {hasAiScan && isEggplant ? (
-            // Indikator 4 Kelas Terung
+            // Indikator 3 Kelas Terung (Grade A, Grade B, Reject)
             <Stack direction={{ xs: 'column', sm: 'row' }} flexWrap="wrap" gap={2}>
               <QualityIndicator
                 color="#059669"
-                count={inference?.object_counts?.extra_class || 0}
+                count={
+                  inference?.object_counts?.grade_a ??
+                  ((inference?.object_counts?.extra_class || 0) + (inference?.object_counts?.class_1 || 0))
+                }
                 icon={AssessmentRoundedIcon}
-                label="Extra Class (Super)"
-                percentage={pricing?.condition_ratios?.extra_class_percent || 0}
-              />
-              <QualityIndicator
-                color="#0284c7"
-                count={inference?.object_counts?.class_1 || 0}
-                icon={AssessmentRoundedIcon}
-                label="Class 1 (Standar)"
-                percentage={pricing?.condition_ratios?.class_1_percent || 0}
+                label="Grade A (Mutu Utama)"
+                percentage={
+                  pricing?.condition_ratios?.grade_a_percent ??
+                  ((pricing?.condition_ratios?.extra_class_percent || 0) +
+                    (pricing?.condition_ratios?.class_1_percent || 0))
+                }
               />
               <QualityIndicator
                 color="#d97706"
-                count={inference?.object_counts?.class_2 || 0}
+                count={inference?.object_counts?.grade_b ?? (inference?.object_counts?.class_2 || 0)}
                 icon={AssessmentRoundedIcon}
-                label="Class 2 (Lokal)"
-                percentage={pricing?.condition_ratios?.class_2_percent || 0}
+                label="Grade B (Mutu Standar)"
+                percentage={
+                  pricing?.condition_ratios?.grade_b_percent ??
+                  (pricing?.condition_ratios?.class_2_percent || 0)
+                }
               />
               <QualityIndicator
                 color="#dc2626"

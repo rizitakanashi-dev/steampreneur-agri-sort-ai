@@ -288,19 +288,28 @@ async def scan_harvest_batch(
 
             # Jika model terung yang aktif adalah 3-Grade v2 (Grade A, Grade B, Reject):
             if (grade_a_count > 0 or grade_b_count > 0) and extra_count == 0 and class1_count == 0 and class2_count == 0:
+                pricing_info = calculate_eggplant_economic_projection(
+                    weight_kg=weight_kg,
+                    extra_count=0,
+                    class1_count=0,
+                    class2_count=0,
+                    reject_count=reject_count,
+                    grade_a_count=grade_a_count,
+                    grade_b_count=grade_b_count,
+                )
                 extra_count = grade_a_count
                 class1_count = 0
                 class2_count = grade_b_count
-
-            pricing_info = calculate_eggplant_economic_projection(
-                weight_kg=weight_kg,
-                extra_count=extra_count,
-                class1_count=class1_count,
-                class2_count=class2_count,
-                reject_count=reject_count,
-                grade_a_count=grade_a_count,
-                grade_b_count=grade_b_count,
-            )
+            else:
+                pricing_info = calculate_eggplant_economic_projection(
+                    weight_kg=weight_kg,
+                    extra_count=extra_count,
+                    class1_count=class1_count,
+                    class2_count=class2_count,
+                    reject_count=reject_count,
+                    grade_a_count=grade_a_count,
+                    grade_b_count=grade_b_count,
+                )
 
             # Business grading mapping sesuai kontrak Faris (docs/rencana-kerja-fullstack.md Bab 3.2)
             business_grading = calculate_business_grading(
