@@ -663,6 +663,34 @@ flowchart TB
 - **Total Tests:** 246 unit tests lulus 100% tanpa kegagalan.
 - **Kompilasi Produksi Vite:** Berhasil tuntas dalam 1.17 detik.
 
+---
+
+### Temuan B13: Penanganan Sinonim Komoditas Lokal & Pencegahan Crash TypeError pada Modul Sains Patologi Pascapanen (11 November 2026)
+
+| Kode Temuan | Tingkat Keparahan | Komponen Teridentifikasi | Status Resolusi |
+|:---:|:---:|---|:---:|
+| **AUDIT-B13-01** | **TINGGI** | `src/business/pathologyReference.js` & `src/components/PostHarvestPathologyCards.jsx` (`getPathologiesForCommodity` mengembalikan array kosong saat menerima ejaan sinonim lokal seperti "Terong", menyebabkan `getPrimaryScienceRecommendation` crash melempar `TypeError: Cannot read properties of undefined (reading 'name')`) | **RESOLVED** |
+
+#### A. Analisis Masalah & Perbaikan Kritis
+1. **Akar Masalah Crash Patologi pada Komoditas Sinonim:**
+   - Di lapangan, petani dan pedagang pasar Payakumbuh sering menyebut "Terong" (bukan "Terung"), "Cabe" (bukan "Cabai"), atau "Eggplant".
+   - Fungsi `getPathologiesForCommodity` sebelumnya hanya melakukan pencocokan string kaku `cleanName.includes(aff)`. Ketika input adalah `"Terong"`, string `"terong"` tidak cocok dengan `"terung"`, sehingga me-return array kosong `[]`.
+   - Pada `getPrimaryScienceRecommendation`, kode memanggil `commPathologies[0]`. Ketika array kosong, elemen bernilai `undefined`, dan akses `primary.name` atau `primary.mitigationAction` melempar `TypeError` fatal yang merusak seluruh render kartu hasil QC.
+2. **Solusi Rekayasa:**
+   - Menambahkan normalisasi alias komoditas hortikultura strategis:
+     - `terong` / `terung` / `eggplant` dipetakan ke rumpun Terung.
+     - `cabe` / `cabai` / `chili` dipetakan ke rumpun Cabai.
+     - `tomat` / `tomato` dipetakan ke rumpun Tomat.
+   - Menambahkan fallback aman ke `ALL_PATHOLOGY_ITEMS` jika komoditas umum di luar 3 kelompok utama dimasukkan pengguna (misal "Bawang Merah").
+   - Menerapkan *defensive chaining* (`primary?.name`, `primary?.mitigationAction`) dengan nilai string cadangan yang bermakna ilmiah agronomis.
+
+#### B. Hasil Verifikasi Menyeluruh
+- **Frontend Tests:** 132 / 132 tests lulus (node:test).
+- **Backend Tests:** 114 / 114 tests lulus (Python unittest).
+- **Total Tests:** 246 unit tests lulus 100% tanpa kegagalan.
+- **Kompilasi Produksi Vite:** Berhasil tuntas dalam 1.46 detik.
+
+
 
 
 
