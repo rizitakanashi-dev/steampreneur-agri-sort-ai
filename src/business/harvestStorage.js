@@ -50,6 +50,17 @@ export function clearBatches(storage) {
   if (target) target.removeItem(HARVEST_STORAGE_KEY)
 }
 
+export function deleteBatch(batchId, storage) {
+  const target = getStorage(storage)
+  if (!target) return []
+  if (!batchId) return readBatches(target)
+
+  const batches = readBatches(target)
+  const remaining = batches.filter((b) => b.id !== batchId)
+  target.setItem(HARVEST_STORAGE_KEY, JSON.stringify(remaining))
+  return remaining
+}
+
 export function exportBatchesAsJson(storage) {
   const batches = readBatches(storage)
   const payload = {

@@ -80,7 +80,7 @@ export function listCommodities(batches = []) {
  * Batch tanpa data nilai dianggap memiliki nilai 0.
  */
 export function calculateBatchTotals(batches = []) {
-  return batches.reduce(
+  const sum = (batches || []).reduce(
     (acc, batch) => {
       const batchWeight = Number(batch?.beratKg ?? batch?.volume_kg) || 0
       const batchValue =
@@ -96,4 +96,9 @@ export function calculateBatchTotals(batches = []) {
     },
     { totalBeratKg: 0, totalNilai: 0 },
   )
+
+  return {
+    totalBeratKg: Number(sum.totalBeratKg.toFixed(4)),
+    totalNilai: Math.round(sum.totalNilai),
+  }
 }

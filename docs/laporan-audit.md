@@ -744,6 +744,36 @@ flowchart TB
 - **Total Tests:** 248 unit tests lulus 100% tanpa kegagalan.
 - **Kompilasi Produksi Vite:** Berhasil tuntas dalam 1.20 detik.
 
+---
+
+### Temuan B16: Fitur Penghapusan Batch Individual Aman, Labeling Footer Rekap, dan Presisi Total IEEE-754 (11 November 2026)
+
+| Kode Temuan | Tingkat Keparahan | Komponen Teridentifikasi | Status Resolusi |
+|:---:|:---:|---|:---:|
+| **AUDIT-B16-01** | **SEDANG** | `src/business/harvestStorage.js`, `src/business/harvestFilter.js`, `src/components/HarvestRecap.jsx`, `src/App.jsx` (Ketiadaan opsi hapus data batch tunggal dengan dialog konfirmasi, kurangnya label total batch pada footer tabel, serta akumulasi floating-point desimal IEEE-754 pada total rekap) | **RESOLVED** |
+
+#### A. Analisis Masalah & Perbaikan Kritis
+1. **Kebutuhan Penghapusan Batch Individual bagi Petani & PPL:**
+   - Sebelumnya, pengguna hanya memiliki opsi *"Hapus Semua Data"* pada menu pengaturan atau harus membiarkan batch panen yang salah input/cacat data tetap tersimpan di tabel rekap.
+   - Tidak tersedianya aksi hapus per batch berisiko mengotori data agregasi bobot panen dan valuasi ekonomi riil di lapangan.
+2. **Artefak Presisi Desimal IEEE-754 pada Akumulasi Berat:**
+   - Operasi penambahan beruntun bobot timbangan desimal (misal: 10.1 kg + 20.2 kg) pada `calculateBatchTotals` dapat menghasilkan artefak komputasi seperti `30.299999999999997 kg`, yang membingungkan petani saat mencocokkan nota timbangan digital.
+3. **Solusi Rekayasa:**
+   - **`harvestStorage.js`**: Menambahkan fungsi murni `deleteBatch(batchId, storage)` yang menyaring batch berdasarkan ID dan memperbarui penyimpanan lokal secara atomik.
+   - **`harvestFilter.js`**: Menyempurnakan `calculateBatchTotals` dengan pembulatan presisi `toFixed(4)` untuk berat dan `Math.round()` untuk estimasi nilai Rupiah bulat.
+   - **`HarvestRecap.jsx`**:
+     - Menambahkan aksi ikon hapus (`DeleteOutlineRoundedIcon`) di setiap baris data dan tombol hapus di dalam modal detail.
+     - Menyediakan modal dialog konfirmasi dua langkah (`Konfirmasi Hapus Batch`) untuk mencegah penghapusan data secara tidak sengaja.
+     - Memperbarui label sel footer tabel menjadi `Total Halaman Ini (${visibleBatches.length} batch):` demi kejelasan audit visual.
+   - **`App.jsx`**: Mengintegrasikan `handleDeleteBatch` ke state induk dan meneruskan callback melalui `FoundationPage`.
+
+#### B. Hasil Verifikasi Menyeluruh
+- **Frontend Tests:** 136 / 136 tests lulus (node:test).
+- **Backend Tests:** 114 / 114 tests lulus (Python unittest).
+- **Total Tests:** 250 unit tests lulus 100% tanpa kegagalan.
+- **Kompilasi Produksi Vite:** Berhasil tuntas tanpa error.
+
+
 
 
 

@@ -2,6 +2,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import {
   clearBatches,
+  deleteBatch,
   exportBatchesAsJson,
   HARVEST_STORAGE_KEY,
   importBatchesFromJson,
@@ -46,6 +47,22 @@ test('clearBatches menghapus semua batch', () => {
   saveBatch(sampleBatch, storage)
   clearBatches(storage)
   assert.deepEqual(readBatches(storage), [])
+})
+
+test('deleteBatch menghapus satu batch spesifik dan mempertahankan batch lainnya', () => {
+  const storage = makeStorage()
+  saveBatch({ id: 'panen-A', komoditas: 'Tomat', beratKg: 10 }, storage)
+  saveBatch({ id: 'panen-B', komoditas: 'Terung', beratKg: 20 }, storage)
+
+  const remaining = deleteBatch('panen-A', storage)
+  assert.equal(remaining.length, 1)
+  assert.equal(remaining[0].id, 'panen-B')
+
+  assert.deepEqual(readBatches(storage), [{ id: 'panen-B', komoditas: 'Terung', beratKg: 20 }])
+
+  // Menghapus ID yang tidak ada tetap aman
+  const same = deleteBatch('panen-NONEXISTENT', storage)
+  assert.equal(same.length, 1)
 })
 
 test('exportBatchesAsJson menghasilkan format cadangan baku dengan metadata', () => {

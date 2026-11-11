@@ -27,7 +27,7 @@ import TrendingUpRoundedIcon from '@mui/icons-material/TrendingUpRounded'
 import VerifiedRoundedIcon from '@mui/icons-material/VerifiedRounded'
 import VisibilityRoundedIcon from '@mui/icons-material/VisibilityRounded'
 import { calculateHarvest, calculateHarvestValue } from './business/harvestCalculation.js'
-import { readBatches, saveBatch } from './business/harvestStorage.js'
+import { deleteBatch, readBatches, saveBatch } from './business/harvestStorage.js'
 import { COMMODITY_OPTIONS, PRICE_REFERENCE_SOURCE, REFERENCE_PRICES_PER_KG } from './business/priceReference.js'
 import { fetchBapanasLive } from './services/scanService.js'
 import { AppShell } from './components/AppShell.jsx'
@@ -268,6 +268,7 @@ function FoundationPage({
   onViewRecap,
   onSelectBatch,
   onBatchSaved,
+  onDeleteBatch,
   openCertModal = false,
 }) {
   const [showManualForm, setShowManualForm] = useState(false)
@@ -314,7 +315,9 @@ function FoundationPage({
       />
     )
   }
-  if (activePage === 'results-list') return <HarvestRecap batches={batches} onSelectBatch={onSelectBatch} />
+  if (activePage === 'results-list') {
+    return <HarvestRecap batches={batches} onSelectBatch={onSelectBatch} onDeleteBatch={onDeleteBatch} />
+  }
   if (activePage === 'pricing') return <PricingDashboard />
   return (
     <Card>
@@ -373,6 +376,16 @@ function App() {
     setSelectedBatch(storedBatches[storedBatches.length - 1] || null)
   }
 
+  const handleDeleteBatch = (batchId) => {
+    deleteBatch(batchId)
+    const storedBatches = readBatches()
+    setBatches(storedBatches)
+    if (selectedBatch?.id === batchId) {
+      setSelectedBatch(storedBatches[storedBatches.length - 1] || null)
+    }
+    setHarvestMessage(`Batch ${batchId} berhasil dihapus dari rekap data panen.`)
+  }
+
   const handleHarvestConfirm = (input) => {
     const calculation = calculateHarvest(input)
     const basePrice =
@@ -429,6 +442,7 @@ function App() {
           onViewRecap={handleViewRecap}
           selectedBatch={selectedBatch}
           openCertModal={openCertModal}
+          onDeleteBatch={handleDeleteBatch}
           onBatchSaved={(newBatch) => {
             setBatches((current) => [...current, newBatch])
             setSelectedBatch(newBatch)
