@@ -35,6 +35,7 @@ CLAUDE.md
 
 # Large archives & temporary model dumps
 *.zip
+*.docx
 
 # ML Training artifacts, root weights, and datasets
 runs/

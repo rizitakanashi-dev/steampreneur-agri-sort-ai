@@ -569,5 +569,29 @@ flowchart TB
    - **Total 242 Unit Tests Lulus 100% (128 JS + 114 Python, 0 failed)**.
    - Kompilasi produksi Vite sukses bersih tanpa peringatan sintaks dalam **962 ms**.
 
+---
+
+### Temuan B9: Sinkronisasi Form Terung, Pembersihan Log Pillow, dan Kesiapan PWA Lapangan (11 November 2026)
+
+| Kode Temuan | Tingkat Keparahan | Komponen Teridentifikasi | Status Resolusi |
+|:---:|:---:|---|:---:|
+| **AUDIT-B9-01** | **SEDANG** | `src/components/HarvestForm.jsx` (Sinkronisasi hasil deteksi AI Terung tidak mengisi input mutu `kesegaranPersen` dan `cacatPersen`) | **RESOLVED** |
+| **AUDIT-B9-02** | **RENDAH** | `server/services/tiled_inference.py` (*Deprecation warning* Pillow pada filter artefak teks/meja) | **RESOLVED** |
+| **AUDIT-B9-03** | **PENINGKATAN** | `public/`, `index.html`, `src/main.jsx` (Kesiapan PWA, Web Manifest, App Icon SVG, & Offline Service Worker) | **RESOLVED** |
+
+#### A. Analisis Masalah & Bug Fix
+1. **Bug Sinkronisasi Form Panen Terung (`HarvestForm.jsx`):**
+   Fungsi `handleAiScan` pada `HarvestForm.jsx` sebelumnya hanya memeriksa `inf.condition_ratios.fresh_ratio_percent` (khusus Tomat). Saat memindai Terung (yang menghasilkan `grade_a_percent` atau `extra_class_percent`), parameter mutu tidak terisi otomatis ke form. Kami menambahkan logika pengisian adaptif: Grade A mengisi nilai kesegaran mutu prima, dan Reject mengisi nilai cacat.
+2. **Pembersihan Log Pillow (`tiled_inference.py`):**
+   Mengganti `crop.getdata()` dengan pembacaan byte langsung `crop.tobytes()` pada deteksi artefak teks/meja kayu. Log backend kini murni 100% bersih tanpa warning deprecation.
+3. **PWA & Offline Field Caching:**
+   Menambahkan `public/manifest.webmanifest`, `public/sw.js` (stale-while-revalidate untuk app shell & UI, bypass untuk `/api/`), dan ikon aplikasi resmi di `public/icons/icon.svg`. Petani kini dapat meng-install Agri-Sort AI ke layar utama HP Android/iOS dan membukanya di kebun saat sinyal seluler tidak stabil.
+
+#### B. Hasil Verifikasi
+- **Frontend Tests:** 128 / 128 tests lulus (100%).
+- **Backend Tests:** 114 / 114 tests lulus (100%).
+- **Total Tests:** 242 unit tests lulus tanpa kegagalan.
+- **Kompilasi Vite:** Berhasil bersih dalam 1.41 detik.
+
 
 

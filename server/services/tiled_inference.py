@@ -231,7 +231,8 @@ def is_watermark_or_text_artifact(box: List[float], image: Image.Image, commodit
 
         if is_small_square and is_near_bottom:
             crop = image.crop((int(box[0]), int(box[1]), int(box[2]), int(box[3]))).convert("RGB").resize((20, 20))
-            pixels = list(crop.getdata()) if hasattr(crop, "getdata") else []
+            raw_bytes = crop.tobytes()
+            pixels = [(raw_bytes[i], raw_bytes[i + 1], raw_bytes[i + 2]) for i in range(0, len(raw_bytes), 3)]
             has_fruit_color = False
             for r, g, b in pixels:
                 # Warna ungu terung (b > g dan r > g), hijau kelopak, atau hitam pekat
@@ -255,7 +256,8 @@ def is_watermark_or_text_artifact(box: List[float], image: Image.Image, commodit
             cy1 = y1 + int(0.15 * ch)
             cy2 = max(cy1 + 1, y2 - int(0.15 * ch))
             core_crop = image.crop((cx1, cy1, cx2, cy2)).convert("RGB").resize((24, 24))
-            core_pixels = list(core_crop.getdata()) if hasattr(core_crop, "getdata") else []
+            raw_core = core_crop.tobytes()
+            core_pixels = [(raw_core[i], raw_core[i + 1], raw_core[i + 2]) for i in range(0, len(raw_core), 3)]
             if len(core_pixels) >= 16:
                 # Abaikan citra sintetis polos (mock test unit) dengan variansi warna ~0
                 r_vals = [p[0] for p in core_pixels]
