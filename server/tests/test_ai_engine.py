@@ -32,10 +32,10 @@ class TestYOLOInferenceEngine(unittest.TestCase):
         self.assertIn("terung", configs)
         terung_cfg = configs["terung"]
         self.assertEqual(terung_cfg["name"], "Agri-Sort Eggplant Quality Detection")
-        self.assertEqual(terung_cfg["version"], "1.0.0")
-        self.assertEqual(
-            terung_cfg["expected_classes"],
-            ["Class I", "Class II", "Extra Class", "Reject"],
+        self.assertIn(terung_cfg["version"], ["1.0.0", "2.0.0"])
+        self.assertTrue(
+            terung_cfg["expected_classes"] == ["Grade A", "Grade B", "Reject"]
+            or terung_cfg["expected_classes"] == ["Class I", "Class II", "Extra Class", "Reject"]
         )
         self.assertTrue(
             os.path.exists(terung_cfg["path"]),
@@ -54,6 +54,8 @@ class TestYOLOInferenceEngine(unittest.TestCase):
     def test_class_slug_normalization(self):
         """Memverifikasi pemetaan nama kelas asli model Terung dan Tomat ke format slug frontend."""
         test_cases = [
+            ("Grade A", "grade-a"),
+            ("Grade B", "grade-b"),
             ("Class I", "class-1"),
             ("Class II", "class-2"),
             ("Extra Class", "extra-class"),

@@ -137,20 +137,30 @@ def disambiguate_eggplant_classes(
     cluster_items: List[Dict[str, Any]],
     confidence_threshold: float = 0.25,
     is_dense_scan: bool = False,
+    is_3grade: bool = False,
 ) -> Tuple[str, float, int, bool, Optional[str]]:
     """
-    Menyelesaikan ambiguitas klasifikasi antara Class II, Class I, Extra Class, dan Reject
-    sesuai prinsip evaluasi mutu hortikultura UNECE FFV-05 (standar SNI Terung: NOT VERIFIED).
+    Menyelesaikan ambiguitas klasifikasi antara Class II / Grade B dan Reject
+    sesuai prinsip evaluasi mutu hortikultura.
 
     Mengembalikan:
       (chosen_class_name, chosen_confidence, chosen_class_id, disambiguated, reason)
     """
-    # ID baku model Terung: 0: Class I, 1: Class II, 2: Extra Class, 3: Reject
+    # Deteksi skema kelas: 3-Grade ("Grade A", "Grade B", "Reject") atau 4-Kelas legacy
+    if not is_3grade:
+        is_3grade = any(
+            it.get("class_name") in ["Grade A", "Grade B"]
+            for it in cluster_items
+        )
+    grade_b_name = "Grade B" if is_3grade else "Class II"
+
     class_id_map = {
+        "Grade A": 0,
+        "Grade B": 1,
         "Class I": 0,
         "Class II": 1,
         "Extra Class": 2,
-        "Reject": 3,
+        "Reject": 2 if is_3grade else 3,
     }
 
     best_item = max(cluster_items, key=lambda x: x["conf"])
@@ -159,44 +169,35 @@ def disambiguate_eggplant_classes(
     disambiguated = False
     reason = None
 
-    has_c1 = [it for it in cluster_items if it["class_name"] == "Class I"]
-    has_c2 = [it for it in cluster_items if it["class_name"] == "Class II"]
-    has_extra = [it for it in cluster_items if it["class_name"] == "Extra Class"]
+    has_b = [it for it in cluster_items if it["class_name"] in ["Grade B", "Class II"]]
+    has_a = [it for it in cluster_items if it["class_name"] in ["Grade A", "Class I", "Extra Class"]]
 
     # Aturan Diskriminasi Mutu Terung:
     if chosen_cls == "Reject":
-        # Aturan 1: Jika Class II terdeteksi bersaing ketat dengan Reject (margin selisih < 0.20)
+        # Aturan 1: Jika Grade B (Class II) bersaing ketat dengan Reject (margin selisih < 0.20)
         # dan skor Reject belum mencapai derajat kepastian tinggi (< 0.55),
-        # alokasikan ke Class II (Grade B / Cacat Bentuk / Goresan Fisik Non-Patogenik).
-        if has_c2:
-            best_c2 = max(has_c2, key=lambda x: x["conf"])
-            if best_c2["conf"] >= 0.20 and (chosen_conf - best_c2["conf"] < 0.20):
-                chosen_cls = "Class II"
-                chosen_conf = best_c2["conf"]
+        # alokasikan ke Grade B (Cacat Bentuk / Goresan Fisik Non-Patogenik).
+        if has_b:
+            best_b = max(has_b, key=lambda x: x["conf"])
+            if best_b["conf"] >= 0.20 and (chosen_conf - best_b["conf"] < 0.20):
+                chosen_cls = best_b["class_name"]
+                chosen_conf = best_b["conf"]
                 disambiguated = True
-                reason = "margin_calibrated_class2"
-        # Aturan 2: Jika Class I terdeteksi bersaing
-        elif has_c1:
-            best_c1 = max(has_c1, key=lambda x: x["conf"])
-            if best_c1["conf"] >= 0.20:
-                chosen_cls = "Class I"
-                chosen_conf = best_c1["conf"]
+                reason = "margin_calibrated_grade_b" if is_3grade else "margin_calibrated_class2"
+        # Aturan 2: Jika Grade A (Class I / Extra Class) terdeteksi bersaing
+        elif has_a:
+            best_a = max(has_a, key=lambda x: x["conf"])
+            if best_a["conf"] >= 0.20:
+                chosen_cls = best_a["class_name"]
+                chosen_conf = best_a["conf"]
                 disambiguated = True
-                reason = "calibrated_class1"
-        # Aturan 3: Jika Extra Class terdeteksi bersaing
-        elif has_extra:
-            best_ex = max(has_extra, key=lambda x: x["conf"])
-            if best_ex["conf"] >= 0.20:
-                chosen_cls = "Extra Class"
-                chosen_conf = best_ex["conf"]
-                disambiguated = True
-                reason = "calibrated_extra_class"
-        # Aturan 4: Jika deteksi Reject berdiri sendiri (soliter) namun dengan skor marginal (< 0.38)
+                reason = "calibrated_grade_a" if is_3grade else ("calibrated_class1" if "Class I" in best_a["class_name"] else "calibrated_extra_class")
+        # Aturan 3: Jika deteksi Reject berdiri sendiri (soliter) namun dengan skor marginal (< 0.38)
         # pada pemindaian keranjang padat, bayangan kelopak sering memicu false reject.
         elif is_dense_scan and chosen_conf < 0.38:
-            chosen_cls = "Class II"
+            chosen_cls = grade_b_name
             disambiguated = True
-            reason = "marginal_solitary_calibrated_class2"
+            reason = "marginal_solitary_calibrated_grade_b" if is_3grade else "marginal_solitary_calibrated_class2"
 
     chosen_id = class_id_map.get(chosen_cls, best_item.get("cls_id", 0))
     return chosen_cls, chosen_conf, chosen_id, disambiguated, reason
@@ -259,6 +260,8 @@ def run_sliced_yolo_inference(
     should_slice = enable_slicing and not is_native_or_low_res
 
     is_terung = "terung" in commodity.lower() or "terong" in commodity.lower() or "eggplant" in commodity.lower()
+    model_names_vals = list(getattr(model, "names", {}).values()) if hasattr(model, "names") else []
+    is_3grade_model = "Grade A" in model_names_vals or "Grade B" in model_names_vals
 
     if not should_slice:
         formatted_detections: List[Dict[str, Any]] = []
@@ -283,6 +286,7 @@ def run_sliced_yolo_inference(
                     cluster_items=[fb],
                     confidence_threshold=confidence_threshold,
                     is_dense_scan=is_dense,
+                    is_3grade=is_3grade_model,
                 )
                 if disambiguated:
                     disambiguated_count += 1
@@ -476,6 +480,7 @@ def run_sliced_yolo_inference(
                 cluster_items=items,
                 confidence_threshold=confidence_threshold,
                 is_dense_scan=is_dense_scan,
+                is_3grade=is_3grade_model,
             )
             if disambiguated:
                 disambiguated_count += 1
