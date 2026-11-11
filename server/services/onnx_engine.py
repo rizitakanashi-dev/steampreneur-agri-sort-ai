@@ -131,6 +131,17 @@ class ONNXYOLOModel:
             providers=["CPUExecutionProvider"],
         )
 
+        # Otomatis baca metadata nama kelas bawaan model ONNX (jika tersedia dari Ultralytics export)
+        try:
+            meta = self.session.get_modelmeta().custom_metadata_map
+            if "names" in meta:
+                import ast
+                parsed_names = ast.literal_eval(meta["names"])
+                if isinstance(parsed_names, dict) and len(parsed_names) > 0:
+                    self.names = {int(k): str(v) for k, v in parsed_names.items()}
+        except Exception as e:
+            logger.debug("Tidak dapat membaca metadata kelas dari model ONNX: %s", e)
+
         self.input_name = self.session.get_inputs()[0].name
         self.output_name = self.session.get_outputs()[0].name
 

@@ -245,19 +245,27 @@ def calculate_economic_projection(
 
 def calculate_eggplant_economic_projection(
     weight_kg: Optional[float],
-    extra_count: int,
-    class1_count: int,
-    class2_count: int,
-    reject_count: int,
+    extra_count: int = 0,
+    class1_count: int = 0,
+    class2_count: int = 0,
+    reject_count: int = 0,
     region: str = "Sumatera Barat",
+    grade_a_count: int = 0,
+    grade_b_count: int = 0,
 ) -> Dict[str, Any]:
     """
-    Menghitung estimasi nilai ekonomi 4-Kelas untuk Terung (Task Model Baru 7 Nov 2026):
-    - Extra Class (Mutu Super): Multiplier 1.15 (+15% premi kualitas)
-    - Class 1 (Mutu Pasar Standar): Multiplier 1.00
-    - Class 2 (Mutu Pasar Tradisional/Lokal): Multiplier 0.80 (-20% diskon toleransi)
-    - Reject (Afkir/Rusak): Multiplier 0.00
+    Menghitung estimasi nilai ekonomi Terung (Mendukung 3-Grade v2 maupun 4-Kelas v1):
+    - Grade A / Extra Class: Multiplier 1.15 (+15% premi kualitas)
+    - Class 1: Multiplier 1.00
+    - Grade B / Class 2: Multiplier 0.80 (-20% diskon toleransi)
+    - Reject: Multiplier 0.00
     """
+    # Harmonisasi input 3-Grade (Grade A, Grade B, Reject) dengan format 4-Kelas
+    if (grade_a_count > 0 or grade_b_count > 0) and extra_count == 0 and class1_count == 0 and class2_count == 0:
+        extra_count = grade_a_count
+        class1_count = 0
+        class2_count = grade_b_count
+
     pricing = get_commodity_pricing("terung", region)
     base_price = pricing["price_per_kg"]
 
@@ -377,6 +385,8 @@ def calculate_eggplant_economic_projection(
             "class_2_percent": class2_ratio,
             "reject_percent": reject_ratio,
             "marketable_percent": marketable_ratio,
+            "grade_a_percent": round(extra_ratio + class1_ratio, 2),
+            "grade_b_percent": class2_ratio,
         },
         "value_calculation_method": (
             "Kalkulasi multi-grade Terung: Bobot x Rasio Kelas x Harga Acuan x Bobot Mutu (STEAM 4-Class Model)"
@@ -418,15 +428,25 @@ def calculate_business_grading(
             valid_weight = None
 
     if is_eggplant:
-        extra_pct = float(ratios.get("extra_class_percent", ratios.get("extra_class_ratio_percent", 0.0)))
-        c1_pct = float(ratios.get("class_1_percent", ratios.get("class_1_ratio_percent", 0.0)))
-        c2_pct = float(ratios.get("class_2_percent", ratios.get("class_2_ratio_percent", 0.0)))
-        rej_pct = float(ratios.get("reject_percent", ratios.get("reject_ratio_percent", 0.0)))
+        # Jika ratios memuat pembagian 3-Grade langsung (Grade A, Grade B, Reject)
+        has_direct_grades = ("grade_a_percent" in ratios or "grade_a_ratio_percent" in ratios) and (
+            "extra_class_percent" not in ratios and "class_1_percent" not in ratios
+        )
+        if has_direct_grades:
+            grade_a_pct = round(float(ratios.get("grade_a_percent", ratios.get("grade_a_ratio_percent", 0.0))), 2)
+            grade_b_pct = round(float(ratios.get("grade_b_percent", ratios.get("grade_b_ratio_percent", 0.0))), 2)
+            reject_pct = round(float(ratios.get("reject_percent", ratios.get("reject_ratio_percent", 0.0))), 2)
+            rule_desc = "Grade A -> Grade A, Grade B -> Grade B, Reject -> Reject"
+        else:
+            extra_pct = float(ratios.get("extra_class_percent", ratios.get("extra_class_ratio_percent", 0.0)))
+            c1_pct = float(ratios.get("class_1_percent", ratios.get("class_1_ratio_percent", 0.0)))
+            c2_pct = float(ratios.get("class_2_percent", ratios.get("class_2_ratio_percent", 0.0)))
+            rej_pct = float(ratios.get("reject_percent", ratios.get("reject_ratio_percent", 0.0)))
 
-        grade_a_pct = round(extra_pct + c1_pct, 2)
-        grade_b_pct = round(c2_pct, 2)
-        reject_pct = round(rej_pct, 2)
-        rule_desc = "Extra Class & Class I -> Grade A, Class II -> Grade B, Reject -> Reject"
+            grade_a_pct = round(extra_pct + c1_pct, 2)
+            grade_b_pct = round(c2_pct, 2)
+            reject_pct = round(rej_pct, 2)
+            rule_desc = "Extra Class & Class I -> Grade A, Class II -> Grade B, Reject -> Reject"
     else:
         fresh_pct = float(ratios.get("fresh_ratio_percent", ratios.get("fresh_ratio", 0.0)))
         rotten_pct = float(ratios.get("rotten_ratio_percent", ratios.get("rotten_ratio", 0.0)))

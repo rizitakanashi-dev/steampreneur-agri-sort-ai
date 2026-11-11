@@ -53,19 +53,31 @@ class YOLOInferenceEngine:
 
         self.preferred_runtime = os.environ.get("AGRISORT_RUNTIME", "onnx").strip().lower()
 
+        # Deteksi konfigurasi kelas terung dari server/models/terung/data.yaml
+        terung_primary_pt = os.path.join(self.base_dir, "server", "models", "terung", "best.pt")
+        terung_fallback_pt = os.path.join(self.base_dir, "models-20261107T170211Z-1-001", "models", "terung", "best.pt")
+        terung_pt_path = terung_primary_pt if os.path.exists(terung_primary_pt) else terung_fallback_pt
+
+        terung_classes = ["Grade A", "Grade B", "Reject"]
+        terung_version = "2.0.0"
+        terung_yaml = os.path.join(self.base_dir, "server", "models", "terung", "data.yaml")
+        if os.path.exists(terung_yaml):
+            try:
+                import yaml
+                with open(terung_yaml, "r", encoding="utf-8") as yf:
+                    ydata = yaml.safe_load(yf)
+                    if ydata and "names" in ydata and isinstance(ydata["names"], list):
+                        terung_classes = ydata["names"]
+            except Exception:
+                pass
+
         self.model_configs = {
             "terung": {
                 "name": "Agri-Sort Eggplant Quality Detection",
-                "version": "1.0.0",
-                "path": os.path.join(
-                    self.base_dir,
-                    "models-20261107T170211Z-1-001",
-                    "models",
-                    "terung",
-                    "best.pt",
-                ),
+                "version": terung_version,
+                "path": terung_pt_path,
                 "onnx_path": os.path.join(self.base_dir, "server", "models", "terung", "best.onnx"),
-                "expected_classes": ["Class I", "Class II", "Extra Class", "Reject"],
+                "expected_classes": terung_classes,
             },
             "tomat": {
                 "name": "Agri-Sort Tomato Freshness Detection",
@@ -101,20 +113,22 @@ class YOLOInferenceEngine:
         # 1. Coba muat ONNX Runtime jika diminta dan berkas ONNX tersedia
         if target_runtime == "onnx" and is_onnx_available():
             cache_key = f"{comm_key}_onnx"
-            if cache_key not in self._models:
-                onnx_path = cfg.get("onnx_path", "")
-                if not os.path.exists(onnx_path) and comm_key == "terung":
-                    alt_onnx = os.path.join(self.base_dir, "models-20261107T170211Z-1-001", "models", "terung", "best.onnx")
-                    if os.path.exists(alt_onnx):
-                        onnx_path = alt_onnx
+            if cache_key in self._models:
+                return self._models[cache_key], comm_key, "onnx_runtime"
 
-                if os.path.exists(onnx_path):
-                    logger.info("Memuat engine ONNX Runtime CPU untuk %s dari: %s", comm_key, onnx_path)
-                    class_dict = {i: name for i, name in enumerate(cfg["expected_classes"])}
-                    self._models[cache_key] = ONNXYOLOModel(model_path=onnx_path, names=class_dict)
-                    return self._models[cache_key], comm_key, "onnx_runtime"
-                else:
-                    logger.warning("Berkas ONNX %s tidak ditemukan di %s. Mencoba fallback ke PyTorch.", comm_key, onnx_path)
+            onnx_path = cfg.get("onnx_path", "")
+            if not os.path.exists(onnx_path) and comm_key == "terung":
+                alt_onnx = os.path.join(self.base_dir, "models-20261107T170211Z-1-001", "models", "terung", "best.onnx")
+                if os.path.exists(alt_onnx):
+                    onnx_path = alt_onnx
+
+            if os.path.exists(onnx_path):
+                logger.info("Memuat engine ONNX Runtime CPU untuk %s dari: %s", comm_key, onnx_path)
+                class_dict = {i: name for i, name in enumerate(cfg["expected_classes"])}
+                self._models[cache_key] = ONNXYOLOModel(model_path=onnx_path, names=class_dict)
+                return self._models[cache_key], comm_key, "onnx_runtime"
+            else:
+                logger.warning("Berkas ONNX %s tidak ditemukan di %s. Mencoba fallback ke PyTorch.", comm_key, onnx_path)
 
         # 2. Fallback ke Ultralytics PyTorch (.pt)
         if not ULTRALYTICS_AVAILABLE:
@@ -253,6 +267,10 @@ class YOLOInferenceEngine:
           - "rotten-tomato" -> "rotten-tomato"
         """
         s = raw_name.strip().lower()
+        if "grade a" in s or "grade-a" in s:
+            return "grade-a"
+        if "grade b" in s or "grade-b" in s:
+            return "grade-b"
         if "extra" in s:
             return "extra-class"
         if "class ii" in s or "class 2" in s:

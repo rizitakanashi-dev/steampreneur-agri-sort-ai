@@ -279,10 +279,18 @@ async def scan_harvest_batch(
         if is_eggplant:
             class_counts = raw_detection["detection_summary"]["class_counts"]
             total_objs = raw_detection["detection_summary"]["total_objects"]
+            grade_a_count = class_counts.get("Grade A", 0) or class_counts.get("grade-a", 0)
+            grade_b_count = class_counts.get("Grade B", 0) or class_counts.get("grade-b", 0)
             extra_count = class_counts.get("extra-class", 0) or class_counts.get("Extra Class", 0)
             class1_count = class_counts.get("class-1", 0) or class_counts.get("Class I", 0) or class_counts.get("Class 1", 0)
             class2_count = class_counts.get("class-2", 0) or class_counts.get("Class II", 0) or class_counts.get("Class 2", 0)
             reject_count = class_counts.get("reject", 0) or class_counts.get("Reject", 0)
+
+            # Jika model terung yang aktif adalah 3-Grade v2 (Grade A, Grade B, Reject):
+            if (grade_a_count > 0 or grade_b_count > 0) and extra_count == 0 and class1_count == 0 and class2_count == 0:
+                extra_count = grade_a_count
+                class1_count = 0
+                class2_count = grade_b_count
 
             pricing_info = calculate_eggplant_economic_projection(
                 weight_kg=weight_kg,
@@ -290,6 +298,8 @@ async def scan_harvest_batch(
                 class1_count=class1_count,
                 class2_count=class2_count,
                 reject_count=reject_count,
+                grade_a_count=grade_a_count,
+                grade_b_count=grade_b_count,
             )
 
             # Business grading mapping sesuai kontrak Faris (docs/rencana-kerja-fullstack.md Bab 3.2)
@@ -322,6 +332,8 @@ async def scan_harvest_batch(
                         "disambiguated_count": raw_detection["detection_summary"].get("disambiguated_count", 0),
                         "object_counts": {
                             "total": total_objs,
+                            "grade_a": grade_a_count if (grade_a_count > 0 or grade_b_count > 0) else extra_count + class1_count,
+                            "grade_b": grade_b_count if (grade_a_count > 0 or grade_b_count > 0) else class2_count,
                             "extra_class": extra_count,
                             "class_1": class1_count,
                             "class_2": class2_count,

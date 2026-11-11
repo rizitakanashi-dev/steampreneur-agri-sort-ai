@@ -24,6 +24,22 @@ export const CLASS_PALETTE = Object.freeze({
     badge: 'Cacat/Busuk',
   },
 
+  // Komoditas Terung & Cabai (Standar 3-Grade Mutu Pasar)
+  'grade-a': {
+    stroke: '#059669', // Deep emerald
+    fill: 'rgba(5, 150, 105, 0.20)',
+    textBg: '#059669',
+    label: 'Grade A',
+    badge: 'Mutu Prima',
+  },
+  'grade-b': {
+    stroke: '#d97706', // Amber
+    fill: 'rgba(217, 119, 6, 0.22)',
+    textBg: '#d97706',
+    label: 'Grade B',
+    badge: 'Mutu Pasar',
+  },
+
   // Komoditas Terung (4 Kelas Standar Mutu Komersial FFV-05)
   'extra-class': {
     stroke: '#059669', // Deep emerald
@@ -75,7 +91,13 @@ export function getClassTheme(className) {
   if (CLASS_PALETTE[rawSlug]) return CLASS_PALETTE[rawSlug]
   if (CLASS_PALETTE[raw]) return CLASS_PALETTE[raw]
 
-  // Normalisasi alias nama kelas model YOLO (Terung 4-Kelas & Tomat 2-Kelas)
+  // Normalisasi alias nama kelas model YOLO (Terung 3/4-Kelas & Tomat 2-Kelas)
+  if (raw === 'grade a' || raw === 'grade-a') {
+    return CLASS_PALETTE['grade-a']
+  }
+  if (raw === 'grade b' || raw === 'grade-b') {
+    return CLASS_PALETTE['grade-b']
+  }
   if (raw === 'class ii' || raw === 'class 2' || raw === 'class-2' || rawSlug === 'class-ii') {
     return CLASS_PALETTE['class-2']
   }
