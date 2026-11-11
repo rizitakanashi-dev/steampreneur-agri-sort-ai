@@ -105,7 +105,7 @@ const COMMODITIES = [
 export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm }) {
   const [selectedCommodity, setSelectedCommodity] = useState('Terung')
   const [activeTab, setActiveTab] = useState(0) // 0: Live Camera, 1: Upload File
-  const [confidenceThreshold, setConfidenceThreshold] = useState(0.20)
+  const [confidenceThreshold, setConfidenceThreshold] = useState(0.35)
   const [showSensitivitySetting, setShowSensitivitySetting] = useState(false)
   const [isDragging, setIsDragging] = useState(false)
 
