@@ -615,5 +615,30 @@ flowchart TB
 - **Total Tests:** 242 unit tests lulus tanpa kegagalan.
 - **Kompilasi Vite:** Berhasil bersih dalam 1.14 detik.
 
+---
+
+### Temuan B11: Integrasi Cetak Sertifikat Langsung & Manajemen Cadangan Data Luring Lapangan (11 November 2026)
+
+| Kode Temuan | Tingkat Keparahan | Komponen Teridentifikasi | Status Resolusi |
+|:---:|:---:|---|:---:|
+| **AUDIT-B11-01** | **SEDANG** | `src/components/HarvestRecap.jsx` & `src/components/QCResults.jsx` (Ikon cetak di tabel rekap sebelumnya hanya membuka tab detail QC tanpa otomatis meluncurkan modal sertifikat A4) | **RESOLVED** |
+| **AUDIT-B11-02** | **PENINGKATAN** | `src/business/harvestStorage.js` & `src/components/SettingsDialog.jsx` (Penyediaan utilitas ekspor/impor cadangan JSON data panen luring untuk petani dan PPL dengan mitigasi tabrakan ID) | **RESOLVED** |
+
+#### A. Analisis Masalah & Peningkatan
+1. **Pintasan Modal Sertifikat dari Rekap Panen (`HarvestRecap.jsx` & `QCResults.jsx`):**
+   - Sebelumnya, ketika petani menekan ikon printer di tabel rekap, sistem hanya menavigasi ke halaman hasil inspeksi (`activePage = 'results'`). Petani masih harus mencari dan menekan tombol cetak sertifikat secara terpisah.
+   - Kami menambahkan opsi `openCertificate: true` pada `onSelectBatch` dan properti `initialOpenCertificate` di `QCResults.jsx`, sehingga modal sertifikat mutu A4 resmi langsung terbuka seketika (*single-click print workflow*).
+2. **Manajemen Cadangan Data Panen Luring Petani & PPL (`harvestStorage.js` & `SettingsDialog.jsx`):**
+   - Mengubah orientasi tab sistem dari "Data Demo" menjadi **"Manajemen Data & Cadangan Lapangan"**.
+   - Menyediakan fungsi `exportBatchesAsJson` dan `importBatchesFromJson` lengkap dengan validasi skema rekaman panen, penanganan toleran terhadap JSON korup, dan deduplikasi ID batch otomatis (`panen-1-2`) agar catatan lama tidak tertimpa.
+   - Menghubungkan callback pembaruan data `onDataChanged` ke `App.jsx` sehingga metrik di seluruh halaman diperbarui seketika saat berkas diimpor atau dibersihkan.
+
+#### B. Hasil Verifikasi Menyeluruh
+- **Frontend Tests:** 131 / 131 tests lulus (node:test).
+- **Backend Tests:** 114 / 114 tests lulus (Python unittest).
+- **Total Tests:** 245 unit tests lulus 100% tanpa kegagalan atau regresi.
+- **Kompilasi Produksi Vite:** Berhasil tuntas dalam 1.27 detik.
+
+
 
 

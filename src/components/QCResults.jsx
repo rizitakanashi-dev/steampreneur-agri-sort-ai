@@ -146,10 +146,16 @@ function ActionRecommendationCard({ recommendationNote, rejectCount, rejectPerce
   )
 }
 
-export function QCResults({ batch, onBackToInput, onViewRecap }) {
+export function QCResults({ batch, onBackToInput, onViewRecap, initialOpenCertificate = false }) {
   const [selectedDetection, setSelectedDetection] = useState(null)
-  const [isCertModalOpen, setIsCertModalOpen] = useState(false)
+  const [isCertModalOpen, setIsCertModalOpen] = useState(Boolean(initialOpenCertificate))
   const [viewAngleMode, setViewAngleMode] = useState('compare') // 'compare' | 'front' | 'back'
+
+  useEffect(() => {
+    if (initialOpenCertificate) {
+      setIsCertModalOpen(true)
+    }
+  }, [initialOpenCertificate, batch?.id])
 
   if (!batch?.hasil && !batch?.scanResult) {
     return (

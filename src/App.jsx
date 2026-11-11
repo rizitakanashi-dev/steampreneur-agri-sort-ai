@@ -268,6 +268,7 @@ function FoundationPage({
   onViewRecap,
   onSelectBatch,
   onBatchSaved,
+  openCertModal = false,
 }) {
   const [showManualForm, setShowManualForm] = useState(false)
   const page = pages[activePage]
@@ -303,7 +304,16 @@ function FoundationPage({
     )
   }
 
-  if (activePage === 'results') return <QCResults batch={selectedBatch} onBackToInput={onBackToInput} onViewRecap={onViewRecap} />
+  if (activePage === 'results') {
+    return (
+      <QCResults
+        batch={selectedBatch}
+        onBackToInput={onBackToInput}
+        onViewRecap={onViewRecap}
+        initialOpenCertificate={openCertModal}
+      />
+    )
+  }
   if (activePage === 'results-list') return <HarvestRecap batches={batches} onSelectBatch={onSelectBatch} />
   if (activePage === 'pricing') return <PricingDashboard />
   return (
@@ -323,6 +333,7 @@ function App() {
   const [activePage, setActivePage] = useState('overview')
   const [batches, setBatches] = useState([])
   const [selectedBatch, setSelectedBatch] = useState(null)
+  const [openCertModal, setOpenCertModal] = useState(false)
   const [harvestMessage, setHarvestMessage] = useState('')
   const page = pages[activePage]
 
@@ -335,21 +346,31 @@ function App() {
   const handleNavigate = (pageId) => {
     setActivePage(pageId)
     setHarvestMessage('')
+    setOpenCertModal(false)
   }
 
   const handleBackToInput = () => {
     setHarvestMessage('')
+    setOpenCertModal(false)
     setActivePage('scanner')
   }
 
   const handleViewRecap = () => {
     setHarvestMessage('')
+    setOpenCertModal(false)
     setActivePage('results-list')
   }
 
-  const handleSelectBatch = (batch) => {
+  const handleSelectBatch = (batch, options = {}) => {
     setSelectedBatch(batch)
+    setOpenCertModal(Boolean(options?.openCertificate))
     setActivePage('results')
+  }
+
+  const handleDataChanged = () => {
+    const storedBatches = readBatches()
+    setBatches(storedBatches)
+    setSelectedBatch(storedBatches[storedBatches.length - 1] || null)
   }
 
   const handleHarvestConfirm = (input) => {
@@ -385,7 +406,11 @@ function App() {
   }
 
   return (
-    <AppShell activePage={activePage} onNavigate={handleNavigate}>
+    <AppShell
+      activePage={activePage}
+      onNavigate={handleNavigate}
+      onDataChanged={handleDataChanged}
+    >
       <Container maxWidth="lg" sx={{ px: { xs: 1.5, sm: 2, md: 3 }, py: { xs: 2.5, sm: 3.5, md: 4.5 } }}>
         <PageHeader eyebrow="Agri-Sort AI / Precision Agriculture" title={page.title} description={page.description} />
         {harvestMessage && <Alert onClose={() => setHarvestMessage('')} severity="success" sx={{ mb: 2 }}>{harvestMessage}</Alert>}
@@ -398,6 +423,7 @@ function App() {
           onSelectBatch={handleSelectBatch}
           onViewRecap={handleViewRecap}
           selectedBatch={selectedBatch}
+          openCertModal={openCertModal}
           onBatchSaved={(newBatch) => {
             setBatches((current) => [...current, newBatch])
             setSelectedBatch(newBatch)

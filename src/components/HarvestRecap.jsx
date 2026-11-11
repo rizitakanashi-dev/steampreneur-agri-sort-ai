@@ -368,7 +368,7 @@ export function HarvestRecap({ batches = [], onSelectBatch }) {
                           <IconButton
                             aria-label={`Buka QC ${batch.id}`}
                             color="primary"
-                            onClick={() => onSelectBatch(batch)}
+                            onClick={() => onSelectBatch(batch, { openCertificate: true })}
                             size="small"
                           >
                             <PrintRoundedIcon fontSize="small" />
@@ -486,7 +486,7 @@ export function HarvestRecap({ batches = [], onSelectBatch }) {
               onClick={() => {
                 const b = selectedBatch
                 setSelectedBatch(null)
-                onSelectBatch(b)
+                onSelectBatch(b, { openCertificate: true })
               }}
               startIcon={<PrintRoundedIcon />}
               variant="contained"

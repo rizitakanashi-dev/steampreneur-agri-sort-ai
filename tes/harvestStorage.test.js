@@ -1,6 +1,13 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { clearBatches, HARVEST_STORAGE_KEY, readBatches, saveBatch } from '../src/business/harvestStorage.js'
+import {
+  clearBatches,
+  exportBatchesAsJson,
+  HARVEST_STORAGE_KEY,
+  importBatchesFromJson,
+  readBatches,
+  saveBatch,
+} from '../src/business/harvestStorage.js'
 
 function makeStorage(initialValue) {
   const values = new Map(initialValue === undefined ? [] : [[HARVEST_STORAGE_KEY, initialValue]])
@@ -39,4 +46,52 @@ test('clearBatches menghapus semua batch', () => {
   saveBatch(sampleBatch, storage)
   clearBatches(storage)
   assert.deepEqual(readBatches(storage), [])
+})
+
+test('exportBatchesAsJson menghasilkan format cadangan baku dengan metadata', () => {
+  const storage = makeStorage()
+  saveBatch(sampleBatch, storage)
+  const jsonStr = exportBatchesAsJson(storage)
+  const parsed = JSON.parse(jsonStr)
+
+  assert.equal(parsed.app, 'Agri-Sort AI')
+  assert.equal(parsed.totalRecords, 1)
+  assert.equal(parsed.batches[0].id, 'panen-1')
+  assert.equal(typeof parsed.exportedAt, 'string')
+})
+
+test('importBatchesFromJson menolak berkas JSON rusak atau bukan array rekaman valid', () => {
+  const storage = makeStorage()
+  const invalidJson = importBatchesFromJson('{rusak', storage)
+  assert.equal(invalidJson.success, false)
+  assert.equal(invalidJson.importedCount, 0)
+
+  const emptyArray = importBatchesFromJson('[]', storage)
+  assert.equal(emptyArray.success, false)
+
+  const invalidRecords = importBatchesFromJson(JSON.stringify([{ invalid: 'record' }]), storage)
+  assert.equal(invalidRecords.success, false)
+})
+
+test('importBatchesFromJson berhasil menggabungkan data dan mencegah tabrakan ID', () => {
+  const storage = makeStorage()
+  saveBatch(sampleBatch, storage) // id: 'panen-1'
+
+  const backupToImport = {
+    batches: [
+      { id: 'panen-1', tanggal: '2026-10-15', komoditas: 'Terung Ungu', beratKg: 15 },
+      { id: 'panen-new', tanggal: '2026-10-16', komoditas: 'Cabai', beratKg: 5 },
+    ],
+  }
+
+  const result = importBatchesFromJson(JSON.stringify(backupToImport), storage)
+  assert.equal(result.success, true)
+  assert.equal(result.importedCount, 2)
+  assert.equal(result.totalCount, 3)
+
+  const finalBatches = readBatches(storage)
+  assert.equal(finalBatches.length, 3)
+  assert.equal(finalBatches[0].id, 'panen-1')
+  assert.equal(finalBatches[1].id, 'panen-1-2') // disambiguated
+  assert.equal(finalBatches[2].id, 'panen-new')
 })
