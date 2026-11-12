@@ -8,6 +8,7 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
+  Divider,
   FormControl,
   Grid,
   IconButton,
@@ -31,10 +32,13 @@ import {
 } from '@mui/material'
 import AssessmentRoundedIcon from '@mui/icons-material/AssessmentRounded'
 import AutoAwesomeRoundedIcon from '@mui/icons-material/AutoAwesomeRounded'
+import ClearRoundedIcon from '@mui/icons-material/ClearRounded'
 import DownloadRoundedIcon from '@mui/icons-material/DownloadRounded'
 import FilterAltOffRoundedIcon from '@mui/icons-material/FilterAltOffRounded'
+import FilterListRoundedIcon from '@mui/icons-material/FilterListRounded'
 import PrintRoundedIcon from '@mui/icons-material/PrintRounded'
 import SearchRoundedIcon from '@mui/icons-material/SearchRounded'
+import SortRoundedIcon from '@mui/icons-material/SortRounded'
 import VerifiedRoundedIcon from '@mui/icons-material/VerifiedRounded'
 import VisibilityRoundedIcon from '@mui/icons-material/VisibilityRounded'
 import WarningAmberRoundedIcon from '@mui/icons-material/WarningAmberRounded'
@@ -176,13 +180,41 @@ export function HarvestRecap({ batches = [], onSelectBatch, onDeleteBatch }) {
   const [selectedBatch, setSelectedBatch] = useState(null)
   const [batchToDelete, setBatchToDelete] = useState(null)
   const [filter, setFilter] = useState(EMPTY_RECAP_FILTER)
+  const [methodFilter, setMethodFilter] = useState('') // '' | 'ai' | 'simulated' | 'manual'
+  const [sortBy, setSortBy] = useState('newest') // 'newest' | 'oldest' | 'value_desc' | 'weight_desc'
   const [exportStatus, setExportStatus] = useState('')
 
   const commodities = useMemo(() => listCommodities(batches), [batches])
-  const sortedBatches = useMemo(() => sortBatchesByNewest(filterBatches(batches, filter)), [batches, filter])
+
+  const filteredBatches = useMemo(() => {
+    let list = filterBatches(batches, filter)
+    if (methodFilter === 'ai') {
+      list = list.filter((b) => b.ai_scan_performed || b.execution_status === 'ai_detected' || b.scanResult?.inference_result)
+    } else if (methodFilter === 'simulated') {
+      list = list.filter((b) => b.is_simulated || b.execution_status === 'simulated' || b.scanResult?.is_simulated)
+    } else if (methodFilter === 'manual') {
+      list = list.filter((b) => !b.ai_scan_performed && !b.is_simulated && b.execution_status !== 'ai_detected' && b.execution_status !== 'simulated')
+    }
+    return list
+  }, [batches, filter, methodFilter])
+
+  const sortedBatches = useMemo(() => {
+    const list = [...filteredBatches]
+    if (sortBy === 'oldest') {
+      return list.sort((a, b) => String(a.tanggal ?? '').localeCompare(String(b.tanggal ?? '')) || String(a.dicatatPada ?? '').localeCompare(String(b.dicatatPada ?? '')))
+    }
+    if (sortBy === 'value_desc') {
+      return list.sort((a, b) => (getBatchEstimatedValue(b) || 0) - (getBatchEstimatedValue(a) || 0))
+    }
+    if (sortBy === 'weight_desc') {
+      return list.sort((a, b) => (Number(b.beratKg ?? b.volume_kg) || 0) - (Number(a.beratKg ?? a.volume_kg) || 0))
+    }
+    return sortBatchesByNewest(list)
+  }, [filteredBatches, sortBy])
+
   const visibleBatches = sortedBatches.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
   const totals = calculateBatchTotals(visibleBatches)
-  const filterActive = !isFilterEmpty(filter)
+  const filterActive = !isFilterEmpty(filter) || Boolean(methodFilter) || sortBy !== 'newest'
 
   const handleFilterChange = (field) => (event) => {
     setFilter((current) => ({ ...current, [field]: event.target.value }))
@@ -191,6 +223,34 @@ export function HarvestRecap({ batches = [], onSelectBatch, onDeleteBatch }) {
 
   const handleResetFilter = () => {
     setFilter(EMPTY_RECAP_FILTER)
+    setMethodFilter('')
+    setSortBy('newest')
+    setPage(0)
+  }
+
+  const setQuickDateRange = (days) => {
+    const today = new Date()
+    const formatDate = (d) => {
+      const year = d.getFullYear()
+      const month = String(d.getMonth() + 1).padStart(2, '0')
+      const day = String(d.getDate()).padStart(2, '0')
+      return `${year}-${month}-${day}`
+    }
+    const endStr = formatDate(today)
+    let startStr = ''
+
+    if (days === 0) {
+      startStr = endStr
+    } else if (days === 'month') {
+      const firstDay = new Date(today.getFullYear(), today.getMonth(), 1)
+      startStr = formatDate(firstDay)
+    } else if (typeof days === 'number') {
+      const past = new Date(today)
+      past.setDate(past.getDate() - days)
+      startStr = formatDate(past)
+    }
+
+    setFilter((cur) => ({ ...cur, tanggalDari: startStr, tanggalSampai: endStr }))
     setPage(0)
   }
 
@@ -210,8 +270,100 @@ export function HarvestRecap({ batches = [], onSelectBatch, onDeleteBatch }) {
   return (
     <>
       <Paper sx={{ border: '1px solid', borderColor: 'divider', mb: 2, p: { xs: 2, sm: 2.5 } }}>
+        {/* Baris Filter Cepat (Quick Chips) */}
+        <Stack direction={{ xs: 'column', md: 'row' }} spacing={1.5} justifyContent="space-between" alignItems={{ xs: 'flex-start', md: 'center' }} sx={{ mb: 2 }}>
+          <Stack direction="row" flexWrap="wrap" gap={0.75} alignItems="center">
+            <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 700, mr: 0.5, display: 'flex', alignItems: 'center', gap: 0.5 }}>
+              <FilterListRoundedIcon sx={{ fontSize: 16 }} /> Filter:
+            </Typography>
+            <Chip
+              clickable
+              color={!filter.komoditas ? 'primary' : 'default'}
+              label="Semua Komoditas"
+              onClick={() => {
+                setFilter((cur) => ({ ...cur, komoditas: '' }))
+                setPage(0)
+              }}
+              size="small"
+              variant={!filter.komoditas ? 'filled' : 'outlined'}
+            />
+            {commodities.map((comm) => (
+              <Chip
+                clickable
+                color={filter.komoditas === comm ? 'primary' : 'default'}
+                key={comm}
+                label={comm}
+                onClick={() => {
+                  setFilter((cur) => ({ ...cur, komoditas: filter.komoditas === comm ? '' : comm }))
+                  setPage(0)
+                }}
+                size="small"
+                variant={filter.komoditas === comm ? 'filled' : 'outlined'}
+              />
+            ))}
+          </Stack>
+
+          <Stack direction="row" flexWrap="wrap" gap={0.75} alignItems="center">
+            <Chip
+              clickable
+              color={methodFilter === 'ai' ? 'success' : 'default'}
+              label="🛡️ AI Verified"
+              onClick={() => {
+                setMethodFilter((cur) => (cur === 'ai' ? '' : 'ai'))
+                setPage(0)
+              }}
+              size="small"
+              variant={methodFilter === 'ai' ? 'filled' : 'outlined'}
+            />
+            <Chip
+              clickable
+              color={methodFilter === 'simulated' ? 'info' : 'default'}
+              label="🔬 Simulasi"
+              onClick={() => {
+                setMethodFilter((cur) => (cur === 'simulated' ? '' : 'simulated'))
+                setPage(0)
+              }}
+              size="small"
+              variant={methodFilter === 'simulated' ? 'filled' : 'outlined'}
+            />
+            <Chip
+              clickable
+              color={methodFilter === 'manual' ? 'default' : 'default'}
+              label="✍️ Manual"
+              onClick={() => {
+                setMethodFilter((cur) => (cur === 'manual' ? '' : 'manual'))
+                setPage(0)
+              }}
+              size="small"
+              variant={methodFilter === 'manual' ? 'filled' : 'outlined'}
+            />
+            <Divider flexItem orientation="vertical" sx={{ mx: 0.5, height: 20 }} />
+            <Chip
+              clickable
+              label="Hari Ini"
+              onClick={() => setQuickDateRange(0)}
+              size="small"
+              variant="outlined"
+            />
+            <Chip
+              clickable
+              label="7 Hari"
+              onClick={() => setQuickDateRange(7)}
+              size="small"
+              variant="outlined"
+            />
+            <Chip
+              clickable
+              label="Bulan Ini"
+              onClick={() => setQuickDateRange('month')}
+              size="small"
+              variant="outlined"
+            />
+          </Stack>
+        </Stack>
+
         <Grid container spacing={2}>
-          <Grid size={{ xs: 12, md: 4 }}>
+          <Grid size={{ xs: 12, md: 3.5 }}>
             <TextField
               fullWidth
               slotProps={{
@@ -221,6 +373,21 @@ export function HarvestRecap({ batches = [], onSelectBatch, onDeleteBatch }) {
                       <SearchRoundedIcon fontSize="small" />
                     </InputAdornment>
                   ),
+                  endAdornment: filter.search ? (
+                    <InputAdornment position="end">
+                      <IconButton
+                        aria-label="Hapus kata kunci pencarian"
+                        edge="end"
+                        onClick={() => {
+                          setFilter((cur) => ({ ...cur, search: '' }))
+                          setPage(0)
+                        }}
+                        size="small"
+                      >
+                        <ClearRoundedIcon fontSize="small" />
+                      </IconButton>
+                    </InputAdornment>
+                  ) : null,
                 },
               }}
               label="Cari ID batch atau komoditas"
@@ -229,22 +396,26 @@ export function HarvestRecap({ batches = [], onSelectBatch, onDeleteBatch }) {
               value={filter.search}
             />
           </Grid>
-          <Grid size={{ xs: 12, sm: 6, md: 2.5 }}>
+          <Grid size={{ xs: 12, sm: 6, md: 2.25 }}>
             <FormControl fullWidth size="small">
-              <InputLabel id="recap-commodity-label" shrink>Komoditas</InputLabel>
+              <InputLabel id="recap-sort-label">Urutkan</InputLabel>
               <Select
-                displayEmpty
-                label="Komoditas"
-                labelId="recap-commodity-label"
-                onChange={handleFilterChange('komoditas')}
-                value={filter.komoditas}
+                label="Urutkan"
+                labelId="recap-sort-label"
+                onChange={(e) => {
+                  setSortBy(e.target.value)
+                  setPage(0)
+                }}
+                value={sortBy}
               >
-                <MenuItem value="">Semua komoditas</MenuItem>
-                {commodities.map((commodity) => <MenuItem key={commodity} value={commodity}>{commodity}</MenuItem>)}
+                <MenuItem value="newest">Tanggal Terbaru</MenuItem>
+                <MenuItem value="oldest">Tanggal Terlama</MenuItem>
+                <MenuItem value="value_desc">Nilai Tertinggi (Rp)</MenuItem>
+                <MenuItem value="weight_desc">Bobot Terbesar (kg)</MenuItem>
               </Select>
             </FormControl>
           </Grid>
-          <Grid size={{ xs: 6, sm: 3, md: 1.75 }}>
+          <Grid size={{ xs: 6, sm: 3, md: 1.5 }}>
             <TextField
               fullWidth
               slotProps={{ inputLabel: { shrink: true } }}
@@ -255,7 +426,7 @@ export function HarvestRecap({ batches = [], onSelectBatch, onDeleteBatch }) {
               value={filter.tanggalDari}
             />
           </Grid>
-          <Grid size={{ xs: 6, sm: 3, md: 1.75 }}>
+          <Grid size={{ xs: 6, sm: 3, md: 1.5 }}>
             <TextField
               fullWidth
               slotProps={{ inputLabel: { shrink: true } }}
@@ -266,30 +437,90 @@ export function HarvestRecap({ batches = [], onSelectBatch, onDeleteBatch }) {
               value={filter.tanggalSampai}
             />
           </Grid>
-          <Grid size={{ xs: 12, sm: 12, md: 2 }}>
-            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} sx={{ alignItems: 'center', height: '100%' }}>
-              <Tooltip title="Reset filter">
+          <Grid size={{ xs: 12, sm: 12, md: 3.25 }}>
+            <Stack direction="row" spacing={1} sx={{ alignItems: 'center', height: '100%', justifyContent: { md: 'flex-end' } }}>
+              <Tooltip title="Reset semua filter">
                 <span>
-                  <IconButton aria-label="Reset filter" disabled={!filterActive} onClick={handleResetFilter}>
-                    <FilterAltOffRoundedIcon />
-                  </IconButton>
+                  <Button
+                    color="inherit"
+                    disabled={!filterActive}
+                    onClick={handleResetFilter}
+                    size="small"
+                    startIcon={<FilterAltOffRoundedIcon />}
+                    variant="text"
+                    sx={{ textTransform: 'none', fontWeight: 600, color: filterActive ? 'error.main' : 'text.disabled' }}
+                  >
+                    Reset
+                  </Button>
                 </span>
               </Tooltip>
               <Button
                 disabled={sortedBatches.length === 0}
-                fullWidth
                 onClick={handleExport}
+                size="small"
                 startIcon={<DownloadRoundedIcon />}
                 variant="outlined"
-                sx={{ maxWidth: { sm: 200 } }}
+                sx={{ textTransform: 'none', fontWeight: 700 }}
               >
                 Ekspor CSV
               </Button>
             </Stack>
           </Grid>
         </Grid>
+
+        {/* Status Baris & Active Filter Badges */}
+        <Stack direction="row" flexWrap="wrap" justifyContent="space-between" alignItems="center" sx={{ mt: 1.5, pt: 1, borderTop: '1px solid #f1f5f9' }}>
+          <Typography color="text.secondary" variant="caption">
+            Menampilkan <strong>{sortedBatches.length}</strong> dari total <strong>{batches.length}</strong> batch tersimpan
+            {filterActive && ' (tersaring)'}
+          </Typography>
+          {filterActive && (
+            <Stack direction="row" spacing={0.5} flexWrap="wrap">
+              {filter.search && (
+                <Chip
+                  label={`Cari: "${filter.search}"`}
+                  onDelete={() => setFilter((cur) => ({ ...cur, search: '' }))}
+                  size="small"
+                />
+              )}
+              {filter.komoditas && (
+                <Chip
+                  color="primary"
+                  label={`Komoditas: ${filter.komoditas}`}
+                  onDelete={() => setFilter((cur) => ({ ...cur, komoditas: '' }))}
+                  size="small"
+                  variant="outlined"
+                />
+              )}
+              {methodFilter && (
+                <Chip
+                  color="success"
+                  label={`Metode: ${methodFilter.toUpperCase()}`}
+                  onDelete={() => setMethodFilter('')}
+                  size="small"
+                  variant="outlined"
+                />
+              )}
+              {(filter.tanggalDari || filter.tanggalSampai) && (
+                <Chip
+                  label={`Rentang: ${filter.tanggalDari || '...'} s/d ${filter.tanggalSampai || '...'}`}
+                  onDelete={() => setFilter((cur) => ({ ...cur, tanggalDari: '', tanggalSampai: '' }))}
+                  size="small"
+                />
+              )}
+              {sortBy !== 'newest' && (
+                <Chip
+                  label={`Urut: ${sortBy}`}
+                  onDelete={() => setSortBy('newest')}
+                  size="small"
+                />
+              )}
+            </Stack>
+          )}
+        </Stack>
+
         {exportStatus && (
-          <Typography color="text.secondary" sx={{ mt: 1.5 }} variant="caption">{exportStatus}</Typography>
+          <Typography color="success.main" sx={{ mt: 1, display: 'block', fontWeight: 600 }} variant="caption">{exportStatus}</Typography>
         )}
       </Paper>
 

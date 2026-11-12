@@ -43,6 +43,7 @@ import { PieChart } from '@mui/x-charts/PieChart'
 import { ScanCanvasOverlay } from './ScanCanvasOverlay.jsx'
 import { QCPrintCertificate } from './QCPrintCertificate.jsx'
 import { PostHarvestPathologyCards } from './PostHarvestPathologyCards.jsx'
+import { FarmerProfitabilityCard } from './FarmerProfitabilityCard.jsx'
 import { getClassTheme } from '../utils/canvasOverlayHelper.js'
 import { calculateHarvest, calculateHarvestValue } from '../business/harvestCalculation.js'
 
@@ -1003,6 +1004,20 @@ export function QCResults({ batch, onBackToInput, onViewRecap, initialOpenCertif
           </Box>
         </CardContent>
       </Card>
+
+      {/* Kartu Finansial Petani: HPP, BEP, dan Analisis Laba (Pilar M & E dari STEAM) */}
+      <FarmerProfitabilityCard
+        commodity={commodity}
+        revenue={pricing?.estimated_economic_value ?? hasil?.totalNilai ?? 0}
+        sellableVolumeKg={
+          Math.max(
+            0,
+            (Number(batch.beratKg ?? batch.volume_kg) || 0) *
+              (1 - ((pricing?.condition_ratios?.reject_percent ?? pricing?.condition_ratios?.rotten_ratio_percent ?? hasil?.persenC ?? 0) / 100))
+          )
+        }
+        totalVolumeKg={Number(batch.beratKg ?? batch.volume_kg) || 0}
+      />
 
       {/* Kartu Edukasi Sains Patologi Pascapanen (Pilar S dari STEAM) */}
       <PostHarvestPathologyCards
