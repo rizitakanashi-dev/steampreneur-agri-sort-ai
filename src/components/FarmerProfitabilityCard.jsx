@@ -35,7 +35,7 @@ const numberFormatter = new Intl.NumberFormat('id-ID', { maximumFractionDigits: 
 
 function formatRupiah(value) {
   if (typeof value !== 'number' || !Number.isFinite(value)) return 'Rp 0'
-  return rupiahFormatter.format(value)
+  return rupiahFormatter.format(value).replace(/^Rp\s*/, 'Rp ')
 }
 
 function formatNumber(value) {

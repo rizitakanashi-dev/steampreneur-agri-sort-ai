@@ -59,7 +59,9 @@ function formatNumber(value) {
 }
 
 function formatRupiah(value) {
-  return typeof value === 'number' && Number.isFinite(value) ? rupiahFormatter.format(value) : 'Belum tersedia'
+  return typeof value === 'number' && Number.isFinite(value)
+    ? rupiahFormatter.format(value).replace(/^Rp\s*/, 'Rp ')
+    : 'Belum tersedia'
 }
 
 function QualityIndicator({ color, icon: Icon, label, percentage, count, weight }) {

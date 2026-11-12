@@ -19,7 +19,9 @@ function formatNumber(value) {
 }
 
 function formatRupiah(value) {
-  return typeof value === 'number' && Number.isFinite(value) ? rupiahFormatter.format(value) : 'Rp 0'
+  return typeof value === 'number' && Number.isFinite(value)
+    ? rupiahFormatter.format(value).replace(/^Rp\s*/, 'Rp ')
+    : 'Rp 0'
 }
 
 export function QCPrintCertificate({ batch, showPrintButton = false, onPrint }) {

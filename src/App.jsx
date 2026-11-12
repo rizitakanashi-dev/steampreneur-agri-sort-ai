@@ -59,7 +59,8 @@ const metrics = [
 const rupiahFormatter = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 })
 
 function formatRupiah(value) {
-  return typeof value === 'number' && Number.isFinite(value) ? rupiahFormatter.format(value) : '-'
+  if (typeof value !== 'number' || !Number.isFinite(value)) return '-'
+  return rupiahFormatter.format(value).replace(/^Rp\s*/, 'Rp ')
 }
 
 function MetricCard({ detail, icon: Icon, label, value, color }) {
@@ -140,7 +141,7 @@ function DashboardPreview({ onNavigate, batches = [], onSelectBatch }) {
     {
       label: 'Komoditas terdaftar',
       value: `${COMMODITY_OPTIONS.length} Komoditas`,
-      detail: 'Terung, Tomat, Cabai (Sayembara 2026)',
+      detail: 'Terung, Tomat, Cabai',
       icon: AutoAwesomeRoundedIcon,
       color: '#2f7299',
     },
@@ -190,14 +191,11 @@ function DashboardPreview({ onNavigate, batches = [], onSelectBatch }) {
         <Grid size={{ xs: 12, md: 7 }}>
           <Card sx={{ height: '100%' }}>
             <CardContent sx={{ p: { xs: 2, sm: 2.5 } }}>
-              <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
-                <Box>
-                  <Typography variant="h6">Harga acuan pasar</Typography>
-                  <Typography color="text.secondary" variant="caption">
-                    {bapanasData ? `Panel BAPANAS • ${bapanasData.market_center}` : `Acuan Pasar • Diperbarui ${PRICE_REFERENCE_SOURCE.updatedAt}`}
+              <Box sx={{ mb: 2 }}>
+                <Stack alignItems="center" direction="row" spacing={1.5}>
+                  <Typography fontWeight={700} variant="h6">
+                    Harga acuan pasar
                   </Typography>
-                </Box>
-                <Stack direction="row" spacing={1} alignItems="center">
                   {bapanasData ? (
                     <Chip color="success" icon={<CheckCircleRoundedIcon />} label="BAPANAS Terverifikasi" size="small" />
                   ) : (
@@ -216,7 +214,11 @@ function DashboardPreview({ onNavigate, batches = [], onSelectBatch }) {
                     </span>
                   </Tooltip>
                 </Stack>
-              </Stack>
+                <Typography color="text.secondary" sx={{ display: 'block', mt: 0.5 }} variant="caption">
+                  {bapanasData ? `Panel BAPANAS • ${bapanasData.market_center}` : `Acuan Pasar • Diperbarui ${PRICE_REFERENCE_SOURCE.updatedAt}`}
+                </Typography>
+              </Box>
+
               <Stack spacing={1}>
                 {COMMODITY_OPTIONS.map((commodity) => {
                   const bapanasKey = commodity.toLowerCase()
@@ -228,7 +230,7 @@ function DashboardPreview({ onNavigate, batches = [], onSelectBatch }) {
                         <Box sx={{ bgcolor: 'primary.light', borderRadius: '50%', height: 8, width: 8 }} />
                         <Typography fontWeight={600} variant="body2">{commodity}</Typography>
                       </Stack>
-                      <Stack direction="row" alignItems="baseline" spacing={0.5}>
+                      <Stack alignItems="baseline" direction="row" spacing={0.75}>
                         <Typography fontWeight={700} variant="body2">{formatRupiah(priceToShow)}</Typography>
                         <Typography color="text.secondary" variant="caption">/ kg</Typography>
                       </Stack>
@@ -244,12 +246,16 @@ function DashboardPreview({ onNavigate, batches = [], onSelectBatch }) {
             <CardContent sx={{ p: { xs: 2, sm: 2.5 } }}>
               {lastBatch ? (
                 <Stack spacing={1.5}>
-                  <Stack direction="row" justifyContent="space-between" alignItems="center">
-                    <Typography variant="h6">Batch Panen Terakhir</Typography>
-                    <Tooltip title={`ID Lengkap: ${lastBatch.id}`}>
-                      <Chip color="primary" label={formatBatchDisplayId(lastBatch.id)} size="small" variant="outlined" />
-                    </Tooltip>
-                  </Stack>
+                  <Box sx={{ mb: 0.5 }}>
+                    <Stack alignItems="center" direction="row" spacing={1.5}>
+                      <Typography fontWeight={700} variant="h6">
+                        Batch Panen Terakhir
+                      </Typography>
+                      <Tooltip title={`ID Lengkap: ${lastBatch.id}`}>
+                        <Chip color="primary" label={formatBatchDisplayId(lastBatch.id)} size="small" variant="outlined" />
+                      </Tooltip>
+                    </Stack>
+                  </Box>
                   <Box sx={{ p: 2, bgcolor: '#f8fafc', borderRadius: 2, border: '1px solid', borderColor: 'divider' }}>
                     <Typography variant="subtitle1" fontWeight={700} color="primary.dark">
                       {lastBatch.komoditas}
