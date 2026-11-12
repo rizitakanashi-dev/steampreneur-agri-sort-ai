@@ -10,10 +10,12 @@ import {
   FormControl,
   FormLabel,
   Grid,
+  IconButton,
   MenuItem,
   Select,
   Stack,
   TextField,
+  Tooltip,
   Typography,
 } from '@mui/material'
 import ArrowForwardRoundedIcon from '@mui/icons-material/ArrowForwardRounded'
@@ -23,6 +25,7 @@ import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded'
 import GrassRoundedIcon from '@mui/icons-material/GrassRounded'
 import Inventory2RoundedIcon from '@mui/icons-material/Inventory2Rounded'
 import LocalShippingRoundedIcon from '@mui/icons-material/LocalShippingRounded'
+import RefreshRoundedIcon from '@mui/icons-material/RefreshRounded'
 import TrendingUpRoundedIcon from '@mui/icons-material/TrendingUpRounded'
 import VerifiedRoundedIcon from '@mui/icons-material/VerifiedRounded'
 import VisibilityRoundedIcon from '@mui/icons-material/VisibilityRounded'
@@ -78,8 +81,37 @@ function MetricCard({ detail, icon: Icon, label, value, color }) {
   )
 }
 
+function formatBatchDisplayId(id) {
+  if (!id) return '-'
+  if (id.startsWith('panen-') && id.length > 15) {
+    const ts = Number(id.replace('panen-', ''))
+    if (!isNaN(ts)) {
+      const d = new Date(ts)
+      const dateStr = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}`
+      return `PANEN-${dateStr}`
+    }
+    return `BATCH-${id.slice(-6)}`
+  }
+  return id
+}
+
 function DashboardPreview({ onNavigate, batches = [], onSelectBatch }) {
   const [bapanasData, setBapanasData] = useState(null)
+  const [isRefreshingPrice, setIsRefreshingPrice] = useState(false)
+
+  const handleRefreshBapanas = () => {
+    setIsRefreshingPrice(true)
+    fetchBapanasLive(5000)
+      .then((data) => {
+        if (data?.commodities) {
+          setBapanasData(data)
+        }
+      })
+      .catch(() => {})
+      .finally(() => {
+        setIsRefreshingPrice(false)
+      })
+  }
 
   useEffect(() => {
     let isMounted = true
@@ -108,7 +140,7 @@ function DashboardPreview({ onNavigate, batches = [], onSelectBatch }) {
     {
       label: 'Komoditas terdaftar',
       value: `${COMMODITY_OPTIONS.length} Komoditas`,
-      detail: 'Terung, Tomat, Cabai',
+      detail: 'Terung, Tomat, Cabai (Sayembara 2026)',
       icon: AutoAwesomeRoundedIcon,
       color: '#2f7299',
     },
@@ -165,11 +197,25 @@ function DashboardPreview({ onNavigate, batches = [], onSelectBatch }) {
                     {bapanasData ? `Panel BAPANAS • ${bapanasData.market_center}` : `Acuan Pasar • Diperbarui ${PRICE_REFERENCE_SOURCE.updatedAt}`}
                   </Typography>
                 </Box>
-                {bapanasData ? (
-                  <Chip color="success" icon={<CheckCircleRoundedIcon />} label="BAPANAS Terverifikasi" size="small" />
-                ) : (
-                  <Chip color="default" label="Acuan BAPANAS Payakumbuh" size="small" variant="outlined" />
-                )}
+                <Stack direction="row" spacing={1} alignItems="center">
+                  {bapanasData ? (
+                    <Chip color="success" icon={<CheckCircleRoundedIcon />} label="BAPANAS Terverifikasi" size="small" />
+                  ) : (
+                    <Chip color="default" label="Acuan BAPANAS Payakumbuh" size="small" variant="outlined" />
+                  )}
+                  <Tooltip title="Perbarui / Sinkronisasi Harga BAPANAS Terkini">
+                    <span>
+                      <IconButton
+                        aria-label="Sinkronisasi harga BAPANAS"
+                        disabled={isRefreshingPrice}
+                        onClick={handleRefreshBapanas}
+                        size="small"
+                      >
+                        <RefreshRoundedIcon fontSize="small" />
+                      </IconButton>
+                    </span>
+                  </Tooltip>
+                </Stack>
               </Stack>
               <Stack spacing={1}>
                 {COMMODITY_OPTIONS.map((commodity) => {
@@ -182,9 +228,9 @@ function DashboardPreview({ onNavigate, batches = [], onSelectBatch }) {
                         <Box sx={{ bgcolor: 'primary.light', borderRadius: '50%', height: 8, width: 8 }} />
                         <Typography fontWeight={600} variant="body2">{commodity}</Typography>
                       </Stack>
-                      <Stack alignItems="flex-end">
+                      <Stack direction="row" alignItems="baseline" spacing={0.5}>
                         <Typography fontWeight={700} variant="body2">{formatRupiah(priceToShow)}</Typography>
-                        <Typography color="text.secondary" variant="caption">per kg</Typography>
+                        <Typography color="text.secondary" variant="caption">/ kg</Typography>
                       </Stack>
                     </Stack>
                   )
@@ -200,7 +246,9 @@ function DashboardPreview({ onNavigate, batches = [], onSelectBatch }) {
                 <Stack spacing={1.5}>
                   <Stack direction="row" justifyContent="space-between" alignItems="center">
                     <Typography variant="h6">Batch Panen Terakhir</Typography>
-                    <Chip color="primary" label={lastBatch.id} size="small" variant="outlined" />
+                    <Tooltip title={`ID Lengkap: ${lastBatch.id}`}>
+                      <Chip color="primary" label={formatBatchDisplayId(lastBatch.id)} size="small" variant="outlined" />
+                    </Tooltip>
                   </Stack>
                   <Box sx={{ p: 2, bgcolor: '#f8fafc', borderRadius: 2, border: '1px solid', borderColor: 'divider' }}>
                     <Typography variant="subtitle1" fontWeight={700} color="primary.dark">

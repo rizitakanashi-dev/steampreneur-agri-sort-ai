@@ -192,7 +192,6 @@ export function HarvestForm({ onSave }) {
     }
     setPreview({
       ...result.values,
-      id: `panen-${Date.now()}`,
       fotoKeranjang: imagePreview,
       fotoNama: imageFile?.name || null,
       fotoUkuran: imageFile ? `${(imageFile.size / (1024 * 1024)).toFixed(2)} MB` : null,

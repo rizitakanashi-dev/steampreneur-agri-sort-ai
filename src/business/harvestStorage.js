@@ -24,13 +24,29 @@ export function readBatches(storage) {
   }
 }
 
-function createUniqueId(existingIds, requestedId) {
-  const baseId = requestedId || `panen-${Date.now()}`
-  if (!existingIds.has(baseId)) return baseId
+function generateBatchCode(date = new Date()) {
+  const y = date.getFullYear()
+  const m = String(date.getMonth() + 1).padStart(2, '0')
+  const d = String(date.getDate()).padStart(2, '0')
+  return `BATCH-${y}${m}${d}`
+}
 
-  let suffix = 2
-  while (existingIds.has(`${baseId}-${suffix}`)) suffix += 1
-  return `${baseId}-${suffix}`
+function createUniqueId(existingIds, requestedId) {
+  if (requestedId) {
+    if (!existingIds.has(requestedId)) return requestedId
+    let suffix = 2
+    while (existingIds.has(`${requestedId}-${suffix}`)) suffix += 1
+    return `${requestedId}-${suffix}`
+  }
+
+  const prefix = generateBatchCode()
+  let index = 1
+  let candidate = `${prefix}-${String(index).padStart(3, '0')}`
+  while (existingIds.has(candidate)) {
+    index += 1
+    candidate = `${prefix}-${String(index).padStart(3, '0')}`
+  }
+  return candidate
 }
 
 export function saveBatch(batch, storage) {
