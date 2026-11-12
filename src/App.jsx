@@ -225,15 +225,19 @@ function DashboardPreview({ onNavigate, batches = [], onSelectBatch }) {
                   const livePrice = bapanasData?.commodities?.[bapanasKey]?.price_per_kg
                   const priceToShow = livePrice || REFERENCE_PRICES_PER_KG[commodity]
                   return (
-                    <Stack alignItems="center" direction="row" justifyContent="space-between" key={commodity} sx={{ borderBottom: '1px solid', borderColor: 'divider', py: 1.25 }}>
-                      <Stack direction="row" spacing={1.25} sx={{ alignItems: 'center' }}>
-                        <Box sx={{ bgcolor: 'primary.light', borderRadius: '50%', height: 8, width: 8 }} />
-                        <Typography fontWeight={600} variant="body2">{commodity}</Typography>
-                      </Stack>
-                      <Stack alignItems="baseline" direction="row" spacing={0.75}>
-                        <Typography fontWeight={700} variant="body2">{formatRupiah(priceToShow)}</Typography>
-                        <Typography color="text.secondary" variant="caption">/ kg</Typography>
-                      </Stack>
+                    <Stack
+                      alignItems="center"
+                      direction="row"
+                      justifyContent="space-between"
+                      key={commodity}
+                      sx={{ borderBottom: '1px solid', borderColor: 'divider', py: 1.25 }}
+                    >
+                      <Typography fontWeight={600} variant="body2">
+                        {commodity}
+                      </Typography>
+                      <Typography fontWeight={700} variant="body2">
+                        {formatRupiah(priceToShow)}/ kg
+                      </Typography>
                     </Stack>
                   )
                 })}
