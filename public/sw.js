@@ -4,7 +4,7 @@
  * meskipun koneksi internet terputus atau sinyal seluler lemah.
  */
 
-const CACHE_NAME = 'agrisort-shell-v1'
+const CACHE_NAME = 'agrisort-shell-v2'
 const PRECACHE_ASSETS = [
   '/',
   '/index.html',

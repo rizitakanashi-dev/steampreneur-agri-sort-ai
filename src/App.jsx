@@ -250,7 +250,7 @@ function DashboardPreview({ onNavigate, batches = [], onSelectBatch }) {
             <CardContent sx={{ p: { xs: 2, sm: 2.5 } }}>
               {lastBatch ? (
                 <Stack spacing={1.5}>
-                  <Box sx={{ mb: 0.5 }}>
+                  <Box sx={{ mb: 1 }}>
                     <Stack alignItems="center" direction="row" spacing={1.5}>
                       <Typography fontWeight={700} variant="h6">
                         Batch Panen Terakhir
@@ -260,25 +260,61 @@ function DashboardPreview({ onNavigate, batches = [], onSelectBatch }) {
                       </Tooltip>
                     </Stack>
                   </Box>
-                  <Box sx={{ p: 2, bgcolor: '#f8fafc', borderRadius: 2, border: '1px solid', borderColor: 'divider' }}>
-                    <Typography variant="subtitle1" fontWeight={700} color="primary.dark">
-                      {lastBatch.komoditas}
-                    </Typography>
-                    <Stack direction="row" justifyContent="space-between" sx={{ mt: 1 }}>
-                      <Typography variant="body2" color="text.secondary">Berat Total:</Typography>
-                      <Typography variant="body2" fontWeight={600}>{lastBatch.beratKg} kg</Typography>
+
+                  <Stack spacing={0.5} sx={{ mb: 2 }}>
+                    <Stack
+                      alignItems="center"
+                      direction="row"
+                      justifyContent="space-between"
+                      sx={{ borderBottom: '1px solid', borderColor: 'divider', py: 1.25 }}
+                    >
+                      <Typography fontWeight={600} variant="body2">
+                        Komoditas
+                      </Typography>
+                      <Typography fontWeight={700} variant="body2">
+                        {lastBatch.komoditas}
+                      </Typography>
                     </Stack>
-                    <Stack direction="row" justifyContent="space-between" sx={{ mt: 0.5 }}>
-                      <Typography variant="body2" color="text.secondary">Estimasi Nilai:</Typography>
-                      <Typography variant="body2" fontWeight={700} color="success.main">
+                    <Stack
+                      alignItems="center"
+                      direction="row"
+                      justifyContent="space-between"
+                      sx={{ borderBottom: '1px solid', borderColor: 'divider', py: 1.25 }}
+                    >
+                      <Typography fontWeight={600} variant="body2">
+                        Berat Total
+                      </Typography>
+                      <Typography fontWeight={700} variant="body2">
+                        {lastBatch.beratKg} kg
+                      </Typography>
+                    </Stack>
+                    <Stack
+                      alignItems="center"
+                      direction="row"
+                      justifyContent="space-between"
+                      sx={{ borderBottom: '1px solid', borderColor: 'divider', py: 1.25 }}
+                    >
+                      <Typography fontWeight={600} variant="body2">
+                        Estimasi Nilai
+                      </Typography>
+                      <Typography fontWeight={700} variant="body2">
                         {formatRupiah(lastBatch.pricing?.estimated_economic_value ?? lastBatch.hasil?.totalNilai)}
                       </Typography>
                     </Stack>
-                    <Stack direction="row" justifyContent="space-between" sx={{ mt: 0.5 }}>
-                      <Typography variant="caption" color="text.secondary">Tanggal:</Typography>
-                      <Typography variant="caption">{lastBatch.tanggal || '-'}</Typography>
+                    <Stack
+                      alignItems="center"
+                      direction="row"
+                      justifyContent="space-between"
+                      sx={{ borderBottom: '1px solid', borderColor: 'divider', py: 1.25 }}
+                    >
+                      <Typography fontWeight={600} variant="body2">
+                        Tanggal
+                      </Typography>
+                      <Typography fontWeight={700} variant="body2">
+                        {lastBatch.tanggal || '-'}
+                      </Typography>
                     </Stack>
-                  </Box>
+                  </Stack>
                   <Button
                     endIcon={<VisibilityRoundedIcon />}
                     fullWidth
