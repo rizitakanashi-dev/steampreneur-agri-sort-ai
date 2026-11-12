@@ -15,15 +15,31 @@ ReactDOM.createRoot(document.getElementById('root')).render(
 )
 
 // Registrasi Service Worker untuk Kesiapan Lapangan Offline Petani (PWA)
-if (typeof window !== 'undefined' && 'serviceWorker' in navigator && import.meta.env?.PROD) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker
-      .register('/sw.js')
-      .then((reg) => {
-        // Service worker terdaftar sukses
+if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
+  if (!import.meta.env?.PROD) {
+    // Di lingkungan dev lokal, bersihkan semua Service Worker dan Cache agar perubahan kode langsung terlihat
+    navigator.serviceWorker.getRegistrations().then((registrations) => {
+      for (const reg of registrations) {
+        reg.unregister()
+      }
+    })
+    if ('caches' in window) {
+      caches.keys().then((names) => {
+        for (const name of names) {
+          caches.delete(name)
+        }
       })
-      .catch((err) => {
-        // Gagal registrasi service worker (abaikan tanpa mengganggu UI)
-      })
-  })
+    }
+  } else {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker
+        .register('/sw.js')
+        .then((reg) => {
+          reg.update()
+        })
+        .catch(() => {
+          // Gagal registrasi service worker (abaikan tanpa mengganggu UI)
+        })
+    })
+  }
 }
