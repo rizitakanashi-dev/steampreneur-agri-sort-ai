@@ -35,6 +35,7 @@ import { BatchQCScanner } from './components/BatchQCScanner.jsx'
 import { HarvestForm } from './components/HarvestForm.jsx'
 import { HarvestRecap } from './components/HarvestRecap.jsx'
 import { QCResults } from './components/QCResults.jsx'
+import { ErrorBoundary } from './components/ErrorBoundary.jsx'
 import { PageHeader } from './components/PageHeader.jsx'
 import { PricingDashboard } from './components/PricingDashboard.jsx'
 
@@ -433,23 +434,25 @@ function App() {
       <Container maxWidth="lg" sx={{ px: { xs: 1.5, sm: 2, md: 3 }, py: { xs: 2.5, sm: 3.5, md: 4.5 } }}>
         <PageHeader eyebrow="Agri-Sort AI / Precision Agriculture" title={page.title} description={page.description} />
         {harvestMessage && <Alert onClose={() => setHarvestMessage('')} severity="success" sx={{ mb: 2 }}>{harvestMessage}</Alert>}
-        <FoundationPage
-          activePage={activePage}
-          batches={batches}
-          onBackToInput={handleBackToInput}
-          onHarvestConfirm={handleHarvestConfirm}
-          onNavigate={handleNavigate}
-          onSelectBatch={handleSelectBatch}
-          onViewRecap={handleViewRecap}
-          selectedBatch={selectedBatch}
-          openCertModal={openCertModal}
-          onDeleteBatch={handleDeleteBatch}
-          onBatchSaved={(newBatch) => {
-            setBatches((current) => [...current, newBatch])
-            setSelectedBatch(newBatch)
-            setHarvestMessage(`Batch ${newBatch.id} (${newBatch.komoditas}) berhasil disimpan ke rekap data panen.`)
-          }}
-        />
+        <ErrorBoundary key={activePage} onReset={() => setActivePage('overview')}>
+          <FoundationPage
+            activePage={activePage}
+            batches={batches}
+            onBackToInput={handleBackToInput}
+            onHarvestConfirm={handleHarvestConfirm}
+            onNavigate={handleNavigate}
+            onSelectBatch={handleSelectBatch}
+            onViewRecap={handleViewRecap}
+            selectedBatch={selectedBatch}
+            openCertModal={openCertModal}
+            onDeleteBatch={handleDeleteBatch}
+            onBatchSaved={(newBatch) => {
+              setBatches((current) => [...current, newBatch])
+              setSelectedBatch(newBatch)
+              setHarvestMessage(`Batch ${newBatch.id} (${newBatch.komoditas}) berhasil disimpan ke rekap data panen.`)
+            }}
+          />
+        </ErrorBoundary>
       </Container>
     </AppShell>
   )

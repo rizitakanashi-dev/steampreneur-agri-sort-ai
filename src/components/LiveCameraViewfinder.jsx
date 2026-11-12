@@ -28,6 +28,8 @@ export function LiveCameraViewfinder({ onCapture, disabled = false }) {
   const [facingMode, setFacingMode] = useState('environment') // 'environment' (belakang) | 'user' (depan)
   const [isCapturing, setIsCapturing] = useState(false)
 
+  const isMountedRef = useRef(true)
+
   const stopStream = () => {
     const stream = streamRef.current
     streamRef.current = null
@@ -55,87 +57,86 @@ export function LiveCameraViewfinder({ onCapture, disabled = false }) {
     }
   }
 
-  useEffect(() => {
-    let isMounted = true
+  const startCamera = async (targetFacing = facingMode) => {
+    stopStream()
+    if (isMountedRef.current) {
+      setCameraState('initializing')
+      setErrorMessage('')
+    }
 
-    const initCamera = async () => {
-      stopStream()
-      if (isMounted) {
-        setCameraState('initializing')
-        setErrorMessage('')
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      if (isMountedRef.current) {
+        setCameraState('error')
+        setErrorMessage('Browser ini tidak mendukung akses kamera langsung. Silakan gunakan opsi Unggah Berkas.')
+      }
+      return
+    }
+
+    try {
+      const constraints = {
+        video: {
+          facingMode: { ideal: targetFacing },
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
+        },
+        audio: false,
       }
 
-      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        if (isMounted) {
-          setCameraState('error')
-          setErrorMessage('Browser ini tidak mendukung akses kamera langsung. Silakan gunakan opsi Unggah Berkas.')
-        }
+      const stream = await navigator.mediaDevices.getUserMedia(constraints)
+
+      // Jika komponen sudah unmount sebelum promise getUserMedia selesai
+      if (!isMountedRef.current) {
+        stream.getTracks().forEach((t) => t.stop())
         return
       }
 
-      try {
-        const constraints = {
-          video: {
-            facingMode: { ideal: facingMode },
-            width: { ideal: 1280 },
-            height: { ideal: 720 },
-          },
-          audio: false,
-        }
+      streamRef.current = stream
 
-        const stream = await navigator.mediaDevices.getUserMedia(constraints)
-
-        // Jika komponen sudah unmount sebelum promise getUserMedia selesai
-        if (!isMounted) {
-          stream.getTracks().forEach((t) => t.stop())
-          return
-        }
-
-        streamRef.current = stream
-
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream
-          videoRef.current.onloadedmetadata = () => {
-            if (!isMounted) {
-              stream.getTracks().forEach((t) => t.stop())
-              return
-            }
-            videoRef.current
-              ?.play()
-              .then(() => isMounted && setCameraState('active'))
-              .catch(() => isMounted && setCameraState('active'))
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream
+        videoRef.current.onloadedmetadata = () => {
+          if (!isMountedRef.current) {
+            stream.getTracks().forEach((t) => t.stop())
+            return
           }
-        } else {
-          setCameraState('active')
+          videoRef.current
+            ?.play()
+            .then(() => isMountedRef.current && setCameraState('active'))
+            .catch(() => isMountedRef.current && setCameraState('active'))
         }
-      } catch (err) {
-        if (!isMounted) return
-        console.warn('Gagal mengakses kamera:', err)
-        setCameraState('error')
-        if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
-          setErrorMessage('Izin kamera ditolak. Berikan izin akses kamera pada browser Anda.')
-        } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
-          setErrorMessage('Tidak ada perangkat kamera yang terdeteksi pada perangkat ini.')
-        } else {
-          setErrorMessage(`Tidak dapat membuka kamera (${err.message || 'Error'}). Silakan gunakan mode Unggah Berkas.`)
-        }
+      } else {
+        setCameraState('active')
+      }
+    } catch (err) {
+      if (!isMountedRef.current) return
+      console.warn('Gagal mengakses kamera:', err)
+      setCameraState('error')
+      if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+        setErrorMessage('Izin kamera ditolak. Berikan izin akses kamera pada browser Anda.')
+      } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
+        setErrorMessage('Tidak ada perangkat kamera yang terdeteksi pada perangkat ini.')
+      } else {
+        setErrorMessage(`Tidak dapat membuka kamera (${err.message || 'Error'}). Silakan gunakan mode Unggah Berkas.`)
       }
     }
+  }
 
-    initCamera()
+  useEffect(() => {
+    isMountedRef.current = true
+    startCamera(facingMode)
 
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'hidden') {
         stopStream()
-      } else if (document.visibilityState === 'visible' && isMounted) {
-        initCamera()
+      } else if (document.visibilityState === 'visible' && isMountedRef.current) {
+        startCamera(facingMode)
       }
     }
 
     document.addEventListener('visibilitychange', handleVisibilityChange)
 
     return () => {
-      isMounted = false
+      isMountedRef.current = false
       document.removeEventListener('visibilitychange', handleVisibilityChange)
       stopStream()
     }
