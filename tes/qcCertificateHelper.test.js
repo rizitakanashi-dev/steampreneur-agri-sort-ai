@@ -307,3 +307,53 @@ test('buildCertificateData memproses batch Terung 3-Grade v2 dengan akurat', () 
   assert.equal(gradeB.weightKg, 4.0)
   assert.equal(gradeB.subtotalRp, 32000)
 })
+
+test('buildCertificateData memproses batch Tomat 3-Class YOLO11n dengan akurat', () => {
+  const tomat3ClassBatch = {
+    id: 'SCAN-TMT-3C',
+    tanggal: '2026-11-13',
+    komoditas: 'Tomat',
+    beratKg: 10,
+    inference: {
+      commodity: 'tomat',
+      object_counts: { total: 10, grade_a: 6, grade_b: 3, reject: 1 },
+      condition_ratios: {
+        grade_a_percent: 60.0,
+        grade_b_percent: 30.0,
+        reject_percent: 10.0,
+      },
+    },
+    pricing: {
+      reference_price_per_kg: 12000,
+      tier_breakdown: {
+        grade_a: { weight_kg: 6.0, subtotal_value: 82800 },
+        grade_b: { weight_kg: 3.0, subtotal_value: 28800 },
+        reject: { weight_kg: 1.0, subtotal_value: 0 },
+      },
+      condition_ratios: {
+        grade_a_percent: 60.0,
+        grade_b_percent: 30.0,
+        reject_percent: 10.0,
+      },
+    },
+  }
+
+  const cert = buildCertificateData(tomat3ClassBatch)
+  assert.equal(cert.modelEngineName, 'Ultralytics YOLO11n (3-Class Tomato Quality)')
+  assert.equal(cert.grades.length, 3)
+
+  const gradeA = cert.grades.find((g) => g.code === 'GRADE-A')
+  assert.equal(gradeA.ratioPercent, 60.0)
+  assert.equal(gradeA.weightKg, 6.0)
+  assert.equal(gradeA.subtotalRp, 82800)
+
+  const gradeB = cert.grades.find((g) => g.code === 'GRADE-B')
+  assert.equal(gradeB.ratioPercent, 30.0)
+  assert.equal(gradeB.weightKg, 3.0)
+  assert.equal(gradeB.subtotalRp, 28800)
+
+  const reject = cert.grades.find((g) => g.code === 'REJECT')
+  assert.equal(reject.ratioPercent, 10.0)
+  assert.equal(reject.weightKg, 1.0)
+  assert.equal(reject.subtotalRp, 0)
+})

@@ -144,3 +144,38 @@ test('aggregateMultiAngleScanResults menggabungkan deteksi Terung 3-grade v2 dar
   assert.equal(result.business_grading.weights.reject, 2.5)  // 20 * 12.5% = 2.5 kg
 })
 
+test('aggregateMultiAngleScanResults menggabungkan deteksi Tomat 3-kelas dari 2 sisi', () => {
+  const scanFront = {
+    scan_id: 'tomat_3c_01',
+    commodity: 'Tomat',
+    inference_result: {
+      object_counts: { grade_a: 8, grade_b: 2, reject: 0 },
+      detections: [{ id: 1, class_name: 'Grade A' }],
+    },
+    smart_pricing: { reference_price_per_kg: 12000 },
+  }
+
+  const scanBack = {
+    scan_id: 'tomat_3c_02',
+    commodity: 'Tomat',
+    inference_result: {
+      object_counts: { grade_a: 4, grade_b: 2, reject: 2 },
+      detections: [{ id: 1, class_name: 'Reject' }],
+    },
+    smart_pricing: { reference_price_per_kg: 12000 },
+  }
+
+  const result = aggregateMultiAngleScanResults(scanFront, scanBack, 10, 'Tomat')
+
+  assert.equal(result.is_multi_angle, true)
+  assert.equal(result.inference_result.object_counts.grade_a, 6)
+  assert.equal(result.inference_result.object_counts.grade_b, 2)
+  assert.equal(result.inference_result.object_counts.reject, 2)
+  assert.equal(result.inference_result.condition_ratios.grade_a_percent, 60.0)
+  assert.equal(result.inference_result.condition_ratios.grade_b_percent, 20.0)
+  assert.equal(result.inference_result.condition_ratios.reject_percent, 20.0)
+  assert.equal(result.business_grading.weights.gradeA, 6.0)
+  assert.equal(result.business_grading.weights.gradeB, 2.0)
+  assert.equal(result.business_grading.weights.reject, 2.0)
+})
+

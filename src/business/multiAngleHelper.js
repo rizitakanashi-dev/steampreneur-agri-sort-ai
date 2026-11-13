@@ -38,103 +38,110 @@ export function aggregateMultiAngleScanResults(scanFront, scanBack, weightKg = 1
   const countsFront = infFront.object_counts || {}
   const countsBack = infBack.object_counts || {}
 
-  const isEggplant = String(commodity).toLowerCase().includes('terung') || String(commodity).toLowerCase().includes('terong')
+  const lowerCommodity = String(commodity).toLowerCase()
+  const isEggplant = lowerCommodity.includes('terung') || lowerCommodity.includes('terong')
+  const isChili =
+    lowerCommodity.includes('cabai') || lowerCommodity.includes('chili') || lowerCommodity.includes('cabe')
+  const hasLegacyTomato2Class =
+    countsFront.fresh_tomato !== undefined ||
+    countsBack.fresh_tomato !== undefined ||
+    countsFront.rotten_tomato !== undefined ||
+    countsBack.rotten_tomato !== undefined
+  const isDirect3Grade =
+    (!isEggplant &&
+      !hasLegacyTomato2Class &&
+      (isChili ||
+        countsFront.grade_a !== undefined ||
+        countsBack.grade_a !== undefined ||
+        countsFront.grade_b !== undefined ||
+        countsBack.grade_b !== undefined ||
+        countsFront.reject !== undefined ||
+        countsBack.reject !== undefined)) ||
+    (isEggplant &&
+      (countsFront.grade_a !== undefined || countsBack.grade_a !== undefined) &&
+      !countsFront.class_1 &&
+      !countsBack.class_1)
 
   let aggregatedCounts = {}
   let conditionRatios = {}
   let gradePercentages = { gradeA: 0, gradeB: 0, reject: 0 }
 
-  if (isEggplant) {
-    const isDirect3Grade =
-      (countsFront.grade_a !== undefined || countsBack.grade_a !== undefined) &&
-      !countsFront.class_1 &&
-      !countsBack.class_1
+  if (isDirect3Grade) {
+    const gradeAAvg = Math.round(((countsFront.grade_a || 0) + (countsBack.grade_a || 0)) / 2)
+    const gradeBAvg = Math.round(((countsFront.grade_b || 0) + (countsBack.grade_b || 0)) / 2)
+    const rejectCount = Math.max(countsFront.reject || 0, countsBack.reject || 0)
 
-    if (isDirect3Grade) {
-      const gradeAAvg = Math.round(((countsFront.grade_a || 0) + (countsBack.grade_a || 0)) / 2)
-      const gradeBAvg = Math.round(((countsFront.grade_b || 0) + (countsBack.grade_b || 0)) / 2)
-      const rejectCount = Math.max(countsFront.reject || 0, countsBack.reject || 0)
+    aggregatedCounts = {
+      grade_a: gradeAAvg,
+      grade_b: gradeBAvg,
+      reject: rejectCount,
+      ...(isEggplant ? { extra_class: gradeAAvg, class_1: 0, class_2: gradeBAvg } : {}),
+    }
 
-      aggregatedCounts = {
-        grade_a: gradeAAvg,
-        grade_b: gradeBAvg,
-        reject: rejectCount,
-        extra_class: gradeAAvg,
-        class_1: 0,
-        class_2: gradeBAvg,
-      }
+    const totalSamples = Math.max(1, gradeAAvg + gradeBAvg + rejectCount)
+    const pGradeA = Number(((gradeAAvg / totalSamples) * 100).toFixed(2))
+    const pGradeB = Number(((gradeBAvg / totalSamples) * 100).toFixed(2))
+    const pReject = Number(((rejectCount / totalSamples) * 100).toFixed(2))
 
-      const totalSamples = Math.max(1, gradeAAvg + gradeBAvg + rejectCount)
-      const pGradeA = Number(((gradeAAvg / totalSamples) * 100).toFixed(2))
-      const pGradeB = Number(((gradeBAvg / totalSamples) * 100).toFixed(2))
-      const pReject = Number(((rejectCount / totalSamples) * 100).toFixed(2))
+    conditionRatios = {
+      grade_a_percent: pGradeA,
+      grade_b_percent: pGradeB,
+      reject_percent: pReject,
+      ...(isEggplant ? { extra_class_percent: pGradeA, class_1_percent: 0, class_2_percent: pGradeB } : {}),
+    }
 
-      conditionRatios = {
-        grade_a_percent: pGradeA,
-        grade_b_percent: pGradeB,
-        reject_percent: pReject,
-        extra_class_percent: pGradeA,
-        class_1_percent: 0,
-        class_2_percent: pGradeB,
-      }
+    const sum = pGradeA + pGradeB + pReject || 100
+    gradePercentages = {
+      gradeA: Number(((pGradeA / sum) * 100).toFixed(2)),
+      gradeB: Number(((pGradeB / sum) * 100).toFixed(2)),
+      reject: Number(((pReject / sum) * 100).toFixed(2)),
+    }
+  } else if (isEggplant) {
+    // Ambil rata-rata jumlah deteksi per kelas dari kedua sudut (Model 4-Kelas v1)
+    const extraClassAvg = Math.round(((countsFront.extra_class || 0) + (countsBack.extra_class || 0)) / 2)
+    const class1Avg = Math.round(((countsFront.class_1 || 0) + (countsBack.class_1 || 0)) / 2)
+    const class2Avg = Math.round(((countsFront.class_2 || 0) + (countsBack.class_2 || 0)) / 2)
 
-      const rawGradeA = pGradeA
-      const rawGradeB = pGradeB
-      const rawReject = pReject
-      const sum = rawGradeA + rawGradeB + rawReject || 100
+    // Prinsip Zero-Defect Escape: Reject diambil dari nilai maksimal di antara kedua sisi
+    const rejectCount = Math.max(countsFront.reject || 0, countsBack.reject || 0)
 
-      gradePercentages = {
-        gradeA: Number(((rawGradeA / sum) * 100).toFixed(2)),
-        gradeB: Number(((rawGradeB / sum) * 100).toFixed(2)),
-        reject: Number(((rawReject / sum) * 100).toFixed(2)),
-      }
-    } else {
-      // Ambil rata-rata jumlah deteksi per kelas dari kedua sudut (Model 4-Kelas v1)
-      const extraClassAvg = Math.round(((countsFront.extra_class || 0) + (countsBack.extra_class || 0)) / 2)
-      const class1Avg = Math.round(((countsFront.class_1 || 0) + (countsBack.class_1 || 0)) / 2)
-      const class2Avg = Math.round(((countsFront.class_2 || 0) + (countsBack.class_2 || 0)) / 2)
+    aggregatedCounts = {
+      grade_a: extraClassAvg + class1Avg,
+      grade_b: class2Avg,
+      extra_class: extraClassAvg,
+      class_1: class1Avg,
+      class_2: class2Avg,
+      reject: rejectCount,
+    }
 
-      // Prinsip Zero-Defect Escape: Reject diambil dari nilai maksimal di antara kedua sisi
-      const rejectCount = Math.max(countsFront.reject || 0, countsBack.reject || 0)
+    const totalSamples = Math.max(1, extraClassAvg + class1Avg + class2Avg + rejectCount)
+    const pExtra = Number(((extraClassAvg / totalSamples) * 100).toFixed(2))
+    const pClass1 = Number(((class1Avg / totalSamples) * 100).toFixed(2))
+    const pClass2 = Number(((class2Avg / totalSamples) * 100).toFixed(2))
+    const pReject = Number(((rejectCount / totalSamples) * 100).toFixed(2))
 
-      aggregatedCounts = {
-        grade_a: extraClassAvg + class1Avg,
-        grade_b: class2Avg,
-        extra_class: extraClassAvg,
-        class_1: class1Avg,
-        class_2: class2Avg,
-        reject: rejectCount,
-      }
+    conditionRatios = {
+      extra_class_percent: pExtra,
+      class_1_percent: pClass1,
+      class_2_percent: pClass2,
+      reject_percent: pReject,
+      grade_a_percent: Number((pExtra + pClass1).toFixed(2)),
+      grade_b_percent: pClass2,
+    }
 
-      const totalSamples = Math.max(1, extraClassAvg + class1Avg + class2Avg + rejectCount)
-      const pExtra = Number(((extraClassAvg / totalSamples) * 100).toFixed(2))
-      const pClass1 = Number(((class1Avg / totalSamples) * 100).toFixed(2))
-      const pClass2 = Number(((class2Avg / totalSamples) * 100).toFixed(2))
-      const pReject = Number(((rejectCount / totalSamples) * 100).toFixed(2))
+    // Pemetaan komersial: Extra Class + Class 1 -> Grade A, Class 2 -> Grade B, Reject -> Reject
+    const rawGradeA = pExtra + pClass1
+    const rawGradeB = pClass2
+    const rawReject = pReject
+    const sum = rawGradeA + rawGradeB + rawReject || 100
 
-      conditionRatios = {
-        extra_class_percent: pExtra,
-        class_1_percent: pClass1,
-        class_2_percent: pClass2,
-        reject_percent: pReject,
-        grade_a_percent: Number((pExtra + pClass1).toFixed(2)),
-        grade_b_percent: pClass2,
-      }
-
-      // Pemetaan komersial: Extra Class + Class 1 -> Grade A, Class 2 -> Grade B, Reject -> Reject
-      const rawGradeA = pExtra + pClass1
-      const rawGradeB = pClass2
-      const rawReject = pReject
-      const sum = rawGradeA + rawGradeB + rawReject || 100
-
-      gradePercentages = {
-        gradeA: Number(((rawGradeA / sum) * 100).toFixed(2)),
-        gradeB: Number(((rawGradeB / sum) * 100).toFixed(2)),
-        reject: Number(((rawReject / sum) * 100).toFixed(2)),
-      }
+    gradePercentages = {
+      gradeA: Number(((rawGradeA / sum) * 100).toFixed(2)),
+      gradeB: Number(((rawGradeB / sum) * 100).toFixed(2)),
+      reject: Number(((rawReject / sum) * 100).toFixed(2)),
     }
   } else {
-    // Komoditas Tomat (2-Kelas: fresh vs rotten)
+    // Komoditas Tomat (2-Kelas Legacy: fresh vs rotten)
     const freshAvg = Math.round(((countsFront.fresh_tomato || 0) + (countsBack.fresh_tomato || 0)) / 2)
     const rottenCount = Math.max(countsFront.rotten_tomato || 0, countsBack.rotten_tomato || 0)
 
@@ -197,8 +204,8 @@ export function aggregateMultiAngleScanResults(scanFront, scanBack, weightKg = 1
 
   const totalFront = Object.values(countsFront).reduce((a, b) => a + (Number(b) || 0), 0) || 1
   const totalBack = Object.values(countsBack).reduce((a, b) => a + (Number(b) || 0), 0) || 1
-  const rejectFront = isEggplant ? (countsFront.reject || 0) : (countsFront.rotten_tomato || 0)
-  const rejectBack = isEggplant ? (countsBack.reject || 0) : (countsBack.rotten_tomato || 0)
+  const rejectFront = hasLegacyTomato2Class ? (countsFront.rotten_tomato || 0) : (countsFront.reject || 0)
+  const rejectBack = hasLegacyTomato2Class ? (countsBack.rotten_tomato || 0) : (countsBack.reject || 0)
   const defectRateFront = (rejectFront / totalFront) * 100
   const defectRateBack = (rejectBack / totalBack) * 100
   const disparityPercent = Math.round(Math.abs(defectRateBack - defectRateFront))

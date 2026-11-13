@@ -67,6 +67,108 @@ export function formatRegistrationId(batchId) {
  * @param {object} batch
  * @returns {object}
  */
+const THREE_GRADE_DESCRIPTIONS = {
+  terung: {
+    gradeALabel: 'Grade A (Mutu Prima)',
+    gradeADesc: 'Bentuk proporsional lurus, warna ungu mengkilap, segar tanpa cacat fisik',
+    gradeAStatus: 'Supermarket Modern & Horeka',
+    gradeBLabel: 'Grade B (Mutu Pasar)',
+    gradeBDesc: 'Kelengkungan wajar <15%, warna cerah, sedikit goresan mikro superfisial',
+    gradeBStatus: 'Pasar Tradisional & Grosir',
+    rejectDesc: 'Busuk basah, lubang hama/ulat, busuk tangkai lunak',
+    rejectStatus: 'Pakan Ternak / Kompos Organik',
+  },
+  cabai: {
+    gradeALabel: 'Grade A (Mutu Utama)',
+    gradeADesc: 'Cabai segar, warna cerah merata, bebas bercak atau busuk tangkai',
+    gradeAStatus: 'Pasar Modern & Ekspor',
+    gradeBLabel: 'Grade B (Mutu Standar)',
+    gradeBDesc: 'Bercak ringan permukaan, ukuran wajar, daging cabai padat',
+    gradeBStatus: 'Pasar Tradisional & Horeka',
+    rejectDesc: 'Antraknosa / patek, busuk basah, lubang hama lalat buah',
+    rejectStatus: 'Pemisahan Mutu (Afkir)',
+  },
+  tomat: {
+    gradeALabel: 'Grade A (Mutu Utama)',
+    gradeADesc: 'Buah tomat segar, kematangan seragam, kulit mulus bebas memar atau retak',
+    gradeAStatus: 'Supermarket Modern & Horeka',
+    gradeBLabel: 'Grade B (Mutu Standar)',
+    gradeBDesc: 'Kematangan bervariasi atau goresan permukaan ringan, layak konsumsi/olahan',
+    gradeBStatus: 'Pasar Tradisional & Industri Olahan',
+    rejectDesc: 'Busuk basah, bercak jamur/antraknosa, pecah parah atau kerusakan hama',
+    rejectStatus: 'Pemisahan Mutu (Afkir)',
+  },
+}
+
+function buildDirect3GradeRows({ counts, ratios, tier, totalWeightKg, refPrice, commodityKey }) {
+  const meta = THREE_GRADE_DESCRIPTIONS[commodityKey] || THREE_GRADE_DESCRIPTIONS.terung
+  const totalCount =
+    Number(counts.total) ||
+    ((Number(counts.grade_a) || 0) +
+      (Number(counts.grade_b) || 0) +
+      (Number(counts.reject) || 0)) ||
+    1
+
+  const gradeARatio = Number(
+    ratios.grade_a_percent ??
+    ratios.grade_a_ratio_percent ??
+    (tier.grade_a?.weight_kg ? (tier.grade_a.weight_kg / (totalWeightKg || 1)) * 100 : 0) ??
+    (counts.grade_a !== undefined ? (Number(counts.grade_a) / totalCount) * 100 : 0)
+  )
+  const gradeBRatio = Number(
+    ratios.grade_b_percent ??
+    ratios.grade_b_ratio_percent ??
+    (tier.grade_b?.weight_kg ? (tier.grade_b.weight_kg / (totalWeightKg || 1)) * 100 : 0) ??
+    (counts.grade_b !== undefined ? (Number(counts.grade_b) / totalCount) * 100 : 0)
+  )
+  const rejRatio = Number(
+    ratios.reject_percent ??
+    ratios.reject_ratio_percent ??
+    (tier.reject?.weight_kg ? (tier.reject.weight_kg / (totalWeightKg || 1)) * 100 : 0) ??
+    (counts.reject !== undefined ? (Number(counts.reject) / totalCount) * 100 : 0)
+  )
+
+  const gradeAWeight = Number(tier.grade_a?.weight_kg ?? (totalWeightKg * (gradeARatio / 100)))
+  const gradeBWeight = Number(tier.grade_b?.weight_kg ?? (totalWeightKg * (gradeBRatio / 100)))
+  const rejWeight = Number(tier.reject?.weight_kg ?? (totalWeightKg * (rejRatio / 100)))
+
+  const gradeAPrice = Math.round(refPrice * 1.15)
+  const gradeBPrice = Math.round(refPrice * 0.80)
+
+  return [
+    {
+      code: 'GRADE-A',
+      label: meta.gradeALabel,
+      desc: meta.gradeADesc,
+      ratioPercent: gradeARatio,
+      weightKg: Number(gradeAWeight.toFixed(2)),
+      pricePerKg: gradeAPrice,
+      subtotalRp: Number(tier.grade_a?.subtotal_value ?? Math.round(gradeAWeight * gradeAPrice)),
+      status: meta.gradeAStatus,
+    },
+    {
+      code: 'GRADE-B',
+      label: meta.gradeBLabel,
+      desc: meta.gradeBDesc,
+      ratioPercent: gradeBRatio,
+      weightKg: Number(gradeBWeight.toFixed(2)),
+      pricePerKg: gradeBPrice,
+      subtotalRp: Number(tier.grade_b?.subtotal_value ?? Math.round(gradeBWeight * gradeBPrice)),
+      status: meta.gradeBStatus,
+    },
+    {
+      code: 'REJECT',
+      label: 'Reject (Afkir / Rusak)',
+      desc: meta.rejectDesc,
+      ratioPercent: rejRatio,
+      weightKg: Number(rejWeight.toFixed(2)),
+      pricePerKg: 0,
+      subtotalRp: 0,
+      status: meta.rejectStatus,
+    },
+  ]
+}
+
 export function buildCertificateData(batch = {}) {
   const safeBatch = batch || {}
   const commodity = safeBatch.komoditas || 'Hortikultura'
@@ -124,6 +226,23 @@ export function buildCertificateData(batch = {}) {
       !counts.class_1 &&
       !counts.extra_class)
 
+  const isTomato =
+    commodity.toLowerCase().includes('tomat') ||
+    commodity.toLowerCase().includes('tomato') ||
+    safeBatch.inference?.commodity === 'tomat'
+
+  const hasTomato3Grade =
+    isTomato &&
+    counts.fresh_tomato === undefined &&
+    counts.rotten_tomato === undefined &&
+    ratios.fresh_ratio_percent === undefined &&
+    ratios.fresh_percent === undefined &&
+    (tier.grade_a !== undefined ||
+      ratios.grade_a_percent !== undefined ||
+      counts.grade_a !== undefined ||
+      counts.grade_b !== undefined ||
+      hasInference)
+
   const hasTerungData =
     isEggplant &&
     (tier.extra_class ||
@@ -133,73 +252,7 @@ export function buildCertificateData(batch = {}) {
       hasInference)
 
   if (hasTerung3Grade) {
-    // 3-Grade Terung Commercial Grading (YOLO11n v2: Grade A, Grade B, Reject)
-    const totalCount =
-      Number(counts.total) ||
-      ((Number(counts.grade_a) || 0) +
-        (Number(counts.grade_b) || 0) +
-        (Number(counts.reject) || 0)) ||
-      1
-
-    const gradeARatio = Number(
-      ratios.grade_a_percent ??
-      ratios.grade_a_ratio_percent ??
-      (tier.grade_a?.weight_kg ? (tier.grade_a.weight_kg / (totalWeightKg || 1)) * 100 : 0) ??
-      (counts.grade_a !== undefined ? (Number(counts.grade_a) / totalCount) * 100 : 0)
-    )
-    const gradeBRatio = Number(
-      ratios.grade_b_percent ??
-      ratios.grade_b_ratio_percent ??
-      (tier.grade_b?.weight_kg ? (tier.grade_b.weight_kg / (totalWeightKg || 1)) * 100 : 0) ??
-      (counts.grade_b !== undefined ? (Number(counts.grade_b) / totalCount) * 100 : 0)
-    )
-    const rejRatio = Number(
-      ratios.reject_percent ??
-      ratios.reject_ratio_percent ??
-      (tier.reject?.weight_kg ? (tier.reject.weight_kg / (totalWeightKg || 1)) * 100 : 0) ??
-      (counts.reject !== undefined ? (Number(counts.reject) / totalCount) * 100 : 0)
-    )
-
-    const gradeAWeight = Number(tier.grade_a?.weight_kg ?? (totalWeightKg * (gradeARatio / 100)))
-    const gradeBWeight = Number(tier.grade_b?.weight_kg ?? (totalWeightKg * (gradeBRatio / 100)))
-    const rejWeight = Number(tier.reject?.weight_kg ?? (totalWeightKg * (rejRatio / 100)))
-
-    const gradeAPrice = Math.round(refPrice * 1.15)
-    const gradeBPrice = Math.round(refPrice * 0.80)
-    const rejPrice = 0
-
-    grades = [
-      {
-        code: 'GRADE-A',
-        label: 'Grade A (Mutu Prima)',
-        desc: 'Bentuk proporsional lurus, warna ungu mengkilap, segar tanpa cacat fisik',
-        ratioPercent: gradeARatio,
-        weightKg: Number(gradeAWeight.toFixed(2)),
-        pricePerKg: gradeAPrice,
-        subtotalRp: Number(tier.grade_a?.subtotal_value ?? Math.round(gradeAWeight * gradeAPrice)),
-        status: 'Supermarket Modern & Horeka',
-      },
-      {
-        code: 'GRADE-B',
-        label: 'Grade B (Mutu Pasar)',
-        desc: 'Kelengkungan wajar <15%, warna cerah, sedikit goresan mikro superfisial',
-        ratioPercent: gradeBRatio,
-        weightKg: Number(gradeBWeight.toFixed(2)),
-        pricePerKg: gradeBPrice,
-        subtotalRp: Number(tier.grade_b?.subtotal_value ?? Math.round(gradeBWeight * gradeBPrice)),
-        status: 'Pasar Tradisional & Grosir',
-      },
-      {
-        code: 'REJECT',
-        label: 'Reject (Afkir / Rusak)',
-        desc: 'Busuk basah, lubang hama/ulat, busuk tangkai lunak',
-        ratioPercent: rejRatio,
-        weightKg: Number(rejWeight.toFixed(2)),
-        pricePerKg: rejPrice,
-        subtotalRp: 0,
-        status: 'Pakan Ternak / Kompos Organik',
-      },
-    ]
+    grades = buildDirect3GradeRows({ counts, ratios, tier, totalWeightKg, refPrice, commodityKey: 'terung' })
   } else if (hasTerungData) {
     // 4-Class Terung Grading (YOLO11n 4-Kelas Komersial)
     const totalCount =
@@ -295,69 +348,10 @@ export function buildCertificateData(batch = {}) {
       hasInference)
   ) {
     // 3-Class Chili Grading (YOLO11n 3-Kelas Mutu Cabai)
-    const totalCount =
-      Number(counts.total) ||
-      ((Number(counts.grade_a) || 0) +
-        (Number(counts.grade_b) || 0) +
-        (Number(counts.reject) || 0)) ||
-      1
-
-    const aRatio = Number(
-      ratios.grade_a_percent ??
-      (tier.grade_a?.weight_kg ? (tier.grade_a.weight_kg / (totalWeightKg || 1)) * 100 : 0) ??
-      (counts.grade_a !== undefined ? (Number(counts.grade_a) / totalCount) * 100 : 0)
-    )
-    const bRatio = Number(
-      ratios.grade_b_percent ??
-      (tier.grade_b?.weight_kg ? (tier.grade_b.weight_kg / (totalWeightKg || 1)) * 100 : 0) ??
-      (counts.grade_b !== undefined ? (Number(counts.grade_b) / totalCount) * 100 : 0)
-    )
-    const rejRatio = Number(
-      ratios.reject_percent ??
-      (tier.reject?.weight_kg ? (tier.reject.weight_kg / (totalWeightKg || 1)) * 100 : 0) ??
-      (counts.reject !== undefined ? (Number(counts.reject) / totalCount) * 100 : 0)
-    )
-
-    const aWeight = Number(tier.grade_a?.weight_kg ?? (totalWeightKg * (aRatio / 100)))
-    const bWeight = Number(tier.grade_b?.weight_kg ?? (totalWeightKg * (bRatio / 100)))
-    const rejWeight = Number(tier.reject?.weight_kg ?? (totalWeightKg * (rejRatio / 100)))
-
-    const aPrice = Math.round(refPrice * 1.15)
-    const bPrice = Math.round(refPrice * 0.80)
-    const rejPrice = 0
-
-    grades = [
-      {
-        code: 'GRADE-A',
-        label: 'Grade A (Mutu Utama)',
-        desc: 'Cabai segar, warna cerah merata, bebas bercak atau busuk tangkai',
-        ratioPercent: aRatio,
-        weightKg: Number(aWeight.toFixed(2)),
-        pricePerKg: aPrice,
-        subtotalRp: Number(tier.grade_a?.subtotal_value ?? Math.round(aWeight * aPrice)),
-        status: 'Pasar Modern & Ekspor',
-      },
-      {
-        code: 'GRADE-B',
-        label: 'Grade B (Mutu Standar)',
-        desc: 'Bercak ringan permukaan, ukuran wajar, daging cabai padat',
-        ratioPercent: bRatio,
-        weightKg: Number(bWeight.toFixed(2)),
-        pricePerKg: bPrice,
-        subtotalRp: Number(tier.grade_b?.subtotal_value ?? Math.round(bWeight * bPrice)),
-        status: 'Pasar Tradisional & Horeka',
-      },
-      {
-        code: 'REJECT',
-        label: 'Reject (Afkir / Rusak)',
-        desc: 'Antraknosa / patek, busuk basah, lubang hama lalat buah',
-        ratioPercent: rejRatio,
-        weightKg: Number(rejWeight.toFixed(2)),
-        pricePerKg: rejPrice,
-        subtotalRp: 0,
-        status: 'Pemisahan Mutu (Afkir)',
-      },
-    ]
+    grades = buildDirect3GradeRows({ counts, ratios, tier, totalWeightKg, refPrice, commodityKey: 'cabai' })
+  } else if (hasTomato3Grade) {
+    // 3-Class Tomato Grading (YOLO11n 3-Kelas Mutu Tomat)
+    grades = buildDirect3GradeRows({ counts, ratios, tier, totalWeightKg, refPrice, commodityKey: 'tomat' })
   } else if (hasInference && (ratios.fresh_ratio_percent !== undefined || ratios.fresh_percent !== undefined || counts.fresh_tomato !== undefined)) {
     // Tomat 2-Class AI Scan
     const freshCount = Number(counts.fresh_tomato ?? counts.fresh ?? 0)
@@ -492,6 +486,8 @@ export function buildCertificateData(batch = {}) {
         : 'Ultralytics YOLO11n (4-Class Commercial Quality)'
       : isChili
       ? 'Ultralytics YOLO11n (3-Class Chili Quality)'
+      : hasTomato3Grade
+      ? 'Ultralytics YOLO11n (3-Class Tomato Quality)'
       : 'Ultralytics YOLO11 (2-Class Fresh/Rotten)'
     inspectionMethod = isMultiAngle
       ? `Computer Vision AI (Multi-Angle 2-Sisi Terverifikasi) — ${modelEngineName}`
@@ -504,6 +500,8 @@ export function buildCertificateData(batch = {}) {
         : 'Ultralytics YOLO11n (Perlu Review)'
       : isChili
       ? 'Ultralytics YOLO11n (Cabai - Perlu Review)'
+      : hasTomato3Grade
+      ? 'Ultralytics YOLO11n (Tomat - Perlu Review)'
       : 'Ultralytics YOLO11 (Perlu Review)'
     inspectionMethod = isMultiAngle
       ? 'Computer Vision AI (Multi-Angle 2-Sisi) — Memerlukan Verifikasi Manual'

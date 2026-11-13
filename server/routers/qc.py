@@ -20,6 +20,7 @@ from server.services.pricing_service import (
     calculate_economic_projection,
     calculate_eggplant_economic_projection,
     calculate_chili_economic_projection,
+    calculate_tomato_economic_projection,
     get_commodity_pricing,
 )
 from server.services.storage_service import storage_service
@@ -357,14 +358,19 @@ async def scan_harvest_batch(
                 },
             }
 
-        elif is_cabai:
+        elif is_cabai or (
+            is_tomato
+            and any(k in raw_detection["detection_summary"]["class_counts"] for k in ("Grade A", "grade-a", "Grade B", "grade-b"))
+            and not any(k in raw_detection["detection_summary"]["class_counts"] for k in ("fresh-tomato", "fresh_tomato"))
+        ):
             class_counts = raw_detection["detection_summary"]["class_counts"]
             total_objs = raw_detection["detection_summary"]["total_objects"]
             grade_a_count = class_counts.get("Grade A", 0) or class_counts.get("grade-a", 0)
             grade_b_count = class_counts.get("Grade B", 0) or class_counts.get("grade-b", 0)
             reject_count = class_counts.get("reject", 0) or class_counts.get("Reject", 0)
 
-            pricing_info = calculate_chili_economic_projection(
+            pricing_fn = calculate_chili_economic_projection if is_cabai else calculate_tomato_economic_projection
+            pricing_info = pricing_fn(
                 weight_kg=weight_kg,
                 grade_a_count=grade_a_count,
                 grade_b_count=grade_b_count,
