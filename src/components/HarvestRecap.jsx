@@ -88,14 +88,15 @@ function BatchGradeDistribution({ batch }) {
     batch?.scanResult?.inference_result?.condition_ratios ||
     {}
 
-  // 1. Cek apakah Terung 3-Grade (Model v2: Grade A, Grade B, Reject)
+  // 1. Cek apakah komoditas menggunakan sistem 3-Grade langsung (Grade A, Grade B, Reject)
   const isDirect3Grade =
-    isEggplant &&
     (ratios.grade_a_percent !== undefined ||
       ratios.grade_b_percent !== undefined ||
       batch?.inference?.object_counts?.grade_a !== undefined) &&
     ratios.class_1_percent === undefined &&
-    batch?.inference?.object_counts?.class_1 === undefined
+    batch?.inference?.object_counts?.class_1 === undefined &&
+    ratios.fresh_ratio_percent === undefined &&
+    ratios.fresh_percent === undefined
 
   if (isDirect3Grade) {
     const valA = ratios.grade_a_percent ?? batch?.hasil?.persenA

@@ -58,33 +58,31 @@ class YOLOInferenceEngine:
         terung_fallback_pt = os.path.join(self.base_dir, "models-20261107T170211Z-1-001", "models", "terung", "best.pt")
         terung_pt_path = terung_primary_pt if os.path.exists(terung_primary_pt) else terung_fallback_pt
 
-        terung_classes = ["Grade A", "Grade B", "Reject"]
-        terung_version = "2.0.0"
         terung_yaml = os.path.join(self.base_dir, "server", "models", "terung", "data.yaml")
-        if os.path.exists(terung_yaml):
-            try:
-                import yaml
-                with open(terung_yaml, "r", encoding="utf-8") as yf:
-                    ydata = yaml.safe_load(yf)
-                    if ydata and "names" in ydata and isinstance(ydata["names"], list):
-                        terung_classes = ydata["names"]
-            except Exception:
-                pass
+        terung_classes = self._load_yaml_classes(terung_yaml, ["Grade A", "Grade B", "Reject"])
+        terung_version = "2.0.0"
+
+        # Deteksi konfigurasi model tomat dari server/models/tomat/data.yaml
+        tomat_primary_pt = os.path.join(self.base_dir, "server", "models", "tomat", "best.pt")
+        tomat_fallback_pt = os.path.join(self.base_dir, "model-export", "weights", "best.pt")
+        tomat_pt_path = tomat_primary_pt if os.path.exists(tomat_primary_pt) else tomat_fallback_pt
+
+        tomat_primary_onnx = os.path.join(self.base_dir, "server", "models", "tomat", "best.onnx")
+        tomat_fallback_onnx = os.path.join(self.base_dir, "model-export", "weights", "best.onnx")
+        tomat_onnx_path = tomat_primary_onnx if os.path.exists(tomat_primary_onnx) else tomat_fallback_onnx
+
+        tomat_yaml = os.path.join(self.base_dir, "server", "models", "tomat", "data.yaml")
+        tomat_classes = self._load_yaml_classes(
+            tomat_yaml,
+            ["Grade A", "Grade B", "Reject"] if os.path.exists(tomat_primary_pt) else ["fresh-tomato", "rotten-tomato"],
+        )
+        tomat_version = "2.0.0" if tomat_classes == ["Grade A", "Grade B", "Reject"] else "1.0.0"
 
         # Deteksi konfigurasi model cabai dari server/models/cabai/data.yaml
         cabai_primary_pt = os.path.join(self.base_dir, "server", "models", "cabai", "best.pt")
         cabai_pt_path = cabai_primary_pt if os.path.exists(cabai_primary_pt) else None
-        cabai_classes = ["Grade A", "Grade B", "Reject"]
         cabai_yaml = os.path.join(self.base_dir, "server", "models", "cabai", "data.yaml")
-        if os.path.exists(cabai_yaml):
-            try:
-                import yaml
-                with open(cabai_yaml, "r", encoding="utf-8") as yf:
-                    ydata = yaml.safe_load(yf)
-                    if ydata and "names" in ydata and isinstance(ydata["names"], list):
-                        cabai_classes = ydata["names"]
-            except Exception:
-                pass
+        cabai_classes = self._load_yaml_classes(cabai_yaml, ["Grade A", "Grade B", "Reject"])
 
         self.model_configs = {
             "terung": {
@@ -95,11 +93,11 @@ class YOLOInferenceEngine:
                 "expected_classes": terung_classes,
             },
             "tomat": {
-                "name": "Agri-Sort Tomato Freshness Detection",
-                "version": "1.0.0",
-                "path": os.path.join(self.base_dir, "model-export", "weights", "best.pt"),
-                "onnx_path": os.path.join(self.base_dir, "model-export", "weights", "best.onnx"),
-                "expected_classes": ["fresh-tomato", "rotten-tomato"],
+                "name": "Agri-Sort Tomato Quality Detection",
+                "version": tomat_version,
+                "path": tomat_pt_path,
+                "onnx_path": tomat_onnx_path,
+                "expected_classes": tomat_classes,
             },
             "cabai": {
                 "name": "Agri-Sort Chili Quality Detection",
@@ -109,6 +107,20 @@ class YOLOInferenceEngine:
                 "expected_classes": cabai_classes,
             },
         }
+
+    @staticmethod
+    def _load_yaml_classes(yaml_path: str, default_classes: List[str]) -> List[str]:
+        """Membaca daftar nama kelas dari berkas data.yaml jika tersedia."""
+        if os.path.exists(yaml_path):
+            try:
+                import yaml
+                with open(yaml_path, "r", encoding="utf-8") as yf:
+                    ydata = yaml.safe_load(yf)
+                    if ydata and "names" in ydata and isinstance(ydata["names"], list):
+                        return ydata["names"]
+            except Exception:
+                pass
+        return default_classes
 
     def is_available(self) -> bool:
         """Memeriksa apakah runtime ONNX atau Ultralytics tersedia."""

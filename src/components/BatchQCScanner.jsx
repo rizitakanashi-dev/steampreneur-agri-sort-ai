@@ -93,9 +93,9 @@ const COMMODITIES = [
   {
     id: 'Tomat',
     name: 'Tomat (Tomato)',
-    badge: 'YOLO11 2-Class',
+    badge: 'YOLO11 3-Class',
     badgeColor: 'success',
-    classes: ['Tomat Segar', 'Tomat Busuk'],
+    classes: ['Grade A', 'Grade B', 'Reject'],
     defaultConf: 0.35,
     emoji: '🍅',
     supported: true,
@@ -403,7 +403,17 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm }
         if (response?.data) {
           const d = response.data
           const agg = d.multi_angle_aggregation || {}
-          const isEgg = String(commodity).toLowerCase().includes('terung')
+          const commLower = String(commodity).toLowerCase()
+          const isEgg = commLower.includes('terung') || commLower.includes('terong')
+          const isCabai =
+            (commLower.includes('cabai') || commLower.includes('chili') || commLower.includes('cabe')) &&
+            !commLower.includes('cabai rawit hijau')
+          const has3GradeCounts =
+            isEgg ||
+            isCabai ||
+            agg.combined_object_counts?.grade_a_combined !== undefined ||
+            d.front_view?.object_counts?.['grade-a'] !== undefined ||
+            d.front_view?.object_counts?.['Grade A'] !== undefined
 
           finalResult = {
             ...d,
@@ -413,15 +423,17 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm }
             imagePreviewBack: previewBack,
             occlusion_analysis: agg.occlusion_analysis || {},
             inference_result: {
-              object_counts: isEgg
+              object_counts: has3GradeCounts
                 ? {
                     grade_a:
                       agg.combined_object_counts?.grade_a_combined ??
                       d.front_view?.object_counts?.['grade-a'] ??
+                      d.front_view?.object_counts?.['Grade A'] ??
                       ((agg.combined_object_counts?.extra_class_combined || 0) + (agg.combined_object_counts?.class_1_combined || 0)),
                     grade_b:
                       agg.combined_object_counts?.grade_b_combined ??
                       d.front_view?.object_counts?.['grade-b'] ??
+                      d.front_view?.object_counts?.['Grade B'] ??
                       (agg.combined_object_counts?.class_2_combined || 0),
                     extra_class:
                       agg.combined_object_counts?.extra_class_combined ??
@@ -438,6 +450,7 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm }
                     reject:
                       agg.combined_object_counts?.reject_combined ??
                       d.front_view?.object_counts?.reject ??
+                      d.front_view?.object_counts?.Reject ??
                       0,
                     total: agg.combined_object_counts?.total_samples_observed ?? 1,
                   }
@@ -537,7 +550,13 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm }
       persenA = Math.round(gb.grade_a_percent || 0)
       persenB = Math.round(gb.grade_b_percent || 0)
       persenC = Math.round(gb.reject_percent || 0)
-    } else if (selectedCommodity.toLowerCase().includes('terung') || selectedCommodity.toLowerCase().includes('terong')) {
+    } else if (
+      inf?.object_counts?.grade_a !== undefined ||
+      inf?.object_counts?.grade_b !== undefined ||
+      selectedCommodity.toLowerCase().includes('terung') ||
+      selectedCommodity.toLowerCase().includes('terong') ||
+      selectedCommodity.toLowerCase().includes('cabai')
+    ) {
       const gradeA = inf?.object_counts?.grade_a ?? ((inf?.object_counts?.extra_class || 0) + (inf?.object_counts?.class_1 || 0))
       const gradeB = inf?.object_counts?.grade_b ?? (inf?.object_counts?.class_2 || 0)
       const rej = inf?.object_counts?.reject || 0
@@ -898,7 +917,7 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm }
                   : isChili
                   ? 'Model mendeteksi mutu cabai per butir (Grade A, Grade B, Reject). Letakkan cabai berjajar rapi di atas nampan dengan pencahayaan memadai.'
                   : isTomato
-                  ? 'Arahkan kamera tegak lurus (top-down view) dengan pencahayaan memadai agar buah terdeteksi jelas.'
+                  ? 'Model mendeteksi mutu tomat per butir (Grade A, Grade B, Reject). Arahkan kamera tegak lurus (top-down view) dengan pencahayaan memadai agar setiap buah terdeteksi jelas.'
                   : 'Komoditas ini belum didukung model Computer Vision resmi. Silakan lakukan pemeriksaan fisik secara manual.'}
               </Typography>
             </Alert>
@@ -1700,7 +1719,7 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm }
                 Distribusi Mutu Hasil Deteksi ({selectedCommodity})
               </Typography>
 
-              {isEggplant || isChili ? (
+              {(isEggplant || isChili || (isTomato && counts.fresh_tomato === undefined && counts.rotten_tomato === undefined && inference?.condition_ratios?.fresh_ratio_percent === undefined)) ? (
                 // 3 KELAS (Grade A, Grade B, Reject)
                 <Grid container spacing={2}>
                   <Grid size={{ xs: 12, sm: 4 }}>
@@ -1737,22 +1756,6 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm }
                       </Typography>
                     </Box>
                   </Grid>
-                ) : (
-                  // 4 KELAS TERUNG (Model v1: Extra, Class 1, Class 2, Reject)
-                  <Grid container spacing={2}>
-                    <Grid size={{ xs: 6, sm: 3 }}>
-                      <Box sx={{ p: 2, borderRadius: 2, bgcolor: 'rgba(5, 150, 105, 0.08)', border: '1px solid #059669' }}>
-                        <Typography variant="caption" fontWeight={700} color="#059669">
-                          Extra Class (Super)
-                        </Typography>
-                        <Typography variant="h5" fontWeight={800} color="#059669">
-                          {counts.extra_class || 0} <Typography component="span" variant="caption">butir</Typography>
-                        </Typography>
-                        <Typography variant="caption" color="text.secondary">
-                          {pricing?.condition_ratios?.extra_class_percent || 0}% proporsi
-                        </Typography>
-                      </Box>
-                    </Grid>
 
                   <Grid size={{ xs: 12, sm: 4 }}>
                     <Box sx={{ p: 2, borderRadius: 2, bgcolor: 'rgba(220, 38, 38, 0.08)', border: '1px solid #dc2626' }}>
@@ -1767,9 +1770,9 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm }
                       </Typography>
                     </Box>
                   </Grid>
-                )
+                </Grid>
               ) : isTomato ? (
-                // 2 KELAS TOMAT
+                // 2 KELAS TOMAT (Legacy Fallback)
                 <Grid container spacing={2}>
                   <Grid size={{ xs: 6, sm: 6 }}>
                     <Box sx={{ p: 2, borderRadius: 2, bgcolor: 'rgba(4, 120, 87, 0.08)', border: '1px solid #047857' }}>

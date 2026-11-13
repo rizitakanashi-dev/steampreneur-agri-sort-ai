@@ -1,0 +1,44 @@
+{
+  "model": {
+    "name": "Agri-Sort Tomato Quality Detection",
+    "version": "2.0.0",
+    "architecture": "YOLO11n",
+    "task": "object-detection",
+    "framework": "Ultralytics",
+    "framework_version": "8.4.211",
+    "input_size": 640,
+    "files": {
+      "pytorch": "best.pt",
+      "onnx": "best.onnx",
+      "dataset_config": "data.yaml"
+    }
+  },
+  "dataset": {
+    "name": "Tomato Thesis E4",
+    "source": "Roboflow",
+    "workspace": "rizi-takanashi",
+    "project": "tomato-thesis-e4-89vr8",
+    "project_version": 1,
+    "classes": {
+      "0": "Grade A",
+      "1": "Grade B",
+      "2": "Reject"
+    }
+  },
+  "grading": {
+    "system": "3-class",
+    "mapping": {
+      "Grade A": "Grade A",
+      "Grade B": "Grade B",
+      "Reject": "Reject"
+    }
+  },
+  "inference": {
+    "default_confidence_threshold": 0.35,
+    "recommended_input_size": 640
+  },
+  "deployment": {
+    "status": "integrated",
+    "recommended_backend": "Python + FastAPI + ONNX Runtime"
+  }
+}

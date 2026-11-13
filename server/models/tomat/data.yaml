@@ -1,0 +1,13 @@
+train: ../train/images
+val: ../valid/images
+test: ../test/images
+
+nc: 3
+names: ['Grade A', 'Grade B', 'Reject']
+
+roboflow:
+  workspace: rizi-takanashi
+  project: tomato-thesis-e4-89vr8
+  version: 1
+  license: CC BY 4.0
+  url: https://app.roboflow.com/rizi-takanashi/tomato-thesis-e4-89vr8/1

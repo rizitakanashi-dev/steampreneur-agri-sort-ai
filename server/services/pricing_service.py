@@ -430,22 +430,24 @@ def calculate_eggplant_economic_projection(
     }
 
 
-def calculate_chili_economic_projection(
+def calculate_3grade_economic_projection(
     weight_kg: Optional[float],
     grade_a_count: int = 0,
     grade_b_count: int = 0,
     reject_count: int = 0,
     region: str = "Sumatera Barat",
     commodity_name: str = "cabai",
+    default_base_price: int = 45000,
+    item_label: str = "cabai",
 ) -> Dict[str, Any]:
     """
-    Menghitung estimasi nilai ekonomi Cabai 3-Grade (Grade A, Grade B, Reject):
+    Menghitung estimasi nilai ekonomi komoditas 3-Grade (Grade A, Grade B, Reject):
     - Grade A: Multiplier 1.15 (+15% premi kualitas)
     - Grade B: Multiplier 0.80 (-20% diskon toleransi fisik)
     - Reject: Multiplier 0.00
     """
     pricing = get_commodity_pricing(commodity_name, region)
-    base_price = pricing["price_per_kg"] if pricing.get("price_per_kg", 0) > 0 else 45000
+    base_price = pricing["price_per_kg"] if pricing.get("price_per_kg", 0) > 0 else default_base_price
 
     total_samples = max(0, grade_a_count + grade_b_count + reject_count)
 
@@ -494,17 +496,17 @@ def calculate_chili_economic_projection(
     if total_samples == 0:
         rec_note = (
             f"Tidak ada objek {pricing['canonical_name']} yang terdeteksi dengan ambang batas keyakinan saat ini. "
-            "Pastikan pencahayaan cukup dan foto nampan fokus pada permukaan cabai."
+            f"Pastikan pencahayaan cukup dan foto nampan fokus pada permukaan {item_label}."
         )
     elif reject_count > 0:
         rec_note = (
-            f"Mutu Terdistribusi 3-Kelas: {marketable_ratio}% cabai layak jual "
+            f"Mutu Terdistribusi 3-Kelas: {marketable_ratio}% {item_label} layak jual "
             f"(Grade A: {a_ratio}%, Grade B: {b_ratio}%). "
             f"Segera pisahkan {reject_count} butir reject untuk menjaga standar mutu dan menyelamatkan potensi Rp {estimated_value or 0:,}."
         )
     else:
         rec_note = (
-            f"Mutu Sangat Baik: 100% sampel cabai tergolong mutu komersial tanpa reject "
+            f"Mutu Sangat Baik: 100% sampel {item_label} tergolong mutu komersial tanpa reject "
             f"(Grade A: {a_ratio}%, Grade B: {b_ratio}%). "
             f"Potensi pendapatan mencapai Rp {estimated_value or 0:,}."
         )
@@ -555,11 +557,53 @@ def calculate_chili_economic_projection(
             "marketable_percent": marketable_ratio,
         },
         "value_calculation_method": (
-            "Kalkulasi 3-Grade Cabai: Bobot x Rasio Kelas x Harga Acuan x Bobot Mutu (STEAM 3-Class Model)"
+            f"Kalkulasi 3-Grade {pricing['canonical_name']}: Bobot x Rasio Kelas x Harga Acuan x Bobot Mutu (STEAM 3-Class Model)"
         ),
         "recommendation_note": rec_note,
         "is_known_commodity": True,
     }
+
+
+def calculate_chili_economic_projection(
+    weight_kg: Optional[float],
+    grade_a_count: int = 0,
+    grade_b_count: int = 0,
+    reject_count: int = 0,
+    region: str = "Sumatera Barat",
+    commodity_name: str = "cabai",
+) -> Dict[str, Any]:
+    """Menghitung estimasi nilai ekonomi Cabai 3-Grade (Grade A, Grade B, Reject)."""
+    return calculate_3grade_economic_projection(
+        weight_kg=weight_kg,
+        grade_a_count=grade_a_count,
+        grade_b_count=grade_b_count,
+        reject_count=reject_count,
+        region=region,
+        commodity_name=commodity_name,
+        default_base_price=45000,
+        item_label="cabai",
+    )
+
+
+def calculate_tomato_economic_projection(
+    weight_kg: Optional[float],
+    grade_a_count: int = 0,
+    grade_b_count: int = 0,
+    reject_count: int = 0,
+    region: str = "Sumatera Barat",
+    commodity_name: str = "tomat",
+) -> Dict[str, Any]:
+    """Menghitung estimasi nilai ekonomi Tomat 3-Grade (Grade A, Grade B, Reject)."""
+    return calculate_3grade_economic_projection(
+        weight_kg=weight_kg,
+        grade_a_count=grade_a_count,
+        grade_b_count=grade_b_count,
+        reject_count=reject_count,
+        region=region,
+        commodity_name=commodity_name,
+        default_base_price=12000,
+        item_label="tomat",
+    )
 
 
 def calculate_business_grading(
@@ -613,7 +657,9 @@ def calculate_business_grading(
             grade_b_pct = round(c2_pct, 2)
             reject_pct = round(rej_pct, 2)
             rule_desc = "Extra Class & Class I -> Grade A, Class II -> Grade B, Reject -> Reject"
-    elif "cabai" in comm or "chili" in comm or "cabe" in comm:
+    elif "cabai" in comm or "chili" in comm or "cabe" in comm or (
+        "grade_a_percent" in ratios or "grade_b_percent" in ratios
+    ):
         grade_a_pct = round(float(ratios.get("grade_a_percent", 0.0)), 2)
         grade_b_pct = round(float(ratios.get("grade_b_percent", 0.0)), 2)
         reject_pct = round(float(ratios.get("reject_percent", 0.0)), 2)
