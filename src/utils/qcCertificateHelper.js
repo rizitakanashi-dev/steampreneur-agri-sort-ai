@@ -487,7 +487,9 @@ export function buildCertificateData(batch = {}) {
 
   if (execStatus === 'ai_detected') {
     modelEngineName = isEggplant
-      ? 'Ultralytics YOLO11n (4-Class Commercial Quality)'
+      ? hasTerung3Grade
+        ? 'Ultralytics YOLO11n (3-Grade Commercial Quality)'
+        : 'Ultralytics YOLO11n (4-Class Commercial Quality)'
       : isChili
       ? 'Ultralytics YOLO11n (3-Class Chili Quality)'
       : 'Ultralytics YOLO11 (2-Class Fresh/Rotten)'
@@ -497,7 +499,9 @@ export function buildCertificateData(batch = {}) {
     evaluator = 'Agri-Sort AI Autonomous Engine (Terverifikasi)'
   } else if (execStatus === 'needs_review') {
     modelEngineName = isEggplant
-      ? 'Ultralytics YOLO11n (Perlu Review)'
+      ? hasTerung3Grade
+        ? 'Ultralytics YOLO11n (3-Grade - Perlu Review)'
+        : 'Ultralytics YOLO11n (Perlu Review)'
       : isChili
       ? 'Ultralytics YOLO11n (Cabai - Perlu Review)'
       : 'Ultralytics YOLO11 (Perlu Review)'
