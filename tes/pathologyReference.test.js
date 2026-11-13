@@ -41,6 +41,18 @@ test('getPathologiesForCommodity menyaring komoditas secara akurat', () => {
   const cabaiList = getPathologiesForCommodity('Cabai Merah Keriting')
   assert.ok(cabaiList.some((p) => p.id === 'anthracnose'))
 
+  // Toleransi variasi sinonim nama lokal (Terong / Cabe / Eggplant)
+  const terongSinonim = getPathologiesForCommodity('Terong Ungu')
+  assert.ok(terongSinonim.length >= 3)
+  assert.ok(terongSinonim.some((p) => p.id === 'bacterial_soft_rot'))
+
+  const cabeSinonim = getPathologiesForCommodity('Cabe Rawit')
+  assert.ok(cabeSinonim.some((p) => p.id === 'anthracnose'))
+
+  // Fallback aman untuk komoditas tidak dikenal (misal Bawang Merah / komoditas umum)
+  const unknownList = getPathologiesForCommodity('Bawang Merah')
+  assert.equal(unknownList.length, ALL_PATHOLOGY_ITEMS.length)
+
   // Default fallback jika null/empty
   const allFallback = getPathologiesForCommodity('')
   assert.equal(allFallback.length, ALL_PATHOLOGY_ITEMS.length)
@@ -57,6 +69,22 @@ test('getPrimaryScienceRecommendation memberikan panduan tepat saat ada reject d
   assert.equal(recWarning.pathology.id, 'anthracnose')
   assert.ok(recWarning.headline.includes('Antraknosa'))
   assert.ok(recWarning.actionHighlight)
+
+  // Kondisi dengan nama Terong lokal
+  const recTerong = getPrimaryScienceRecommendation({
+    commodity: 'Terong',
+    rejectCount: 3,
+  })
+  assert.equal(recTerong.severity, 'warning')
+  assert.ok(recTerong.headline.includes('Patologi'))
+
+  // Kondisi komoditas tidak dikenal (tidak boleh melempar TypeError)
+  const recUnknown = getPrimaryScienceRecommendation({
+    commodity: 'Bawang Merah',
+    rejectCount: 5,
+  })
+  assert.equal(recUnknown.severity, 'warning')
+  assert.ok(recUnknown.headline)
 
   // Kondisi prima (tanpa reject)
   const recPrime = getPrimaryScienceRecommendation({

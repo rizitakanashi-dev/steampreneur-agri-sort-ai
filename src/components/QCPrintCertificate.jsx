@@ -485,10 +485,10 @@ export function QCPrintCertificate({ batch, showPrintButton = false, onPrint }) 
           >
             <VerifiedRoundedIcon sx={{ color: '#036e45', fontSize: 32, mb: 0.5 }} />
             <Typography sx={{ fontSize: 9.5, fontWeight: 800, color: '#036e45', textTransform: 'uppercase' }}>
-              SMART QC VERIFIED
+              {cert.executionStatus === 'ai_detected' ? 'SMART QC VERIFIED' : 'QC TERVERIFIKASI'}
             </Typography>
-            <Typography sx={{ fontSize: 8.5, color: '#4b5563', mt: 0.25 }}>
-              Model AI {cert.modelEngineName || 'Ultralytics YOLO11'}
+            <Typography sx={{ fontSize: 8.5, color: '#4b5563', mt: 0.25, textAlign: 'center' }}>
+              {cert.modelEngineName || 'Ultralytics YOLO11'}
             </Typography>
             <Typography sx={{ fontSize: 8, color: '#6b7280' }}>
               ID: {cert.registrationId}

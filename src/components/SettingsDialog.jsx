@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import {
   Alert,
   Avatar,
@@ -33,15 +33,24 @@ import AccountBalanceRoundedIcon from '@mui/icons-material/AccountBalanceRounded
 import StorefrontRoundedIcon from '@mui/icons-material/StorefrontRounded'
 import BalanceRoundedIcon from '@mui/icons-material/BalanceRounded'
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined'
+import FileDownloadRoundedIcon from '@mui/icons-material/FileDownloadRounded'
+import FileUploadRoundedIcon from '@mui/icons-material/FileUploadRounded'
+import DeleteOutlineRoundedIcon from '@mui/icons-material/DeleteOutlineRounded'
 import { checkBackendHealth } from '../services/scanService.js'
-import { clearBatches, readBatches } from '../business/harvestStorage.js'
+import {
+  clearBatches,
+  exportBatchesAsJson,
+  importBatchesFromJson,
+  readBatches,
+} from '../business/harvestStorage.js'
 
-export function SettingsDialog({ open, onClose }) {
+export function SettingsDialog({ open, onClose, onDataChanged }) {
   const [tabIndex, setTabIndex] = useState(0)
   const [backendStatus, setBackendStatus] = useState({ loading: false, isOnline: false, latency: null, data: null })
-  const [resetSuccessMsg, setResetSuccessMsg] = useState('')
+  const [feedbackMsg, setFeedbackMsg] = useState(null)
   const [batchCount, setBatchCount] = useState(0)
   const [confirmResetOpen, setConfirmResetOpen] = useState(false)
+  const fileInputRef = useRef(null)
 
   const refreshHealth = async () => {
     setBackendStatus((prev) => ({ ...prev, loading: true }))
@@ -65,15 +74,65 @@ export function SettingsDialog({ open, onClose }) {
       refreshHealth()
       const existing = readBatches()
       setBatchCount(existing.length)
-      setResetSuccessMsg('')
+      setFeedbackMsg(null)
     }
   }, [open])
 
-  const handleClearDemoData = () => {
+  const handleExportBackup = () => {
+    try {
+      const jsonStr = exportBatchesAsJson()
+      const blob = new Blob([jsonStr], { type: 'application/json' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      const dateStr = new Date().toISOString().split('T')[0]
+      a.download = `agrisort-cadangan-panen-${dateStr}.json`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+      setFeedbackMsg({ type: 'success', text: 'Berkas cadangan data panen berhasil diekspor (.json).' })
+    } catch {
+      setFeedbackMsg({ type: 'error', text: 'Gagal mengekspor berkas cadangan data panen.' })
+    }
+  }
+
+  const handleFileChange = (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = (event) => {
+      try {
+        const text = event.target?.result
+        const res = importBatchesFromJson(text)
+        if (res.success) {
+          const updated = readBatches()
+          setBatchCount(updated.length)
+          setFeedbackMsg({
+            type: 'success',
+            text: `Berhasil mengimpor ${res.importedCount} rekaman panen! Total tersimpan saat ini: ${res.totalCount} batch.`,
+          })
+          onDataChanged?.()
+        } else {
+          setFeedbackMsg({ type: 'error', text: res.error || 'Gagal memproses berkas cadangan.' })
+        }
+      } catch {
+        setFeedbackMsg({ type: 'error', text: 'Terjadi kesalahan saat membaca berkas cadangan.' })
+      }
+    }
+    reader.readAsText(file)
+    e.target.value = ''
+  }
+
+  const handleClearData = () => {
     clearBatches()
     setBatchCount(0)
     setConfirmResetOpen(false)
-    setResetSuccessMsg('Seluruh data riwayat panen lokal berhasil dibersihkan untuk sesi demo baru!')
+    setFeedbackMsg({
+      type: 'success',
+      text: 'Seluruh riwayat rekaman batch panen lokal berhasil dibersihkan.',
+    })
+    onDataChanged?.()
   }
 
   return (
@@ -112,7 +171,7 @@ export function SettingsDialog({ open, onClose }) {
           <Tabs value={tabIndex} onChange={(_, val) => setTabIndex(val)} variant="scrollable" scrollButtons="auto">
             <Tab label="Profil Tim &amp; Sekolah" sx={{ textTransform: 'none', fontWeight: 700 }} />
             <Tab label="Konektivitas &amp; AI Engine" sx={{ textTransform: 'none', fontWeight: 700 }} />
-            <Tab label="Manajemen Data Demo" sx={{ textTransform: 'none', fontWeight: 700 }} />
+            <Tab label="Manajemen Data &amp; Cadangan" sx={{ textTransform: 'none', fontWeight: 700 }} />
           </Tabs>
         </Box>
 
@@ -185,7 +244,7 @@ export function SettingsDialog({ open, onClose }) {
                         </Box>
                       </Stack>
                       <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
-                        Otomasi pengujian unit (196 tests), audit kepatuhan proposal STEAMPreneur, dan dokumentasi review.
+                        Otomasi pengujian unit (245 tests: 131 JS + 114 Python), audit kepatuhan proposal STEAMPreneur, dan dokumentasi review.
                       </Typography>
                     </CardContent>
                   </Card>
@@ -283,7 +342,7 @@ export function SettingsDialog({ open, onClose }) {
                         <VerifiedRoundedIcon color="secondary" fontSize="small" />
                       </ListItemIcon>
                       <ListItemText
-                        primary="Model Deteksi YOLO11n Multi-Class (Terung 4-Class &amp; Tomat 2-Class)"
+                        primary="Model Deteksi YOLO11n Multi-Class (Terung 3-Grade v2 / 4-Class &amp; Tomat 2-Class)"
                         secondary="Pure ONNX SIMD Runtime + SAHI Tiled Inference untuk deteksi objek kecil pada resolusi tinggi"
                         primaryTypographyProps={{ variant: 'body2', fontWeight: 700 }}
                         secondaryTypographyProps={{ variant: 'caption' }}
@@ -295,53 +354,84 @@ export function SettingsDialog({ open, onClose }) {
             </Stack>
           )}
 
-          {/* TAB 2: MANAJEMEN DATA DEMO */}
+          {/* TAB 2: MANAJEMEN DATA & CADANGAN LAPANGAN */}
           {tabIndex === 2 && (
             <Stack spacing={2.5}>
               <Alert severity="info" icon={<InfoOutlinedIcon />} sx={{ borderRadius: 2 }}>
                 <Typography variant="body2">
-                  Fitur ini dirancang khusus untuk mempermudah simulasi demonstrasi di hadapan dewan juri STEAMPreneur atau Kepala Sekolah.
+                  <strong>Penyimpanan Luring Lapangan:</strong> Fitur ini memungkinkan petani dan PPL (Penyuluh Pertanian Lapangan) mencadangkan (backup) atau memindahkan data rekapan panen antar-perangkat secara aman tanpa membutuhkan koneksi internet.
                 </Typography>
               </Alert>
 
               <Card elevation={0} sx={{ border: '1px solid #e2e8f0', borderRadius: 2 }}>
                 <CardContent sx={{ p: 2 }}>
                   <Typography variant="subtitle2" fontWeight={800}>
-                    Penyimpanan Data Lokal (Browser Cache)
+                    Penyimpanan Data Lokal (Browser Storage)
                   </Typography>
                   <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-                    Saat ini tersimpan: <strong>{batchCount} rekaman batch panen</strong> di dalam memori lokal peramban.
+                    Saat ini tersimpan: <strong>{batchCount} rekaman batch panen</strong> di dalam memori peramban.
                   </Typography>
 
-                  {resetSuccessMsg && (
-                    <Alert severity="success" sx={{ mt: 1.5, borderRadius: 1.5 }}>
-                      {resetSuccessMsg}
+                  {feedbackMsg && (
+                    <Alert severity={feedbackMsg.type} sx={{ mt: 1.5, borderRadius: 1.5 }}>
+                      {feedbackMsg.text}
                     </Alert>
                   )}
 
-                  <Box sx={{ mt: 2 }}>
+                  <input
+                    type="file"
+                    accept=".json,application/json"
+                    ref={fileInputRef}
+                    style={{ display: 'none' }}
+                    onChange={handleFileChange}
+                  />
+
+                  <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} sx={{ mt: 2.5 }}>
+                    <Button
+                      variant="contained"
+                      color="primary"
+                      disabled={batchCount === 0}
+                      onClick={handleExportBackup}
+                      startIcon={<FileDownloadRoundedIcon />}
+                      sx={{ textTransform: 'none', borderRadius: 2, fontWeight: 700 }}
+                    >
+                      Ekspor Cadangan (.json)
+                    </Button>
+
+                    <Button
+                      variant="outlined"
+                      color="primary"
+                      onClick={() => fileInputRef.current?.click()}
+                      startIcon={<FileUploadRoundedIcon />}
+                      sx={{ textTransform: 'none', borderRadius: 2, fontWeight: 700 }}
+                    >
+                      Impor Cadangan (.json)
+                    </Button>
+
                     <Button
                       variant="outlined"
                       color="error"
+                      disabled={batchCount === 0}
                       onClick={() => setConfirmResetOpen(true)}
+                      startIcon={<DeleteOutlineRoundedIcon />}
                       sx={{ textTransform: 'none', borderRadius: 2, fontWeight: 700 }}
                     >
-                      Kosongkan Riwayat Data Panen Demo
+                      Kosongkan Data
                     </Button>
-                  </Box>
+                  </Stack>
                 </CardContent>
               </Card>
 
               <Card elevation={0} sx={{ border: '1px solid #e2e8f0', borderRadius: 2, bgcolor: '#f8fafc' }}>
                 <CardContent sx={{ p: 2 }}>
                   <Typography variant="subtitle2" fontWeight={800}>
-                    Panduan Alur Demo 3 Menit (Pitching):
+                    Panduan Alur Lapangan &amp; Presentasi (STEAM Flow):
                   </Typography>
                   <List dense disablePadding sx={{ mt: 1 }}>
                     <ListItem disablePadding sx={{ py: 0.25 }}>
                       <ListItemText
                         primary="1. Batch QC Scanner:"
-                        secondary="Ambil foto 2 sudut (Depan & Goyang Nampan) untuk mendeteksi mutu buah anti-oklusi."
+                        secondary="Ambil foto 2 sudut (Depan & Goyang Nampan) untuk mendeteksi mutu buah anti-oklusi dan verifikasi kamera diam."
                         primaryTypographyProps={{ variant: 'body2', fontWeight: 700 }}
                         secondaryTypographyProps={{ variant: 'caption' }}
                       />
@@ -371,7 +461,7 @@ export function SettingsDialog({ open, onClose }) {
 
         <DialogActions sx={{ p: 2, justifyContent: 'space-between' }}>
           <Typography variant="caption" color="text.secondary">
-            Versi Aplikasi: <strong>v1.0.0-rc2 (Build 2026-11-08)</strong>
+            Versi Aplikasi: <strong>v1.0.0 (Build 2026-11-11)</strong>
           </Typography>
           <Button onClick={onClose} variant="contained" color="primary" sx={{ borderRadius: 2, fontWeight: 700 }}>
             Tutup
@@ -381,17 +471,17 @@ export function SettingsDialog({ open, onClose }) {
 
       {/* DIALOG KONFIRMASI RESET DATA */}
       <Dialog open={confirmResetOpen} onClose={() => setConfirmResetOpen(false)} maxWidth="xs" fullWidth>
-        <DialogTitle sx={{ fontWeight: 800 }}>Konfirmasi Reset Data</DialogTitle>
+        <DialogTitle sx={{ fontWeight: 800 }}>Konfirmasi Pembersihan Data</DialogTitle>
         <DialogContent>
           <Typography variant="body2">
-            Apakah Anda yakin ingin mengosongkan seluruh riwayat batch panen lokal? Aksi ini akan membersihkan data demo agar siap untuk sesi presentasi baru.
+            Apakah Anda yakin ingin mengosongkan seluruh riwayat batch panen lokal? Tindakan ini akan menghapus semua catatan panen yang tersimpan di memori peramban ini. Pastikan Anda telah mengekspor cadangan berkas jika masih memerlukannya.
           </Typography>
         </DialogContent>
         <DialogActions sx={{ p: 2 }}>
           <Button onClick={() => setConfirmResetOpen(false)} color="inherit" sx={{ fontWeight: 700 }}>
             Batal
           </Button>
-          <Button onClick={handleClearDemoData} color="error" variant="contained" sx={{ fontWeight: 700, borderRadius: 2 }}>
+          <Button onClick={handleClearData} color="error" variant="contained" sx={{ fontWeight: 700, borderRadius: 2 }}>
             Ya, Bersihkan Data
           </Button>
         </DialogActions>

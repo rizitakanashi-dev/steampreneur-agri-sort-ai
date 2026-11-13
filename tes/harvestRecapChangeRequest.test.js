@@ -142,3 +142,13 @@ test('calculateBatchTotals mendukung batch AI Scan dan pricing service', () => {
   assert.equal(result.totalBeratKg, 100)
   assert.equal(result.totalNilai, 900000)
 })
+
+test('calculateBatchTotals membulatkan floating-point desimal IEEE-754 secara presisi', () => {
+  const floatBatches = [
+    { id: 'f-1', beratKg: 10.1, hasil: { totalNilai: 100500.4 } },
+    { id: 'f-2', beratKg: 20.2, hasil: { totalNilai: 200500.4 } },
+  ]
+  const result = calculateBatchTotals(floatBatches)
+  assert.equal(result.totalBeratKg, 30.3) // Bukan 30.299999999999997
+  assert.equal(result.totalNilai, 301001) // Dibulatkan ke integer Rupiah
+})

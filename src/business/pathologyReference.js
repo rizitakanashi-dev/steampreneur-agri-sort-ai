@@ -100,41 +100,77 @@ export const ALL_PATHOLOGY_ITEMS = Object.freeze(Object.values(POST_HARVEST_PATH
 
 /**
  * Mengambil daftar patologi yang relevan berdasarkan nama komoditas.
+ * Toleran terhadap variasi ejaan lokal (Terong/Terung, Cabe/Cabai, Tomato/Tomat)
+ * dan memiliki fallback aman jika komoditas tidak dikenali.
  */
 export function getPathologiesForCommodity(commodityName) {
   if (!commodityName) return ALL_PATHOLOGY_ITEMS
-  const cleanName = String(commodityName).trim().toLowerCase()
+  const raw = String(commodityName).trim().toLowerCase()
 
-  return ALL_PATHOLOGY_ITEMS.filter((item) =>
-    item.affectedCommodities.some((aff) => cleanName.includes(aff.toLowerCase()) || aff.toLowerCase().includes(cleanName))
+  // Normalisasi ejaan sinonim komoditas lokal
+  let normalizedKey = raw
+  if (raw.includes('terong') || raw.includes('terung') || raw.includes('eggplant')) {
+    normalizedKey = 'terung'
+  } else if (raw.includes('cabe') || raw.includes('cabai') || raw.includes('chili')) {
+    normalizedKey = 'cabai'
+  } else if (raw.includes('tomat') || raw.includes('tomato')) {
+    normalizedKey = 'tomat'
+  }
+
+  const matches = ALL_PATHOLOGY_ITEMS.filter((item) =>
+    item.affectedCommodities.some((aff) => {
+      const affLower = aff.toLowerCase()
+      return (
+        raw.includes(affLower) ||
+        affLower.includes(raw) ||
+        normalizedKey.includes(affLower) ||
+        affLower.includes(normalizedKey)
+      )
+    })
   )
+
+  // Fallback aman jika komoditas umum belum terpetakan, jangan kembalikan array kosong yang merusak UI
+  return matches.length > 0 ? matches : ALL_PATHOLOGY_ITEMS
 }
 
 /**
  * Mengidentifikasi rekomendasi sains utama berdasarkan deteksi reject atau kelas mutu.
+ * Tahan banting terhadap null/undefined komoditas dan menjamin tidak pernah melempar TypeError.
  */
-export function getPrimaryScienceRecommendation({ commodity, rejectCount = 0, rejectPercent = 0 }) {
+export function getPrimaryScienceRecommendation({ commodity, rejectCount = 0, rejectPercent = 0 } = {}) {
   const commPathologies = getPathologiesForCommodity(commodity)
-  const hasReject = rejectCount > 0 || rejectPercent > 0
+  const fallbackItem = commPathologies[0] || ALL_PATHOLOGY_ITEMS[0]
+  const hasReject = Number(rejectCount) > 0 || Number(rejectPercent) > 0
 
   if (hasReject) {
     // Utamakan infeksi menular paling kritis: Antraknosa atau Busuk Lunak Bakteri
-    const primary = commPathologies.find((p) => p.id === 'anthracnose') || commPathologies[0]
+    const primary =
+      commPathologies.find((p) => p.id === 'anthracnose') ||
+      commPathologies.find((p) => p.id === 'bacterial_soft_rot') ||
+      fallbackItem
+
     return {
       severity: 'warning',
-      headline: `Waspada Patologi Menular Pascapanen: ${primary.name}`,
+      headline: `Waspada Patologi Menular Pascapanen: ${primary?.name || 'Infeksi Pascapanen'}`,
       pathology: primary,
-      actionHighlight: primary.mitigationAction,
+      actionHighlight:
+        primary?.mitigationAction ||
+        'Segera lakukan pemilahan (culling) buah yang bergejala busuk dari keranjang utama.',
     }
   }
 
   // Jika kondisi prima
-  const physiological = commPathologies.find((p) => p.id === 'physiological_shrivel') || commPathologies[0]
+  const physiological =
+    commPathologies.find((p) => p.id === 'physiological_shrivel') ||
+    fallbackItem
+
   return {
     severity: 'success',
     headline: 'Mutu Panen Prima — Jaga Turgor & Manajemen Rantai Dingin',
     pathology: physiological,
-    actionHighlight: physiological.mitigationAction,
+    actionHighlight:
+      physiological?.mitigationAction ||
+      'Simpan panen di tempat teduh dan sejuk terlindung dari terik matahari.',
   }
 }
 

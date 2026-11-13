@@ -49,3 +49,82 @@ export function clearBatches(storage) {
   const target = getStorage(storage)
   if (target) target.removeItem(HARVEST_STORAGE_KEY)
 }
+
+export function deleteBatch(batchId, storage) {
+  const target = getStorage(storage)
+  if (!target) return []
+  if (!batchId) return readBatches(target)
+
+  const batches = readBatches(target)
+  const remaining = batches.filter((b) => b.id !== batchId)
+  target.setItem(HARVEST_STORAGE_KEY, JSON.stringify(remaining))
+  return remaining
+}
+
+export function exportBatchesAsJson(storage) {
+  const batches = readBatches(storage)
+  const payload = {
+    app: 'Agri-Sort AI',
+    version: '1.0.0',
+    institution: 'SMKN 4 Payakumbuh',
+    exportedAt: new Date().toISOString(),
+    totalRecords: batches.length,
+    batches,
+  }
+  return JSON.stringify(payload, null, 2)
+}
+
+export function importBatchesFromJson(rawInput, storage) {
+  const target = getStorage(storage)
+  if (!target) throw new Error('localStorage tidak tersedia.')
+
+  let parsed = null
+  if (typeof rawInput === 'string') {
+    try {
+      parsed = JSON.parse(rawInput)
+    } catch {
+      return { success: false, error: 'Format berkas cadangan JSON tidak valid atau rusak.', importedCount: 0 }
+    }
+  } else if (rawInput && typeof rawInput === 'object') {
+    parsed = rawInput
+  } else {
+    return { success: false, error: 'Data cadangan tidak valid.', importedCount: 0 }
+  }
+
+  const candidateBatches = Array.isArray(parsed)
+    ? parsed
+    : Array.isArray(parsed?.batches)
+      ? parsed.batches
+      : []
+
+  const validNewRecords = candidateBatches.filter(isBatchRecord)
+  if (validNewRecords.length === 0) {
+    return {
+      success: false,
+      error: 'Tidak ditemukan rekaman batch panen yang valid di dalam berkas cadangan.',
+      importedCount: 0,
+    }
+  }
+
+  const existingBatches = readBatches(target)
+  const existingIds = new Set(existingBatches.map((b) => b.id))
+
+  const merged = [...existingBatches]
+  let importedCount = 0
+
+  for (const record of validNewRecords) {
+    const uniqueId = createUniqueId(existingIds, record.id)
+    existingIds.add(uniqueId)
+    merged.push({ ...record, id: uniqueId })
+    importedCount += 1
+  }
+
+  target.setItem(HARVEST_STORAGE_KEY, JSON.stringify(merged))
+
+  return {
+    success: true,
+    importedCount,
+    totalCount: merged.length,
+    batches: merged,
+  }
+}

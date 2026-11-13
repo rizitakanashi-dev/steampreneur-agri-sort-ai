@@ -80,6 +80,60 @@ export function buildHarvestCsvRows(batches = []) {
       batch.pricing?.estimated_economic_value ??
       batch.scanResult?.smart_pricing?.estimated_economic_value ??
       ''
+
+    const persenA =
+      result.persenA ??
+      batch.grade_a_percent ??
+      batch.pricing?.tier_breakdown?.grade_a?.ratio_percent ??
+      batch.pricing?.tier_breakdown?.extra_class?.ratio_percent ??
+      batch.inference?.condition_ratios?.grade_a_percent ??
+      batch.inference?.condition_ratios?.fresh_ratio_percent ??
+      ''
+    const persenB =
+      result.persenB ??
+      batch.grade_b_percent ??
+      batch.pricing?.tier_breakdown?.grade_b?.ratio_percent ??
+      batch.pricing?.tier_breakdown?.class_1?.ratio_percent ??
+      batch.inference?.condition_ratios?.grade_b_percent ??
+      ''
+    const persenC =
+      result.persenC ??
+      batch.reject_percent ??
+      batch.pricing?.tier_breakdown?.reject?.ratio_percent ??
+      batch.inference?.condition_ratios?.reject_percent ??
+      batch.inference?.condition_ratios?.rotten_ratio_percent ??
+      ''
+
+    const beratA =
+      result.beratA ??
+      batch.pricing?.tier_breakdown?.grade_a?.weight_kg ??
+      batch.pricing?.tier_breakdown?.extra_class?.weight_kg ??
+      ''
+    const beratB =
+      result.beratB ??
+      batch.pricing?.tier_breakdown?.grade_b?.weight_kg ??
+      batch.pricing?.tier_breakdown?.class_1?.weight_kg ??
+      ''
+    const beratC =
+      result.beratC ??
+      batch.pricing?.tier_breakdown?.reject?.weight_kg ??
+      ''
+
+    const nilaiA =
+      result.nilaiA ??
+      batch.pricing?.tier_breakdown?.grade_a?.subtotal_value ??
+      batch.pricing?.tier_breakdown?.extra_class?.subtotal_value ??
+      ''
+    const nilaiB =
+      result.nilaiB ??
+      batch.pricing?.tier_breakdown?.grade_b?.subtotal_value ??
+      batch.pricing?.tier_breakdown?.class_1?.subtotal_value ??
+      ''
+    const nilaiC =
+      result.nilaiC ??
+      batch.pricing?.tier_breakdown?.reject?.subtotal_value ??
+      ''
+
     rows.push([
       batch.id,
       batch.tanggal,
@@ -88,15 +142,15 @@ export function buildHarvestCsvRows(batches = []) {
       numericCell(batch.kesegaranPersen),
       batch.ukuran,
       numericCell(batch.cacatPersen),
-      numericCell(result.persenA),
-      numericCell(result.persenB),
-      numericCell(result.persenC),
-      numericCell(result.beratA),
-      numericCell(result.beratB),
-      numericCell(result.beratC),
-      numericCell(result.nilaiA),
-      numericCell(result.nilaiB),
-      numericCell(result.nilaiC),
+      numericCell(persenA),
+      numericCell(persenB),
+      numericCell(persenC),
+      numericCell(beratA),
+      numericCell(beratB),
+      numericCell(beratC),
+      numericCell(nilaiA),
+      numericCell(nilaiB),
+      numericCell(nilaiC),
       numericCell(totalNilai),
       batch.catatan ?? '',
     ])

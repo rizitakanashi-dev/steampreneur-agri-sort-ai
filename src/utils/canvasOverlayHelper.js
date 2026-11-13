@@ -136,11 +136,33 @@ export function scaleBoundingBox(box, originalDimensions, displayDimensions) {
   const scaleX = dispW / origW
   const scaleY = dispH / origH
 
-  // Ambil koordinat mentah
-  const rawX1 = Number(box.x1) || 0
-  const rawY1 = Number(box.y1) || 0
-  const rawX2 = Number(box.x2) || rawX1
-  const rawY2 = Number(box.y2) || rawY1
+  // Ambil koordinat mentah dengan dukungan multi-format bounding box
+  let rawX1 = 0
+  let rawY1 = 0
+  let rawX2 = 0
+  let rawY2 = 0
+
+  if (Array.isArray(box)) {
+    rawX1 = Number(box[0]) || 0
+    rawY1 = Number(box[1]) || 0
+    rawX2 = Number(box[2]) || rawX1
+    rawY2 = Number(box[3]) || rawY1
+  } else if (box.xmin !== undefined || box.ymin !== undefined) {
+    rawX1 = Number(box.xmin) || 0
+    rawY1 = Number(box.ymin) || 0
+    rawX2 = Number(box.xmax) || rawX1
+    rawY2 = Number(box.ymax) || rawY1
+  } else if (box.width !== undefined && box.height !== undefined && (box.x !== undefined || box.y !== undefined)) {
+    rawX1 = Number(box.x) || 0
+    rawY1 = Number(box.y) || 0
+    rawX2 = rawX1 + (Number(box.width) || 0)
+    rawY2 = rawY1 + (Number(box.height) || 0)
+  } else {
+    rawX1 = Number(box.x1) || 0
+    rawY1 = Number(box.y1) || 0
+    rawX2 = Number(box.x2) || rawX1
+    rawY2 = Number(box.y2) || rawY1
+  }
 
   // Skalakan dan pastikan tidak keluar dari batas kanvas (Clamping)
   const x1 = Math.max(0, Math.min(dispW, rawX1 * scaleX))

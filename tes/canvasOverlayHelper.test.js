@@ -71,6 +71,35 @@ test('scaleBoundingBox menangani box invalid secara aman tanpa error', () => {
   assert.equal(scaledEmpty.height, 0)
 })
 
+test('scaleBoundingBox mendukung multi-format bounding box (array, xmin/ymin, x/y/width/height)', () => {
+  const origDims = { width: 1000, height: 1000 }
+  const dispDims = { width: 500, height: 500 } // Skala 0.5x
+
+  // Format array [x1, y1, x2, y2]
+  const arrayBox = [200, 100, 600, 500]
+  const scaledArray = scaleBoundingBox(arrayBox, origDims, dispDims)
+  assert.equal(scaledArray.x, 100)
+  assert.equal(scaledArray.y, 50)
+  assert.equal(scaledArray.width, 200)
+  assert.equal(scaledArray.height, 200)
+
+  // Format xmin, ymin, xmax, ymax
+  const xminBox = { xmin: 200, ymin: 100, xmax: 600, ymax: 500 }
+  const scaledXmin = scaleBoundingBox(xminBox, origDims, dispDims)
+  assert.equal(scaledXmin.x, 100)
+  assert.equal(scaledXmin.y, 50)
+  assert.equal(scaledXmin.width, 200)
+  assert.equal(scaledXmin.height, 200)
+
+  // Format x, y, width, height
+  const xywhBox = { x: 200, y: 100, width: 400, height: 400 }
+  const scaledXywh = scaleBoundingBox(xywhBox, origDims, dispDims)
+  assert.equal(scaledXywh.x, 100)
+  assert.equal(scaledXywh.y, 50)
+  assert.equal(scaledXywh.width, 200)
+  assert.equal(scaledXywh.height, 200)
+})
+
 test('formatConfidenceLabel memformat nama kelas dan persentase', () => {
   assert.equal(formatConfidenceLabel('fresh-tomato', 0.942), 'Tomat Segar 94%')
   assert.equal(formatConfidenceLabel('extra-class', 0.918), 'Extra Class 92%')

@@ -1,0 +1,21 @@
+{
+  "name": "Agri-Sort AI — Quality Control & Smart Pricing",
+  "short_name": "Agri-Sort AI",
+  "description": "Sistem Cerdas Quality Control dan Smart Pricing Hortikultura Berbasis AI — SMKN 4 Payakumbuh",
+  "start_url": "/",
+  "id": "/",
+  "display": "standalone",
+  "background_color": "#f8fafc",
+  "theme_color": "#036e45",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "/icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["agriculture", "business", "productivity", "utilities"]
+}
+

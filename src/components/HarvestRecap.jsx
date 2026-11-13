@@ -36,8 +36,10 @@ import SearchRoundedIcon from '@mui/icons-material/SearchRounded'
 import VerifiedRoundedIcon from '@mui/icons-material/VerifiedRounded'
 import VisibilityRoundedIcon from '@mui/icons-material/VisibilityRounded'
 import WarningAmberRoundedIcon from '@mui/icons-material/WarningAmberRounded'
+import DeleteOutlineRoundedIcon from '@mui/icons-material/DeleteOutlineRounded'
 import { EMPTY_RECAP_FILTER, calculateBatchTotals, filterBatches, isFilterEmpty, listCommodities, sortBatchesByNewest } from '../business/harvestFilter.js'
 import { downloadCsv } from '../utils/csvExporter.js'
+import { deleteBatch } from '../business/harvestStorage.js'
 
 /** Jumlah kolom tabel; dipakai untuk colSpan pada baris empty state. */
 const COLUMN_COUNT = 6
@@ -162,10 +164,11 @@ function BatchGradeDistribution({ batch }) {
   return <Typography color="text.secondary" variant="caption">-</Typography>
 }
 
-export function HarvestRecap({ batches = [], onSelectBatch }) {
+export function HarvestRecap({ batches = [], onSelectBatch, onDeleteBatch }) {
   const [page, setPage] = useState(0)
   const [rowsPerPage, setRowsPerPage] = useState(5)
   const [selectedBatch, setSelectedBatch] = useState(null)
+  const [batchToDelete, setBatchToDelete] = useState(null)
   const [filter, setFilter] = useState(EMPTY_RECAP_FILTER)
   const [exportStatus, setExportStatus] = useState('')
 
@@ -369,7 +372,7 @@ export function HarvestRecap({ batches = [], onSelectBatch }) {
                           <IconButton
                             aria-label={`Buka QC ${batch.id}`}
                             color="primary"
-                            onClick={() => onSelectBatch(batch)}
+                            onClick={() => onSelectBatch(batch, { openCertificate: true })}
                             size="small"
                           >
                             <PrintRoundedIcon fontSize="small" />
@@ -381,6 +384,16 @@ export function HarvestRecap({ batches = [], onSelectBatch }) {
                           <VisibilityRoundedIcon fontSize="small" />
                         </IconButton>
                       </Tooltip>
+                      <Tooltip title="Hapus batch">
+                        <IconButton
+                          aria-label={`Hapus ${batch.id}`}
+                          color="error"
+                          onClick={() => setBatchToDelete(batch)}
+                          size="small"
+                        >
+                          <DeleteOutlineRoundedIcon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
                     </Stack>
                   </TableCell>
                 </TableRow>
@@ -389,7 +402,9 @@ export function HarvestRecap({ batches = [], onSelectBatch }) {
           </TableBody>
           <TableFooter>
             <TableRow sx={{ bgcolor: '#f2f4f6' }}>
-              <TableCell colSpan={2} />
+              <TableCell colSpan={2} sx={{ fontWeight: 800 }}>
+                Total Halaman Ini ({visibleBatches.length} batch):
+              </TableCell>
               <TableCell align="right" sx={{ fontWeight: 700 }}>
                 {formatNumber(totals.totalBeratKg)} kg
               </TableCell>
@@ -480,21 +495,77 @@ export function HarvestRecap({ batches = [], onSelectBatch }) {
             </Stack>
           )}
         </DialogContent>
+        <DialogActions sx={{ px: 2.5, py: 1.5, justifyContent: 'space-between' }}>
+          <Button
+            color="error"
+            onClick={() => {
+              const b = selectedBatch
+              setSelectedBatch(null)
+              setBatchToDelete(b)
+            }}
+            startIcon={<DeleteOutlineRoundedIcon />}
+            variant="outlined"
+          >
+            Hapus Batch
+          </Button>
+          <Stack direction="row" spacing={1}>
+            <Button onClick={() => setSelectedBatch(null)} variant="outlined">Tutup</Button>
+            {onSelectBatch && selectedBatch && (
+              <Button
+                onClick={() => {
+                  const b = selectedBatch
+                  setSelectedBatch(null)
+                  onSelectBatch(b, { openCertificate: true })
+                }}
+                startIcon={<PrintRoundedIcon />}
+                variant="contained"
+              >
+                Buka QC & Cetak Sertifikat
+              </Button>
+            )}
+          </Stack>
+        </DialogActions>
+      </Dialog>
+      {/* Dialog Konfirmasi Hapus Batch */}
+      <Dialog
+        aria-labelledby="confirm-delete-batch-title"
+        fullWidth
+        maxWidth="xs"
+        onClose={() => setBatchToDelete(null)}
+        open={Boolean(batchToDelete)}
+      >
+        <DialogTitle id="confirm-delete-batch-title" sx={{ fontWeight: 700 }}>
+          Konfirmasi Hapus Batch
+        </DialogTitle>
+        <DialogContent dividers>
+          <Typography sx={{ mb: 1.5 }} variant="body2">
+            Apakah Anda yakin ingin menghapus data batch <strong>{batchToDelete?.id}</strong> ({batchToDelete?.komoditas})?
+          </Typography>
+          <Alert severity="warning" sx={{ fontSize: '0.8125rem' }}>
+            Tindakan ini permanen dan akan menghapus data batch dari penyimpanan lokal peramban.
+          </Alert>
+        </DialogContent>
         <DialogActions sx={{ px: 2.5, py: 1.5 }}>
-          <Button onClick={() => setSelectedBatch(null)} variant="outlined">Tutup</Button>
-          {onSelectBatch && selectedBatch && (
-            <Button
-              onClick={() => {
-                const b = selectedBatch
-                setSelectedBatch(null)
-                onSelectBatch(b)
-              }}
-              startIcon={<PrintRoundedIcon />}
-              variant="contained"
-            >
-              Buka QC & Cetak Sertifikat
-            </Button>
-          )}
+          <Button onClick={() => setBatchToDelete(null)} variant="outlined">
+            Batal
+          </Button>
+          <Button
+            color="error"
+            onClick={() => {
+              if (batchToDelete) {
+                const targetId = batchToDelete.id
+                if (onDeleteBatch) {
+                  onDeleteBatch(targetId)
+                } else {
+                  deleteBatch(targetId)
+                }
+                setBatchToDelete(null)
+              }
+            }}
+            variant="contained"
+          >
+            Hapus Permanen
+          </Button>
         </DialogActions>
       </Dialog>
     </>
