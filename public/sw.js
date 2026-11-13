@@ -4,7 +4,7 @@
  * meskipun koneksi internet terputus atau sinyal seluler lemah.
  */
 
-const CACHE_NAME = 'agrisort-shell-v2'
+const CACHE_NAME = 'agrisort-shell-v3'
 const PRECACHE_ASSETS = [
   '/',
   '/index.html',
@@ -12,8 +12,18 @@ const PRECACHE_ASSETS = [
   '/icons/icon.svg',
 ]
 
-// 1. Install Event: Pre-cache app shell dasar
+const isLocalhost = Boolean(
+  self.location.hostname === 'localhost' ||
+  self.location.hostname === '[::1]' ||
+  self.location.hostname.match(/^127(?:\.(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)){3}$/)
+)
+
+// 1. Install Event: Pre-cache app shell dasar (kecuali dev localhost)
 self.addEventListener('install', (event) => {
+  if (isLocalhost) {
+    self.skipWaiting()
+    return
+  }
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
       return cache.addAll(PRECACHE_ASSETS)
@@ -26,14 +36,29 @@ self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((keys) => {
       return Promise.all(
-        keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key))
+        keys.map((key) => {
+          if (isLocalhost || key !== CACHE_NAME) {
+            return caches.delete(key)
+          }
+          return null
+        })
       )
-    }).then(() => self.clients.claim())
+    }).then(() => {
+      if (isLocalhost) {
+        return self.registration.unregister()
+      }
+      return self.clients.claim()
+    })
   )
 })
 
 // 3. Fetch Event: Network-first untuk API, Cache-first untuk aset statis
 self.addEventListener('fetch', (event) => {
+  // Jangan pernah cegat request di localhost saat pengembangan aktif
+  if (isLocalhost) {
+    return
+  }
+
   const url = new URL(event.request.url)
 
   // Jangan cache request API (/api/) agar live scan dan live pricing tetap real-time

@@ -50,17 +50,12 @@ const pages = {
   pricing: { title: 'Harga Pasar', description: 'Pantau acuan harga pasar untuk keputusan jual yang lebih tepat.' },
 }
 
-const metrics = [
-  { label: 'Batch tersimpan', value: 'Lokal', detail: 'tersimpan di browser ini', icon: LocalShippingRoundedIcon, color: '#036e45' },
-  { label: 'Komoditas terdaftar', value: String(COMMODITY_OPTIONS.length), detail: 'sesuai konfigurasi harga', icon: AutoAwesomeRoundedIcon, color: '#2f7299' },
-  { label: 'Sumber harga', value: 'BAPANAS', detail: 'Panel Harga Pangan Sumbar', icon: TrendingUpRoundedIcon, color: '#036e45' },
-]
-
 const rupiahFormatter = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 })
 
 function formatRupiah(value) {
-  if (typeof value !== 'number' || !Number.isFinite(value)) return '-'
-  return rupiahFormatter.format(value).replace(/^Rp\s*/, 'Rp ')
+  const num = typeof value === 'number' ? value : Number(value)
+  if (!Number.isFinite(num)) return '-'
+  return rupiahFormatter.format(num).replace(/^Rp\s*/, 'Rp ')
 }
 
 function MetricCard({ detail, icon: Icon, label, value, color }) {
@@ -82,8 +77,9 @@ function MetricCard({ detail, icon: Icon, label, value, color }) {
   )
 }
 
-function formatBatchDisplayId(id) {
-  if (!id) return '-'
+function formatBatchDisplayId(rawId) {
+  if (!rawId) return '-'
+  const id = String(rawId)
   if (id.startsWith('panen-') && id.length > 15) {
     const ts = Number(id.replace('panen-', ''))
     if (!isNaN(ts)) {
@@ -285,7 +281,7 @@ function DashboardPreview({ onNavigate, batches = [], onSelectBatch }) {
                         Berat Total
                       </Typography>
                       <Typography fontWeight={700} variant="body2">
-                        {lastBatch.beratKg} kg
+                        {lastBatch.beratKg ?? lastBatch.volume_kg ?? 0} kg
                       </Typography>
                     </Stack>
                     <Stack
@@ -311,7 +307,7 @@ function DashboardPreview({ onNavigate, batches = [], onSelectBatch }) {
                         Tanggal
                       </Typography>
                       <Typography fontWeight={700} variant="body2">
-                        {lastBatch.tanggal || '-'}
+                        {lastBatch.tanggal || lastBatch.tanggalPanen || '-'}
                       </Typography>
                     </Stack>
                   </Stack>

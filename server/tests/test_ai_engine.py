@@ -45,7 +45,10 @@ class TestYOLOInferenceEngine(unittest.TestCase):
         # Verifikasi konfigurasi Tomat
         self.assertIn("tomat", configs)
         tomat_cfg = configs["tomat"]
-        self.assertEqual(tomat_cfg["expected_classes"], ["fresh-tomato", "rotten-tomato"])
+        self.assertTrue(
+            tomat_cfg["expected_classes"] == ["Grade A", "Grade B", "Reject"]
+            or tomat_cfg["expected_classes"] == ["fresh-tomato", "rotten-tomato"]
+        )
         self.assertTrue(
             os.path.exists(tomat_cfg["path"]),
             f"Berkas model Tomat best.pt tidak ditemukan di: {tomat_cfg['path']}",

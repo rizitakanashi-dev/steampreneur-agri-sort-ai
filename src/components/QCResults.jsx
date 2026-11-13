@@ -248,7 +248,13 @@ export function QCResults({ batch, onBackToInput, onViewRecap, initialOpenCertif
   let pieChartData = []
   if (hasAiScan && inference) {
     const counts = inference.object_counts || {}
-    if ((isEggplant || isChili) && (counts.grade_a || counts.grade_b || counts.extra_class || counts.class_1 || counts.class_2 || counts.reject)) {
+    const isTomato = commodity.toLowerCase().includes('tomat')
+    const has3ClassCounts =
+      (isEggplant || isChili || isTomato) &&
+      counts.fresh_tomato === undefined &&
+      counts.rotten_tomato === undefined &&
+      (counts.grade_a || counts.grade_b || counts.extra_class || counts.class_1 || counts.class_2 || counts.reject)
+    if (has3ClassCounts) {
       const gradeACount = counts.grade_a ?? ((counts.extra_class || 0) + (counts.class_1 || 0))
       const gradeBCount = counts.grade_b ?? (counts.class_2 || 0)
       pieChartData = [
@@ -827,7 +833,13 @@ export function QCResults({ batch, onBackToInput, onViewRecap, initialOpenCertif
             Indikator Mutu Deteksi ({commodity})
           </Typography>
 
-          {hasAiScan && (isEggplant || isChili) ? (
+          {hasAiScan &&
+          (isEggplant ||
+            isChili ||
+            (commodity.toLowerCase().includes('tomat') &&
+              inference?.object_counts?.fresh_tomato === undefined &&
+              inference?.object_counts?.rotten_tomato === undefined &&
+              inference?.condition_ratios?.fresh_ratio_percent === undefined)) ? (
             // Indikator 3 Kelas (Grade A, Grade B, Reject)
             <Stack direction={{ xs: 'column', sm: 'row' }} flexWrap="wrap" gap={2}>
               <QualityIndicator

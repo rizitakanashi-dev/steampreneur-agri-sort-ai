@@ -166,6 +166,52 @@ class TestModelIntegrationAndBusinessGrading(unittest.TestCase):
             self.assertEqual(meta["dataset"]["classes"]["1"], "Grade B")
             self.assertEqual(meta["dataset"]["classes"]["2"], "Reject")
 
+    def test_calculate_business_grading_tomat_3grade(self):
+        """Memverifikasi formula pemetaan 3-Grade langsung Tomat (Grade A, Grade B, Reject)"""
+        ratios = {
+            "grade_a_percent": 60.0,
+            "grade_b_percent": 30.0,
+            "reject_percent": 10.0,
+        }
+        res = calculate_business_grading(commodity="Tomat", weight_kg=50.0, ratios=ratios)
+
+        self.assertEqual(
+            res["preliminary_mapping_rule"],
+            "Grade A -> Grade A, Grade B -> Grade B, Reject -> Reject",
+        )
+        self.assertEqual(res["grade_breakdown"]["grade_a_percent"], 60.0)
+        self.assertEqual(res["grade_breakdown"]["grade_b_percent"], 30.0)
+        self.assertEqual(res["grade_breakdown"]["reject_percent"], 10.0)
+        self.assertEqual(res["estimated_weights_kg"]["grade_a_kg"], 30.0)
+        self.assertEqual(res["estimated_weights_kg"]["grade_b_kg"], 15.0)
+        self.assertEqual(res["estimated_weights_kg"]["reject_kg"], 5.0)
+
+    def test_tomat_model_artifacts_presence(self):
+        """Memverifikasi artefak model Tomat 3-kelas lengkap di server/models/tomat/"""
+        base_dir = os.path.join(os.path.dirname(__file__), "..", "models", "tomat")
+        self.assertTrue(os.path.isdir(base_dir), "Direktori server/models/tomat harus ada")
+
+        for fname in ("best.onnx", "best.pt"):
+            fpath = os.path.join(base_dir, fname)
+            self.assertTrue(os.path.isfile(fpath), f"{fname} harus ada")
+            self.assertGreater(os.path.getsize(fpath), 1_000_000, f"{fname} harus > 1MB")
+
+        yaml_file = os.path.join(base_dir, "data.yaml")
+        self.assertTrue(os.path.isfile(yaml_file), "data.yaml harus ada")
+        with open(yaml_file, "r") as f:
+            content = f.read()
+            for cls_name in ("Grade A", "Grade B", "Reject"):
+                self.assertIn(cls_name, content)
+
+        meta_file = os.path.join(base_dir, "model-metadata.json")
+        self.assertTrue(os.path.isfile(meta_file), "model-metadata.json harus ada")
+        with open(meta_file, "r") as f:
+            meta = json.load(f)
+            self.assertEqual(meta["model"]["name"], "Agri-Sort Tomato Quality Detection")
+            self.assertEqual(meta["dataset"]["classes"]["0"], "Grade A")
+            self.assertEqual(meta["dataset"]["classes"]["1"], "Grade B")
+            self.assertEqual(meta["dataset"]["classes"]["2"], "Reject")
+
     def test_calculate_business_grading_edge_cases(self):
         """Memverifikasi ketahanan matematis terhadap None/invalid weight dan empty ratios"""
         # Bobot None

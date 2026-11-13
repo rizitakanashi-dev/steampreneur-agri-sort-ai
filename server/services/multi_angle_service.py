@@ -19,6 +19,7 @@ from server.services.pricing_service import (
     calculate_economic_projection,
     calculate_eggplant_economic_projection,
     calculate_chili_economic_projection,
+    calculate_tomato_economic_projection,
 )
 
 
@@ -56,6 +57,13 @@ def aggregate_multi_view_qc(
     b_counts = b_summary.get("class_counts", {})
     f_total = max(0, f_summary.get("total_objects", 0))
     b_total = max(0, b_summary.get("total_objects", 0))
+
+    is_tomato_3grade = (
+        not is_eggplant
+        and not is_chili
+        and any(k in f_counts or k in b_counts for k in ("Grade A", "grade-a", "grade_a", "Grade B", "grade-b", "grade_b"))
+        and not any(k in f_counts or k in b_counts for k in ("fresh-tomato", "rotten-tomato", "fresh_tomato", "rotten_tomato"))
+    )
 
     # 2. Normalisasi Bobot Sudut Pandang
     if f_total > 0 and b_total == 0:
@@ -193,13 +201,16 @@ def aggregate_multi_view_qc(
             "reject_combined": rf + rb,
         }
 
-    elif is_chili:
-        af = f_counts.get("Grade A", 0) or f_counts.get("grade-a", 0)
-        bf = f_counts.get("Grade B", 0) or f_counts.get("grade-b", 0)
+    elif is_chili or is_tomato_3grade:
+        item_label = "cabai" if is_chili else "tomat"
+        item_title = "Cabai" if is_chili else "Tomat"
+
+        af = f_counts.get("Grade A", 0) or f_counts.get("grade-a", 0) or f_counts.get("grade_a", 0)
+        bf = f_counts.get("Grade B", 0) or f_counts.get("grade-b", 0) or f_counts.get("grade_b", 0)
         rf = f_counts.get("reject", 0) or f_counts.get("Reject", 0)
 
-        ab = b_counts.get("Grade A", 0) or b_counts.get("grade-a", 0)
-        bb = b_counts.get("Grade B", 0) or b_counts.get("grade-b", 0)
+        ab = b_counts.get("Grade A", 0) or b_counts.get("grade-a", 0) or b_counts.get("grade_a", 0)
+        bb = b_counts.get("Grade B", 0) or b_counts.get("grade-b", 0) or b_counts.get("grade_b", 0)
         rb = b_counts.get("reject", 0) or b_counts.get("Reject", 0)
 
         r_af = (af / f_total * 100.0) if f_total > 0 else 0.0
@@ -226,19 +237,19 @@ def aggregate_multi_view_qc(
         if f_total == 0 or b_total == 0:
             occlusion_bias_detected = False
             occlusion_severity = "INCOMPLETE"
-            warning_msg = "Pemeriksaan oklusi 2-sisi tidak lengkap: salah satu sudut pandang tidak mendeteksi objek cabai."
+            warning_msg = f"Pemeriksaan oklusi 2-sisi tidak lengkap: salah satu sudut pandang tidak mendeteksi objek {item_label}."
         else:
             occlusion_bias_detected = defect_delta >= 15.0
             if defect_delta >= 30.0:
                 occlusion_severity = "HIGH"
                 warning_msg = (
-                    f"Peringatan Kritis Oklusi Cabai: Sisi belakang memiliki disparitas cacat signifikan (+{defect_delta}%). "
-                    "Potensi kuat cabai busuk disembunyikan di bagian bawah nampan."
+                    f"Peringatan Kritis Oklusi {item_title}: Sisi belakang memiliki disparitas cacat signifikan (+{defect_delta}%). "
+                    f"Potensi kuat {item_label} busuk disembunyikan di bagian bawah nampan."
                 )
             elif defect_delta >= 15.0:
                 occlusion_severity = "MODERATE"
                 warning_msg = (
-                    f"Perhatian: Terdeteksi tingkat cacat lebih tinggi (+{defect_delta}%) pada sisi belakang/balik cabai."
+                    f"Perhatian: Terdeteksi tingkat cacat lebih tinggi (+{defect_delta}%) pada sisi belakang/balik {item_label}."
                 )
             else:
                 occlusion_severity = "NONE"
@@ -251,7 +262,8 @@ def aggregate_multi_view_qc(
         eff_b = int(round((w_b_pct / 100.0) * eff_total))
         eff_rej = max(0, eff_total - (eff_a + eff_b))
 
-        pricing_info = calculate_chili_economic_projection(
+        pricing_fn = calculate_chili_economic_projection if is_chili else calculate_tomato_economic_projection
+        pricing_info = pricing_fn(
             weight_kg=weight_kg,
             grade_a_count=eff_a,
             grade_b_count=eff_b,
