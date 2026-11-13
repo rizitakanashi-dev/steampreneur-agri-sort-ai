@@ -90,35 +90,36 @@ export function FarmerProfitabilityCard({
           alignItems={{ xs: 'flex-start', sm: 'center' }}
           direction={{ xs: 'column', sm: 'row' }}
           justifyContent="space-between"
-          spacing={1.5}
+          spacing={2}
           sx={{ mb: 2.5 }}
         >
           <Stack alignItems="center" direction="row" spacing={1.5}>
             <Box
               sx={{
                 alignItems: 'center',
-                bgcolor: 'primary.50',
+                bgcolor: 'rgba(3, 110, 69, 0.08)',
                 borderRadius: 2,
-                color: 'primary.main',
+                color: '#036e45',
                 display: 'flex',
                 height: 42,
                 justifyContent: 'center',
                 width: 42,
                 border: '1px solid rgba(3, 110, 69, 0.15)',
+                flexShrink: 0,
               }}
             >
               <CalculateRoundedIcon fontSize="medium" />
             </Box>
             <Box>
-              <Stack alignItems="center" direction="row" spacing={1}>
-                <Typography fontWeight={800} variant="h6">
+              <Stack alignItems="center" direction="row" spacing={1.25} flexWrap="wrap">
+                <Typography fontWeight={700} variant="h6" sx={{ color: '#1d2326' }}>
                   Kalkulator Kelayakan Finansial & BEP Petani
                 </Typography>
                 <Chip
                   color="success"
                   label="STEAM: Math & Business"
                   size="small"
-                  sx={{ fontWeight: 700, height: 22, fontSize: '0.7rem' }}
+                  sx={{ fontWeight: 700 }}
                 />
               </Stack>
               <Typography color="text.secondary" variant="caption">
@@ -136,11 +137,12 @@ export function FarmerProfitabilityCard({
             }}
             size="small"
             value={costMode}
+            sx={{ alignSelf: { xs: 'flex-start', sm: 'center' }, flexShrink: 0 }}
           >
-            <ToggleButton sx={{ textTransform: 'none', fontWeight: 600, px: 1.5 }} value="perKg">
+            <ToggleButton sx={{ textTransform: 'none', fontWeight: 600, px: 1.5, height: 32 }} value="perKg">
               BPP per Kg (Rp/kg)
             </ToggleButton>
-            <ToggleButton sx={{ textTransform: 'none', fontWeight: 600, px: 1.5 }} value="total">
+            <ToggleButton sx={{ textTransform: 'none', fontWeight: 600, px: 1.5, height: 32 }} value="total">
               Total Modal (Rp)
             </ToggleButton>
           </ToggleButtonGroup>
@@ -186,7 +188,7 @@ export function FarmerProfitabilityCard({
 
             <Grid size={{ xs: 12, sm: 6, md: 7 }}>
               <Stack direction="row" flexWrap="wrap" gap={1} alignItems="center">
-                <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
+                <Typography variant="body2" sx={{ fontWeight: 700, color: '#1e293b', mr: 0.5 }}>
                   Preset Standar Petani:
                 </Typography>
                 <Chip
@@ -199,17 +201,19 @@ export function FarmerProfitabilityCard({
                   }}
                   size="small"
                   variant="outlined"
+                  sx={{ fontWeight: 600, height: 28 }}
                 />
                 <Chip
                   clickable
                   color="primary"
-                  label={`Standar ${commodity}`}
+                  label="Standar"
                   onClick={() => {
                     setBppInput(String(defaultBpp))
                     setTotalCostInput(String(Math.round(defaultBpp * effectiveSellableVolume)))
                   }}
                   size="small"
                   variant="outlined"
+                  sx={{ fontWeight: 700, height: 28 }}
                 />
                 <Chip
                   clickable
@@ -221,6 +225,7 @@ export function FarmerProfitabilityCard({
                   }}
                   size="small"
                   variant="outlined"
+                  sx={{ fontWeight: 600, height: 28 }}
                 />
               </Stack>
             </Grid>

@@ -44,6 +44,7 @@ import { ScanCanvasOverlay } from './ScanCanvasOverlay.jsx'
 import { QCPrintCertificate } from './QCPrintCertificate.jsx'
 import { PostHarvestPathologyCards } from './PostHarvestPathologyCards.jsx'
 import { FarmerProfitabilityCard } from './FarmerProfitabilityCard.jsx'
+import { formatBatchDisplayId } from '../utils/qcCertificateHelper.js'
 import { getClassTheme } from '../utils/canvasOverlayHelper.js'
 import { calculateHarvest, calculateHarvestValue } from '../business/harvestCalculation.js'
 
@@ -324,112 +325,144 @@ export function QCResults({ batch, onBackToInput, onViewRecap, initialOpenCertif
         <Card elevation={2} sx={{ borderRadius: 3 }}>
           <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
             <Stack
-              alignItems={{ xs: 'flex-start', sm: 'center' }}
-              direction={{ xs: 'column', sm: 'row' }}
+              alignItems={{ xs: 'flex-start', md: 'center' }}
+              direction={{ xs: 'column', md: 'row' }}
               justifyContent="space-between"
               spacing={2}
             >
-              <Box>
-                <Stack alignItems="center" direction="row" spacing={1.25}>
-                  {executionStatus === 'ai_detected' ? (
-                    <AutoAwesomeRoundedIcon color="primary" sx={{ fontSize: 28 }} />
-                  ) : (
-                    <AssessmentRoundedIcon color="primary" sx={{ fontSize: 28 }} />
-                  )}
-                  <Typography fontWeight={800} variant="h5">
+              <Box sx={{ flexGrow: 1 }}>
+                {/* Baris Judul + Chip AI lurus di samping kanannya persis */}
+                <Stack alignItems="center" direction="row" spacing={1.5} flexWrap="wrap">
+                  <Box sx={{ color: '#036e45', display: 'flex', alignItems: 'center' }}>
+                    {executionStatus === 'ai_detected' ? (
+                      <AutoAwesomeRoundedIcon sx={{ fontSize: 30 }} />
+                    ) : (
+                      <AssessmentRoundedIcon sx={{ fontSize: 30 }} />
+                    )}
+                  </Box>
+                  <Typography fontWeight={800} variant="h5" sx={{ color: '#1d2326', lineHeight: 1.2 }}>
                     Hasil Pemeriksaan Mutu Panen
                   </Typography>
+
+                  {/* Status Chips lurus sejajar dengan Judul */}
+                  {executionStatus === 'ai_detected' && (
+                    <Chip
+                      color="success"
+                      icon={<VerifiedRoundedIcon />}
+                      label="AI Computer Vision (Optimal)"
+                      size="small"
+                      sx={{ fontWeight: 700 }}
+                    />
+                  )}
+                  {executionStatus === 'needs_review' && (
+                    <Chip
+                      color="warning"
+                      icon={<WarningAmberRoundedIcon />}
+                      label="Perlu Verifikasi Manual"
+                      size="small"
+                      sx={{ fontWeight: 700 }}
+                    />
+                  )}
+                  {executionStatus === 'simulated' && (
+                    <Chip
+                      color="info"
+                      icon={<AssessmentRoundedIcon />}
+                      label="Simulasi (Non-AI)"
+                      size="small"
+                      sx={{ fontWeight: 700 }}
+                    />
+                  )}
+                  {executionStatus === 'unsupported' && (
+                    <Chip
+                      color="default"
+                      icon={<HelpOutlineRoundedIcon />}
+                      label="Model AI Belum Didukung"
+                      size="small"
+                      sx={{ fontWeight: 700 }}
+                    />
+                  )}
+                  {executionStatus === 'model_unavailable' && (
+                    <Chip
+                      color="error"
+                      icon={<ErrorOutlineRoundedIcon />}
+                      label="Model AI Tidak Tersedia"
+                      size="small"
+                      sx={{ fontWeight: 700 }}
+                    />
+                  )}
+                  {isMultiAngle && executionStatus === 'ai_detected' && (
+                    <Chip
+                      color="success"
+                      icon={<VerifiedRoundedIcon />}
+                      label="🛡️ Multi-Angle Verified"
+                      size="small"
+                      sx={{ fontWeight: 700 }}
+                    />
+                  )}
                 </Stack>
-                <Typography color="text.secondary" sx={{ mt: 0.5 }} variant="body2">
-                  Batch ID: <strong>{batch.id}</strong> • Tanggal: {batch.tanggal} • Komoditas: <strong>{commodity}</strong>
+
+                {/* Baris Subjudul: Huruf B pada Batch ID lurus tepat di bawah huruf H pada Hasil */}
+                <Typography
+                  color="text.secondary"
+                  variant="body2"
+                  sx={{
+                    mt: 0.75,
+                    pl: { xs: 0, sm: '42px' },
+                    fontSize: '0.875rem',
+                    lineHeight: 1.5,
+                  }}
+                >
+                  Batch ID: <strong style={{ color: '#036e45', fontWeight: 800 }}>{formatBatchDisplayId(batch.id)}</strong> &nbsp;•&nbsp; Tanggal: <strong style={{ color: '#1d2326' }}>{batch.tanggal || batch.tanggalPanen || '-'}</strong> &nbsp;•&nbsp; Komoditas: <strong style={{ color: '#1d2326' }}>{commodity}</strong>
                 </Typography>
               </Box>
 
-              <Stack alignItems={{ xs: 'flex-start', sm: 'center' }} direction={{ xs: 'column', sm: 'row' }} spacing={1}>
-                {isMultiAngle && executionStatus === 'ai_detected' && (
-                  <Chip
-                    color="success"
-                    icon={<VerifiedRoundedIcon />}
-                    label="🛡️ Multi-Angle Verified"
-                    size="small"
-                    sx={{ fontWeight: 700 }}
-                  />
-                )}
-                {isMultiAngle && executionStatus === 'needs_review' && (
-                  <Chip
-                    color="warning"
-                    icon={<WarningAmberRoundedIcon />}
-                    label="Multi-Angle (Perlu Review)"
-                    size="small"
-                    sx={{ fontWeight: 700 }}
-                  />
-                )}
-                {isMultiAngle && executionStatus === 'simulated' && (
-                  <Chip
-                    color="info"
-                    icon={<AssessmentRoundedIcon />}
-                    label="Multi-Angle (Simulasi)"
-                    size="small"
-                    sx={{ fontWeight: 700 }}
-                  />
-                )}
-                {executionStatus === 'ai_detected' && (
-                  <Chip
-                    color="success"
-                    icon={<VerifiedRoundedIcon />}
-                    label="AI Computer Vision (Optimal)"
-                    size="small"
-                    sx={{ fontWeight: 700 }}
-                  />
-                )}
-                {executionStatus === 'needs_review' && (
-                  <Chip
-                    color="warning"
-                    icon={<WarningAmberRoundedIcon />}
-                    label="Perlu Verifikasi Manual"
-                    size="small"
-                    sx={{ fontWeight: 700 }}
-                  />
-                )}
-                {executionStatus === 'simulated' && (
-                  <Chip
-                    color="info"
-                    icon={<AssessmentRoundedIcon />}
-                    label="Simulasi (Non-AI)"
-                    size="small"
-                    sx={{ fontWeight: 700 }}
-                  />
-                )}
-                {executionStatus === 'unsupported' && (
-                  <Chip
-                    color="default"
-                    icon={<HelpOutlineRoundedIcon />}
-                    label="Model AI Belum Didukung"
-                    size="small"
-                    sx={{ fontWeight: 700 }}
-                  />
-                )}
-                {executionStatus === 'model_unavailable' && (
-                  <Chip
-                    color="error"
-                    icon={<ErrorOutlineRoundedIcon />}
-                    label="Model AI Tidak Tersedia"
-                    size="small"
-                    sx={{ fontWeight: 700 }}
-                  />
-                )}
+              {/* Tombol Aksi di sisi kanan: Posisi pas di kanan tengah, rapi dan tombol cetak bulat */}
+              <Stack
+                alignItems="center"
+                direction="row"
+                spacing={1.5}
+                sx={{
+                  alignSelf: { xs: 'flex-start', md: 'center' },
+                  mt: { xs: 1.5, md: 0 },
+                  flexShrink: 0,
+                }}
+              >
                 <Button
                   color="primary"
                   onClick={() => setIsCertModalOpen(true)}
                   size="small"
                   startIcon={<VerifiedRoundedIcon />}
-                  sx={{ fontWeight: 700 }}
-                  variant="outlined"
+                  sx={{
+                    fontWeight: 700,
+                    px: 2.25,
+                    height: 38,
+                    borderRadius: 2,
+                    textTransform: 'none',
+                  }}
+                  variant="contained"
                 >
                   Sertifikat QC
                 </Button>
                 <Tooltip title="Cetak atau simpan bukti QC resmi sebagai PDF (A4)">
-                  <IconButton aria-label="Cetak bukti QC" onClick={() => window.print()} size="small">
+                  <IconButton
+                    aria-label="Cetak bukti QC"
+                    onClick={() => window.print()}
+                    size="small"
+                    sx={{
+                      width: 38,
+                      height: 38,
+                      minWidth: 38,
+                      borderRadius: '50%',
+                      border: '1px solid #d1d5db',
+                      bgcolor: '#ffffff',
+                      p: 0,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      flexShrink: 0,
+                      '&:hover': { bgcolor: '#f3f4f6' },
+                    }}
+                  >
                     <PrintRoundedIcon fontSize="small" />
                   </IconButton>
                 </Tooltip>
@@ -774,47 +807,77 @@ export function QCResults({ batch, onBackToInput, onViewRecap, initialOpenCertif
 
                 {/* Rincian Angka Sampel */}
                 {hasAiScan && inference ? (
-                  <Stack spacing={1}>
-                    <Stack direction="row" justifyContent="space-between">
-                      <Typography color="text.secondary" variant="body2">
+                  <Stack spacing={0} sx={{ width: '100%' }}>
+                    <Stack
+                      alignItems="center"
+                      direction="row"
+                      justifyContent="space-between"
+                      spacing={2}
+                      sx={{ borderBottom: '1px solid', borderColor: 'divider', py: 1.25 }}
+                    >
+                      <Typography color="text.secondary" variant="body2" sx={{ flexGrow: 1 }}>
                         Total Buah Terdeteksi:
                       </Typography>
-                      <Typography fontWeight={700} variant="body2">
+                      <Typography fontWeight={700} variant="body2" color="text.primary" sx={{ ml: 'auto', textAlign: 'right', whiteSpace: 'nowrap' }}>
                         {inference.object_counts?.total || 0} butir
                       </Typography>
                     </Stack>
-                    <Stack direction="row" justifyContent="space-between">
-                      <Typography color="text.secondary" variant="body2">
+                    <Stack
+                      alignItems="center"
+                      direction="row"
+                      justifyContent="space-between"
+                      spacing={2}
+                      sx={{ borderBottom: '1px solid', borderColor: 'divider', py: 1.25 }}
+                    >
+                      <Typography color="text.secondary" variant="body2" sx={{ flexGrow: 1 }}>
                         Waktu Inferensi AI:
                       </Typography>
-                      <Typography fontWeight={600} variant="body2">
+                      <Typography fontWeight={700} variant="body2" color="primary.dark" sx={{ ml: 'auto', textAlign: 'right', whiteSpace: 'nowrap' }}>
                         {inference.inference_time_ms} ms
                       </Typography>
                     </Stack>
-                    <Stack direction="row" justifyContent="space-between">
-                      <Typography color="text.secondary" variant="body2">
+                    <Stack
+                      alignItems="center"
+                      direction="row"
+                      justifyContent="space-between"
+                      spacing={2}
+                      sx={{ py: 1.25 }}
+                    >
+                      <Typography color="text.secondary" variant="body2" sx={{ flexGrow: 1 }}>
                         Versi Model:
                       </Typography>
-                      <Typography color="text.secondary" variant="caption">
-                        {inference.model_version}
+                      <Typography fontWeight={700} variant="body2" color="text.primary" sx={{ ml: 'auto', textAlign: 'right', whiteSpace: 'nowrap' }}>
+                        {inference.model_version || '2.0.0'}
                       </Typography>
                     </Stack>
                   </Stack>
                 ) : (
-                  <Stack spacing={1}>
-                    <Stack direction="row" justifyContent="space-between">
-                      <Typography color="text.secondary" variant="body2">
+                  <Stack spacing={0} sx={{ width: '100%' }}>
+                    <Stack
+                      alignItems="center"
+                      direction="row"
+                      justifyContent="space-between"
+                      spacing={2}
+                      sx={{ borderBottom: '1px solid', borderColor: 'divider', py: 1.25 }}
+                    >
+                      <Typography color="text.secondary" variant="body2" sx={{ flexGrow: 1 }}>
                         Berat Total Batch:
                       </Typography>
-                      <Typography fontWeight={700} variant="body2">
-                        {formatNumber(batch.beratKg)} kg
+                      <Typography fontWeight={700} variant="body2" color="text.primary" sx={{ ml: 'auto', textAlign: 'right', whiteSpace: 'nowrap' }}>
+                        {formatNumber(batch.beratKg ?? batch.volume_kg ?? 0)} kg
                       </Typography>
                     </Stack>
-                    <Stack direction="row" justifyContent="space-between">
-                      <Typography color="text.secondary" variant="body2">
+                    <Stack
+                      alignItems="center"
+                      direction="row"
+                      justifyContent="space-between"
+                      spacing={2}
+                      sx={{ py: 1.25 }}
+                    >
+                      <Typography color="text.secondary" variant="body2" sx={{ flexGrow: 1 }}>
                         Metode Penilaian:
                       </Typography>
-                      <Typography fontWeight={600} variant="body2">
+                      <Typography fontWeight={700} variant="body2" color="text.primary" sx={{ ml: 'auto', textAlign: 'right', whiteSpace: 'nowrap' }}>
                         Form Input Manual
                       </Typography>
                     </Stack>
@@ -1085,7 +1148,7 @@ export function QCResults({ batch, onBackToInput, onViewRecap, initialOpenCertif
     >
       <DialogTitle sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', pb: 1 }}>
         <Stack alignItems="center" direction="row" spacing={1}>
-          <VerifiedRoundedIcon color="primary" />
+          <VerifiedRoundedIcon sx={{ color: '#036e45' }} />
           <Typography fontWeight={700} variant="h6">
             Pratinjau Sertifikat Uji Mutu Digital
           </Typography>
@@ -1094,20 +1157,26 @@ export function QCResults({ batch, onBackToInput, onViewRecap, initialOpenCertif
           <CloseRoundedIcon />
         </IconButton>
       </DialogTitle>
-      <DialogContent dividers sx={{ p: { xs: 1.5, sm: 3 }, bgcolor: '#f9fafb' }}>
+      <DialogContent dividers sx={{ p: { xs: 1.5, sm: 3 }, bgcolor: '#f4f6f8' }}>
         <QCPrintCertificate
           batch={batch}
           onPrint={() => window.print()}
-          showPrintButton
+          showPrintButton={false}
         />
       </DialogContent>
-      <DialogActions sx={{ px: 3, py: 2 }}>
+      <DialogActions sx={{ px: 3, py: 2, bgcolor: '#ffffff' }}>
         <Button onClick={() => setIsCertModalOpen(false)} variant="outlined">
           Tutup
         </Button>
         <Button
           onClick={() => window.print()}
           startIcon={<PrintRoundedIcon />}
+          sx={{
+            bgcolor: '#036e45',
+            color: '#ffffff',
+            fontWeight: 700,
+            '&:hover': { bgcolor: '#034d32' },
+          }}
           variant="contained"
         >
           Cetak / Simpan PDF (A4)

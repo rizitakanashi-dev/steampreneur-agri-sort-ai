@@ -188,7 +188,7 @@ function DashboardPreview({ onNavigate, batches = [], onSelectBatch }) {
           <Card sx={{ height: '100%' }}>
             <CardContent sx={{ p: { xs: 2, sm: 2.5 } }}>
               <Box sx={{ mb: 2 }}>
-                <Stack alignItems="center" direction="row" spacing={1.5}>
+                <Stack alignItems="center" direction="row" spacing={1.5} flexWrap="wrap">
                   <Typography fontWeight={700} variant="h6">
                     Harga acuan pasar
                   </Typography>
@@ -215,7 +215,7 @@ function DashboardPreview({ onNavigate, batches = [], onSelectBatch }) {
                 </Typography>
               </Box>
 
-              <Stack spacing={1}>
+              <Stack spacing={0} sx={{ width: '100%' }}>
                 {COMMODITY_OPTIONS.map((commodity) => {
                   const bapanasKey = commodity.toLowerCase()
                   const livePrice = bapanasData?.commodities?.[bapanasKey]?.price_per_kg
@@ -226,13 +226,20 @@ function DashboardPreview({ onNavigate, batches = [], onSelectBatch }) {
                       direction="row"
                       justifyContent="space-between"
                       key={commodity}
-                      sx={{ borderBottom: '1px solid', borderColor: 'divider', py: 1.25 }}
+                      spacing={2}
+                      sx={{
+                        width: '100%',
+                        borderBottom: '1px solid',
+                        borderColor: 'divider',
+                        py: 1.5,
+                        '&:last-child': { borderBottom: 'none' },
+                      }}
                     >
-                      <Typography fontWeight={600} variant="body2">
+                      <Typography fontWeight={600} variant="body2" color="text.primary" sx={{ flexGrow: 1 }}>
                         {commodity}
                       </Typography>
-                      <Typography fontWeight={700} variant="body2">
-                        {formatRupiah(priceToShow)}/ kg
+                      <Typography fontWeight={700} variant="body2" color="primary.dark" sx={{ ml: 'auto', textAlign: 'right', whiteSpace: 'nowrap', pl: 2 }}>
+                        {formatRupiah(priceToShow)} / kg
                       </Typography>
                     </Stack>
                   )
@@ -246,28 +253,38 @@ function DashboardPreview({ onNavigate, batches = [], onSelectBatch }) {
             <CardContent sx={{ p: { xs: 2, sm: 2.5 } }}>
               {lastBatch ? (
                 <Stack spacing={1.5}>
-                  <Box sx={{ mb: 1 }}>
-                    <Stack alignItems="center" direction="row" spacing={1.5}>
+                  <Box sx={{ mb: 2 }}>
+                    <Stack alignItems="center" direction="row" spacing={1.5} flexWrap="wrap">
                       <Typography fontWeight={700} variant="h6">
                         Batch Panen Terakhir
                       </Typography>
                       <Tooltip title={`ID Lengkap: ${lastBatch.id}`}>
-                        <Chip color="primary" label={formatBatchDisplayId(lastBatch.id)} size="small" variant="outlined" />
+                        <Chip
+                          color="primary"
+                          label={formatBatchDisplayId(lastBatch.id)}
+                          size="small"
+                          variant="outlined"
+                          sx={{ fontWeight: 600 }}
+                        />
                       </Tooltip>
                     </Stack>
+                    <Typography color="text.secondary" sx={{ display: 'block', mt: 0.5 }} variant="caption">
+                      Ringkasan mutu &amp; transaksi batch terakhir
+                    </Typography>
                   </Box>
 
-                  <Stack spacing={0.5} sx={{ mb: 2 }}>
+                  <Stack spacing={0} sx={{ width: '100%', mb: 2 }}>
                     <Stack
                       alignItems="center"
                       direction="row"
                       justifyContent="space-between"
-                      sx={{ borderBottom: '1px solid', borderColor: 'divider', py: 1.25 }}
+                      spacing={2}
+                      sx={{ width: '100%', borderBottom: '1px solid', borderColor: 'divider', py: 1.5 }}
                     >
-                      <Typography fontWeight={600} variant="body2">
+                      <Typography color="text.secondary" fontWeight={600} variant="body2" sx={{ flexGrow: 1 }}>
                         Komoditas
                       </Typography>
-                      <Typography fontWeight={700} variant="body2">
+                      <Typography fontWeight={700} variant="body2" color="text.primary" sx={{ ml: 'auto', textAlign: 'right', whiteSpace: 'nowrap', pl: 2 }}>
                         {lastBatch.komoditas}
                       </Typography>
                     </Stack>
@@ -275,12 +292,13 @@ function DashboardPreview({ onNavigate, batches = [], onSelectBatch }) {
                       alignItems="center"
                       direction="row"
                       justifyContent="space-between"
-                      sx={{ borderBottom: '1px solid', borderColor: 'divider', py: 1.25 }}
+                      spacing={2}
+                      sx={{ width: '100%', borderBottom: '1px solid', borderColor: 'divider', py: 1.5 }}
                     >
-                      <Typography fontWeight={600} variant="body2">
+                      <Typography color="text.secondary" fontWeight={600} variant="body2" sx={{ flexGrow: 1 }}>
                         Berat Total
                       </Typography>
-                      <Typography fontWeight={700} variant="body2">
+                      <Typography fontWeight={700} variant="body2" color="text.primary" sx={{ ml: 'auto', textAlign: 'right', whiteSpace: 'nowrap', pl: 2 }}>
                         {lastBatch.beratKg ?? lastBatch.volume_kg ?? 0} kg
                       </Typography>
                     </Stack>
@@ -288,12 +306,13 @@ function DashboardPreview({ onNavigate, batches = [], onSelectBatch }) {
                       alignItems="center"
                       direction="row"
                       justifyContent="space-between"
-                      sx={{ borderBottom: '1px solid', borderColor: 'divider', py: 1.25 }}
+                      spacing={2}
+                      sx={{ width: '100%', borderBottom: '1px solid', borderColor: 'divider', py: 1.5 }}
                     >
-                      <Typography fontWeight={600} variant="body2">
+                      <Typography color="text.secondary" fontWeight={600} variant="body2" sx={{ flexGrow: 1 }}>
                         Estimasi Nilai
                       </Typography>
-                      <Typography fontWeight={700} variant="body2">
+                      <Typography fontWeight={700} variant="body2" color="success.main" sx={{ ml: 'auto', textAlign: 'right', whiteSpace: 'nowrap', pl: 2 }}>
                         {formatRupiah(lastBatch.pricing?.estimated_economic_value ?? lastBatch.hasil?.totalNilai)}
                       </Typography>
                     </Stack>
@@ -301,12 +320,13 @@ function DashboardPreview({ onNavigate, batches = [], onSelectBatch }) {
                       alignItems="center"
                       direction="row"
                       justifyContent="space-between"
-                      sx={{ borderBottom: '1px solid', borderColor: 'divider', py: 1.25 }}
+                      spacing={2}
+                      sx={{ width: '100%', py: 1.5 }}
                     >
-                      <Typography fontWeight={600} variant="body2">
+                      <Typography color="text.secondary" fontWeight={600} variant="body2" sx={{ flexGrow: 1 }}>
                         Tanggal
                       </Typography>
-                      <Typography fontWeight={700} variant="body2">
+                      <Typography fontWeight={700} variant="body2" color="text.primary" sx={{ ml: 'auto', textAlign: 'right', whiteSpace: 'nowrap', pl: 2 }}>
                         {lastBatch.tanggal || lastBatch.tanggalPanen || '-'}
                       </Typography>
                     </Stack>

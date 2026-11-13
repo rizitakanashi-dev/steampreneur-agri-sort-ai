@@ -81,20 +81,21 @@ export function PostHarvestPathologyCards({ commodity, rejectCount = 0, rejectPe
                 height: 40,
                 justifyContent: 'center',
                 width: 40,
+                flexShrink: 0,
               }}
             >
               <ScienceRoundedIcon fontSize="small" />
             </Box>
             <Box>
-              <Stack alignItems="center" direction="row" spacing={1}>
-                <Typography fontWeight={700} variant="subtitle1">
+              <Stack alignItems="center" direction="row" spacing={1.25} flexWrap="wrap">
+                <Typography fontWeight={700} variant="h6" sx={{ color: '#1d2326' }}>
                   Sains Patologi Pascapanen & Mitigasi Mutu
                 </Typography>
                 <Chip
                   color={hasReject ? 'warning' : 'success'}
                   label={hasReject ? 'Deteksi Cacat Aktif' : 'Batch Sehat & Prima'}
                   size="small"
-                  sx={{ fontWeight: 600, height: 22, fontSize: '0.72rem' }}
+                  sx={{ fontWeight: 700 }}
                 />
               </Stack>
               <Typography color="text.secondary" variant="caption">
@@ -107,6 +108,7 @@ export function PostHarvestPathologyCards({ commodity, rejectCount = 0, rejectPe
             onClick={() => setIsCatalogOpen(true)}
             size="small"
             startIcon={<MenuBookRoundedIcon />}
+            sx={{ alignSelf: { xs: 'flex-start', sm: 'center' }, flexShrink: 0 }}
             variant="outlined"
           >
             Katalog Sains Patologi
