@@ -87,65 +87,92 @@ export function FarmerProfitabilityCard({
       <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
         {/* Header Modul STEAM Math */}
         <Stack
-          alignItems={{ xs: 'flex-start', sm: 'center' }}
-          direction={{ xs: 'column', sm: 'row' }}
+          alignItems={{ xs: 'flex-start', md: 'center' }}
+          direction={{ xs: 'column', md: 'row' }}
           justifyContent="space-between"
           spacing={2}
           sx={{ mb: 2.5 }}
         >
-          <Stack alignItems="center" direction="row" spacing={1.5}>
-            <Box
+          <Box sx={{ flexGrow: 1 }}>
+            <Stack alignItems="center" direction="row" spacing={1.5} flexWrap="wrap">
+              <Box
+                sx={{
+                  alignItems: 'center',
+                  bgcolor: 'rgba(3, 110, 69, 0.08)',
+                  borderRadius: 2,
+                  color: '#036e45',
+                  display: 'flex',
+                  height: 38,
+                  justifyContent: 'center',
+                  width: 38,
+                  border: '1px solid rgba(3, 110, 69, 0.15)',
+                  flexShrink: 0,
+                }}
+              >
+                <CalculateRoundedIcon fontSize="small" />
+              </Box>
+              <Typography fontWeight={700} variant="h6" sx={{ color: '#1d2326' }}>
+                Kalkulator Kelayakan Finansial & BEP Petani
+              </Typography>
+              <Chip
+                color="success"
+                label="STEAM: Math & Business"
+                size="small"
+                sx={{ fontWeight: 700 }}
+              />
+            </Stack>
+            <Typography
+              color="text.secondary"
+              variant="body2"
               sx={{
-                alignItems: 'center',
-                bgcolor: 'rgba(3, 110, 69, 0.08)',
-                borderRadius: 2,
-                color: '#036e45',
-                display: 'flex',
-                height: 42,
-                justifyContent: 'center',
-                width: 42,
-                border: '1px solid rgba(3, 110, 69, 0.15)',
-                flexShrink: 0,
+                mt: 0.75,
+                pl: { xs: 0, sm: '50px' },
+                fontSize: '0.85rem',
               }}
             >
-              <CalculateRoundedIcon fontSize="medium" />
-            </Box>
-            <Box>
-              <Stack alignItems="center" direction="row" spacing={1.25} flexWrap="wrap">
-                <Typography fontWeight={700} variant="h6" sx={{ color: '#1d2326' }}>
-                  Kalkulator Kelayakan Finansial & BEP Petani
-                </Typography>
-                <Chip
-                  color="success"
-                  label="STEAM: Math & Business"
-                  size="small"
-                  sx={{ fontWeight: 700 }}
-                />
-              </Stack>
-              <Typography color="text.secondary" variant="caption">
-                Pilar Matematika Terapan & Kewirausahaan: Analisis Titik Impas (BEP), Laba Bersih, dan ROI Panen
-              </Typography>
-            </Box>
-          </Stack>
+              Pilar Matematika Terapan & Kewirausahaan: Analisis Titik Impas (BEP), Laba Bersih, dan ROI Panen
+            </Typography>
+          </Box>
 
-          {/* Toggle Mode Biaya */}
-          <ToggleButtonGroup
-            aria-label="Mode Input Biaya Budidaya"
-            exclusive
-            onChange={(e, nextVal) => {
-              if (nextVal) setCostMode(nextVal)
+          {/* Toggle Mode Biaya: samakan tata letak persis dengan sertifikat QC di kanan tengah */}
+          <Stack
+            alignItems="center"
+            direction="row"
+            spacing={1.5}
+            sx={{
+              alignSelf: { xs: 'flex-start', md: 'center' },
+              mt: { xs: 1.5, md: 0 },
+              flexShrink: 0,
             }}
-            size="small"
-            value={costMode}
-            sx={{ alignSelf: { xs: 'flex-start', sm: 'center' }, flexShrink: 0 }}
           >
-            <ToggleButton sx={{ textTransform: 'none', fontWeight: 600, px: 1.5, height: 32 }} value="perKg">
-              BPP per Kg (Rp/kg)
-            </ToggleButton>
-            <ToggleButton sx={{ textTransform: 'none', fontWeight: 600, px: 1.5, height: 32 }} value="total">
-              Total Modal (Rp)
-            </ToggleButton>
-          </ToggleButtonGroup>
+            <ToggleButtonGroup
+              aria-label="Mode Input Biaya Budidaya"
+              exclusive
+              onChange={(e, nextVal) => {
+                if (nextVal) setCostMode(nextVal)
+              }}
+              size="small"
+              value={costMode}
+              sx={{
+                height: 38,
+                borderRadius: 2,
+                '& .MuiToggleButton-root': {
+                  fontWeight: 700,
+                  px: 2,
+                  height: 38,
+                  borderRadius: 2,
+                  textTransform: 'none',
+                },
+              }}
+            >
+              <ToggleButton value="perKg">
+                BPP per Kg (Rp/kg)
+              </ToggleButton>
+              <ToggleButton value="total">
+                Total Modal (Rp)
+              </ToggleButton>
+            </ToggleButtonGroup>
+          </Stack>
         </Stack>
 
         {/* Input Parameter Biaya Modal */}
@@ -187,8 +214,8 @@ export function FarmerProfitabilityCard({
             </Grid>
 
             <Grid size={{ xs: 12, sm: 6, md: 7 }}>
-              <Stack direction="row" flexWrap="wrap" gap={1} alignItems="center">
-                <Typography variant="body2" sx={{ fontWeight: 700, color: '#1e293b', mr: 0.5 }}>
+              <Stack direction="row" flexWrap="wrap" gap={1.25} alignItems="center">
+                <Typography sx={{ fontWeight: 700, fontSize: '0.875rem', color: '#1e293b', display: 'flex', alignItems: 'center', lineHeight: 1 }}>
                   Preset Standar Petani:
                 </Typography>
                 <Chip
