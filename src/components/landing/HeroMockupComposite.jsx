@@ -89,9 +89,15 @@ function FloatingCursorBadge({ initials, bg, border, arrowSide = 'top-right', sx
  *   All cards glide inward and lock together with the Left Sidebar & Green Banner (`Sortir cerdas, panen maksimal.`)
  *   to form the exact Agri-Sort AI Dashboard in the open space below the Hero.
  */
-export function HeroMockupComposite({ onOpenApp, isConverged }) {
+export function HeroMockupComposite({ onOpenApp, isConverged, trackRef }) {
   return (
     <Box
+      ref={trackRef}
+      style={{
+        '--converge-p': 0,
+        '--scatter-inv': 1,
+        '--shell-opacity': 0,
+      }}
       sx={{
         position: 'relative',
         width: '100%',

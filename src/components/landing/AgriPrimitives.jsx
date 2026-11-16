@@ -1,6 +1,6 @@
 import { Box, Button, Typography } from '@mui/material'
 import { AGRI_COLORS, AGRI_FONTS, AGRI_RADII, AGRI_SHADOWS } from './tokens.js'
-import { useStageReveal } from './useScrollChoreography.js'
+import { useParallaxRef, useStageReveal } from './useScrollChoreography.js'
 
 /**
  * Primary Pill CTA — Filled lozenge (#036E45 Agri Emerald or #17191C Ink, 9999px radius, no shadow).
@@ -315,10 +315,12 @@ export function FloatingArtifactCard({
   children,
   sx = {},
 }) {
-  const [ref, revealed] = useStageReveal()
-  return (
+  const [revealRef, revealed] = useStageReveal()
+  const parallaxRef = useParallaxRef(parallaxFactor)
+
+  const card = (
     <Box
-      ref={ref}
+      ref={revealRef}
       className="agri-stage-reveal"
       data-revealed={revealed}
       sx={{
@@ -326,14 +328,6 @@ export function FloatingArtifactCard({
         borderRadius: AGRI_RADII.elevatedCards,
         boxShadow: AGRI_SHADOWS.artifact,
         p: { xs: '14px 16px', sm: '16px 20px 14px 16px' },
-        ...(parallaxFactor !== 0
-          ? {
-              transform: {
-                md: `translate3d(0, calc(var(--agri-scroll-y, 0px) * ${parallaxFactor}), 0)`,
-              },
-              transition: 'transform 0.15s ease-out, box-shadow 0.25s ease',
-            }
-          : {}),
         ...sx,
       }}
     >
@@ -375,4 +369,7 @@ export function FloatingArtifactCard({
       {children}
     </Box>
   )
+
+  if (parallaxFactor === 0) return card
+  return <Box ref={parallaxRef}>{card}</Box>
 }

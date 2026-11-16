@@ -26,8 +26,6 @@
   --radius-elevated: 20px;
 
   --shadow-artifact: 0 0 0 1px rgba(4, 23, 43, 0.05), 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
-  --agri-scroll-y: 0px;
-  --agri-scroll-scale: 0;
 }
 
 html {
@@ -39,13 +37,18 @@ html {
   color: #17191c;
 }
 
+.agri-cv-section {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 720px;
+}
+
 .agri-stage-reveal {
-  transition: transform 0.75s cubic-bezier(0.16, 1, 0.3, 1), filter 0.75s cubic-bezier(0.16, 1, 0.3, 1);
-  will-change: transform;
+  transition: transform 0.65s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .agri-stage-reveal[data-revealed="false"] {
   transform: translate3d(0, 22px, 0) scale(0.988);
+  will-change: transform;
 }
 
 .agri-stage-reveal[data-revealed="true"] {

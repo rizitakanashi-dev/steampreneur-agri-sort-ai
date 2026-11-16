@@ -44,6 +44,7 @@ function StylizedFruit({ variant }) {
 export function LiveYoloScanMotion({ height = 200, badgeText = 'YOLO11n · 3-Class Live' }) {
   return (
     <Box
+      style={{ '--scan-h': `${height}px` }}
       sx={{
         position: 'relative',
         height,
@@ -121,6 +122,7 @@ export function LiveYoloScanMotion({ height = 200, badgeText = 'YOLO11n · 3-Cla
       <Box
         sx={{
           position: 'absolute',
+          top: 0,
           left: 0,
           right: 0,
           height: '2px',
