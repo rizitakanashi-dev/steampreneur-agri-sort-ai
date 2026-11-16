@@ -482,6 +482,40 @@ class TestTiledInferenceAndDisambiguation(unittest.TestCase):
 
         self.assertEqual(len(matched_gt_names), 3, "Seluruh 3 tomat visual harus cocok 1-to-1 dengan ground truth")
 
+    def test_non_commodity_objects_filtered_across_all_commodities(self):
+        """Memastikan objek non-sayuran (dinding abu-abu, botol biru, kulit/meja pucat) disaring untuk Tomat, Cabai, dan Terung."""
+        from server.services.tiled_inference import is_watermark_or_text_artifact
+
+        # 1. Citra bertekstur abu-abu (dinding / meja / keyboard)
+        gray_img = Image.new("RGB", (200, 200))
+        px = gray_img.load()
+        for y in range(200):
+            for x in range(200):
+                val = 150 + ((x + y) % 30)
+                px[x, y] = (val, val, val)
+        self.assertTrue(is_watermark_or_text_artifact([20, 20, 180, 180], gray_img, "tomat"))
+        self.assertTrue(is_watermark_or_text_artifact([20, 20, 180, 180], gray_img, "cabai"))
+        self.assertTrue(is_watermark_or_text_artifact([20, 20, 180, 180], gray_img, "terung"))
+
+        # 2. Citra bertekstur biru (cangkir / baju / benda plastik)
+        blue_img = Image.new("RGB", (200, 200))
+        bpx = blue_img.load()
+        for y in range(200):
+            for x in range(200):
+                bpx[x, y] = (30 + (x % 15), 90 + (y % 20), 210 + (x % 20))
+        self.assertTrue(is_watermark_or_text_artifact([20, 20, 180, 180], blue_img, "tomat"))
+        self.assertTrue(is_watermark_or_text_artifact([20, 20, 180, 180], blue_img, "cabai"))
+        self.assertTrue(is_watermark_or_text_artifact([20, 20, 180, 180], blue_img, "terung"))
+
+        # 3. Citra tomat merah cerah bertekstur tidak boleh tersaring
+        red_img = Image.new("RGB", (200, 200))
+        rpx = red_img.load()
+        for y in range(200):
+            for x in range(200):
+                rpx[x, y] = (210 + (x % 25), 35 + (y % 15), 30)
+        self.assertFalse(is_watermark_or_text_artifact([20, 20, 180, 180], red_img, "tomat"))
+        self.assertFalse(is_watermark_or_text_artifact([20, 20, 180, 180], red_img, "cabai"))
+
 
 if __name__ == "__main__":
     unittest.main()

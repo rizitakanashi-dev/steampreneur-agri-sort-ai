@@ -15,7 +15,7 @@ import logging
 import os
 import time
 from typing import Any, Dict, List, Optional
-from PIL import Image
+from PIL import Image, ImageOps
 
 from server.services.onnx_engine import ONNXYOLOModel, is_onnx_available
 from server.services.tiled_inference import run_sliced_yolo_inference
@@ -213,9 +213,9 @@ class YOLOInferenceEngine:
         """
         start_time = time.perf_counter()
 
-        # 1. Decode bytes ke PIL Image RGB
+        # 1. Decode bytes ke PIL Image RGB dengan koreksi orientasi EXIF kamera HP
         try:
-            image = Image.open(BytesIO(image_bytes)).convert("RGB")
+            image = ImageOps.exif_transpose(Image.open(BytesIO(image_bytes))).convert("RGB")
         except Exception as err:
             raise ValueError(f"Gagal memproses byte citra: {err}") from err
 
