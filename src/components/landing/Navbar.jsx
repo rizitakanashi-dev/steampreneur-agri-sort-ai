@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import {
   AppBar,
   Box,
@@ -19,10 +19,11 @@ import SpaRoundedIcon from '@mui/icons-material/SpaRounded'
 import { AGRI_COLORS, AGRI_FONTS, AGRI_RADII } from './tokens.js'
 import { NAV_LINKS } from './landingData.js'
 import { AgriPrimaryButton, EditorialTextLink, HeaderActionButton } from './AgriPrimitives.jsx'
-import { useActiveSection } from './useScrollChoreography.js'
+import { useActiveSection, useNavbarScrollProgress } from './useScrollChoreography.js'
 
 export function Navbar({ onOpenApp }) {
-  const [scrolled, setScrolled] = useState(false)
+  const progressBarRef = useRef(null)
+  const scrolled = useNavbarScrollProgress(progressBarRef)
   const [mobileOpen, setMobileOpen] = useState(false)
 
   const sectionIds = useMemo(
@@ -30,12 +31,6 @@ export function Navbar({ onOpenApp }) {
     []
   )
   const activeSection = useActiveSection(sectionIds)
-
-  useEffect(() => {
-    const handleScroll = () => setScrolled(window.scrollY > 24)
-    window.addEventListener('scroll', handleScroll, { passive: true })
-    return () => window.removeEventListener('scroll', handleScroll)
-  }, [])
 
   const handleNavClick = (e, href) => {
     e.preventDefault()
@@ -53,15 +48,15 @@ export function Navbar({ onOpenApp }) {
         elevation={0}
         position="fixed"
         sx={{
-          bgcolor: scrolled ? 'rgba(255, 255, 255, 0.9)' : 'transparent',
-          backdropFilter: scrolled ? 'blur(12px)' : 'none',
-          borderBottom: 'none',
+          bgcolor: scrolled ? 'rgba(255, 255, 255, 0.96)' : 'transparent',
+          borderBottom: scrolled ? '1px solid rgba(23, 25, 28, 0.06)' : '1px solid transparent',
           boxShadow: 'none',
-          transition: 'background-color 0.25s ease',
+          transition: 'background-color 0.2s ease, border-color 0.2s ease',
         }}
       >
         {/* Reading Progress Hairline */}
         <Box
+          ref={progressBarRef}
           aria-hidden="true"
           sx={{
             position: 'absolute',
@@ -71,8 +66,8 @@ export function Navbar({ onOpenApp }) {
             width: '100%',
             bgcolor: AGRI_COLORS.emerald,
             transformOrigin: 'left center',
-            transform: 'scaleX(var(--agri-scroll-scale, 0))',
-            transition: 'transform 0.12s linear',
+            transform: 'scaleX(0)',
+            willChange: 'transform',
           }}
         />
 

@@ -21,13 +21,7 @@ export function Hero({ onOpenApp }) {
   return (
     <Box
       id="beranda"
-      ref={trackRef}
       component="section"
-      style={{
-        '--converge-p': 0,
-        '--scatter-inv': 1,
-        '--shell-opacity': 0,
-      }}
       sx={{
         position: 'relative',
         pt: { xs: 14, md: 18 },
@@ -103,7 +97,7 @@ export function Hero({ onOpenApp }) {
         </Stack>
 
         {/* ZONE 2: Dedicated Open Stage Below Hero Text where the 4 Scattered Cards Unite into the Full Dashboard */}
-        <HeroMockupComposite isConverged={isConverged} onOpenApp={onOpenApp} />
+        <HeroMockupComposite trackRef={trackRef} isConverged={isConverged} onOpenApp={onOpenApp} />
       </Container>
     </Box>
   )

@@ -2,7 +2,7 @@ import { keyframes } from '@mui/system'
 
 export const scanBeamSweep = keyframes`
   0% {
-    top: 6%;
+    transform: translate3d(0, 10px, 0);
     opacity: 0.25;
   }
   15% {
@@ -12,7 +12,7 @@ export const scanBeamSweep = keyframes`
     opacity: 1;
   }
   100% {
-    top: 90%;
+    transform: translate3d(0, calc(var(--scan-h, 168px) - 18px), 0);
     opacity: 0.25;
   }
 `

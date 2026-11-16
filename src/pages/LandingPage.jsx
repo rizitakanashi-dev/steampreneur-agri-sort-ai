@@ -9,14 +9,10 @@ import { Commodities } from '../components/landing/Commodities.jsx'
 import { FinalCTA } from '../components/landing/FinalCTA.jsx'
 import { Footer } from '../components/landing/Footer.jsx'
 import { AGRI_COLORS } from '../components/landing/tokens.js'
-import { useScrollParallaxVar } from '../components/landing/useScrollChoreography.js'
 
 export function LandingPage({ onOpenApp }) {
-  const scrollContainerRef = useScrollParallaxVar()
-
   return (
     <Box
-      ref={scrollContainerRef}
       sx={{
         bgcolor: AGRI_COLORS.paperWhite,
         color: AGRI_COLORS.ink,
@@ -27,13 +23,27 @@ export function LandingPage({ onOpenApp }) {
     >
       <Navbar onOpenApp={onOpenApp} />
       <Hero onOpenApp={onOpenApp} />
-      <ProblemSolution onOpenApp={onOpenApp} />
-      <Features onOpenApp={onOpenApp} />
-      <HowItWorks onOpenApp={onOpenApp} />
-      <DashboardPreview onOpenApp={onOpenApp} />
-      <Commodities />
-      <FinalCTA onOpenApp={onOpenApp} />
-      <Footer onOpenApp={onOpenApp} />
+      <Box className="agri-cv-section">
+        <ProblemSolution onOpenApp={onOpenApp} />
+      </Box>
+      <Box className="agri-cv-section">
+        <Features onOpenApp={onOpenApp} />
+      </Box>
+      <Box className="agri-cv-section">
+        <HowItWorks onOpenApp={onOpenApp} />
+      </Box>
+      <Box className="agri-cv-section">
+        <DashboardPreview onOpenApp={onOpenApp} />
+      </Box>
+      <Box className="agri-cv-section">
+        <Commodities />
+      </Box>
+      <Box className="agri-cv-section">
+        <FinalCTA onOpenApp={onOpenApp} />
+      </Box>
+      <Box className="agri-cv-section">
+        <Footer onOpenApp={onOpenApp} />
+      </Box>
     </Box>
   )
 }
