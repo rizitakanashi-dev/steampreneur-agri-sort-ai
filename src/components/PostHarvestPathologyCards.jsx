@@ -64,53 +64,79 @@ export function PostHarvestPathologyCards({ commodity, rejectCount = 0, rejectPe
       <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
         {/* Header Modul Sains STEAM */}
         <Stack
-          alignItems={{ xs: 'flex-start', sm: 'center' }}
-          direction={{ xs: 'column', sm: 'row' }}
+          alignItems={{ xs: 'flex-start', md: 'center' }}
+          direction={{ xs: 'column', md: 'row' }}
           justifyContent="space-between"
-          spacing={1.5}
+          spacing={2}
           sx={{ mb: 2 }}
         >
-          <Stack alignItems="center" direction="row" spacing={1.5}>
-            <Box
+          <Box sx={{ flexGrow: 1 }}>
+            <Stack alignItems="center" direction="row" spacing={1.5} flexWrap="wrap">
+              <Box
+                sx={{
+                  alignItems: 'center',
+                  bgcolor: hasReject ? '#fff3e0' : '#e8f5e9',
+                  borderRadius: 2,
+                  color: hasReject ? '#e65100' : '#2e7d32',
+                  display: 'flex',
+                  height: 38,
+                  justifyContent: 'center',
+                  width: 38,
+                  flexShrink: 0,
+                }}
+              >
+                <ScienceRoundedIcon fontSize="small" />
+              </Box>
+              <Typography fontWeight={700} variant="h6" sx={{ color: '#1d2326' }}>
+                Sains Patologi Pascapanen & Mitigasi Mutu
+              </Typography>
+              <Chip
+                color={hasReject ? 'warning' : 'success'}
+                label={hasReject ? 'Deteksi Cacat Aktif' : 'Batch Sehat & Prima'}
+                size="small"
+                sx={{ fontWeight: 700 }}
+              />
+            </Stack>
+            <Typography
+              color="text.secondary"
+              variant="body2"
               sx={{
-                alignItems: 'center',
-                bgcolor: hasReject ? '#fff3e0' : '#e8f5e9',
-                borderRadius: 2,
-                color: hasReject ? '#e65100' : '#2e7d32',
-                display: 'flex',
-                height: 40,
-                justifyContent: 'center',
-                width: 40,
+                mt: 0.75,
+                pl: { xs: 0, sm: '50px' },
+                fontSize: '0.85rem',
               }}
             >
-              <ScienceRoundedIcon fontSize="small" />
-            </Box>
-            <Box>
-              <Stack alignItems="center" direction="row" spacing={1}>
-                <Typography fontWeight={700} variant="subtitle1">
-                  Sains Patologi Pascapanen & Mitigasi Mutu
-                </Typography>
-                <Chip
-                  color={hasReject ? 'warning' : 'success'}
-                  label={hasReject ? 'Deteksi Cacat Aktif' : 'Batch Sehat & Prima'}
-                  size="small"
-                  sx={{ fontWeight: 600, height: 22, fontSize: '0.72rem' }}
-                />
-              </Stack>
-              <Typography color="text.secondary" variant="caption">
-                Diagnosis biologi pembusukan, fisiologi turgor, dan pedoman agronomis pascapanen (Pilar S — STEAM)
-              </Typography>
-            </Box>
-          </Stack>
+              Diagnosis biologi pembusukan, fisiologi turgor, dan pedoman agronomis pascapanen (Pilar S — STEAM)
+            </Typography>
+          </Box>
 
-          <Button
-            onClick={() => setIsCatalogOpen(true)}
-            size="small"
-            startIcon={<MenuBookRoundedIcon />}
-            variant="outlined"
+          {/* Tombol Katalog Sains Patologi: samakan tata letak persis dengan sertifikat di kanan tengah */}
+          <Stack
+            alignItems="center"
+            direction="row"
+            spacing={1.5}
+            sx={{
+              alignSelf: { xs: 'flex-start', md: 'center' },
+              mt: { xs: 1.5, md: 0 },
+              flexShrink: 0,
+            }}
           >
-            Katalog Sains Patologi
-          </Button>
+            <Button
+              onClick={() => setIsCatalogOpen(true)}
+              size="small"
+              startIcon={<MenuBookRoundedIcon />}
+              sx={{
+                height: 38,
+                borderRadius: 2,
+                fontWeight: 700,
+                textTransform: 'none',
+                px: 2.25,
+              }}
+              variant="outlined"
+            >
+              Katalog Sains Patologi
+            </Button>
+          </Stack>
         </Stack>
 
         {/* Insight Diagnosis Utama */}

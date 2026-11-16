@@ -62,6 +62,26 @@ export function formatRegistrationId(batchId) {
 }
 
 /**
+ * Format ID batch panjang timestamp ke format tampilan bersih (PANEN-YYYYMMDD).
+ * @param {string|number} rawId
+ * @returns {string}
+ */
+export function formatBatchDisplayId(rawId) {
+  if (!rawId) return '-'
+  const id = String(rawId)
+  if (id.startsWith('panen-') && id.length > 15) {
+    const ts = Number(id.replace('panen-', ''))
+    if (!isNaN(ts)) {
+      const d = new Date(ts)
+      const dateStr = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}`
+      return `PANEN-${dateStr}`
+    }
+    return `BATCH-${id.slice(-6)}`
+  }
+  return id
+}
+
+/**
  * Menghasilkan data struktur sertifikat yang siap dirender atau dicetak.
  * Tahan banting terhadap null/undefined/angka tak tentu.
  * @param {object} batch

@@ -60,7 +60,9 @@ const rupiahFormatter = new Intl.NumberFormat('id-ID', { style: 'currency', curr
 const numberFormatter = new Intl.NumberFormat('id-ID', { maximumFractionDigits: 2 })
 
 function formatRupiah(value) {
-  return typeof value === 'number' && Number.isFinite(value) ? rupiahFormatter.format(value) : '-'
+  return typeof value === 'number' && Number.isFinite(value)
+    ? rupiahFormatter.format(value).replace(/^Rp\s*/, 'Rp ')
+    : '-'
 }
 
 function formatNumber(value) {

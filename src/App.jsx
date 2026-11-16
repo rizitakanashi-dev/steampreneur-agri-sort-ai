@@ -10,10 +10,12 @@ import {
   FormControl,
   FormLabel,
   Grid,
+  IconButton,
   MenuItem,
   Select,
   Stack,
   TextField,
+  Tooltip,
   Typography,
 } from '@mui/material'
 import ArrowForwardRoundedIcon from '@mui/icons-material/ArrowForwardRounded'
@@ -23,6 +25,7 @@ import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded'
 import GrassRoundedIcon from '@mui/icons-material/GrassRounded'
 import Inventory2RoundedIcon from '@mui/icons-material/Inventory2Rounded'
 import LocalShippingRoundedIcon from '@mui/icons-material/LocalShippingRounded'
+import RefreshRoundedIcon from '@mui/icons-material/RefreshRounded'
 import TrendingUpRoundedIcon from '@mui/icons-material/TrendingUpRounded'
 import VerifiedRoundedIcon from '@mui/icons-material/VerifiedRounded'
 import VisibilityRoundedIcon from '@mui/icons-material/VisibilityRounded'
@@ -32,9 +35,11 @@ import { COMMODITY_OPTIONS, PRICE_REFERENCE_SOURCE, REFERENCE_PRICES_PER_KG } fr
 import { fetchBapanasLive } from './services/scanService.js'
 import { AppShell } from './components/AppShell.jsx'
 import { BatchQCScanner } from './components/BatchQCScanner.jsx'
+import { stopAllActiveCameraStreams } from './components/LiveCameraViewfinder.jsx'
 import { HarvestForm } from './components/HarvestForm.jsx'
 import { HarvestRecap } from './components/HarvestRecap.jsx'
 import { QCResults } from './components/QCResults.jsx'
+import { ErrorBoundary } from './components/ErrorBoundary.jsx'
 import { PageHeader } from './components/PageHeader.jsx'
 import { PricingDashboard } from './components/PricingDashboard.jsx'
 import { LandingPage } from './pages/LandingPage.jsx'
@@ -47,16 +52,12 @@ const pages = {
   pricing: { title: 'Harga Pasar', description: 'Pantau acuan harga pasar untuk keputusan jual yang lebih tepat.' },
 }
 
-const metrics = [
-  { label: 'Batch tersimpan', value: 'Lokal', detail: 'tersimpan di browser ini', icon: LocalShippingRoundedIcon, color: '#036e45' },
-  { label: 'Komoditas terdaftar', value: String(COMMODITY_OPTIONS.length), detail: 'sesuai konfigurasi harga', icon: AutoAwesomeRoundedIcon, color: '#2f7299' },
-  { label: 'Sumber harga', value: 'BAPANAS', detail: 'Panel Harga Pangan Sumbar', icon: TrendingUpRoundedIcon, color: '#036e45' },
-]
-
 const rupiahFormatter = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 })
 
 function formatRupiah(value) {
-  return typeof value === 'number' && Number.isFinite(value) ? rupiahFormatter.format(value) : '-'
+  const num = typeof value === 'number' ? value : Number(value)
+  if (!Number.isFinite(num)) return '-'
+  return rupiahFormatter.format(num).replace(/^Rp\s*/, 'Rp ')
 }
 
 function MetricCard({ detail, icon: Icon, label, value, color }) {
@@ -78,8 +79,38 @@ function MetricCard({ detail, icon: Icon, label, value, color }) {
   )
 }
 
+function formatBatchDisplayId(rawId) {
+  if (!rawId) return '-'
+  const id = String(rawId)
+  if (id.startsWith('panen-') && id.length > 15) {
+    const ts = Number(id.replace('panen-', ''))
+    if (!isNaN(ts)) {
+      const d = new Date(ts)
+      const dateStr = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}`
+      return `PANEN-${dateStr}`
+    }
+    return `BATCH-${id.slice(-6)}`
+  }
+  return id
+}
+
 function DashboardPreview({ onNavigate, batches = [], onSelectBatch }) {
   const [bapanasData, setBapanasData] = useState(null)
+  const [isRefreshingPrice, setIsRefreshingPrice] = useState(false)
+
+  const handleRefreshBapanas = () => {
+    setIsRefreshingPrice(true)
+    fetchBapanasLive(5000)
+      .then((data) => {
+        if (data?.commodities) {
+          setBapanasData(data)
+        }
+      })
+      .catch(() => {})
+      .finally(() => {
+        setIsRefreshingPrice(false)
+      })
+  }
 
   useEffect(() => {
     let isMounted = true
@@ -158,34 +189,60 @@ function DashboardPreview({ onNavigate, batches = [], onSelectBatch }) {
         <Grid size={{ xs: 12, md: 7 }}>
           <Card sx={{ height: '100%' }}>
             <CardContent sx={{ p: { xs: 2, sm: 2.5 } }}>
-              <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
-                <Box>
-                  <Typography variant="h6">Harga acuan pasar</Typography>
-                  <Typography color="text.secondary" variant="caption">
-                    {bapanasData ? `Panel BAPANAS • ${bapanasData.market_center}` : `Acuan Pasar • Diperbarui ${PRICE_REFERENCE_SOURCE.updatedAt}`}
+              <Box sx={{ mb: 2 }}>
+                <Stack alignItems="center" direction="row" spacing={1.5} flexWrap="wrap">
+                  <Typography fontWeight={700} variant="h6">
+                    Harga acuan pasar
                   </Typography>
-                </Box>
-                {bapanasData ? (
-                  <Chip color="success" icon={<CheckCircleRoundedIcon />} label="BAPANAS Terverifikasi" size="small" />
-                ) : (
-                  <Chip color="default" label="Acuan BAPANAS Payakumbuh" size="small" variant="outlined" />
-                )}
-              </Stack>
-              <Stack spacing={1}>
+                  {bapanasData ? (
+                    <Chip color="success" icon={<CheckCircleRoundedIcon />} label="BAPANAS Terverifikasi" size="small" />
+                  ) : (
+                    <Chip color="default" label="Acuan BAPANAS Payakumbuh" size="small" variant="outlined" />
+                  )}
+                  <Tooltip title="Perbarui / Sinkronisasi Harga BAPANAS Terkini">
+                    <span>
+                      <IconButton
+                        aria-label="Sinkronisasi harga BAPANAS"
+                        disabled={isRefreshingPrice}
+                        onClick={handleRefreshBapanas}
+                        size="small"
+                      >
+                        <RefreshRoundedIcon fontSize="small" />
+                      </IconButton>
+                    </span>
+                  </Tooltip>
+                </Stack>
+                <Typography color="text.secondary" sx={{ display: 'block', mt: 0.5 }} variant="caption">
+                  {bapanasData ? `Panel BAPANAS • ${bapanasData.market_center}` : `Acuan Pasar • Diperbarui ${PRICE_REFERENCE_SOURCE.updatedAt}`}
+                </Typography>
+              </Box>
+
+              <Stack spacing={0} sx={{ width: '100%' }}>
                 {COMMODITY_OPTIONS.map((commodity) => {
                   const bapanasKey = commodity.toLowerCase()
                   const livePrice = bapanasData?.commodities?.[bapanasKey]?.price_per_kg
                   const priceToShow = livePrice || REFERENCE_PRICES_PER_KG[commodity]
                   return (
-                    <Stack alignItems="center" direction="row" justifyContent="space-between" key={commodity} sx={{ borderBottom: '1px solid', borderColor: 'divider', py: 1.25 }}>
-                      <Stack direction="row" spacing={1.25} sx={{ alignItems: 'center' }}>
-                        <Box sx={{ bgcolor: 'primary.light', borderRadius: '50%', height: 8, width: 8 }} />
-                        <Typography fontWeight={600} variant="body2">{commodity}</Typography>
-                      </Stack>
-                      <Stack alignItems="flex-end">
-                        <Typography fontWeight={700} variant="body2">{formatRupiah(priceToShow)}</Typography>
-                        <Typography color="text.secondary" variant="caption">per kg</Typography>
-                      </Stack>
+                    <Stack
+                      alignItems="center"
+                      direction="row"
+                      justifyContent="space-between"
+                      key={commodity}
+                      spacing={2}
+                      sx={{
+                        width: '100%',
+                        borderBottom: '1px solid',
+                        borderColor: 'divider',
+                        py: 1.5,
+                        '&:last-child': { borderBottom: 'none' },
+                      }}
+                    >
+                      <Typography fontWeight={600} variant="body2" color="text.primary" sx={{ flexGrow: 1 }}>
+                        {commodity}
+                      </Typography>
+                      <Typography fontWeight={700} variant="body2" color="primary.dark" sx={{ ml: 'auto', textAlign: 'right', whiteSpace: 'nowrap', pl: 2 }}>
+                        {formatRupiah(priceToShow)} / kg
+                      </Typography>
                     </Stack>
                   )
                 })}
@@ -198,29 +255,84 @@ function DashboardPreview({ onNavigate, batches = [], onSelectBatch }) {
             <CardContent sx={{ p: { xs: 2, sm: 2.5 } }}>
               {lastBatch ? (
                 <Stack spacing={1.5}>
-                  <Stack direction="row" justifyContent="space-between" alignItems="center">
-                    <Typography variant="h6">Batch Panen Terakhir</Typography>
-                    <Chip color="primary" label={lastBatch.id} size="small" variant="outlined" />
-                  </Stack>
-                  <Box sx={{ p: 2, bgcolor: '#f8fafc', borderRadius: 2, border: '1px solid', borderColor: 'divider' }}>
-                    <Typography variant="subtitle1" fontWeight={700} color="primary.dark">
-                      {lastBatch.komoditas}
-                    </Typography>
-                    <Stack direction="row" justifyContent="space-between" sx={{ mt: 1 }}>
-                      <Typography variant="body2" color="text.secondary">Berat Total:</Typography>
-                      <Typography variant="body2" fontWeight={600}>{lastBatch.beratKg} kg</Typography>
+                  <Box sx={{ mb: 2 }}>
+                    <Stack alignItems="center" direction="row" spacing={1.5} flexWrap="wrap">
+                      <Typography fontWeight={700} variant="h6">
+                        Batch Panen Terakhir
+                      </Typography>
+                      <Tooltip title={`ID Lengkap: ${lastBatch.id}`}>
+                        <Chip
+                          color="primary"
+                          label={formatBatchDisplayId(lastBatch.id)}
+                          size="small"
+                          variant="outlined"
+                          sx={{ fontWeight: 600 }}
+                        />
+                      </Tooltip>
                     </Stack>
-                    <Stack direction="row" justifyContent="space-between" sx={{ mt: 0.5 }}>
-                      <Typography variant="body2" color="text.secondary">Estimasi Nilai:</Typography>
-                      <Typography variant="body2" fontWeight={700} color="success.main">
+                    <Typography color="text.secondary" sx={{ display: 'block', mt: 0.5 }} variant="caption">
+                      Ringkasan mutu &amp; transaksi batch terakhir
+                    </Typography>
+                  </Box>
+
+                  <Stack spacing={0} sx={{ width: '100%', mb: 2 }}>
+                    <Stack
+                      alignItems="center"
+                      direction="row"
+                      justifyContent="space-between"
+                      spacing={2}
+                      sx={{ width: '100%', borderBottom: '1px solid', borderColor: 'divider', py: 1.5 }}
+                    >
+                      <Typography color="text.secondary" fontWeight={600} variant="body2" sx={{ flexGrow: 1 }}>
+                        Komoditas
+                      </Typography>
+                      <Typography fontWeight={700} variant="body2" color="text.primary" sx={{ ml: 'auto', textAlign: 'right', whiteSpace: 'nowrap', pl: 2 }}>
+                        {lastBatch.komoditas}
+                      </Typography>
+                    </Stack>
+                    <Stack
+                      alignItems="center"
+                      direction="row"
+                      justifyContent="space-between"
+                      spacing={2}
+                      sx={{ width: '100%', borderBottom: '1px solid', borderColor: 'divider', py: 1.5 }}
+                    >
+                      <Typography color="text.secondary" fontWeight={600} variant="body2" sx={{ flexGrow: 1 }}>
+                        Berat Total
+                      </Typography>
+                      <Typography fontWeight={700} variant="body2" color="text.primary" sx={{ ml: 'auto', textAlign: 'right', whiteSpace: 'nowrap', pl: 2 }}>
+                        {lastBatch.beratKg ?? lastBatch.volume_kg ?? 0} kg
+                      </Typography>
+                    </Stack>
+                    <Stack
+                      alignItems="center"
+                      direction="row"
+                      justifyContent="space-between"
+                      spacing={2}
+                      sx={{ width: '100%', borderBottom: '1px solid', borderColor: 'divider', py: 1.5 }}
+                    >
+                      <Typography color="text.secondary" fontWeight={600} variant="body2" sx={{ flexGrow: 1 }}>
+                        Estimasi Nilai
+                      </Typography>
+                      <Typography fontWeight={700} variant="body2" color="success.main" sx={{ ml: 'auto', textAlign: 'right', whiteSpace: 'nowrap', pl: 2 }}>
                         {formatRupiah(lastBatch.pricing?.estimated_economic_value ?? lastBatch.hasil?.totalNilai)}
                       </Typography>
                     </Stack>
-                    <Stack direction="row" justifyContent="space-between" sx={{ mt: 0.5 }}>
-                      <Typography variant="caption" color="text.secondary">Tanggal:</Typography>
-                      <Typography variant="caption">{lastBatch.tanggal || '-'}</Typography>
+                    <Stack
+                      alignItems="center"
+                      direction="row"
+                      justifyContent="space-between"
+                      spacing={2}
+                      sx={{ width: '100%', py: 1.5 }}
+                    >
+                      <Typography color="text.secondary" fontWeight={600} variant="body2" sx={{ flexGrow: 1 }}>
+                        Tanggal
+                      </Typography>
+                      <Typography fontWeight={700} variant="body2" color="text.primary" sx={{ ml: 'auto', textAlign: 'right', whiteSpace: 'nowrap', pl: 2 }}>
+                        {lastBatch.tanggal || lastBatch.tanggalPanen || '-'}
+                      </Typography>
                     </Stack>
-                  </Box>
+                  </Stack>
                   <Button
                     endIcon={<VisibilityRoundedIcon />}
                     fullWidth
@@ -307,9 +419,10 @@ function FoundationPage({
   }
 
   if (activePage === 'results') {
+    const currentBatch = selectedBatch || (batches && batches.length > 0 ? batches[batches.length - 1] : null)
     return (
       <QCResults
-        batch={selectedBatch}
+        batch={currentBatch}
         onBackToInput={onBackToInput}
         onViewRecap={onViewRecap}
         initialOpenCertificate={openCertModal}
@@ -372,9 +485,13 @@ function App() {
     const handleHash = () => {
       const hash = window.location.hash.replace('#', '')
       if (pages[hash]) {
+        if (hash !== 'scanner') {
+          stopAllActiveCameraStreams()
+        }
         setCurrentView('app')
         setActivePage(hash)
       } else if (hash === '' || hash === 'landing') {
+        stopAllActiveCameraStreams()
         setCurrentView('landing')
       }
     }
@@ -384,6 +501,9 @@ function App() {
 
   const handleOpenApp = (targetPage = 'overview') => {
     const pageToOpen = pages[targetPage] ? targetPage : 'overview'
+    if (pageToOpen !== 'scanner') {
+      stopAllActiveCameraStreams()
+    }
     setCurrentView('app')
     setActivePage(pageToOpen)
     window.location.hash = pageToOpen
@@ -391,6 +511,7 @@ function App() {
   }
 
   const handleBackToLanding = () => {
+    stopAllActiveCameraStreams()
     setCurrentView('landing')
     window.location.hash = ''
     window.scrollTo({ top: 0, behavior: 'smooth' })
@@ -400,6 +521,9 @@ function App() {
     if (pageId === 'landing') {
       handleBackToLanding()
       return
+    }
+    if (pageId !== 'scanner') {
+      stopAllActiveCameraStreams()
     }
     setCurrentView('app')
     setActivePage(pageId)
@@ -416,6 +540,7 @@ function App() {
   }
 
   const handleViewRecap = () => {
+    stopAllActiveCameraStreams()
     setHarvestMessage('')
     setOpenCertModal(false)
     setActivePage('results-list')
@@ -423,6 +548,7 @@ function App() {
   }
 
   const handleSelectBatch = (batch, options = {}) => {
+    stopAllActiveCameraStreams()
     setSelectedBatch(batch)
     setOpenCertModal(Boolean(options?.openCertificate))
     setActivePage('results')
@@ -497,23 +623,25 @@ function App() {
       <Container maxWidth="lg" sx={{ px: { xs: 1.5, sm: 2, md: 3 }, py: { xs: 2.5, sm: 3.5, md: 4.5 } }}>
         <PageHeader eyebrow="Agri-Sort AI / Precision Agriculture" title={page.title} description={page.description} />
         {harvestMessage && <Alert onClose={() => setHarvestMessage('')} severity="success" sx={{ mb: 2 }}>{harvestMessage}</Alert>}
-        <FoundationPage
-          activePage={activePage}
-          batches={batches}
-          onBackToInput={handleBackToInput}
-          onHarvestConfirm={handleHarvestConfirm}
-          onNavigate={handleNavigate}
-          onSelectBatch={handleSelectBatch}
-          onViewRecap={handleViewRecap}
-          selectedBatch={selectedBatch}
-          openCertModal={openCertModal}
-          onDeleteBatch={handleDeleteBatch}
-          onBatchSaved={(newBatch) => {
-            setBatches((current) => [...current, newBatch])
-            setSelectedBatch(newBatch)
-            setHarvestMessage(`Batch ${newBatch.id} (${newBatch.komoditas}) berhasil disimpan ke rekap data panen.`)
-          }}
-        />
+        <ErrorBoundary key={activePage} onReset={() => setActivePage('overview')}>
+          <FoundationPage
+            activePage={activePage}
+            batches={batches}
+            onBackToInput={handleBackToInput}
+            onHarvestConfirm={handleHarvestConfirm}
+            onNavigate={handleNavigate}
+            onSelectBatch={handleSelectBatch}
+            onViewRecap={handleViewRecap}
+            selectedBatch={selectedBatch}
+            openCertModal={openCertModal}
+            onDeleteBatch={handleDeleteBatch}
+            onBatchSaved={(newBatch) => {
+              setBatches((current) => [...current, newBatch])
+              setSelectedBatch(newBatch)
+              setHarvestMessage(`Batch ${newBatch.id} (${newBatch.komoditas}) berhasil disimpan ke rekap data panen.`)
+            }}
+          />
+        </ErrorBoundary>
       </Container>
     </AppShell>
   )

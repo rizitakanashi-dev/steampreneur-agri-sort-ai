@@ -48,7 +48,7 @@ import WarningAmberRoundedIcon from '@mui/icons-material/WarningAmberRounded'
 import ErrorOutlineRoundedIcon from '@mui/icons-material/ErrorOutlineRounded'
 import HelpOutlineRoundedIcon from '@mui/icons-material/HelpOutlineRounded'
 
-import { LiveCameraViewfinder } from './LiveCameraViewfinder.jsx'
+import { LiveCameraViewfinder, stopAllActiveCameraStreams } from './LiveCameraViewfinder.jsx'
 import { ScanCanvasOverlay } from './ScanCanvasOverlay.jsx'
 import { QCPrintCertificate } from './QCPrintCertificate.jsx'
 import { scanHarvestImage, scanMultiAngleHarvestImages } from '../services/scanService.js'
@@ -138,6 +138,20 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm }
   const fileInputRef = useRef(null)
   const fileInputRefFront = useRef(null)
   const fileInputRefBack = useRef(null)
+
+  // Pastikan kamera langsung mati saat unmount (misal pindah ke Dashboard atau menu lain)
+  useEffect(() => {
+    return () => {
+      stopAllActiveCameraStreams()
+    }
+  }, [])
+
+  // Pastikan kamera mati saat berpindah tab ke opsi 'Unggah Berkas'
+  useEffect(() => {
+    if (activeTab !== 0) {
+      stopAllActiveCameraStreams()
+    }
+  }, [activeTab])
 
   // Sesuaikan default confidence saat berganti komoditas
   const handleSelectCommodity = (commId) => {

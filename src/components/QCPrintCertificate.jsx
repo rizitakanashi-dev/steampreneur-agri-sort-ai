@@ -19,7 +19,9 @@ function formatNumber(value) {
 }
 
 function formatRupiah(value) {
-  return typeof value === 'number' && Number.isFinite(value) ? rupiahFormatter.format(value) : 'Rp 0'
+  return typeof value === 'number' && Number.isFinite(value)
+    ? rupiahFormatter.format(value).replace(/^Rp\s*/, 'Rp ')
+    : 'Rp 0'
 }
 
 export function QCPrintCertificate({ batch, showPrintButton = false, onPrint }) {
@@ -46,6 +48,9 @@ export function QCPrintCertificate({ batch, showPrintButton = false, onPrint }) 
         p: { xs: 2.5, sm: 4, md: 5 },
         position: 'relative',
         boxSizing: 'border-box',
+        borderRadius: { xs: 1.5, sm: 2.5 },
+        border: '1.5px solid #036e45',
+        boxShadow: '0 4px 24px rgba(3, 110, 69, 0.08), 0 1px 3px rgba(0,0,0,0.05)',
       }}
     >
       {/* Tombol Cetak jika dirender dalam dialog preview di layar */}
@@ -314,15 +319,15 @@ export function QCPrintCertificate({ batch, showPrintButton = false, onPrint }) 
           sx={{
             mb: 2.5,
             p: 1.25,
-            border: '1.5px solid #059669',
-            bgcolor: '#ecfdf5',
+            border: '1.5px solid #036e45',
+            bgcolor: 'rgba(3, 110, 69, 0.05)',
             borderRadius: 2,
           }}
         >
-          <Typography sx={{ fontSize: 11, fontWeight: 800, color: '#065f46' }}>
+          <Typography sx={{ fontSize: 11, fontWeight: 800, color: '#036e45' }}>
             🛡️ AUDIT ANTI-KECURANGAN LOLOS: MUTU SERAGAM DUA SISI
           </Typography>
-          <Typography sx={{ fontSize: 10, color: '#047857', mt: 0.25 }}>
+          <Typography sx={{ fontSize: 10, color: '#034d32', mt: 0.25 }}>
             Pemeriksaan 2-sisi (Depan &amp; Goyang Nampan) membuktikan sebaran mutu seragam tanpa penyembunyian buah cacat. Indeks Konsistensi Lot: <strong>{cert.occlusion?.consistency_index_percent ?? 98}%</strong>.
           </Typography>
         </Box>
