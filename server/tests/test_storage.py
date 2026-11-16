@@ -218,6 +218,23 @@ class TestSupabaseStorage(unittest.TestCase):
             self.assertEqual(listed["summary"]["total_weight_kg"], 25.5)
             self.assertEqual(listed["summary"]["total_economic_value_idr"], 300000)
 
+    def test_supabase_opaque_secret_key_omits_bearer_header(self):
+        supa_opaque = SupabaseScanStorage(
+            supabase_url="https://example.supabase.co",
+            supabase_key="sb_secret_test_opaque_key",
+            fallback=self.fallback,
+        )
+        captured_headers = {}
+
+        def fake_urlopen(req, timeout=10.0):
+            captured_headers.update({k.lower(): v for k, v in req.headers.items()})
+            return _FakeHttpResponse([])
+
+        with patch("urllib.request.urlopen", side_effect=fake_urlopen):
+            supa_opaque.get_scan_by_id("scan_x")
+            self.assertEqual(captured_headers.get("apikey"), "sb_secret_test_opaque_key")
+            self.assertNotIn("authorization", captured_headers)
+
     def test_supabase_falls_back_to_local_on_network_error(self):
         with patch("urllib.request.urlopen", side_effect=urllib.error.URLError("offline")):
             saved = self.supa.save_scan({"scan_id": "scan_fb_001", "commodity": "Terung"})
