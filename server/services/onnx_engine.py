@@ -173,9 +173,18 @@ class ONNXYOLOModel:
 
         orig_w, orig_h = img.size
 
-        # 1. Pra-pemrosesan: Resize ke 640x640, normalisasi ke 0.0 - 1.0, format NCHW
-        img_resized = img.resize((imgsz, imgsz), Image.BILINEAR)
-        tensor = np.array(img_resized, dtype=np.float32) / 255.0
+        # 1. Pra-pemrosesan Letterbox (menjaga rasio aspek persis seperti Ultralytics YOLO)
+        scale = min(float(imgsz) / max(1, orig_w), float(imgsz) / max(1, orig_h))
+        new_w = max(1, int(round(orig_w * scale)))
+        new_h = max(1, int(round(orig_h * scale)))
+        pad_x = (imgsz - new_w) / 2.0
+        pad_y = (imgsz - new_h) / 2.0
+
+        img_resized = img.resize((new_w, new_h), Image.BILINEAR)
+        canvas = Image.new("RGB", (imgsz, imgsz), (114, 114, 114))
+        canvas.paste(img_resized, (int(round(pad_x)), int(round(pad_y))))
+
+        tensor = np.array(canvas, dtype=np.float32) / 255.0
         # HWC -> CHW -> NCHW
         tensor = np.transpose(tensor, (2, 0, 1))[np.newaxis, ...]
 
@@ -204,14 +213,14 @@ class ONNXYOLOModel:
         f_scores = max_scores[mask]
         f_classes = class_ids[mask]
 
-        # 4. Transformasi Koordinat (Center-XY-WH ke Corner-XYXY pada skala asli)
-        scale_x = orig_w / float(imgsz)
-        scale_y = orig_h / float(imgsz)
+        # 4. Transformasi Koordinat (Unpad Letterbox & Rescale ke dimensi asli)
+        pad_left = float(int(round(pad_x)))
+        pad_top = float(int(round(pad_y)))
 
-        x1 = (f_boxes[:, 0] - f_boxes[:, 2] / 2.0) * scale_x
-        y1 = (f_boxes[:, 1] - f_boxes[:, 3] / 2.0) * scale_y
-        x2 = (f_boxes[:, 0] + f_boxes[:, 2] / 2.0) * scale_x
-        y2 = (f_boxes[:, 1] + f_boxes[:, 3] / 2.0) * scale_y
+        x1 = (f_boxes[:, 0] - f_boxes[:, 2] / 2.0 - pad_left) / scale
+        y1 = (f_boxes[:, 1] - f_boxes[:, 3] / 2.0 - pad_top) / scale
+        x2 = (f_boxes[:, 0] + f_boxes[:, 2] / 2.0 - pad_left) / scale
+        y2 = (f_boxes[:, 1] + f_boxes[:, 3] / 2.0 - pad_top) / scale
 
         # Clamping ke batas citra asli
         x1 = np.clip(x1, 0.0, orig_w)

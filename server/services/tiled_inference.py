@@ -171,13 +171,23 @@ def disambiguate_eggplant_classes(
 
     has_b = [it for it in cluster_items if it["class_name"] in ["Grade B", "Class II"]]
     has_a = [it for it in cluster_items if it["class_name"] in ["Grade A", "Class I", "Extra Class"]]
+    full_healthy = [
+        it for it in cluster_items
+        if it.get("source") == "full" and it["class_name"] in ["Grade A", "Grade B", "Class I", "Extra Class", "Class II"] and it["conf"] >= 0.35
+    ]
 
-    # Aturan Diskriminasi Mutu Terung:
+    # Aturan Diskriminasi Mutu (mencegah false reject dari pantulan cahaya/potongan tile):
     if chosen_cls == "Reject":
+        # Aturan 0: Jika deteksi citra utuh (full image) melihat buah utuh Grade A/B (>= 0.35),
+        # prioritaskan konteks utuh dibanding potongan tile yang rentan halusinasi cacat tepi.
+        if full_healthy and chosen_conf < 0.75:
+            best_full = max(full_healthy, key=lambda x: x["conf"])
+            chosen_cls = best_full["class_name"]
+            chosen_conf = best_full["conf"]
+            disambiguated = True
+            reason = "full_context_preserved"
         # Aturan 1: Jika Grade B (Class II) bersaing ketat dengan Reject (margin selisih < 0.20)
-        # dan skor Reject belum mencapai derajat kepastian tinggi (< 0.55),
-        # alokasikan ke Grade B (Cacat Bentuk / Goresan Fisik Non-Patogenik).
-        if has_b:
+        elif has_b:
             best_b = max(has_b, key=lambda x: x["conf"])
             if best_b["conf"] >= 0.20 and (chosen_conf - best_b["conf"] < 0.20):
                 chosen_cls = best_b["class_name"]
@@ -192,9 +202,9 @@ def disambiguate_eggplant_classes(
                 chosen_conf = best_a["conf"]
                 disambiguated = True
                 reason = "calibrated_grade_a" if is_3grade else ("calibrated_class1" if "Class I" in best_a["class_name"] else "calibrated_extra_class")
-        # Aturan 3: Jika deteksi Reject berdiri sendiri (soliter) namun dengan skor marginal (< 0.38)
-        # pada pemindaian keranjang padat, bayangan kelopak sering memicu false reject.
-        elif is_dense_scan and chosen_conf < 0.38:
+        # Aturan 3: Deteksi Reject soliter dengan skor marginal (< 0.45 pada 3-grade atau < 0.38 pada dense 4-class)
+        # sering dipicu kilau kulit segar / bayangan kelopak.
+        elif (is_3grade and chosen_conf < 0.45) or (is_dense_scan and chosen_conf < 0.38):
             chosen_cls = grade_b_name
             disambiguated = True
             reason = "marginal_solitary_calibrated_grade_b" if is_3grade else "marginal_solitary_calibrated_class2"
@@ -206,11 +216,15 @@ def disambiguate_eggplant_classes(
 def is_watermark_or_text_artifact(box: List[float], image: Image.Image, commodity: str = "") -> bool:
     """
     Mendeteksi apakah box adalah artefak teks / watermark / label kecil
-    atau halusinasi tepi talenan kayu/meja pada latar belakang, bukan buah hortikultura sesungguhnya.
+    atau objek non-komoditas (tangan, meja kayu, dinding abu-abu, benda biru, dll.)
+    yang bukan buah Tomat, Terung, atau Cabai sesungguhnya.
     """
     comm = commodity.lower() if commodity else ""
-    # Hanya aktif untuk komoditas terung
-    if comm and "terung" not in comm and "terong" not in comm and "eggplant" not in comm:
+    is_terung = (not comm) or ("terung" in comm or "terong" in comm or "eggplant" in comm)
+    is_tomat = "tomat" in comm or "tomato" in comm
+    is_cabai = "cabai" in comm or "chili" in comm or "chilli" in comm or "cabe" in comm
+
+    if not (is_terung or is_tomat or is_cabai):
         return False
 
     try:
@@ -229,21 +243,19 @@ def is_watermark_or_text_artifact(box: List[float], image: Image.Image, commodit
         is_small_square = (0.7 <= aspect <= 1.45) and (area <= 0.04 * img_area)
         is_near_bottom = box[1] >= (0.70 * img_h)
 
-        if is_small_square and is_near_bottom:
+        if is_terung and is_small_square and is_near_bottom:
             crop = image.crop((int(box[0]), int(box[1]), int(box[2]), int(box[3]))).convert("RGB").resize((20, 20))
             raw_bytes = crop.tobytes()
             pixels = [(raw_bytes[i], raw_bytes[i + 1], raw_bytes[i + 2]) for i in range(0, len(raw_bytes), 3)]
             has_fruit_color = False
             for r, g, b in pixels:
-                # Warna ungu terung (b > g dan r > g), hijau kelopak, atau hitam pekat
                 if (b > g + 12 and r > g + 8) or (g > r + 14 and g > b + 14) or (max(r, g, b) < 25):
                     has_fruit_color = True
                     break
             if not has_fruit_color:
                 return True
 
-        # 2. Artefak tepi talenan kayu / meja latar belakang:
-        # Periksa inti tengah (central 60% core) dari bounding box
+        # 2. Verifikasi warna inti tengah (central 60% core) untuk menolak objek non-komoditas
         x1 = max(0, int(round(box[0])))
         y1 = max(0, int(round(box[1])))
         x2 = min(img_w, int(round(box[2])))
@@ -259,35 +271,69 @@ def is_watermark_or_text_artifact(box: List[float], image: Image.Image, commodit
             raw_core = core_crop.tobytes()
             core_pixels = [(raw_core[i], raw_core[i + 1], raw_core[i + 2]) for i in range(0, len(raw_core), 3)]
             if len(core_pixels) >= 16:
-                # Abaikan citra sintetis polos (mock test unit) dengan variansi warna ~0
                 r_vals = [p[0] for p in core_pixels]
-                if (max(r_vals) - min(r_vals)) >= 8:
-                    eggplant_cnt = 0
-                    wood_cnt = 0
-                    neutral_cnt = 0
+                g_vals = [p[1] for p in core_pixels]
+                b_vals = [p[2] for p in core_pixels]
+                has_texture = (max(r_vals) - min(r_vals)) >= 8 or (max(g_vals) - min(g_vals)) >= 8 or (max(b_vals) - min(b_vals)) >= 8
+                # Abaikan citra sintetis polos (mock test unit) dengan variansi warna ~0
+                if has_texture:
                     total_px = len(core_pixels)
-                    for r, g, b in core_pixels:
-                        v_max = max(r, g, b)
-                        v_min = min(r, g, b)
-                        sat = (v_max - v_min) / max(1.0, float(v_max))
-                        # Ciri kulit terung: gelap pekat (v_max < 85), ungu/magenta (r > g + 6 dan b >= g - 4 dan r + b > 2*g + 12), atau hijau kelopak (g > r + 8 dan g > b + 12)
-                        is_dark = v_max < 85
-                        is_purple = (r >= g + 5 and b >= g - 6 and (r + b - 2 * g) >= 10)
-                        is_green = (g >= r + 6 and g >= b + 12)
-                        if is_dark or is_purple or is_green:
-                            eggplant_cnt += 1
-                        # Ciri kayu hangat / talenan (oranye-cokelat: r > g > b dengan saturasi menengah-tinggi dan terang)
-                        if v_max >= 85 and sat >= 0.20 and r > g + 12 and g > b + 10 and (r - b) >= 35:
-                            wood_cnt += 1
-                        # Ciri meja batu/abu-abu netral (saturasi rendah dan kecerahan menengah-tinggi)
-                        if v_max >= 80 and sat < 0.16 and abs(r - g) <= 12 and abs(g - b) <= 14:
-                            neutral_cnt += 1
+                    if is_tomat or is_cabai:
+                        fruit_cnt = 0
+                        blue_cnt = 0
+                        neutral_cnt = 0
+                        for r, g, b in core_pixels:
+                            v_max = max(r, g, b)
+                            v_min = min(r, g, b)
+                            sat = (v_max - v_min) / max(1.0, float(v_max))
+                            is_red_orange = (r >= g + 16 and r >= b + 20 and sat >= 0.25)
+                            is_yellow_amber = (r >= b + 28 and g >= b + 22 and sat >= 0.28)
+                            is_green = (g >= r + 8 and g >= b + 8 and sat >= 0.18)
+                            if is_red_orange or is_yellow_amber or is_green:
+                                fruit_cnt += 1
+                            if b >= r + 18 and b >= g + 10:
+                                blue_cnt += 1
+                            if sat < 0.16 and abs(r - g) <= 14 and abs(g - b) <= 14:
+                                neutral_cnt += 1
 
-                    eggplant_ratio = eggplant_cnt / total_px
-                    wood_ratio = wood_cnt / total_px
-                    neutral_ratio = neutral_cnt / total_px
-                    if eggplant_ratio < 0.22 and (wood_ratio >= 0.18 or (wood_ratio + neutral_ratio) >= 0.45):
-                        return True
+                        fruit_ratio = fruit_cnt / total_px
+                        blue_ratio = blue_cnt / total_px
+                        neutral_ratio = neutral_cnt / total_px
+                        if fruit_ratio < 0.18 or blue_ratio >= 0.25 or (neutral_ratio >= 0.55 and fruit_ratio < 0.25):
+                            return True
+                    else:
+                        eggplant_cnt = 0
+                        wood_cnt = 0
+                        neutral_cnt = 0
+                        cyan_blue_cnt = 0
+                        bright_red_cnt = 0
+                        for r, g, b in core_pixels:
+                            v_max = max(r, g, b)
+                            v_min = min(r, g, b)
+                            sat = (v_max - v_min) / max(1.0, float(v_max))
+                            is_dark = v_max < 85
+                            is_purple = (r >= g + 5 and b >= g - 6 and (r + b - 2 * g) >= 10)
+                            is_green = (g >= r + 6 and g >= b + 12)
+                            if is_dark or is_purple or is_green:
+                                eggplant_cnt += 1
+                            if v_max >= 85 and sat >= 0.20 and r > g + 12 and g > b + 10 and (r - b) >= 35:
+                                wood_cnt += 1
+                            if v_max >= 80 and sat < 0.16 and abs(r - g) <= 12 and abs(g - b) <= 14:
+                                neutral_cnt += 1
+                            if b >= r + 28 and b >= g + 18:
+                                cyan_blue_cnt += 1
+                            if r >= b + 45 and r >= g + 45 and sat >= 0.40:
+                                bright_red_cnt += 1
+
+                        eggplant_ratio = eggplant_cnt / total_px
+                        wood_ratio = wood_cnt / total_px
+                        neutral_ratio = neutral_cnt / total_px
+                        if (
+                            (eggplant_ratio < 0.22 and (wood_ratio >= 0.18 or (wood_ratio + neutral_ratio) >= 0.45))
+                            or (cyan_blue_cnt / total_px) >= 0.35
+                            or (bright_red_cnt / total_px) >= 0.45
+                        ):
+                            return True
     except Exception:
         pass
     return False
@@ -370,7 +416,7 @@ def run_sliced_yolo_inference(
             disambiguated = False
             reason = None
 
-            if is_terung and disambiguate_grades:
+            if (is_terung or is_3grade_model) and disambiguate_grades:
                 (
                     chosen_cls,
                     chosen_conf,
@@ -628,7 +674,7 @@ def run_sliced_yolo_inference(
         if is_watermark_or_text_artifact(cl["centroid_box"], image, commodity):
             continue
         items = cl["items"]
-        if is_terung and disambiguate_grades:
+        if (is_terung or is_3grade_model) and disambiguate_grades:
             (
                 chosen_cls,
                 chosen_conf,
