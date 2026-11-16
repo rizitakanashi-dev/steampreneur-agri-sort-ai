@@ -1,17 +1,18 @@
-import { Box, Container, Grid, Stack, Typography } from '@mui/material'
-import ArrowForwardRoundedIcon from '@mui/icons-material/ArrowForwardRounded'
-import QrCodeScannerRoundedIcon from '@mui/icons-material/QrCodeScannerRounded'
+import { Box, Container, Stack, Typography } from '@mui/material'
 import { AGRI_COLORS, AGRI_FONTS } from './tokens.js'
 import { AgriPrimaryButton, DisplayHeadline, LightSecondaryButton } from './AgriPrimitives.jsx'
 import { HeroMockupComposite } from './HeroMockupComposite.jsx'
+import { useHeroConvergenceScroll } from './useScrollChoreography.js'
 
 export function Hero({ onOpenApp }) {
+  const [trackRef, isConverged] = useHeroConvergenceScroll()
+
   const handleScrollToHowItWorks = (e) => {
     e.preventDefault()
     const el = document.querySelector('#cara-kerja')
     if (el) {
       window.scrollTo({
-        top: el.getBoundingClientRect().top + window.pageYOffset - 80,
+        top: el.getBoundingClientRect().top + window.pageYOffset - 72,
         behavior: 'smooth',
       })
     }
@@ -20,81 +21,89 @@ export function Hero({ onOpenApp }) {
   return (
     <Box
       id="beranda"
+      ref={trackRef}
       component="section"
+      style={{
+        '--converge-p': 0,
+        '--scatter-inv': 1,
+        '--shell-opacity': 0,
+      }}
       sx={{
         position: 'relative',
-        minHeight: { md: '90vh' },
-        display: 'flex',
-        alignItems: 'center',
-        pt: { xs: 13, md: 14 },
-        pb: { xs: 10, md: 12 },
-        background: 'radial-gradient(ellipse at 78% 22%, rgba(52, 199, 123, 0.22) 0%, rgba(242, 251, 246, 0) 56%), radial-gradient(circle at 12% 84%, rgba(233, 166, 75, 0.12) 0%, rgba(242, 251, 246, 0) 42%), linear-gradient(180deg, #F4FCF8 0%, #E6F6ED 100%)',
+        pt: { xs: 14, md: 18 },
+        pb: { xs: 8, md: 12 },
+        bgcolor: AGRI_COLORS.paperWhite,
         overflow: 'hidden',
+        background:
+          'radial-gradient(circle at 60% 34%, rgba(251, 225, 209, 0.55) 0%, rgba(227, 243, 234, 0.45) 36%, rgba(255, 255, 255, 0) 68%)',
       }}
     >
-      <Container maxWidth="lg" sx={{ position: 'relative', zIndex: 1, px: { xs: 2.5, sm: 3 } }}>
-        <Grid container spacing={{ xs: 6, md: 5 }} alignItems="center">
-          {/* Left 50% — All-caps weight 800 headline + body + CTA pair */}
-          <Grid size={{ xs: 12, md: 6 }}>
-            <Stack spacing={3}>
-              <DisplayHeadline component="h1" variant="display">
-                SORTIR PANEN CERDAS DENGAN AI KOMPUTER
-              </DisplayHeadline>
+      <Container
+        maxWidth="lg"
+        sx={{
+          maxWidth: '1200px !important',
+          px: { xs: 2.5, sm: 3 },
+          position: 'relative',
+        }}
+      >
+        {/* ZONE 1: Top Centered Editorial Headline + Pill CTA Pair */}
+        <Stack
+          spacing={2.5}
+          alignItems="center"
+          sx={{
+            textAlign: 'center',
+            maxWidth: 560,
+            mx: 'auto',
+            position: 'relative',
+            zIndex: 4,
+            mb: { xs: 5, md: 10 },
+          }}
+        >
+          <DisplayHeadline component="h1" variant="display" sx={{ fontSize: { xs: '2.5rem', sm: '3.5rem', md: '4.15rem' } }}>
+            Analitik panen AI untuk hasil cepat dan{' '}
+            <Box component="span" sx={{ fontStyle: 'italic' }}>
+              tanpa bias
+            </Box>
+          </DisplayHeadline>
 
-              <Typography
-                sx={{
-                  fontFamily: AGRI_FONTS.body,
-                  fontWeight: 400,
-                  fontSize: { xs: '1rem', sm: '1.125rem' },
-                  lineHeight: 1.55,
-                  letterSpacing: '0.01em',
-                  color: AGRI_COLORS.inkMuted,
-                  maxWidth: 440,
-                }}
-              >
-                Deteksi mutu 3-Class (Grade A, Grade B, Reject) untuk Tomat, Terung, dan Cabai dalam hitungan detik, lengkap dengan Smart Pricing BAPANAS &amp; SP2KP Kemendag.
-              </Typography>
+          <Typography
+            sx={{
+              fontFamily: AGRI_FONTS.sans,
+              fontWeight: 400,
+              fontSize: '1.0625rem',
+              lineHeight: 1.45,
+              color: AGRI_COLORS.ink,
+              maxWidth: 510,
+            }}
+          >
+            Agri-Sort AI adalah platform visi komputer YOLO11n 3-Class yang memetakan mutu Tomat, Terung, dan Cabai serta menghitung nilai jual pasar secara presisi.
+          </Typography>
 
-              <Stack
-                direction={{ xs: 'column', sm: 'row' }}
-                spacing={2}
-                alignItems={{ xs: 'stretch', sm: 'center' }}
-                sx={{ pt: 1 }}
-              >
-                <LightSecondaryButton
-                  href="#cara-kerja"
-                  onClick={handleScrollToHowItWorks}
-                  startIcon={<QrCodeScannerRoundedIcon />}
-                >
-                  Lihat Cara Kerja
-                </LightSecondaryButton>
-                <AgriPrimaryButton
-                  onClick={() => onOpenApp('scanner')}
-                  endIcon={<ArrowForwardRoundedIcon />}
-                >
-                  Buka QC Scanner
-                </AgriPrimaryButton>
-              </Stack>
+          <Box
+            sx={{
+              width: '100%',
+              display: 'flex',
+              flexWrap: 'wrap',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 2,
+              pt: 0.5,
+            }}
+          >
+            <AgriPrimaryButton
+              onClick={() => onOpenApp('scanner')}
+              sx={{ bgcolor: AGRI_COLORS.ink, borderColor: AGRI_COLORS.ink }}
+            >
+              Mulai sekarang
+            </AgriPrimaryButton>
+            <LightSecondaryButton href="#cara-kerja" onClick={handleScrollToHowItWorks}>
+              Lihat cara kerja
+            </LightSecondaryButton>
+          </Box>
+        </Stack>
 
-              <Typography
-                sx={{
-                  fontFamily: AGRI_FONTS.body,
-                  fontSize: '0.88rem',
-                  fontWeight: 600,
-                  color: AGRI_COLORS.emerald,
-                  letterSpacing: '0.01em',
-                }}
-              >
-                Tomat · Terung · Cabai · Siap Offline PWA &amp; Sertifikat QC A4
-              </Typography>
-            </Stack>
-          </Grid>
-
-          {/* Right 50% — Agri-Sort UI Composite + Overlapping 3D Harvest Mascots */}
-          <Grid size={{ xs: 12, md: 6 }}>
-            <HeroMockupComposite />
-          </Grid>
-        </Grid>
+        {/* ZONE 2: Dedicated Open Stage Below Hero Text where the 4 Scattered Cards Unite into the Full Dashboard */}
+        <HeroMockupComposite isConverged={isConverged} onOpenApp={onOpenApp} />
       </Container>
     </Box>
   )

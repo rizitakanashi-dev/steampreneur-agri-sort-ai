@@ -1,6 +1,5 @@
 import { Box, Container, Grid, Stack, Typography } from '@mui/material'
-import SpaRoundedIcon from '@mui/icons-material/SpaRounded'
-import { AGRI_COLORS, AGRI_FONTS, AGRI_RADII } from './tokens.js'
+import { AGRI_COLORS, AGRI_FONTS } from './tokens.js'
 import { NAV_LINKS, TEAM_INFO } from './landingData.js'
 
 const APP_MODULES = [
@@ -17,7 +16,7 @@ export function Footer({ onOpenApp }) {
     const el = document.querySelector(href)
     if (el) {
       window.scrollTo({
-        top: el.getBoundingClientRect().top + window.pageYOffset - 80,
+        top: el.getBoundingClientRect().top + window.pageYOffset - 72,
         behavior: 'smooth',
       })
     }
@@ -28,80 +27,30 @@ export function Footer({ onOpenApp }) {
       id="tentang-kami"
       component="footer"
       sx={{
-        bgcolor: AGRI_COLORS.canopyDeep,
-        color: AGRI_COLORS.snow,
-        pt: { xs: 8, md: 10 },
-        pb: { xs: 6, md: 8 },
+        bgcolor: AGRI_COLORS.paperWhite,
+        color: AGRI_COLORS.ink,
+        borderTop: `1px solid ${AGRI_COLORS.hairline}`,
+        py: '80px',
       }}
     >
-      <Container maxWidth="lg" sx={{ px: { xs: 2.5, sm: 3 } }}>
+      <Container maxWidth="lg" sx={{ maxWidth: '1200px !important', px: { xs: 2.5, sm: 3 } }}>
         <Grid container spacing={4}>
-          {/* Brand Column */}
           <Grid size={{ xs: 12, md: 4 }}>
-            <Stack spacing={2}>
-              <Stack direction="row" spacing={1.5} alignItems="center">
-                <Box
-                  sx={{
-                    width: 40,
-                    height: 40,
-                    borderRadius: AGRI_RADII.buttons,
-                    bgcolor: AGRI_COLORS.leafGlow,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    color: AGRI_COLORS.emeraldDark,
-                  }}
-                >
-                  <SpaRoundedIcon sx={{ fontSize: 22 }} />
-                </Box>
-                <Typography
-                  sx={{
-                    fontFamily: AGRI_FONTS.display,
-                    fontWeight: 800,
-                    fontSize: '1.2rem',
-                    letterSpacing: '-0.01em',
-                    textTransform: 'uppercase',
-                  }}
-                >
-                  AGRI-SORT AI
-                </Typography>
-              </Stack>
-
-              <Typography
-                sx={{
-                  fontFamily: AGRI_FONTS.prose,
-                  fontSize: '0.95rem',
-                  lineHeight: 1.5,
-                  color: AGRI_COLORS.sageMist,
-                }}
-              >
+            <Stack spacing={1.5}>
+              <Typography sx={{ fontFamily: AGRI_FONTS.serif, fontWeight: 400, fontSize: '1.5rem', color: AGRI_COLORS.ink }}>
+                Agri-Sort AI
+              </Typography>
+              <Typography sx={{ fontFamily: AGRI_FONTS.sans, fontSize: '0.95rem', lineHeight: 1.5, color: AGRI_COLORS.slateMuted }}>
                 {TEAM_INFO.tagline} — {TEAM_INFO.supportingTagline}
               </Typography>
-
-              <Typography
-                sx={{
-                  fontFamily: AGRI_FONTS.body,
-                  fontSize: '0.88rem',
-                  color: '#9BC8B2',
-                }}
-              >
+              <Typography sx={{ fontFamily: AGRI_FONTS.sans, fontSize: '0.88rem', color: AGRI_COLORS.ashTag }}>
                 {TEAM_INFO.school} · {TEAM_INFO.competition}
               </Typography>
             </Stack>
           </Grid>
 
-          {/* Navigation Column */}
           <Grid size={{ xs: 6, sm: 4, md: 2.5 }}>
-            <Typography
-              sx={{
-                fontFamily: AGRI_FONTS.body,
-                fontWeight: 600,
-                fontSize: '1rem',
-                letterSpacing: '0.013em',
-                color: AGRI_COLORS.snow,
-                mb: 2,
-              }}
-            >
+            <Typography sx={{ fontFamily: AGRI_FONTS.sans, fontWeight: 500, fontSize: '0.95rem', color: AGRI_COLORS.ink, mb: 1.5 }}>
               Navigasi
             </Typography>
             <Stack spacing={1}>
@@ -112,12 +61,11 @@ export function Footer({ onOpenApp }) {
                   href={link.href}
                   onClick={(e) => handleNavClick(e, link.href)}
                   sx={{
-                    fontFamily: AGRI_FONTS.prose,
-                    fontSize: '1rem',
-                    lineHeight: 1.5,
-                    color: AGRI_COLORS.sageMist,
+                    fontFamily: AGRI_FONTS.sans,
+                    fontSize: '0.94rem',
+                    color: AGRI_COLORS.slateMuted,
                     textDecoration: 'none',
-                    '&:hover': { color: AGRI_COLORS.snow },
+                    '&:hover': { color: AGRI_COLORS.ink, textDecoration: 'underline', textUnderlineOffset: '4px' },
                   }}
                 >
                   {link.label}
@@ -126,18 +74,8 @@ export function Footer({ onOpenApp }) {
             </Stack>
           </Grid>
 
-          {/* Modules Column */}
           <Grid size={{ xs: 6, sm: 4, md: 2.5 }}>
-            <Typography
-              sx={{
-                fontFamily: AGRI_FONTS.body,
-                fontWeight: 600,
-                fontSize: '1rem',
-                letterSpacing: '0.013em',
-                color: AGRI_COLORS.snow,
-                mb: 2,
-              }}
-            >
+            <Typography sx={{ fontFamily: AGRI_FONTS.sans, fontWeight: 500, fontSize: '0.95rem', color: AGRI_COLORS.ink, mb: 1.5 }}>
               Modul Aplikasi
             </Typography>
             <Stack spacing={1}>
@@ -152,11 +90,10 @@ export function Footer({ onOpenApp }) {
                     bgcolor: 'transparent',
                     p: 0,
                     cursor: 'pointer',
-                    fontFamily: AGRI_FONTS.prose,
-                    fontSize: '1rem',
-                    lineHeight: 1.5,
-                    color: AGRI_COLORS.sageMist,
-                    '&:hover': { color: AGRI_COLORS.snow },
+                    fontFamily: AGRI_FONTS.sans,
+                    fontSize: '0.94rem',
+                    color: AGRI_COLORS.slateMuted,
+                    '&:hover': { color: AGRI_COLORS.ink, textDecoration: 'underline', textUnderlineOffset: '4px' },
                   }}
                 >
                   {mod.label}
@@ -165,32 +102,22 @@ export function Footer({ onOpenApp }) {
             </Stack>
           </Grid>
 
-          {/* Team Column */}
           <Grid size={{ xs: 12, sm: 4, md: 3 }}>
-            <Typography
-              sx={{
-                fontFamily: AGRI_FONTS.body,
-                fontWeight: 600,
-                fontSize: '1rem',
-                letterSpacing: '0.013em',
-                color: AGRI_COLORS.snow,
-                mb: 2,
-              }}
-            >
+            <Typography sx={{ fontFamily: AGRI_FONTS.sans, fontWeight: 500, fontSize: '0.95rem', color: AGRI_COLORS.ink, mb: 1.5 }}>
               Tim Pengembang
             </Typography>
             <Stack spacing={1}>
               {TEAM_INFO.members.map((member) => (
                 <Box key={member.name}>
-                  <Typography sx={{ fontFamily: AGRI_FONTS.prose, fontSize: '0.96rem', color: AGRI_COLORS.snow }}>
+                  <Typography sx={{ fontFamily: AGRI_FONTS.sans, fontSize: '0.92rem', color: AGRI_COLORS.ink }}>
                     {member.name}
                   </Typography>
-                  <Typography sx={{ fontFamily: AGRI_FONTS.prose, fontSize: '0.84rem', color: AGRI_COLORS.sageMist }}>
+                  <Typography sx={{ fontFamily: AGRI_FONTS.sans, fontSize: '0.82rem', color: AGRI_COLORS.slateMuted }}>
                     {member.role}
                   </Typography>
                 </Box>
               ))}
-              <Typography sx={{ fontFamily: AGRI_FONTS.prose, fontSize: '0.86rem', color: '#9BC8B2', pt: 0.5 }}>
+              <Typography sx={{ fontFamily: AGRI_FONTS.sans, fontSize: '0.84rem', color: AGRI_COLORS.ashTag, pt: 0.5 }}>
                 Pembimbing: {TEAM_INFO.mentor}
               </Typography>
             </Stack>

@@ -1,88 +1,74 @@
 import { Box, Container, Grid, Stack, Typography } from '@mui/material'
-import CloseRoundedIcon from '@mui/icons-material/CloseRounded'
-import CheckRoundedIcon from '@mui/icons-material/CheckRounded'
-import { AGRI_COLORS, AGRI_FONTS, AGRI_RADII } from './tokens.js'
+import { AGRI_COLORS, AGRI_FONTS } from './tokens.js'
 import { PROBLEM_VS_SOLUTION } from './landingData.js'
-import { DisplayHeadline } from './AgriPrimitives.jsx'
+import {
+  DisplayHeadline,
+  EditorialNeutralCard,
+  EditorialTextLink,
+  GhostCategoryTag,
+} from './AgriPrimitives.jsx'
 
-export function ProblemSolution() {
+export function ProblemSolution({ onOpenApp }) {
   return (
     <Box
       component="section"
       sx={{
-        py: { xs: 10, md: 13 },
-        bgcolor: AGRI_COLORS.mintBg,
+        py: '80px',
+        bgcolor: AGRI_COLORS.fogSurface,
       }}
     >
-      <Container maxWidth="lg" sx={{ px: { xs: 2.5, sm: 3 } }}>
-        <Stack spacing={2} sx={{ maxWidth: 680, mb: { xs: 5, md: 7 } }}>
-          <DisplayHeadline variant="section">
-            AKHIRI TAKSIRAN KASAR DI KEBUN
+      <Container maxWidth="lg" sx={{ maxWidth: '1200px !important', px: { xs: 2.5, sm: 3 } }}>
+        <Stack spacing={2} sx={{ maxWidth: 740, mb: 6 }}>
+          <DisplayHeadline variant="hero">
+            Mengganti taksiran kasar dengan{' '}
+            <Box component="span" sx={{ fontStyle: 'italic' }}>
+              data mutu
+            </Box>{' '}
+            yang terukur.
           </DisplayHeadline>
           <Typography
             sx={{
-              fontFamily: AGRI_FONTS.body,
-              fontSize: { xs: '1rem', sm: '1.125rem' },
-              lineHeight: 1.55,
-              color: AGRI_COLORS.inkMuted,
+              fontFamily: AGRI_FONTS.sans,
+              fontWeight: 430,
+              fontSize: '1.125rem',
+              lineHeight: 1.45,
+              color: AGRI_COLORS.slateMuted,
+              maxWidth: 560,
             }}
           >
-            Ubah proses sortir subjektif menjadi pembagian mutu dan estimasi harga yang terukur di setiap keranjang.
+            Setiap keranjang panen dinilai berdasarkan komposisi mutu riil, bukan perkiraan visual yang subjektif.
           </Typography>
         </Stack>
 
         <Grid container spacing={3}>
-          {PROBLEM_VS_SOLUTION.map((item) => (
+          {PROBLEM_VS_SOLUTION.map((item, idx) => (
             <Grid key={item.problemTitle} size={{ xs: 12, md: 4 }}>
-              <Stack
-                spacing={2}
-                sx={{
-                  height: '100%',
-                  p: 3,
-                  borderRadius: AGRI_RADII.cards,
-                  bgcolor: AGRI_COLORS.snow,
-                  border: `1px solid ${AGRI_COLORS.mintBorder}`,
-                }}
-              >
-                <Box
-                  sx={{
-                    p: 2,
-                    borderRadius: AGRI_RADII.buttons,
-                    bgcolor: '#FDF3F2',
-                    border: '1px solid #F3CECB',
-                  }}
-                >
-                  <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 0.75 }}>
-                    <CloseRoundedIcon sx={{ fontSize: 18, color: AGRI_COLORS.crimsonMuted }} />
-                    <Typography sx={{ fontFamily: AGRI_FONTS.body, fontWeight: 700, fontSize: '0.92rem', color: '#78221D' }}>
-                      {item.problemTitle}
-                    </Typography>
-                  </Stack>
-                  <Typography sx={{ fontFamily: AGRI_FONTS.prose, fontSize: '0.86rem', lineHeight: 1.5, color: '#6E3C39' }}>
-                    {item.problemDetail}
-                  </Typography>
-                </Box>
-
-                <Box
-                  sx={{
-                    flexGrow: 1,
-                    p: 2,
-                    borderRadius: AGRI_RADII.buttons,
-                    bgcolor: AGRI_COLORS.mintSoft,
-                    border: `1px solid ${AGRI_COLORS.mintBorder}`,
-                  }}
-                >
-                  <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 0.75 }}>
-                    <CheckRoundedIcon sx={{ fontSize: 18, color: AGRI_COLORS.emerald }} />
-                    <Typography sx={{ fontFamily: AGRI_FONTS.body, fontWeight: 700, fontSize: '0.92rem', color: AGRI_COLORS.ink }}>
+              <EditorialNeutralCard sx={{ height: '100%', p: '32px 24px' }}>
+                <Stack spacing={2} sx={{ height: '100%', justifyContent: 'space-between' }}>
+                  <Box>
+                    <GhostCategoryTag sx={{ mb: 1.5 }}>
+                      Tantangan 0{idx + 1} · Sortasi Lapangan
+                    </GhostCategoryTag>
+                    <Typography sx={{ fontFamily: AGRI_FONTS.sans, fontSize: '1.25rem', fontWeight: 500, color: AGRI_COLORS.ink, mb: 1 }}>
                       {item.solutionTitle}
                     </Typography>
-                  </Stack>
-                  <Typography sx={{ fontFamily: AGRI_FONTS.prose, fontSize: '0.86rem', lineHeight: 1.5, color: AGRI_COLORS.inkMuted }}>
-                    {item.solutionDetail}
-                  </Typography>
-                </Box>
-              </Stack>
+                    <Typography sx={{ fontFamily: AGRI_FONTS.sans, fontSize: '1rem', lineHeight: 1.5, color: AGRI_COLORS.ink, mb: 1.5 }}>
+                      {item.solutionDetail}
+                    </Typography>
+                    <Typography sx={{ fontFamily: AGRI_FONTS.sans, fontSize: '0.9rem', lineHeight: 1.5, color: AGRI_COLORS.slateMuted }}>
+                      Mengatasi: {item.problemDetail.toLowerCase()}
+                    </Typography>
+                  </Box>
+
+                  {onOpenApp && (
+                    <Box>
+                      <EditorialTextLink onClick={() => onOpenApp('scanner')}>
+                        Uji di scanner →
+                      </EditorialTextLink>
+                    </Box>
+                  )}
+                </Stack>
+              </EditorialNeutralCard>
             </Grid>
           ))}
         </Grid>

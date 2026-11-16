@@ -1,8 +1,9 @@
 import { Box, Button, Typography } from '@mui/material'
-import { AGRI_COLORS, AGRI_FONTS, AGRI_RADII } from './tokens.js'
+import { AGRI_COLORS, AGRI_FONTS, AGRI_RADII, AGRI_SHADOWS } from './tokens.js'
+import { useStageReveal } from './useScrollChoreography.js'
 
 /**
- * Primary CTA — Solid Agri-Sort AI Emerald button.
+ * Primary Pill CTA — Filled lozenge (#036E45 Agri Emerald or #17191C Ink, 9999px radius, no shadow).
  */
 export function AgriPrimaryButton({ children, sx = {}, ...props }) {
   return (
@@ -11,19 +12,21 @@ export function AgriPrimaryButton({ children, sx = {}, ...props }) {
       variant="contained"
       sx={{
         bgcolor: AGRI_COLORS.emerald,
-        color: AGRI_COLORS.snow,
+        color: AGRI_COLORS.paperWhite,
+        border: `1px solid ${AGRI_COLORS.emerald}`,
         borderRadius: AGRI_RADII.buttons,
-        px: '24px',
-        py: '19.5px',
-        fontFamily: AGRI_FONTS.body,
-        fontWeight: 600,
+        px: '22px',
+        py: '10px',
+        minHeight: 44,
+        fontFamily: AGRI_FONTS.sans,
+        fontWeight: 450,
         fontSize: '1rem',
         lineHeight: 1.2,
-        letterSpacing: '0.015em',
         textTransform: 'none',
         transition: 'background-color 0.2s ease, transform 0.2s ease',
         '&:hover': {
-          bgcolor: AGRI_COLORS.emeraldHover,
+          bgcolor: AGRI_COLORS.deepEmerald,
+          borderColor: AGRI_COLORS.deepEmerald,
           transform: 'translateY(-1px)',
         },
         ...sx,
@@ -36,29 +39,30 @@ export function AgriPrimaryButton({ children, sx = {}, ...props }) {
 }
 
 /**
- * Secondary CTA — Crisp white button with emerald border paired with AgriPrimaryButton.
+ * Ghost Pill Secondary CTA — Transparent fill with 1px ink outline, matched pill geometry.
  */
 export function LightSecondaryButton({ children, sx = {}, ...props }) {
   return (
     <Button
       disableElevation
-      variant="contained"
+      variant="outlined"
       sx={{
-        bgcolor: AGRI_COLORS.snow,
-        color: AGRI_COLORS.emeraldDark,
-        border: `1.5px solid ${AGRI_COLORS.emerald}`,
+        bgcolor: 'transparent',
+        color: AGRI_COLORS.ink,
+        border: `1px solid ${AGRI_COLORS.ink}`,
         borderRadius: AGRI_RADII.buttons,
-        px: '24px',
-        py: '15px',
-        fontFamily: AGRI_FONTS.body,
-        fontWeight: 600,
+        px: '22px',
+        py: '10px',
+        minHeight: 44,
+        fontFamily: AGRI_FONTS.sans,
+        fontWeight: 450,
         fontSize: '1rem',
         lineHeight: 1.2,
-        letterSpacing: '0.013em',
         textTransform: 'none',
         transition: 'background-color 0.2s ease, transform 0.2s ease',
         '&:hover': {
-          bgcolor: AGRI_COLORS.mintSoft,
+          bgcolor: AGRI_COLORS.mistSurface,
+          borderColor: AGRI_COLORS.ink,
           transform: 'translateY(-1px)',
         },
         ...sx,
@@ -71,124 +75,39 @@ export function LightSecondaryButton({ children, sx = {}, ...props }) {
 }
 
 /**
- * Header CTA Button — Solid emerald pill trigger on the mint-white navbar.
+ * Header Pill Action — Quiet filled emerald lozenge in top navigation.
  */
 export function HeaderActionButton({ children, sx = {}, ...props }) {
   return (
-    <Button
-      disableElevation
-      sx={{
-        bgcolor: AGRI_COLORS.emerald,
-        color: AGRI_COLORS.snow,
-        borderRadius: AGRI_RADII.buttonsLarge,
-        px: '18px',
-        py: '10px',
-        fontFamily: AGRI_FONTS.body,
-        fontWeight: 600,
-        fontSize: '0.9rem',
-        lineHeight: 1.2,
-        letterSpacing: '0.013em',
-        textTransform: 'none',
-        transition: 'background-color 0.2s ease, transform 0.2s ease',
-        '&:hover': {
-          bgcolor: AGRI_COLORS.emeraldHover,
-          transform: 'translateY(-1px)',
-        },
-        ...sx,
-      }}
-      {...props}
-    >
+    <AgriPrimaryButton sx={{ py: '8px', px: '20px', minHeight: 38, fontSize: '0.9375rem', ...sx }} {...props}>
       {children}
-    </Button>
+    </AgriPrimaryButton>
   )
 }
 
 /**
- * Ghost Outlined Button — Clean white-mint switcher button on light sections.
+ * Inline Text Link with trailing arrow glyph (→), underlined only on hover.
  */
-export function GhostOutlineButton({ children, sx = {}, ...props }) {
-  return (
-    <Button
-      sx={{
-        bgcolor: AGRI_COLORS.snow,
-        color: AGRI_COLORS.ink,
-        border: `1px solid ${AGRI_COLORS.mintBorder}`,
-        borderRadius: AGRI_RADII.buttons,
-        px: '16px',
-        py: '10px',
-        fontFamily: AGRI_FONTS.body,
-        fontWeight: 600,
-        fontSize: '0.9375rem',
-        textTransform: 'none',
-        transition: 'background-color 0.2s ease, border-color 0.2s ease',
-        '&:hover': {
-          bgcolor: AGRI_COLORS.mintSoft,
-          borderColor: AGRI_COLORS.emerald,
-        },
-        ...sx,
-      }}
-      {...props}
-    >
-      {children}
-    </Button>
-  )
-}
-
-/**
- * Bold Display Headline — All-caps weight 800 heading (deep forest ink on mint, white on gradient stages).
- */
-export function DisplayHeadline({
-  children,
-  component = 'h2',
-  variant = 'section',
-  onDark = false,
-  sx = {},
-}) {
-  const sizeMap = {
-    display: { xs: '2.35rem', sm: '3.15rem', md: '3.75rem' },
-    hero: { xs: '2.2rem', sm: '2.95rem', md: '3.4rem' },
-    section: { xs: '1.9rem', sm: '2.45rem', md: '2.95rem' },
-    subsection: { xs: '1.5rem', sm: '1.9rem', md: '2.2rem' },
-  }
-
-  const lineHeightMap = {
-    display: 0.94,
-    hero: 0.96,
-    section: 1.0,
-    subsection: 1.16,
-  }
-
-  return (
-    <Typography
-      component={component}
-      sx={{
-        fontFamily: AGRI_FONTS.display,
-        fontWeight: 800,
-        fontSize: sizeMap[variant] || sizeMap.section,
-        lineHeight: lineHeightMap[variant] || 1.0,
-        letterSpacing: '-0.01em',
-        textTransform: 'uppercase',
-        color: onDark ? AGRI_COLORS.snow : AGRI_COLORS.ink,
-        ...sx,
-      }}
-    >
-      {children}
-    </Typography>
-  )
-}
-
-/**
- * Self-contained harvest-themed gradient stage card (24px radius, zero shadow).
- */
-export function FeatureStageCard({ gradient, children, sx = {} }) {
+export function EditorialTextLink({ children, onClick, href, sx = {} }) {
   return (
     <Box
+      component={href ? 'a' : 'button'}
+      href={href}
+      onClick={onClick}
       sx={{
-        position: 'relative',
-        background: gradient,
-        borderRadius: AGRI_RADII.featurePanels,
-        p: { xs: 3.5, sm: 5, md: 6 },
-        overflow: 'visible',
+        display: 'inline-flex',
+        alignItems: 'center',
+        border: 'none',
+        bgcolor: 'transparent',
+        p: 0,
+        py: '12px',
+        cursor: 'pointer',
+        fontFamily: AGRI_FONTS.sans,
+        fontWeight: 400,
+        fontSize: '1rem',
+        color: AGRI_COLORS.ink,
+        textDecoration: 'none',
+        '&:hover': { textDecoration: 'underline', textUnderlineOffset: '4px' },
         ...sx,
       }}
     >
@@ -198,70 +117,262 @@ export function FeatureStageCard({ gradient, children, sx = {} }) {
 }
 
 /**
- * High-contrast dark screen bezel for real product UI mockups inside light mint & gradient stages.
+ * Ghost-like Typographic Category Label (14px weight 400 #8C9690, no background, no border).
  */
-export function ProductDeviceFrame({ title, statusLabel = 'AI READY', children, sx = {} }) {
+export function GhostCategoryTag({ children, sx = {} }) {
   return (
-    <Box
+    <Typography
       sx={{
-        bgcolor: AGRI_COLORS.appChrome,
-        borderRadius: AGRI_RADII.cards,
-        border: '1px solid rgba(11, 59, 40, 0.2)',
-        overflow: 'hidden',
+        fontFamily: AGRI_FONTS.sans,
+        fontSize: '0.875rem',
+        fontWeight: 400,
+        lineHeight: 1.4,
+        color: AGRI_COLORS.ashTag,
         ...sx,
       }}
     >
-      <Box
-        sx={{
-          px: 2,
-          py: 1.25,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          borderBottom: '1px solid rgba(210, 237, 224, 0.14)',
-        }}
-      >
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <Box sx={{ width: 10, height: 10, borderRadius: '50%', bgcolor: AGRI_COLORS.crimson }} />
-          <Box sx={{ width: 10, height: 10, borderRadius: '50%', bgcolor: AGRI_COLORS.gold }} />
-          <Box sx={{ width: 10, height: 10, borderRadius: '50%', bgcolor: AGRI_COLORS.leafGlow }} />
-          {title && (
+      {children}
+    </Typography>
+  )
+}
+
+/**
+ * Circular Avatar Bubble (40px diameter) with 2-letter monogram + directional cursor pointer.
+ */
+export function AvatarPresenceBubble({ initials = 'FA', bg = '#E3F3EA', color = '#034D32', label }) {
+  return (
+    <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 1 }}>
+      <Box sx={{ position: 'relative', display: 'inline-flex' }}>
+        <Box
+          sx={{
+            width: 38,
+            height: 38,
+            borderRadius: AGRI_RADII.buttons,
+            bgcolor: bg,
+            color,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontFamily: AGRI_FONTS.sans,
+            fontWeight: 500,
+            fontSize: '0.78rem',
+            letterSpacing: '-0.01em',
+          }}
+        >
+          {initials}
+        </Box>
+        <svg
+          width="13"
+          height="13"
+          viewBox="0 0 13 13"
+          aria-hidden="true"
+          style={{ position: 'absolute', bottom: -3, right: -4 }}
+        >
+          <polygon points="1,1 12,5 7,7 5,12" fill={color} />
+        </svg>
+      </Box>
+      {label && (
+        <Typography sx={{ fontFamily: AGRI_FONTS.sans, fontSize: '0.76rem', color: AGRI_COLORS.slateMuted }}>
+          {label}
+        </Typography>
+      )}
+    </Box>
+  )
+}
+
+/**
+ * Unselected Tab Pill Button (Ghost style).
+ */
+export function GhostOutlineButton({ children, sx = {}, ...props }) {
+  return (
+    <Button
+      sx={{
+        bgcolor: 'transparent',
+        color: AGRI_COLORS.ink,
+        border: `1px solid ${AGRI_COLORS.hairline}`,
+        borderRadius: AGRI_RADII.buttons,
+        px: '20px',
+        py: '9px',
+        minHeight: 40,
+        fontFamily: AGRI_FONTS.sans,
+        fontWeight: 430,
+        fontSize: '0.9375rem',
+        textTransform: 'none',
+        '&:hover': {
+          bgcolor: AGRI_COLORS.mistSurface,
+          borderColor: AGRI_COLORS.ink,
+        },
+        ...sx,
+      }}
+      {...props}
+    >
+      {children}
+    </Button>
+  )
+}
+
+/**
+ * Editorial Serif Display Headline — Weight 400 regular across 90px / 64px / 44px scales.
+ */
+export function DisplayHeadline({
+  children,
+  component = 'h2',
+  variant = 'section',
+  sx = {},
+}) {
+  const sizeMap = {
+    display: { xs: '2.75rem', sm: '4.1rem', md: '5.5rem' }, // up to 88-90px
+    hero: { xs: '2.25rem', sm: '3.25rem', md: '4rem' },     // 64px
+    section: { xs: '1.95rem', sm: '2.45rem', md: '2.75rem' }, // 44px
+    subsection: { xs: '1.4rem', sm: '1.55rem', md: '1.625rem' }, // 26px
+  }
+
+  const trackingMap = {
+    display: '-2.25px',
+    hero: '-0.96px',
+    section: '-0.66px',
+    subsection: '-0.23px',
+  }
+
+  const lineHeightMap = {
+    display: 1.12,
+    hero: 1.22,
+    section: 1.26,
+    subsection: 1.18,
+  }
+
+  return (
+    <Typography
+      component={component}
+      sx={{
+        fontFamily: variant === 'subsection' ? AGRI_FONTS.sans : AGRI_FONTS.serif,
+        fontWeight: variant === 'subsection' ? 450 : 400,
+        fontSize: sizeMap[variant] || sizeMap.section,
+        lineHeight: lineHeightMap[variant] || 1.26,
+        letterSpacing: trackingMap[variant] || '-0.66px',
+        color: AGRI_COLORS.ink,
+        ...sx,
+      }}
+    >
+      {children}
+    </Typography>
+  )
+}
+
+/**
+ * Flat Neutral Card (#F2F5F3 Mist Surface, 24px radius, no shadow, no border) with scroll reveal.
+ */
+export function EditorialNeutralCard({ children, sx = {} }) {
+  const [ref, revealed] = useStageReveal()
+  return (
+    <Box
+      ref={ref}
+      className="agri-stage-reveal"
+      data-revealed={revealed}
+      sx={{
+        bgcolor: AGRI_COLORS.mistSurface,
+        borderRadius: AGRI_RADII.cards,
+        p: { xs: 3, sm: 4 },
+        ...sx,
+      }}
+    >
+      {children}
+    </Box>
+  )
+}
+
+/**
+ * Rare Editorial Accent Card (#E3F3EA Blush-Mint surface, #034D32 Deep Emerald ink, 24px radius, no shadow).
+ */
+export function EditorialAccentCard({ children, sx = {} }) {
+  const [ref, revealed] = useStageReveal()
+  return (
+    <Box
+      ref={ref}
+      className="agri-stage-reveal"
+      data-revealed={revealed}
+      sx={{
+        bgcolor: AGRI_COLORS.blushMint,
+        color: AGRI_COLORS.deepEmerald,
+        borderRadius: AGRI_RADII.cards,
+        p: { xs: 3.5, sm: 5 },
+        ...sx,
+      }}
+    >
+      {children}
+    </Box>
+  )
+}
+
+/**
+ * Floating Product Artifact Card — White #FFFFFF surface, 20px radius, 10% subtle shadow,
+ * and optional scroll-linked parallax factor (`parallaxFactor`).
+ */
+export function FloatingArtifactCard({
+  title,
+  statusLabel,
+  parallaxFactor = 0,
+  children,
+  sx = {},
+}) {
+  const [ref, revealed] = useStageReveal()
+  return (
+    <Box
+      ref={ref}
+      className="agri-stage-reveal"
+      data-revealed={revealed}
+      sx={{
+        bgcolor: AGRI_COLORS.paperWhite,
+        borderRadius: AGRI_RADII.elevatedCards,
+        boxShadow: AGRI_SHADOWS.artifact,
+        p: { xs: '14px 16px', sm: '16px 20px 14px 16px' },
+        ...(parallaxFactor !== 0
+          ? {
+              transform: {
+                md: `translate3d(0, calc(var(--agri-scroll-y, 0px) * ${parallaxFactor}), 0)`,
+              },
+              transition: 'transform 0.15s ease-out, box-shadow 0.25s ease',
+            }
+          : {}),
+        ...sx,
+      }}
+    >
+      {(title || statusLabel) && (
+        <Box
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            pb: 1.25,
+            mb: 1.5,
+            borderBottom: `1px solid ${AGRI_COLORS.hairline}`,
+          }}
+        >
+          <Typography
+            sx={{
+              fontFamily: AGRI_FONTS.sans,
+              fontSize: '0.84rem',
+              fontWeight: 480,
+              color: AGRI_COLORS.ink,
+            }}
+          >
+            {title}
+          </Typography>
+          {statusLabel && (
             <Typography
               sx={{
-                ml: 1,
-                fontFamily: AGRI_FONTS.ui,
-                fontSize: '0.78rem',
-                fontWeight: 500,
-                color: AGRI_COLORS.sageMist,
+                fontFamily: AGRI_FONTS.sans,
+                fontSize: '0.75rem',
+                fontWeight: 450,
+                color: AGRI_COLORS.emerald,
               }}
             >
-              {title}
+              {statusLabel}
             </Typography>
           )}
         </Box>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
-          <Box
-            sx={{
-              width: 8,
-              height: 8,
-              borderRadius: '50%',
-              bgcolor: AGRI_COLORS.leafGlow,
-            }}
-          />
-          <Typography
-            sx={{
-              fontFamily: AGRI_FONTS.ui,
-              fontSize: '0.7rem',
-              fontWeight: 600,
-              color: AGRI_COLORS.leafGlow,
-              letterSpacing: '0.04em',
-            }}
-          >
-            {statusLabel}
-          </Typography>
-        </Box>
-      </Box>
-      <Box sx={{ bgcolor: AGRI_COLORS.appSurface }}>{children}</Box>
+      )}
+      {children}
     </Box>
   )
 }

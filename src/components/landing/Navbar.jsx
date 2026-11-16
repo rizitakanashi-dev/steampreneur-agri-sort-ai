@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
   AppBar,
   Box,
@@ -18,14 +18,21 @@ import CloseRoundedIcon from '@mui/icons-material/CloseRounded'
 import SpaRoundedIcon from '@mui/icons-material/SpaRounded'
 import { AGRI_COLORS, AGRI_FONTS, AGRI_RADII } from './tokens.js'
 import { NAV_LINKS } from './landingData.js'
-import { AgriPrimaryButton, HeaderActionButton } from './AgriPrimitives.jsx'
+import { AgriPrimaryButton, EditorialTextLink, HeaderActionButton } from './AgriPrimitives.jsx'
+import { useActiveSection } from './useScrollChoreography.js'
 
 export function Navbar({ onOpenApp }) {
   const [scrolled, setScrolled] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
 
+  const sectionIds = useMemo(
+    () => NAV_LINKS.map((l) => l.href.replace('#', '')),
+    []
+  )
+  const activeSection = useActiveSection(sectionIds)
+
   useEffect(() => {
-    const handleScroll = () => setScrolled(window.scrollY > 20)
+    const handleScroll = () => setScrolled(window.scrollY > 24)
     window.addEventListener('scroll', handleScroll, { passive: true })
     return () => window.removeEventListener('scroll', handleScroll)
   }, [])
@@ -35,7 +42,7 @@ export function Navbar({ onOpenApp }) {
     setMobileOpen(false)
     const element = document.querySelector(href)
     if (element) {
-      const offsetPosition = element.getBoundingClientRect().top + window.pageYOffset - 80
+      const offsetPosition = element.getBoundingClientRect().top + window.pageYOffset - 72
       window.scrollTo({ top: offsetPosition, behavior: 'smooth' })
     }
   }
@@ -46,15 +53,31 @@ export function Navbar({ onOpenApp }) {
         elevation={0}
         position="fixed"
         sx={{
-          bgcolor: scrolled ? 'rgba(242, 251, 246, 0.92)' : 'rgba(242, 251, 246, 0.72)',
-          backdropFilter: 'blur(16px)',
-          borderBottom: '1px solid',
-          borderColor: scrolled ? AGRI_COLORS.mintBorder : 'rgba(197, 227, 211, 0.5)',
-          transition: 'background-color 0.25s ease, border-color 0.25s ease',
+          bgcolor: scrolled ? 'rgba(255, 255, 255, 0.9)' : 'transparent',
+          backdropFilter: scrolled ? 'blur(12px)' : 'none',
+          borderBottom: 'none',
+          boxShadow: 'none',
+          transition: 'background-color 0.25s ease',
         }}
       >
-        <Container maxWidth="lg" sx={{ px: { xs: 2, sm: 3 } }}>
-          <Toolbar disableGutters sx={{ justifyContent: 'space-between', minHeight: { xs: 68, md: 76 } }}>
+        {/* Reading Progress Hairline */}
+        <Box
+          aria-hidden="true"
+          sx={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            height: '2px',
+            width: '100%',
+            bgcolor: AGRI_COLORS.emerald,
+            transformOrigin: 'left center',
+            transform: 'scaleX(var(--agri-scroll-scale, 0))',
+            transition: 'transform 0.12s linear',
+          }}
+        />
+
+        <Container maxWidth="lg" sx={{ maxWidth: '1200px !important', px: { xs: 2.5, sm: 3 } }}>
+          <Toolbar disableGutters sx={{ justifyContent: 'space-between', minHeight: 72 }}>
             {/* Wordmark Left */}
             <Box
               component="a"
@@ -64,60 +87,71 @@ export function Navbar({ onOpenApp }) {
             >
               <Box
                 sx={{
-                  width: 38,
-                  height: 38,
+                  width: 30,
+                  height: 30,
                   borderRadius: AGRI_RADII.buttons,
-                  bgcolor: AGRI_COLORS.emerald,
+                  bgcolor: AGRI_COLORS.ink,
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  color: AGRI_COLORS.snow,
+                  color: AGRI_COLORS.paperWhite,
                 }}
               >
-                <SpaRoundedIcon sx={{ fontSize: 22 }} />
+                <SpaRoundedIcon sx={{ fontSize: 17 }} />
               </Box>
               <Typography
                 sx={{
-                  fontFamily: AGRI_FONTS.display,
-                  fontWeight: 800,
-                  fontSize: '1.15rem',
-                  letterSpacing: '-0.01em',
+                  fontFamily: AGRI_FONTS.serif,
+                  fontWeight: 400,
+                  fontSize: '1.35rem',
+                  letterSpacing: '-0.02em',
                   color: AGRI_COLORS.ink,
-                  textTransform: 'uppercase',
                 }}
               >
-                AGRI-SORT AI
+                Agri-Sort AI
               </Typography>
             </Box>
 
-            {/* Centered Text Links */}
-            <Stack direction="row" spacing={1} sx={{ display: { xs: 'none', md: 'flex' } }}>
-              {NAV_LINKS.map((link) => (
-                <Box
-                  key={link.href}
-                  component="a"
-                  href={link.href}
-                  onClick={(e) => handleNavClick(e, link.href)}
-                  sx={{
-                    px: 1.5,
-                    py: 1,
-                    borderRadius: AGRI_RADII.buttons,
-                    fontFamily: AGRI_FONTS.body,
-                    fontWeight: 600,
-                    fontSize: '0.95rem',
-                    letterSpacing: '0.013em',
-                    color: AGRI_COLORS.ink,
-                    textDecoration: 'none',
-                    '&:hover': { bgcolor: AGRI_COLORS.mintSoft, color: AGRI_COLORS.emerald },
-                  }}
-                >
-                  {link.label}
-                </Box>
-              ))}
+            {/* Centered Whisper-Quiet Nav Links */}
+            <Stack direction="row" spacing={3.5} sx={{ display: { xs: 'none', md: 'flex' } }}>
+              {NAV_LINKS.map((link) => {
+                const isCurrent = activeSection === link.href.replace('#', '')
+                return (
+                  <Box
+                    key={link.href}
+                    component="a"
+                    href={link.href}
+                    onClick={(e) => handleNavClick(e, link.href)}
+                    sx={{
+                      position: 'relative',
+                      py: '2px',
+                      fontFamily: AGRI_FONTS.sans,
+                      fontWeight: isCurrent ? 500 : 400,
+                      fontSize: '1rem',
+                      color: isCurrent ? AGRI_COLORS.ink : AGRI_COLORS.slateMuted,
+                      textDecoration: 'none',
+                      transition: 'color 0.2s ease',
+                      '&:hover': {
+                        color: AGRI_COLORS.ink,
+                        textDecoration: 'underline',
+                        textUnderlineOffset: '4px',
+                      },
+                    }}
+                  >
+                    {link.label}
+                  </Box>
+                )
+              })}
             </Stack>
 
-            {/* Right Action + Mobile Toggle */}
-            <Stack direction="row" spacing={1} alignItems="center">
+            {/* Right Text Link + Filled Pill CTA */}
+            <Stack direction="row" spacing={2.5} alignItems="center">
+              <EditorialTextLink
+                onClick={() => onOpenApp('scanner')}
+                sx={{ display: { xs: 'none', sm: 'inline-flex' }, py: '2px' }}
+              >
+                Scan QC →
+              </EditorialTextLink>
               <HeaderActionButton
                 onClick={() => onOpenApp('overview')}
                 sx={{ display: { xs: 'none', sm: 'inline-flex' } }}
@@ -144,15 +178,15 @@ export function Navbar({ onOpenApp }) {
         PaperProps={{
           sx: {
             width: 280,
-            bgcolor: AGRI_COLORS.mintBg,
+            bgcolor: AGRI_COLORS.paperWhite,
             color: AGRI_COLORS.ink,
             p: 2.5,
           },
         }}
       >
         <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
-          <Typography sx={{ fontFamily: AGRI_FONTS.display, fontWeight: 800, fontSize: '1.05rem', color: AGRI_COLORS.ink }}>
-            AGRI-SORT AI
+          <Typography sx={{ fontFamily: AGRI_FONTS.serif, fontWeight: 400, fontSize: '1.25rem', color: AGRI_COLORS.ink }}>
+            Agri-Sort AI
           </Typography>
           <IconButton aria-label="Tutup menu" onClick={() => setMobileOpen(false)} sx={{ color: AGRI_COLORS.ink }}>
             <CloseRoundedIcon />
@@ -165,11 +199,11 @@ export function Navbar({ onOpenApp }) {
                 component="a"
                 href={link.href}
                 onClick={(e) => handleNavClick(e, link.href)}
-                sx={{ borderRadius: AGRI_RADII.buttons }}
+                sx={{ borderRadius: AGRI_RADII.images }}
               >
                 <ListItemText
                   primary={link.label}
-                  primaryTypographyProps={{ fontFamily: AGRI_FONTS.body, fontWeight: 600, color: AGRI_COLORS.ink }}
+                  primaryTypographyProps={{ fontFamily: AGRI_FONTS.sans, fontWeight: 400, color: AGRI_COLORS.ink }}
                 />
               </ListItemButton>
             </ListItem>

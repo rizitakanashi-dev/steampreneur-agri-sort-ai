@@ -1,39 +1,33 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Manrope:wght@600;700;800&family=Nunito:wght@800;900&family=Plus+Jakarta+Sans:wght@500;600;700;800&family=Poppins:wght@700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;1,8..60,400&display=swap');
 
 :root {
-  /* Agri-Sort AI Fresh Mint-Light Agritech Tokens */
+  /* Agri-Sort AI Editorial Paper & Botanical System */
+  --agri-ink-black: #17191c;
+  --agri-paper-white: #ffffff;
+  --agri-mist-surface: #f2f5f3;
+  --agri-fog-surface: #fafcfb;
+  --agri-slate-muted: #68736d;
+  --agri-ash-tag: #8c9690;
+  --agri-smoke-placeholder: #9da6a0;
+  --agri-blush-mint: #e3f3ea;
+  --agri-deep-emerald: #034d32;
   --agri-emerald: #036e45;
-  --agri-emerald-bright: #058a57;
-  --agri-emerald-dark: #034d32;
   --agri-leaf: #289d67;
-  --agri-leaf-glow: #34c77b;
-  --agri-gold: #e9a64b;
-  --agri-gold-muted: #c68f2f;
-  --agri-crimson: #d9534f;
-  --agri-crimson-muted: #a94f46;
-  --agri-teal: #18a999;
-  --agri-snow: #ffffff;
-  --agri-mint-bg: #f2fbf6;
-  --agri-mint-soft: #e6f6ed;
-  --agri-mint-border: #c5e3d3;
-  --agri-ink: #0b3b28;
-  --agri-ink-muted: #3b6351;
-  --agri-chrome: #0b261c;
-  --agri-surface: #123629;
-  --agri-sage-mist: #d2ede0;
-  --agri-leaf-slate: #5c8270;
-  --agri-off-white: #f7fcf9;
+  --agri-gold: #c68f2f;
+  --agri-crimson: #a94f46;
 
-  --font-agri-display: 'Poppins', 'Nunito', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  --font-agri-body: 'Inter', 'Plus Jakarta Sans', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  --font-agri-ui: 'Inter', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  --font-agri-prose: 'Inter', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-agri-serif: 'Source Serif 4', ui-serif, Georgia, Cambria, serif;
+  --font-agri-sans: 'Inter', 'Plus Jakarta Sans', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 
-  --radius-cards: 16px;
-  --radius-pills: 104px;
-  --radius-buttons: 12px;
-  --radius-buttonslarge: 16px;
-  --radius-featurepanels: 24px;
+  --radius-cards: 24px;
+  --radius-images: 12px;
+  --radius-inputs: 16px;
+  --radius-buttons: 9999px;
+  --radius-elevated: 20px;
+
+  --shadow-artifact: 0 0 0 1px rgba(4, 23, 43, 0.05), 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+  --agri-scroll-y: 0px;
+  --agri-scroll-scale: 0;
 }
 
 html {
@@ -41,8 +35,30 @@ html {
 }
 
 ::selection {
-  background: rgba(3, 110, 69, 0.22);
-  color: #0b3b28;
+  background: rgba(3, 110, 69, 0.16);
+  color: #17191c;
+}
+
+.agri-stage-reveal {
+  transition: transform 0.75s cubic-bezier(0.16, 1, 0.3, 1), filter 0.75s cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: transform;
+}
+
+.agri-stage-reveal[data-revealed="false"] {
+  transform: translate3d(0, 22px, 0) scale(0.988);
+}
+
+.agri-stage-reveal[data-revealed="true"] {
+  transform: translate3d(0, 0, 0) scale(1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .agri-stage-reveal,
+  .agri-stage-reveal[data-revealed="false"],
+  .agri-stage-reveal[data-revealed="true"] {
+    transition: none !important;
+    transform: none !important;
+  }
 }
 
 html,
