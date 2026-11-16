@@ -9,15 +9,25 @@ mendukung fallback lokal (JSON storage) dan siap diintegrasikan dengan Supabase/
 
 from datetime import datetime, timezone
 import json
+import logging
 import math
 import os
 from pathlib import Path
 import threading
 from typing import Any, Dict, List, Optional
+import urllib.error
+import urllib.parse
+import urllib.request
 import uuid
 
-# Direktori data lokal untuk persistensi lokal (development & prototyping)
-DATA_DIR = Path(__file__).parent.parent / "data"
+logger = logging.getLogger("agrisort.storage")
+
+# Direktori data lokal untuk persistensi lokal (development) atau /tmp pada Vercel Serverless
+DATA_DIR = (
+    Path("/tmp/agri-sort-data")
+    if os.environ.get("VERCEL")
+    else Path(__file__).parent.parent / "data"
+)
 DEFAULT_STORAGE_PATH = DATA_DIR / "scans.json"
 
 _storage_lock = threading.Lock()
@@ -70,6 +80,96 @@ CREATE POLICY "Akses publik simpan riwayat scan"
     ON public.scans FOR INSERT
     WITH CHECK (true);
 """
+
+
+_SUPABASE_SCAN_COLUMNS = (
+    "id",
+    "scan_id",
+    "commodity",
+    "ai_supported",
+    "actual_weight_kg",
+    "total_objects",
+    "fresh_count",
+    "rotten_count",
+    "fresh_ratio_percent",
+    "rotten_ratio_percent",
+    "reference_price_per_kg",
+    "estimated_economic_value",
+    "potential_loss_value",
+    "recommendation_note",
+    "is_simulated",
+    "model_version",
+    "created_at",
+    "updated_at",
+)
+
+
+def _normalize_scan_record(scan_data: Dict[str, Any]) -> Dict[str, Any]:
+    """Menormalisasi payload hasil pemindaian menjadi record terstandarisasi."""
+    scan_id = scan_data.get("scan_id") or f"scan_{datetime.now(timezone.utc).strftime('%Y%m%d')}_{uuid.uuid4().hex[:6]}"
+    now_iso = datetime.now(timezone.utc).isoformat()
+    created_at = scan_data.get("timestamp") or scan_data.get("created_at") or now_iso
+
+    inference = scan_data.get("inference_result") or {}
+    pricing = scan_data.get("smart_pricing") or {}
+    obj_counts = inference.get("object_counts") or {}
+    condition_ratios = inference.get("condition_ratios") or {}
+
+    raw_w = scan_data.get("actual_weight_kg")
+    clean_weight: Optional[float] = None
+    try:
+        if raw_w is not None:
+            parsed_w = float(raw_w)
+            if not math.isnan(parsed_w) and not math.isinf(parsed_w) and parsed_w > 0:
+                clean_weight = round(parsed_w, 2)
+    except (TypeError, ValueError):
+        clean_weight = None
+
+    raw_fresh_pct = condition_ratios.get("fresh_ratio_percent", scan_data.get("fresh_ratio_percent", 0.0))
+    clean_fresh_pct = 0.0
+    try:
+        parsed_fresh = float(raw_fresh_pct)
+        if not math.isnan(parsed_fresh) and not math.isinf(parsed_fresh):
+            clean_fresh_pct = round(max(0.0, min(100.0, parsed_fresh)), 2)
+    except (TypeError, ValueError):
+        clean_fresh_pct = 0.0
+
+    clean_rotten_pct = round(100.0 - clean_fresh_pct, 2)
+
+    return {
+        "id": str(uuid.uuid4()),
+        "scan_id": scan_id,
+        "commodity": scan_data.get("commodity", "Tomat"),
+        "ai_supported": bool(scan_data.get("ai_supported", True)),
+        "actual_weight_kg": clean_weight,
+        "total_objects": int(obj_counts.get("total", scan_data.get("total_objects", 0)) or 0),
+        "fresh_count": int(obj_counts.get("fresh_tomato", scan_data.get("fresh_count", 0)) or 0),
+        "rotten_count": int(obj_counts.get("rotten_tomato", obj_counts.get("reject", scan_data.get("rotten_count", 0))) or 0),
+        "fresh_ratio_percent": clean_fresh_pct,
+        "rotten_ratio_percent": clean_rotten_pct,
+        "class_counts": obj_counts,
+        "condition_ratios": condition_ratios,
+        "reference_price_per_kg": int(pricing.get("reference_price_per_kg", scan_data.get("reference_price_per_kg", 0)) or 0),
+        "estimated_economic_value": pricing.get("estimated_economic_value", scan_data.get("estimated_economic_value")),
+        "potential_loss_value": pricing.get("potential_loss_value", scan_data.get("potential_loss_value")),
+        "recommendation_note": pricing.get("recommendation_note", scan_data.get("recommendation_note", "")),
+        "is_simulated": bool(scan_data.get("is_simulated", True)),
+        "model_version": str(inference.get("model_version", scan_data.get("model_version", "1.0.0"))),
+        "created_at": created_at,
+        "updated_at": now_iso,
+    }
+
+
+def _build_scans_summary(records: List[Dict[str, Any]], total_count: Optional[int] = None) -> Dict[str, Any]:
+    """Menghitung ringkasan agregat berat dan nilai ekonomi dari daftar record."""
+    count = total_count if total_count is not None else len(records)
+    total_weight = sum(float(r.get("actual_weight_kg") or 0.0) for r in records)
+    total_value = sum(int(r.get("estimated_economic_value") or 0) for r in records)
+    return {
+        "total_batches": count,
+        "total_weight_kg": round(total_weight, 2),
+        "total_economic_value_idr": total_value,
+    }
 
 
 class LocalScanStorage:
@@ -126,65 +226,11 @@ class LocalScanStorage:
         """
         with _storage_lock:
             records = self._read_all()
-
-            # Normalisasi payload data scan
-            scan_id = scan_data.get("scan_id") or f"scan_{datetime.now(timezone.utc).strftime('%Y%m%d')}_{uuid.uuid4().hex[:6]}"
-            created_at = scan_data.get("timestamp") or datetime.now(timezone.utc).isoformat()
-
-            # Ekstrak data inferensi dan smart pricing jika bersarang (nested)
-            inference = scan_data.get("inference_result") or {}
-            pricing = scan_data.get("smart_pricing") or {}
-            obj_counts = inference.get("object_counts") or {}
-            condition_ratios = inference.get("condition_ratios") or {}
-
-            # Sanitasi nilai bobot numerik terhadap NaN/Inf
-            raw_w = scan_data.get("actual_weight_kg")
-            clean_weight: Optional[float] = None
-            try:
-                if raw_w is not None:
-                    parsed_w = float(raw_w)
-                    if not math.isnan(parsed_w) and not math.isinf(parsed_w) and parsed_w > 0:
-                        clean_weight = round(parsed_w, 2)
-            except (TypeError, ValueError):
-                clean_weight = None
-
-            # Sanitasi persentase rasio
-            raw_fresh_pct = condition_ratios.get("fresh_ratio_percent", scan_data.get("fresh_ratio_percent", 0.0))
-            clean_fresh_pct = 0.0
-            try:
-                parsed_fresh = float(raw_fresh_pct)
-                if not math.isnan(parsed_fresh) and not math.isinf(parsed_fresh):
-                    clean_fresh_pct = round(max(0.0, min(100.0, parsed_fresh)), 2)
-            except (TypeError, ValueError):
-                clean_fresh_pct = 0.0
-
-            clean_rotten_pct = round(100.0 - clean_fresh_pct, 2)
-
-            record = {
-                "id": str(uuid.uuid4()),
-                "scan_id": scan_id,
-                "commodity": scan_data.get("commodity", "Tomat"),
-                "ai_supported": scan_data.get("ai_supported", True),
-                "actual_weight_kg": clean_weight,
-                "total_objects": obj_counts.get("total", scan_data.get("total_objects", 0)),
-                "fresh_count": obj_counts.get("fresh_tomato", scan_data.get("fresh_count", 0)),
-                "rotten_count": obj_counts.get("rotten_tomato", obj_counts.get("reject", scan_data.get("rotten_count", 0))),
-                "fresh_ratio_percent": clean_fresh_pct,
-                "rotten_ratio_percent": clean_rotten_pct,
-                "class_counts": obj_counts,
-                "condition_ratios": condition_ratios,
-                "reference_price_per_kg": pricing.get("reference_price_per_kg", scan_data.get("reference_price_per_kg", 0)),
-                "estimated_economic_value": pricing.get("estimated_economic_value", scan_data.get("estimated_economic_value")),
-                "potential_loss_value": pricing.get("potential_loss_value", scan_data.get("potential_loss_value")),
-                "recommendation_note": pricing.get("recommendation_note", scan_data.get("recommendation_note", "")),
-                "is_simulated": scan_data.get("is_simulated", True),
-                "model_version": inference.get("model_version", scan_data.get("model_version", "1.0.0")),
-                "created_at": created_at,
-            }
+            record = _normalize_scan_record(scan_data)
 
             # Masukkan di awal daftar (urutan terbaru di atas)
             # Jika scan_id sudah ada, perbarui record lama
-            existing_idx = next((i for i, r in enumerate(records) if r.get("scan_id") == scan_id), None)
+            existing_idx = next((i for i, r in enumerate(records) if r.get("scan_id") == record["scan_id"]), None)
             if existing_idx is not None:
                 records[existing_idx] = record
             else:
@@ -210,23 +256,14 @@ class LocalScanStorage:
                 records = [r for r in records if r.get("commodity", "").strip().lower() == comm_filter]
 
             total_count = len(records)
-            # Potong sesuai offset dan limit
             paged_records = records[offset : offset + limit]
-
-            # Hitung ringkasan agregat
-            total_scanned_weight = sum((r.get("actual_weight_kg") or 0.0) for r in records)
-            total_economic_value = sum((r.get("estimated_economic_value") or 0) for r in records)
 
             return {
                 "total_count": total_count,
                 "offset": offset,
                 "limit": limit,
                 "records": paged_records,
-                "summary": {
-                    "total_batches": total_count,
-                    "total_weight_kg": round(total_scanned_weight, 2),
-                    "total_economic_value_idr": total_economic_value,
-                },
+                "summary": _build_scans_summary(records, total_count=total_count),
             }
 
     def get_scan_by_id(self, scan_id: str) -> Optional[Dict[str, Any]]:
@@ -255,5 +292,173 @@ class LocalScanStorage:
             return count
 
 
+class SupabaseScanStorage:
+    """
+    Lapisan persistensi cloud menggunakan Supabase PostgREST (/rest/v1/scans)
+    berdasarkan skema DDL pada get_supabase_ddl(), tanpa dependency eksternal tambahan.
+    """
+
+    def __init__(
+        self,
+        supabase_url: str,
+        supabase_key: str,
+        fallback: Optional[LocalScanStorage] = None,
+        timeout_seconds: float = 10.0,
+    ):
+        self.base_url = supabase_url.rstrip("/")
+        self.api_key = supabase_key
+        self.fallback = fallback or LocalScanStorage()
+        self.timeout_seconds = timeout_seconds
+
+    def _request(
+        self,
+        method: str,
+        query: str = "",
+        payload: Optional[Any] = None,
+        prefer: Optional[str] = None,
+    ) -> tuple[Any, Dict[str, str]]:
+        url = f"{self.base_url}/rest/v1/scans{query}"
+        headers = {
+            "apikey": self.api_key,
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json",
+        }
+        if prefer:
+            headers["Prefer"] = prefer
+
+        data = json.dumps(payload).encode("utf-8") if payload is not None else None
+        req = urllib.request.Request(url, data=data, headers=headers, method=method)
+        with urllib.request.urlopen(req, timeout=self.timeout_seconds) as resp:
+            raw = resp.read().decode("utf-8").strip()
+            resp_headers = {k.lower(): v for k, v in resp.headers.items()}
+            return (json.loads(raw) if raw else None), resp_headers
+
+    @staticmethod
+    def _to_db_row(record: Dict[str, Any]) -> Dict[str, Any]:
+        return {col: record.get(col) for col in _SUPABASE_SCAN_COLUMNS if col in record}
+
+    @staticmethod
+    def _from_db_row(row: Dict[str, Any]) -> Dict[str, Any]:
+        normalized = dict(row)
+        if normalized.get("actual_weight_kg") is not None:
+            normalized["actual_weight_kg"] = float(normalized["actual_weight_kg"])
+        if normalized.get("fresh_ratio_percent") is not None:
+            normalized["fresh_ratio_percent"] = float(normalized["fresh_ratio_percent"])
+        if normalized.get("rotten_ratio_percent") is not None:
+            normalized["rotten_ratio_percent"] = float(normalized["rotten_ratio_percent"])
+        return normalized
+
+    def save_scan(self, scan_data: Dict[str, Any]) -> Dict[str, Any]:
+        record = _normalize_scan_record(scan_data)
+        db_row = self._to_db_row(record)
+        try:
+            rows, _ = self._request(
+                "POST",
+                query="?on_conflict=scan_id",
+                payload=db_row,
+                prefer="resolution=merge-duplicates,return=representation",
+            )
+            if isinstance(rows, list) and rows:
+                return self._from_db_row(rows[0])
+            return record
+        except (urllib.error.URLError, urllib.error.HTTPError, TimeoutError, json.JSONDecodeError) as exc:
+            logger.warning("Gagal menyimpan ke Supabase, menggunakan fallback lokal: %s", exc)
+            return self.fallback.save_scan(scan_data)
+
+    def get_scans(
+        self,
+        limit: int = 50,
+        offset: int = 0,
+        commodity: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        filter_q = ""
+        if commodity:
+            encoded_comm = urllib.parse.quote(commodity.strip(), safe="")
+            filter_q = f"&commodity=ilike.{encoded_comm}"
+
+        try:
+            rows, headers = self._request(
+                "GET",
+                query=f"?select=*&order=created_at.desc&limit={int(limit)}&offset={int(offset)}{filter_q}",
+                prefer="count=exact",
+            )
+            paged_records = [self._from_db_row(r) for r in (rows or [])]
+
+            total_count = len(paged_records)
+            content_range = headers.get("content-range", "")
+            if "/" in content_range:
+                total_str = content_range.split("/")[-1].strip()
+                if total_str.isdigit():
+                    total_count = int(total_str)
+
+            agg_rows, _ = self._request(
+                "GET",
+                query=f"?select=actual_weight_kg,estimated_economic_value{filter_q}",
+            )
+            return {
+                "total_count": total_count,
+                "offset": offset,
+                "limit": limit,
+                "records": paged_records,
+                "summary": _build_scans_summary(agg_rows or [], total_count=total_count),
+            }
+        except (urllib.error.URLError, urllib.error.HTTPError, TimeoutError, json.JSONDecodeError) as exc:
+            logger.warning("Gagal membaca riwayat dari Supabase, menggunakan fallback lokal: %s", exc)
+            return self.fallback.get_scans(limit=limit, offset=offset, commodity=commodity)
+
+    def get_scan_by_id(self, scan_id: str) -> Optional[Dict[str, Any]]:
+        try:
+            encoded_id = urllib.parse.quote(scan_id, safe="")
+            rows, _ = self._request("GET", query=f"?select=*&scan_id=eq.{encoded_id}&limit=1")
+            if isinstance(rows, list) and rows:
+                return self._from_db_row(rows[0])
+            return None
+        except (urllib.error.URLError, urllib.error.HTTPError, TimeoutError, json.JSONDecodeError) as exc:
+            logger.warning("Gagal mengambil scan_id dari Supabase, menggunakan fallback lokal: %s", exc)
+            return self.fallback.get_scan_by_id(scan_id)
+
+    def delete_scan(self, scan_id: str) -> bool:
+        try:
+            encoded_id = urllib.parse.quote(scan_id, safe="")
+            rows, _ = self._request(
+                "DELETE",
+                query=f"?scan_id=eq.{encoded_id}",
+                prefer="return=representation",
+            )
+            return bool(isinstance(rows, list) and len(rows) > 0)
+        except (urllib.error.URLError, urllib.error.HTTPError, TimeoutError, json.JSONDecodeError) as exc:
+            logger.warning("Gagal menghapus scan dari Supabase, menggunakan fallback lokal: %s", exc)
+            return self.fallback.delete_scan(scan_id)
+
+    def clear_scans(self) -> int:
+        try:
+            rows, _ = self._request(
+                "DELETE",
+                query="?scan_id=neq.",
+                prefer="return=representation",
+            )
+            return len(rows) if isinstance(rows, list) else 0
+        except (urllib.error.URLError, urllib.error.HTTPError, TimeoutError, json.JSONDecodeError) as exc:
+            logger.warning("Gagal mengosongkan riwayat di Supabase, menggunakan fallback lokal: %s", exc)
+            return self.fallback.clear_scans()
+
+
+def create_storage_service():
+    """
+    Memilih backend persistensi:
+    - SupabaseScanStorage jika SUPABASE_URL dan SUPABASE_SERVICE_ROLE_KEY / SUPABASE_ANON_KEY tersedia.
+    - LocalScanStorage sebagai fallback lokal/pengujian.
+    """
+    supabase_url = os.environ.get("SUPABASE_URL", "").strip()
+    supabase_key = (
+        os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "").strip()
+        or os.environ.get("SUPABASE_KEY", "").strip()
+        or os.environ.get("SUPABASE_ANON_KEY", "").strip()
+    )
+    if supabase_url and supabase_key:
+        return SupabaseScanStorage(supabase_url=supabase_url, supabase_key=supabase_key)
+    return LocalScanStorage()
+
+
 # Singleton instance bawaan untuk penggunaan global di router
-storage_service = LocalScanStorage()
+storage_service = create_storage_service()

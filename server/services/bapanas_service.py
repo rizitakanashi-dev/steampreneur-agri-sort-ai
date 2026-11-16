@@ -132,8 +132,13 @@ class BapanasPricingService:
     """
 
     def __init__(self, cache_file_path: Optional[str] = None):
-        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        self.cache_file = cache_file_path or os.path.join(base_dir, "data", "bapanas_cache.json")
+        if cache_file_path:
+            self.cache_file = cache_file_path
+        elif os.environ.get("VERCEL"):
+            self.cache_file = os.path.join("/tmp", "agri-sort-data", "bapanas_cache.json")
+        else:
+            base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            self.cache_file = os.path.join(base_dir, "data", "bapanas_cache.json")
         self._cache_data: Optional[Dict[str, Any]] = None
         self._last_loaded_time: float = 0
         self.cache_ttl_seconds = 12 * 3600  # 12 Jam TTL

@@ -20,12 +20,12 @@ app = FastAPI(
     redoc_url="/redoc",
 )
 
-# Konfigurasi CORS: Mengizinkan Frontend Vite (localhost maupun perangkat dalam jaringan LAN yang sama)
+# Konfigurasi CORS: Mengizinkan Frontend Vite (localhost, LAN, maupun domain Vercel)
 ALLOWED_ORIGINS = [
     "http://localhost:5173",
     "http://127.0.0.1:5173",
 ]
-LAN_ORIGIN_REGEX = r"^https?://(localhost|127\.0\.0\.1|192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+|172\.(1[6-9]|2\d|3[01])\.\d+\.\d+)(:\d+)?$"
+LAN_ORIGIN_REGEX = r"^https?://(localhost|127\.0\.0\.1|192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+|172\.(1[6-9]|2\d|3[01])\.\d+\.\d+|.*\.vercel\.app)(:\d+)?$"
 
 app.add_middleware(
     CORSMiddleware,

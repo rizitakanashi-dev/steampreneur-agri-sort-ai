@@ -7,7 +7,7 @@
  * melalui reverse proxy Vite (/api) dengan timeout 15 detik dan penanganan error ramah pengguna.
  */
 
-export const DEFAULT_TIMEOUT_MS = 15000
+export const DEFAULT_TIMEOUT_MS = 45000
 
 export class ApiError extends Error {
   constructor(message, { code = 'API_ERROR', details = {}, status = 500 } = {}) {
