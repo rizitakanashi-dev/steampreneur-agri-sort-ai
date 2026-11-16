@@ -16,6 +16,28 @@ import RefreshRoundedIcon from '@mui/icons-material/RefreshRounded'
 
 import { extractGreyscaleThumbnail } from '../utils/imageSimilarity.js'
 
+// Registry modul untuk melacak seluruh active MediaStream agar tidak ada hardware track kamera yang tertinggal
+const activeStreams = new Set()
+
+/**
+ * Menghentikan seluruh active media stream kamera secara seketika dan sinkron.
+ * Dipanggil saat navigasi keluar modul scanner atau unmount.
+ */
+export function stopAllActiveCameraStreams() {
+  activeStreams.forEach((stream) => {
+    try {
+      if (stream && typeof stream.getTracks === 'function') {
+        stream.getTracks().forEach((track) => {
+          try {
+            track.stop()
+          } catch {}
+        })
+      }
+    } catch {}
+  })
+  activeStreams.clear()
+}
+
 /**
  * Komponen Live Camera Viewfinder untuk Agri-Sort AI
  * Mengakses webcam desktop atau kamera HP langsung dengan capture snapshot instan.
@@ -29,36 +51,56 @@ export function LiveCameraViewfinder({ onCapture, disabled = false }) {
   const [isCapturing, setIsCapturing] = useState(false)
 
   const isMountedRef = useRef(true)
+  const sessionRef = useRef(0)
 
   const stopStream = () => {
+    // Invalidate request getUserMedia yang sedang berjalan
+    sessionRef.current += 1
+
     const stream = streamRef.current
     streamRef.current = null
 
+    // 1. Ambil stream dari video element jika ada
+    let videoStream = null
     if (videoRef.current) {
       try {
+        videoStream = videoRef.current.srcObject
         videoRef.current.pause()
         videoRef.current.srcObject = null
-      } catch {
-        // Abaikan error saat reset video element
+      } catch (e) {
+        console.warn('Gagal mereset video element:', e)
       }
     }
 
-    if (stream) {
-      // Hentikan hardware track di microtask berikutnya agar transisi DOM/halaman seketika tanpa jeda
-      setTimeout(() => {
-        stream.getTracks().forEach((track) => {
-          try {
-            track.stop()
-          } catch (e) {
-            console.warn('Gagal menghentikan track kamera:', e)
-          }
-        })
-      }, 0)
+    // 2. Hentikan hardware track dari streamRef SECARA SINKRON DAN SEKETIKA
+    if (stream && typeof stream.getTracks === 'function') {
+      activeStreams.delete(stream)
+      stream.getTracks().forEach((track) => {
+        try {
+          track.stop()
+        } catch (e) {
+          console.warn('Gagal menghentikan track kamera:', e)
+        }
+      })
+    }
+
+    // 3. Hentikan hardware track dari video element (jika objek berbeda) SECARA SINKRON
+    if (videoStream && videoStream !== stream && typeof videoStream.getTracks === 'function') {
+      activeStreams.delete(videoStream)
+      videoStream.getTracks().forEach((track) => {
+        try {
+          track.stop()
+        } catch (e) {
+          console.warn('Gagal menghentikan track video element:', e)
+        }
+      })
     }
   }
 
   const startCamera = async (targetFacing = facingMode) => {
     stopStream()
+    const currentSession = ++sessionRef.current
+
     if (isMountedRef.current) {
       setCameraState('initializing')
       setErrorMessage('')
@@ -84,19 +126,28 @@ export function LiveCameraViewfinder({ onCapture, disabled = false }) {
 
       const stream = await navigator.mediaDevices.getUserMedia(constraints)
 
-      // Jika komponen sudah unmount sebelum promise getUserMedia selesai
-      if (!isMountedRef.current) {
-        stream.getTracks().forEach((t) => t.stop())
+      // Jika komponen sudah unmount atau ada sesi baru saat promise getUserMedia selesai
+      if (!isMountedRef.current || currentSession !== sessionRef.current) {
+        stream.getTracks().forEach((t) => {
+          try {
+            t.stop()
+          } catch {}
+        })
         return
       }
 
+      activeStreams.add(stream)
       streamRef.current = stream
 
       if (videoRef.current) {
         videoRef.current.srcObject = stream
         videoRef.current.onloadedmetadata = () => {
-          if (!isMountedRef.current) {
-            stream.getTracks().forEach((t) => t.stop())
+          if (!isMountedRef.current || currentSession !== sessionRef.current) {
+            stream.getTracks().forEach((t) => {
+              try {
+                t.stop()
+              } catch {}
+            })
             return
           }
           videoRef.current
@@ -108,7 +159,7 @@ export function LiveCameraViewfinder({ onCapture, disabled = false }) {
         setCameraState('active')
       }
     } catch (err) {
-      if (!isMountedRef.current) return
+      if (!isMountedRef.current || currentSession !== sessionRef.current) return
       console.warn('Gagal mengakses kamera:', err)
       setCameraState('error')
       if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
@@ -133,11 +184,19 @@ export function LiveCameraViewfinder({ onCapture, disabled = false }) {
       }
     }
 
+    const handlePageHide = () => {
+      stopStream()
+    }
+
     document.addEventListener('visibilitychange', handleVisibilityChange)
+    window.addEventListener('pagehide', handlePageHide)
+    window.addEventListener('beforeunload', handlePageHide)
 
     return () => {
       isMountedRef.current = false
       document.removeEventListener('visibilitychange', handleVisibilityChange)
+      window.removeEventListener('pagehide', handlePageHide)
+      window.removeEventListener('beforeunload', handlePageHide)
       stopStream()
     }
   }, [facingMode])

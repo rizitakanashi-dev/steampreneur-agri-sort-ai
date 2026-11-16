@@ -35,6 +35,7 @@ import { COMMODITY_OPTIONS, PRICE_REFERENCE_SOURCE, REFERENCE_PRICES_PER_KG } fr
 import { fetchBapanasLive } from './services/scanService.js'
 import { AppShell } from './components/AppShell.jsx'
 import { BatchQCScanner } from './components/BatchQCScanner.jsx'
+import { stopAllActiveCameraStreams } from './components/LiveCameraViewfinder.jsx'
 import { HarvestForm } from './components/HarvestForm.jsx'
 import { HarvestRecap } from './components/HarvestRecap.jsx'
 import { QCResults } from './components/QCResults.jsx'
@@ -484,9 +485,13 @@ function App() {
     const handleHash = () => {
       const hash = window.location.hash.replace('#', '')
       if (pages[hash]) {
+        if (hash !== 'scanner') {
+          stopAllActiveCameraStreams()
+        }
         setCurrentView('app')
         setActivePage(hash)
       } else if (hash === '' || hash === 'landing') {
+        stopAllActiveCameraStreams()
         setCurrentView('landing')
       }
     }
@@ -496,6 +501,9 @@ function App() {
 
   const handleOpenApp = (targetPage = 'overview') => {
     const pageToOpen = pages[targetPage] ? targetPage : 'overview'
+    if (pageToOpen !== 'scanner') {
+      stopAllActiveCameraStreams()
+    }
     setCurrentView('app')
     setActivePage(pageToOpen)
     window.location.hash = pageToOpen
@@ -503,6 +511,7 @@ function App() {
   }
 
   const handleBackToLanding = () => {
+    stopAllActiveCameraStreams()
     setCurrentView('landing')
     window.location.hash = ''
     window.scrollTo({ top: 0, behavior: 'smooth' })
@@ -512,6 +521,9 @@ function App() {
     if (pageId === 'landing') {
       handleBackToLanding()
       return
+    }
+    if (pageId !== 'scanner') {
+      stopAllActiveCameraStreams()
     }
     setCurrentView('app')
     setActivePage(pageId)
@@ -528,6 +540,7 @@ function App() {
   }
 
   const handleViewRecap = () => {
+    stopAllActiveCameraStreams()
     setHarvestMessage('')
     setOpenCertModal(false)
     setActivePage('results-list')
@@ -535,6 +548,7 @@ function App() {
   }
 
   const handleSelectBatch = (batch, options = {}) => {
+    stopAllActiveCameraStreams()
     setSelectedBatch(batch)
     setOpenCertModal(Boolean(options?.openCertificate))
     setActivePage('results')
