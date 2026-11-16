@@ -206,7 +206,7 @@ export function SettingsDialog({ open, onClose, onDataChanged }) {
                         <Avatar sx={{ bgcolor: '#036e45', width: 34, height: 34, fontSize: 13, fontWeight: 700 }}>FA</Avatar>
                         <Box>
                           <Typography variant="body2" fontWeight={800}>Faris Al Farizi</Typography>
-                          <Typography variant="caption" color="text.secondary">Ketua Tim &amp; ML Engineer</Typography>
+                          <Typography variant="caption" color="text.secondary">Ketua &amp; Machine Learning Engineer</Typography>
                         </Box>
                       </Stack>
                       <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
@@ -223,11 +223,11 @@ export function SettingsDialog({ open, onClose, onDataChanged }) {
                         <Avatar sx={{ bgcolor: '#0b8a5a', width: 34, height: 34, fontSize: 13, fontWeight: 700 }}>HA</Avatar>
                         <Box>
                           <Typography variant="body2" fontWeight={800}>Hieray Antovino</Typography>
-                          <Typography variant="caption" color="text.secondary">Fullstack &amp; UI/UX Dev</Typography>
+                          <Typography variant="caption" color="text.secondary">Fullstack Engineer &amp; QA</Typography>
                         </Box>
                       </Stack>
                       <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
-                        Frontend React 19, REST API SP2KP &amp; BAPANAS, Triangulasi harga komposit, dan sertifikat QC A4.
+                        Frontend React 19, REST API SP2KP &amp; BAPANAS, Triangulasi harga komposit, sertifikat QC A4, dan penjaminan mutu.
                       </Typography>
                     </CardContent>
                   </Card>
@@ -240,11 +240,11 @@ export function SettingsDialog({ open, onClose, onDataChanged }) {
                         <Avatar sx={{ bgcolor: '#0284c7', width: 34, height: 34, fontSize: 13, fontWeight: 700 }}>AA</Avatar>
                         <Box>
                           <Typography variant="body2" fontWeight={800}>Ahmad Afif</Typography>
-                          <Typography variant="caption" color="text.secondary">QA &amp; Technical Writer</Typography>
+                          <Typography variant="caption" color="text.secondary">Analis Bisnis &amp; Dokumentator</Typography>
                         </Box>
                       </Stack>
                       <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
-                        Otomasi pengujian unit (245 tests: 131 JS + 114 Python), audit kepatuhan proposal STEAMPreneur, dan dokumentasi review.
+                        Analisis kelayakan bisnis hortikultura, riset pasar petani-pengepul, penyusunan PRD, dan dokumentasi review.
                       </Typography>
                     </CardContent>
                   </Card>
