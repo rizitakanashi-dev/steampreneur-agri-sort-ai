@@ -1,81 +1,90 @@
-import { Box, Container, Stack, Typography } from '@mui/material'
-import ArrowForwardRoundedIcon from '@mui/icons-material/ArrowForwardRounded'
-import QrCodeScannerRoundedIcon from '@mui/icons-material/QrCodeScannerRounded'
+import { Box, Container, Grid, Stack, Typography } from '@mui/material'
 import { AGRI_COLORS, AGRI_FONTS } from './tokens.js'
+import { TEAM_INFO } from './landingData.js'
 import {
   AgriPrimaryButton,
   DisplayHeadline,
-  FeatureStageCard,
+  EditorialAccentCard,
   LightSecondaryButton,
 } from './AgriPrimitives.jsx'
-import { AgriBotMascot, FloatingHarvestBadge, FloatingTomatoProp } from './FloatingMascots.jsx'
 
 export function FinalCTA({ onOpenApp }) {
   return (
     <Box
       component="section"
       sx={{
-        py: { xs: 10, md: 13 },
-        bgcolor: AGRI_COLORS.mintSoft,
+        py: '80px',
+        bgcolor: AGRI_COLORS.paperWhite,
       }}
     >
-      <Container maxWidth="lg" sx={{ px: { xs: 2, sm: 3 } }}>
-        <FeatureStageCard
-          gradient="linear-gradient(135deg, #045E3B 0%, #0D8254 60%, #15946B 100%)"
-          sx={{ textAlign: 'center', py: { xs: 6, md: 9 }, px: { xs: 3, md: 6 } }}
-        >
-          <AgriBotMascot
-            size={{ xs: 92, md: 126 }}
-            sx={{ position: 'absolute', top: -36, left: { xs: 16, md: 36 }, zIndex: 3 }}
-          />
-          <FloatingTomatoProp
-            size={{ xs: 82, md: 104 }}
-            sx={{ position: 'absolute', bottom: -30, right: { xs: 16, md: 40 }, zIndex: 3 }}
-          />
-          <FloatingHarvestBadge
-            size={64}
-            sx={{ position: 'absolute', top: -24, right: { xs: 20, md: 72 }, zIndex: 3, display: { xs: 'none', sm: 'block' } }}
-          />
+      <Container maxWidth="lg" sx={{ maxWidth: '1200px !important', px: { xs: 2.5, sm: 3 } }}>
+        {/* Rare Single Editorial Accent Card on #FFFFFF Canvas */}
+        <EditorialAccentCard sx={{ p: { xs: 4, sm: '40px' } }}>
+          <Grid container spacing={{ xs: 4, md: 6 }} alignItems="center">
+            <Grid size={{ xs: 12, md: 7.5 }}>
+              <Stack spacing={2}>
+                <Typography
+                  sx={{
+                    fontFamily: AGRI_FONTS.sans,
+                    fontWeight: 450,
+                    fontSize: '1.625rem',
+                    lineHeight: 1.18,
+                    letterSpacing: '-0.23px',
+                    color: AGRI_COLORS.deepEmerald,
+                  }}
+                >
+                  Standarisasi mutu yang berpihak pada nilai panen petani.
+                </Typography>
 
-          <Stack spacing={3} alignItems="center" sx={{ maxWidth: 680, mx: 'auto', position: 'relative', zIndex: 2 }}>
-            <DisplayHeadline onDark variant="hero">
-              SAATNYA SORTIR PANEN LEBIH PRESISI
-            </DisplayHeadline>
+                <Typography
+                  sx={{
+                    fontFamily: AGRI_FONTS.sans,
+                    fontWeight: 430,
+                    fontSize: '1.125rem',
+                    lineHeight: 1.5,
+                    color: AGRI_COLORS.deepEmerald,
+                  }}
+                >
+                  “Dengan memadukan deteksi YOLO11n 3-Class dan triangulasi harga BAPANAS serta SP2KP Kemendag, petani dan pengepul memiliki acuan kualitas objektif sebelum transaksi berlangsung.”
+                </Typography>
 
-            <Typography
-              sx={{
-                fontFamily: AGRI_FONTS.body,
-                fontSize: { xs: '1rem', sm: '1.125rem' },
-                lineHeight: 1.55,
-                letterSpacing: '0.01em',
-                color: AGRI_COLORS.sageMist,
-              }}
-            >
-              Gunakan kamera ponsel atau laptop untuk deteksi mutu Tomat, Terung, dan Cabai 3-Class secara instan, aman offline di browser, dan siap cetak Sertifikat QC A4.
-            </Typography>
+                <Typography
+                  sx={{
+                    fontFamily: AGRI_FONTS.sans,
+                    fontWeight: 400,
+                    fontSize: '0.875rem',
+                    color: AGRI_COLORS.deepEmerald,
+                  }}
+                >
+                  {TEAM_INFO.school} · {TEAM_INFO.competition}
+                </Typography>
+              </Stack>
+            </Grid>
 
-            <Stack
-              direction={{ xs: 'column', sm: 'row' }}
-              spacing={2}
-              justifyContent="center"
-              sx={{ pt: 1, width: { xs: '100%', sm: 'auto' } }}
-            >
-              <LightSecondaryButton
-                onClick={() => onOpenApp('overview')}
-                endIcon={<ArrowForwardRoundedIcon />}
-              >
-                Masuk Dashboard
-              </LightSecondaryButton>
-              <AgriPrimaryButton
-                onClick={() => onOpenApp('scanner')}
-                startIcon={<QrCodeScannerRoundedIcon />}
-                sx={{ border: '1px solid rgba(255,255,255,0.28)' }}
-              >
-                Mulai Scan Sekarang
-              </AgriPrimaryButton>
-            </Stack>
-          </Stack>
-        </FeatureStageCard>
+            <Grid size={{ xs: 12, md: 4.5 }}>
+              <Stack spacing={2} alignItems={{ xs: 'flex-start', md: 'flex-end' }}>
+                <DisplayHeadline
+                  variant="subsection"
+                  sx={{ color: AGRI_COLORS.deepEmerald, textAlign: { md: 'right' } }}
+                >
+                  Siap digunakan di smartphone &amp; laptop.
+                </DisplayHeadline>
+
+                <Stack direction="row" spacing={1.5} flexWrap="wrap">
+                  <AgriPrimaryButton onClick={() => onOpenApp('scanner')}>
+                    Mulai Scan QC
+                  </AgriPrimaryButton>
+                  <LightSecondaryButton
+                    onClick={() => onOpenApp('overview')}
+                    sx={{ borderColor: AGRI_COLORS.deepEmerald, color: AGRI_COLORS.deepEmerald }}
+                  >
+                    Masuk Dashboard
+                  </LightSecondaryButton>
+                </Stack>
+              </Stack>
+            </Grid>
+          </Grid>
+        </EditorialAccentCard>
       </Container>
     </Box>
   )

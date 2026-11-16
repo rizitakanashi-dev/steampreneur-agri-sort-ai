@@ -1,8 +1,11 @@
-import { Box, Chip, Container, Grid, Stack, Typography } from '@mui/material'
-import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded'
+import { Box, Container, Grid, Stack, Typography } from '@mui/material'
 import { AGRI_COLORS, AGRI_FONTS, AGRI_RADII } from './tokens.js'
 import { COMMODITY_MODELS, TARGET_USERS } from './landingData.js'
-import { DisplayHeadline } from './AgriPrimitives.jsx'
+import {
+  DisplayHeadline,
+  EditorialNeutralCard,
+  GhostCategoryTag,
+} from './AgriPrimitives.jsx'
 import {
   FloatingChiliProp,
   FloatingEggplantProp,
@@ -10,9 +13,9 @@ import {
 } from './FloatingMascots.jsx'
 
 function CommodityVisual({ id }) {
-  if (id === 'terung') return <FloatingEggplantProp size={76} />
-  if (id === 'cabai') return <FloatingChiliProp size={76} />
-  return <FloatingTomatoProp size={76} />
+  if (id === 'terung') return <FloatingEggplantProp size={52} />
+  if (id === 'cabai') return <FloatingChiliProp size={52} />
+  return <FloatingTomatoProp size={52} />
 }
 
 export function Commodities() {
@@ -21,173 +24,117 @@ export function Commodities() {
       id="komoditas"
       component="section"
       sx={{
-        py: { xs: 10, md: 13 },
-        bgcolor: AGRI_COLORS.mintBg,
+        py: '80px',
+        bgcolor: AGRI_COLORS.fogSurface,
       }}
     >
-      <Container maxWidth="lg" sx={{ px: { xs: 2.5, sm: 3 } }}>
-        {/* 3 Active YOLO11n 3-Class Commodities */}
-        <Stack spacing={2} alignItems="center" sx={{ textAlign: 'center', maxWidth: 740, mx: 'auto', mb: 6 }}>
-          <DisplayHeadline variant="section">
-            TIGA MODEL AI 3-CLASS AKTIF
+      <Container maxWidth="lg" sx={{ maxWidth: '1200px !important', px: { xs: 2.5, sm: 3 } }}>
+        <Stack spacing={2} sx={{ maxWidth: 740, mb: 6 }}>
+          <DisplayHeadline variant="hero">
+            Tiga model AI 3-Class untuk hortikultura{' '}
+            <Box component="span" sx={{ fontStyle: 'italic' }}>
+              unggulan.
+            </Box>
           </DisplayHeadline>
           <Typography
             sx={{
-              fontFamily: AGRI_FONTS.body,
-              fontSize: { xs: '1rem', sm: '1.125rem' },
-              lineHeight: 1.55,
-              color: AGRI_COLORS.inkMuted,
+              fontFamily: AGRI_FONTS.sans,
+              fontWeight: 430,
+              fontSize: '1.125rem',
+              lineHeight: 1.45,
+              color: AGRI_COLORS.slateMuted,
+              maxWidth: 560,
             }}
           >
-            Tomat, Terung, dan Cabai kini terstandarisasi pada arsitektur YOLO11n 3-Class (Grade A, Grade B, Reject).
+            Tomat, Terung, dan Cabai diklasifikasikan seragam ke Grade A, Grade B, dan Reject sesuai standar pasar modern.
           </Typography>
         </Stack>
 
-        <Grid container spacing={3} sx={{ mb: { xs: 8, md: 12 } }}>
+        <Grid container spacing={3} sx={{ mb: '80px' }}>
           {COMMODITY_MODELS.map((item) => (
             <Grid key={item.id} size={{ xs: 12, md: 4 }}>
-              <Stack
-                spacing={2}
-                sx={{
-                  height: '100%',
-                  p: 3.5,
-                  borderRadius: AGRI_RADII.featurePanels,
-                  bgcolor: AGRI_COLORS.snow,
-                  border: `1px solid ${AGRI_COLORS.mintBorder}`,
-                }}
-              >
-                <Stack direction="row" justifyContent="space-between" alignItems="center">
-                  <CommodityVisual id={item.id} />
-                  <Stack alignItems="flex-end" spacing={0.75}>
-                    <Chip
-                      label={item.badge}
-                      size="small"
-                      sx={{
-                        bgcolor: AGRI_COLORS.mintSoft,
-                        color: AGRI_COLORS.emerald,
-                        fontFamily: AGRI_FONTS.ui,
-                        fontWeight: 700,
-                        fontSize: '0.72rem',
-                        border: `1px solid ${AGRI_COLORS.mintBorder}`,
-                      }}
-                    />
-                    <Typography sx={{ fontFamily: AGRI_FONTS.ui, fontSize: '0.82rem', fontWeight: 700, color: AGRI_COLORS.goldMuted }}>
-                      Acuan {item.refPrice}
-                    </Typography>
-                  </Stack>
-                </Stack>
-
-                <Box>
-                  <Typography
-                    sx={{
-                      fontFamily: AGRI_FONTS.display,
-                      fontWeight: 800,
-                      fontSize: '1.65rem',
-                      color: AGRI_COLORS.ink,
-                      textTransform: 'uppercase',
-                      lineHeight: 1.1,
-                    }}
-                  >
-                    {item.name}
-                  </Typography>
-                  <Typography sx={{ fontFamily: AGRI_FONTS.ui, fontSize: '0.82rem', fontStyle: 'italic', color: AGRI_COLORS.leafSlate }}>
-                    {item.latin}
-                  </Typography>
-                </Box>
-
-                <Typography sx={{ fontFamily: AGRI_FONTS.prose, fontSize: '0.92rem', lineHeight: 1.55, color: AGRI_COLORS.inkMuted }}>
-                  {item.description}
-                </Typography>
-
-                <Stack spacing={1} sx={{ pt: 1 }}>
-                  {item.grades.map((g) => (
-                    <Box
-                      key={g.name}
-                      sx={{
-                        p: 1.25,
-                        borderRadius: AGRI_RADII.buttons,
-                        bgcolor: AGRI_COLORS.mintBg,
-                        border: `1px solid ${AGRI_COLORS.mintBorder}`,
-                      }}
-                    >
-                      <Typography sx={{ fontFamily: AGRI_FONTS.ui, fontSize: '0.78rem', fontWeight: 700, color: AGRI_COLORS.emerald }}>
-                        {g.name}
-                      </Typography>
-                      <Typography sx={{ fontFamily: AGRI_FONTS.prose, fontSize: '0.8rem', color: AGRI_COLORS.inkMuted }}>
-                        {g.spec}
+              <EditorialNeutralCard sx={{ height: '100%', p: '32px 24px' }}>
+                <Stack spacing={2}>
+                  <Stack direction="row" justifyContent="space-between" alignItems="center">
+                    <CommodityVisual id={item.id} />
+                    <Box sx={{ textAlign: 'right' }}>
+                      <GhostCategoryTag>{item.badge}</GhostCategoryTag>
+                      <Typography sx={{ fontFamily: AGRI_FONTS.sans, fontSize: '0.94rem', fontWeight: 500, color: AGRI_COLORS.emerald }}>
+                        Acuan {item.refPrice}
                       </Typography>
                     </Box>
-                  ))}
+                  </Stack>
+
+                  <Box>
+                    <Typography sx={{ fontFamily: AGRI_FONTS.serif, fontWeight: 400, fontSize: '1.85rem', color: AGRI_COLORS.ink, lineHeight: 1.2 }}>
+                      {item.name}
+                    </Typography>
+                    <GhostCategoryTag sx={{ fontStyle: 'italic' }}>
+                      {item.latin}
+                    </GhostCategoryTag>
+                  </Box>
+
+                  <Typography sx={{ fontFamily: AGRI_FONTS.sans, fontSize: '1rem', lineHeight: 1.5, color: AGRI_COLORS.ink }}>
+                    {item.description}
+                  </Typography>
+
+                  <Stack spacing={1} sx={{ pt: 1 }}>
+                    {item.grades.map((g) => (
+                      <Box
+                        key={g.name}
+                        sx={{
+                          p: 1.5,
+                          borderRadius: AGRI_RADII.images,
+                          bgcolor: AGRI_COLORS.paperWhite,
+                        }}
+                      >
+                        <Typography sx={{ fontFamily: AGRI_FONTS.sans, fontSize: '0.84rem', fontWeight: 500, color: AGRI_COLORS.ink }}>
+                          {g.name}
+                        </Typography>
+                        <Typography sx={{ fontFamily: AGRI_FONTS.sans, fontSize: '0.84rem', color: AGRI_COLORS.slateMuted }}>
+                          {g.spec}
+                        </Typography>
+                      </Box>
+                    ))}
+                  </Stack>
                 </Stack>
-              </Stack>
+              </EditorialNeutralCard>
             </Grid>
           ))}
         </Grid>
 
-        {/* Target Users */}
-        <Stack spacing={2} alignItems="center" sx={{ textAlign: 'center', maxWidth: 700, mx: 'auto', mb: 5 }}>
-          <DisplayHeadline component="h3" variant="subsection">
-            DIRANCANG UNTUK SELURUH RANTAI PASOK
+        <Stack spacing={2} sx={{ maxWidth: 680, mb: 5 }}>
+          <DisplayHeadline variant="section">
+            Dirancang untuk seluruh rantai pasok panen.
           </DisplayHeadline>
         </Stack>
 
         <Grid container spacing={3}>
-          {TARGET_USERS.map((user) => {
-            const Icon = user.icon
-            return (
-              <Grid key={user.role} size={{ xs: 12, md: 4 }}>
-                <Stack
-                  spacing={2}
-                  sx={{
-                    height: '100%',
-                    p: 3.5,
-                    borderRadius: AGRI_RADII.cards,
-                    bgcolor: AGRI_COLORS.snow,
-                    border: `1px solid ${AGRI_COLORS.mintBorder}`,
-                  }}
-                >
-                  <Stack direction="row" spacing={1.5} alignItems="center">
-                    <Box
-                      sx={{
-                        width: 44,
-                        height: 44,
-                        borderRadius: AGRI_RADII.buttons,
-                        bgcolor: AGRI_COLORS.mintSoft,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        color: AGRI_COLORS.emerald,
-                      }}
-                    >
-                      <Icon />
-                    </Box>
-                    <Typography sx={{ fontFamily: AGRI_FONTS.body, fontWeight: 700, fontSize: '0.95rem', color: AGRI_COLORS.emerald }}>
-                      {user.role}
-                    </Typography>
-                  </Stack>
+          {TARGET_USERS.map((user) => (
+            <Grid key={user.role} size={{ xs: 12, md: 4 }}>
+              <EditorialNeutralCard sx={{ height: '100%', p: '32px 24px' }}>
+                <Stack spacing={1.75}>
+                  <GhostCategoryTag>{user.role}</GhostCategoryTag>
 
-                  <Typography sx={{ fontFamily: AGRI_FONTS.display, fontWeight: 800, fontSize: '1.22rem', color: AGRI_COLORS.ink }}>
+                  <Typography sx={{ fontFamily: AGRI_FONTS.sans, fontWeight: 500, fontSize: '1.25rem', color: AGRI_COLORS.ink }}>
                     {user.headline}
                   </Typography>
 
-                  <Typography sx={{ fontFamily: AGRI_FONTS.prose, fontSize: '0.92rem', lineHeight: 1.55, color: AGRI_COLORS.inkMuted }}>
+                  <Typography sx={{ fontFamily: AGRI_FONTS.sans, fontSize: '1rem', lineHeight: 1.5, color: AGRI_COLORS.ink }}>
                     {user.benefit}
                   </Typography>
 
-                  <Stack spacing={1} sx={{ pt: 0.5 }}>
+                  <Stack spacing={0.75} sx={{ pt: 0.5 }}>
                     {user.points.map((pt) => (
-                      <Stack key={pt} direction="row" spacing={1} alignItems="center">
-                        <CheckCircleRoundedIcon sx={{ fontSize: 17, color: AGRI_COLORS.emerald, flexShrink: 0 }} />
-                        <Typography sx={{ fontFamily: AGRI_FONTS.body, fontSize: '0.86rem', color: AGRI_COLORS.ink }}>
-                          {pt}
-                        </Typography>
-                      </Stack>
+                      <Typography key={pt} sx={{ fontFamily: AGRI_FONTS.sans, fontSize: '0.9rem', color: AGRI_COLORS.slateMuted }}>
+                        · {pt}
+                      </Typography>
                     ))}
                   </Stack>
                 </Stack>
-              </Grid>
-            )
-          })}
+              </EditorialNeutralCard>
+            </Grid>
+          ))}
         </Grid>
       </Container>
     </Box>
