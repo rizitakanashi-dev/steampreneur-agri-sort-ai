@@ -1,0 +1,15 @@
+# Local datasets, training runs, and root PyTorch weights (not needed on Vercel)
+Eggplant-Quality-Grades-*/
+runs/
+yolo*.pt
+model-export/
+models-20261107T170211Z-1-001/
+server/models/**/*.pt
+bughunt-kasir/
+.cert/
+*.zip
+*.docx
+.pytest_cache/
+__pycache__/
+*.pyc
+server/data/
