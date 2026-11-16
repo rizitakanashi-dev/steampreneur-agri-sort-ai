@@ -1,25 +1,23 @@
-import {
-  Box,
-  Container,
-  Grid,
-  Stack,
-  Typography,
-} from '@mui/material'
+import { Box, Container, Grid, Stack, Typography } from '@mui/material'
 import SpaRoundedIcon from '@mui/icons-material/SpaRounded'
-import SchoolRoundedIcon from '@mui/icons-material/SchoolRounded'
-import EmojiEventsRoundedIcon from '@mui/icons-material/EmojiEventsRounded'
-import { FONTS, LANDING_COLORS, NAV_LINKS, TEAM_INFO } from './constants.js'
+import { AGRI_COLORS, AGRI_FONTS, AGRI_RADII } from './tokens.js'
+import { NAV_LINKS, TEAM_INFO } from './landingData.js'
+
+const APP_MODULES = [
+  { label: 'Dashboard Utama', page: 'overview' },
+  { label: 'Batch QC Scanner', page: 'scanner' },
+  { label: 'Input Hasil Panen', page: 'input' },
+  { label: 'Smart Pricing', page: 'pricing' },
+  { label: 'Rekap Data Panen', page: 'results-list' },
+]
 
 export function Footer({ onOpenApp }) {
   const handleNavClick = (e, href) => {
     e.preventDefault()
-    const element = document.querySelector(href)
-    if (element) {
-      const topOffset = 80
-      const elementPosition = element.getBoundingClientRect().top
-      const offsetPosition = elementPosition + window.pageYOffset - topOffset
+    const el = document.querySelector(href)
+    if (el) {
       window.scrollTo({
-        top: offsetPosition,
+        top: el.getBoundingClientRect().top + window.pageYOffset - 80,
         behavior: 'smooth',
       })
     }
@@ -30,123 +28,96 @@ export function Footer({ onOpenApp }) {
       id="tentang-kami"
       component="footer"
       sx={{
-        bgcolor: '#0e261f',
-        color: LANDING_COLORS.white,
-        pt: { xs: 8, sm: 10, md: 12 },
-        pb: { xs: 5, sm: 6 },
-        borderTop: '1px solid rgba(255, 255, 255, 0.08)',
+        bgcolor: AGRI_COLORS.canopyDeep,
+        color: AGRI_COLORS.snow,
+        pt: { xs: 8, md: 10 },
+        pb: { xs: 6, md: 8 },
       }}
     >
-      <Container maxWidth="lg" sx={{ px: { xs: 2.5, sm: 3, md: 4 } }}>
-        <Grid container spacing={{ xs: 5, md: 6 }}>
-          {/* BRAND COLUMN */}
-          <Grid size={{ xs: 12, md: 4.5 }}>
-            <Stack spacing={2.5}>
-              <Stack direction="row" alignItems="center" spacing={1.5}>
+      <Container maxWidth="lg" sx={{ px: { xs: 2.5, sm: 3 } }}>
+        <Grid container spacing={4}>
+          {/* Brand Column */}
+          <Grid size={{ xs: 12, md: 4 }}>
+            <Stack spacing={2}>
+              <Stack direction="row" spacing={1.5} alignItems="center">
                 <Box
                   sx={{
-                    width: 38,
-                    height: 38,
-                    borderRadius: '10px',
-                    bgcolor: LANDING_COLORS.leafGreen,
+                    width: 40,
+                    height: 40,
+                    borderRadius: AGRI_RADII.buttons,
+                    bgcolor: AGRI_COLORS.leafGlow,
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    color: LANDING_COLORS.forestGreen,
+                    color: AGRI_COLORS.emeraldDark,
                   }}
                 >
                   <SpaRoundedIcon sx={{ fontSize: 22 }} />
                 </Box>
-                <Box>
-                  <Typography
-                    sx={{
-                      fontFamily: FONTS.heading,
-                      fontWeight: 800,
-                      fontSize: '1.2rem',
-                      letterSpacing: '-0.02em',
-                      color: LANDING_COLORS.white,
-                      lineHeight: 1.1,
-                    }}
-                  >
-                    AGRI-SORT AI
-                  </Typography>
-                  <Typography
-                    sx={{
-                      fontFamily: FONTS.body,
-                      fontSize: '0.68rem',
-                      fontWeight: 600,
-                      letterSpacing: '0.08em',
-                      textTransform: 'uppercase',
-                      color: LANDING_COLORS.leafGreen,
-                    }}
-                  >
-                    Precision Agriculture Platform
-                  </Typography>
-                </Box>
+                <Typography
+                  sx={{
+                    fontFamily: AGRI_FONTS.display,
+                    fontWeight: 800,
+                    fontSize: '1.2rem',
+                    letterSpacing: '-0.01em',
+                    textTransform: 'uppercase',
+                  }}
+                >
+                  AGRI-SORT AI
+                </Typography>
               </Stack>
 
               <Typography
                 sx={{
-                  fontFamily: FONTS.body,
-                  fontSize: '0.88rem',
-                  lineHeight: 1.65,
-                  color: 'rgba(255, 255, 255, 0.72)',
+                  fontFamily: AGRI_FONTS.prose,
+                  fontSize: '0.95rem',
+                  lineHeight: 1.5,
+                  color: AGRI_COLORS.sageMist,
                 }}
               >
-                Platform digital pemilahan kualitas hasil panen, pemetaan grade mutu hortikultura, dan transparansi estimasi nilai jual untuk mendukung kesejahteraan petani dan pengumpul Indonesia.
+                {TEAM_INFO.tagline} — {TEAM_INFO.supportingTagline}
               </Typography>
 
-              <Box
+              <Typography
                 sx={{
-                  p: 1.75,
-                  bgcolor: 'rgba(255, 255, 255, 0.05)',
-                  borderRadius: '12px',
-                  border: '1px solid rgba(255, 255, 255, 0.08)',
+                  fontFamily: AGRI_FONTS.body,
+                  fontSize: '0.88rem',
+                  color: '#9BC8B2',
                 }}
               >
-                <Typography sx={{ fontFamily: FONTS.heading, fontSize: '0.78rem', fontWeight: 700, color: LANDING_COLORS.harvestGold, mb: 0.5 }}>
-                  Tagline Resmi:
-                </Typography>
-                <Typography sx={{ fontFamily: FONTS.body, fontSize: '0.82rem', color: LANDING_COLORS.white, fontWeight: 600, fontStyle: 'italic' }}>
-                  "{TEAM_INFO.tagline}"
-                </Typography>
-                <Typography sx={{ fontFamily: FONTS.body, fontSize: '0.75rem', color: 'rgba(255, 255, 255, 0.6)' }}>
-                  {TEAM_INFO.supportingTagline}
-                </Typography>
-              </Box>
+                {TEAM_INFO.school} · {TEAM_INFO.competition}
+              </Typography>
             </Stack>
           </Grid>
 
-          {/* QUICK NAVIGATION */}
-          <Grid size={{ xs: 6, sm: 3, md: 2.5 }}>
+          {/* Navigation Column */}
+          <Grid size={{ xs: 6, sm: 4, md: 2.5 }}>
             <Typography
               sx={{
-                fontFamily: FONTS.heading,
-                fontSize: '0.85rem',
-                fontWeight: 700,
-                letterSpacing: '0.08em',
-                textTransform: 'uppercase',
-                color: LANDING_COLORS.white,
-                mb: 2.5,
+                fontFamily: AGRI_FONTS.body,
+                fontWeight: 600,
+                fontSize: '1rem',
+                letterSpacing: '0.013em',
+                color: AGRI_COLORS.snow,
+                mb: 2,
               }}
             >
               Navigasi
             </Typography>
-
-            <Stack spacing={1.5}>
+            <Stack spacing={1}>
               {NAV_LINKS.map((link) => (
                 <Typography
-                  key={link.label}
+                  key={link.href}
                   component="a"
                   href={link.href}
                   onClick={(e) => handleNavClick(e, link.href)}
                   sx={{
-                    fontFamily: FONTS.body,
-                    fontSize: '0.88rem',
-                    color: 'rgba(255, 255, 255, 0.68)',
+                    fontFamily: AGRI_FONTS.prose,
+                    fontSize: '1rem',
+                    lineHeight: 1.5,
+                    color: AGRI_COLORS.sageMist,
                     textDecoration: 'none',
-                    transition: 'color 0.2s ease',
-                    '&:hover': { color: LANDING_COLORS.leafGreen },
+                    '&:hover': { color: AGRI_COLORS.snow },
                   }}
                 >
                   {link.label}
@@ -155,151 +126,76 @@ export function Footer({ onOpenApp }) {
             </Stack>
           </Grid>
 
-          {/* APPLICATION MODULES */}
-          <Grid size={{ xs: 6, sm: 3, md: 2.5 }}>
+          {/* Modules Column */}
+          <Grid size={{ xs: 6, sm: 4, md: 2.5 }}>
             <Typography
               sx={{
-                fontFamily: FONTS.heading,
-                fontSize: '0.85rem',
-                fontWeight: 700,
-                letterSpacing: '0.08em',
-                textTransform: 'uppercase',
-                color: LANDING_COLORS.white,
-                mb: 2.5,
+                fontFamily: AGRI_FONTS.body,
+                fontWeight: 600,
+                fontSize: '1rem',
+                letterSpacing: '0.013em',
+                color: AGRI_COLORS.snow,
+                mb: 2,
               }}
             >
-              Fitur Aplikasi
+              Modul Aplikasi
             </Typography>
-
-            <Stack spacing={1.5}>
-              {[
-                { label: 'Dashboard Utama', target: 'overview' },
-                { label: 'Batch QC Scanner', target: 'scanner' },
-                { label: 'Hasil Analisis Mutu', target: 'results' },
-                { label: 'Rekap Data Panen', target: 'results-list' },
-                { label: 'Smart Pricing & BAPANAS', target: 'pricing' },
-              ].map((item) => (
+            <Stack spacing={1}>
+              {APP_MODULES.map((mod) => (
                 <Typography
-                  key={item.label}
+                  key={mod.page}
                   component="button"
-                  onClick={() => onOpenApp(item.target)}
+                  onClick={() => onOpenApp(mod.page)}
                   sx={{
-                    background: 'none',
+                    textAlign: 'left',
                     border: 'none',
+                    bgcolor: 'transparent',
                     p: 0,
                     cursor: 'pointer',
-                    textAlign: 'left',
-                    fontFamily: FONTS.body,
-                    fontSize: '0.88rem',
-                    color: 'rgba(255, 255, 255, 0.68)',
-                    transition: 'color 0.2s ease',
-                    '&:hover': { color: LANDING_COLORS.leafGreen },
+                    fontFamily: AGRI_FONTS.prose,
+                    fontSize: '1rem',
+                    lineHeight: 1.5,
+                    color: AGRI_COLORS.sageMist,
+                    '&:hover': { color: AGRI_COLORS.snow },
                   }}
                 >
-                  {item.label}
+                  {mod.label}
                 </Typography>
               ))}
             </Stack>
           </Grid>
 
-          {/* PROJECT IDENTITY & TEAM */}
-          <Grid size={{ xs: 12, sm: 6, md: 2.5 }}>
+          {/* Team Column */}
+          <Grid size={{ xs: 12, sm: 4, md: 3 }}>
             <Typography
               sx={{
-                fontFamily: FONTS.heading,
-                fontSize: '0.85rem',
-                fontWeight: 700,
-                letterSpacing: '0.08em',
-                textTransform: 'uppercase',
-                color: LANDING_COLORS.white,
-                mb: 2.5,
+                fontFamily: AGRI_FONTS.body,
+                fontWeight: 600,
+                fontSize: '1rem',
+                letterSpacing: '0.013em',
+                color: AGRI_COLORS.snow,
+                mb: 2,
               }}
             >
               Tim Pengembang
             </Typography>
-
-            <Stack spacing={1.75}>
-              <Stack direction="row" spacing={1} alignItems="flex-start">
-                <SchoolRoundedIcon sx={{ fontSize: 18, color: LANDING_COLORS.leafGreen, mt: 0.25 }} />
-                <Box>
-                  <Typography sx={{ fontFamily: FONTS.body, fontSize: '0.85rem', fontWeight: 700, color: LANDING_COLORS.white }}>
-                    {TEAM_INFO.school}
+            <Stack spacing={1}>
+              {TEAM_INFO.members.map((member) => (
+                <Box key={member.name}>
+                  <Typography sx={{ fontFamily: AGRI_FONTS.prose, fontSize: '0.96rem', color: AGRI_COLORS.snow }}>
+                    {member.name}
                   </Typography>
-                  <Typography sx={{ fontFamily: FONTS.body, fontSize: '0.75rem', color: 'rgba(255, 255, 255, 0.6)' }}>
-                    {TEAM_INFO.location}
+                  <Typography sx={{ fontFamily: AGRI_FONTS.prose, fontSize: '0.84rem', color: AGRI_COLORS.sageMist }}>
+                    {member.role}
                   </Typography>
                 </Box>
-              </Stack>
-
-              <Stack direction="row" spacing={1} alignItems="flex-start">
-                <EmojiEventsRoundedIcon sx={{ fontSize: 18, color: LANDING_COLORS.harvestGold, mt: 0.25 }} />
-                <Box>
-                  <Typography sx={{ fontFamily: FONTS.body, fontSize: '0.82rem', fontWeight: 600, color: 'rgba(255, 255, 255, 0.9)' }}>
-                    {TEAM_INFO.competition}
-                  </Typography>
-                </Box>
-              </Stack>
-
-              <Box sx={{ pt: 1, borderTop: '1px solid rgba(255, 255, 255, 0.08)' }}>
-                <Typography sx={{ fontFamily: FONTS.body, fontSize: '0.72rem', color: 'rgba(255, 255, 255, 0.5)', mb: 0.75 }}>
-                  Anggota Tim Siswa RPL:
-                </Typography>
-                {TEAM_INFO.members.map((m) => (
-                  <Typography key={m.name} sx={{ fontFamily: FONTS.body, fontSize: '0.78rem', color: 'rgba(255, 255, 255, 0.8)', lineHeight: 1.45 }}>
-                    • <strong>{m.name}</strong> ({m.role})
-                  </Typography>
-                ))}
-                <Typography sx={{ fontFamily: FONTS.body, fontSize: '0.75rem', color: LANDING_COLORS.leafGreen, mt: 0.75 }}>
-                  Guru Pembimbing: {TEAM_INFO.mentor}
-                </Typography>
-              </Box>
+              ))}
+              <Typography sx={{ fontFamily: AGRI_FONTS.prose, fontSize: '0.86rem', color: '#9BC8B2', pt: 0.5 }}>
+                Pembimbing: {TEAM_INFO.mentor}
+              </Typography>
             </Stack>
           </Grid>
         </Grid>
-
-        {/* BOTTOM COPYRIGHT & COMPLIANCE BAR */}
-        <Box
-          sx={{
-            mt: { xs: 6, sm: 8 },
-            pt: 3.5,
-            borderTop: '1px solid rgba(255, 255, 255, 0.08)',
-            display: 'flex',
-            flexDirection: { xs: 'column', sm: 'row' },
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: 2,
-          }}
-        >
-          <Typography
-            sx={{
-              fontFamily: FONTS.body,
-              fontSize: '0.78rem',
-              color: 'rgba(255, 255, 255, 0.55)',
-            }}
-          >
-            © 2026 Agri-Sort AI. STEAMPreneur SMK Tingkat Nasional — SMK Negeri 4 Payakumbuh.
-          </Typography>
-
-          <Stack direction="row" spacing={3}>
-            <Typography
-              component="button"
-              onClick={() => onOpenApp('overview')}
-              sx={{
-                background: 'none',
-                border: 'none',
-                p: 0,
-                cursor: 'pointer',
-                fontFamily: FONTS.body,
-                fontSize: '0.78rem',
-                color: LANDING_COLORS.leafGreen,
-                fontWeight: 600,
-                '&:hover': { textDecoration: 'underline' },
-              }}
-            >
-              Masuk ke Aplikasi →
-            </Typography>
-          </Stack>
-        </Box>
       </Container>
     </Box>
   )
