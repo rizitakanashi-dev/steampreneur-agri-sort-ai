@@ -148,8 +148,8 @@ steampreneur-agri-sort-ai/
 ## 👥 Informasi Pengembang
 
 Karya siswa **SMKN 4 Payakumbuh** — Bidang Lomba *STEAMPreneur* Tingkat Nasional 2026:
-* **Faris Al Farizi** — Ketua Tim / Senior Fullstack Developer
-* **Hieray Antovino** — Analis Bisnis & Dokumentator
-* **Ahmad Afif** — Machine Learning Engineer & Quality Assurance
+* **Faris Al Farizi** — Ketua & Machine Learning Engineer
+* **Hieray Antovino** — Fullstack Engineer & Quality Assurance
+* **Ahmad Afif** — Analis Bisnis & Dokumentator
 
 Lisensi: [MIT License](LICENSE).

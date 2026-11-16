@@ -3,6 +3,7 @@ import {
   AppBar,
   Avatar,
   Box,
+  Button,
   Drawer,
   IconButton,
   List,
@@ -16,9 +17,11 @@ import {
   useTheme,
 } from '@mui/material'
 import AgricultureRoundedIcon from '@mui/icons-material/AgricultureRounded'
+import ArrowBackRoundedIcon from '@mui/icons-material/ArrowBackRounded'
 import AssessmentRoundedIcon from '@mui/icons-material/AssessmentRounded'
 import CloseRoundedIcon from '@mui/icons-material/CloseRounded'
 import DashboardRoundedIcon from '@mui/icons-material/DashboardRounded'
+import HomeRoundedIcon from '@mui/icons-material/HomeRounded'
 import MenuRoundedIcon from '@mui/icons-material/MenuRounded'
 import PriceCheckRoundedIcon from '@mui/icons-material/PriceCheckRounded'
 import QrCodeScannerRoundedIcon from '@mui/icons-material/QrCodeScannerRounded'
@@ -36,7 +39,7 @@ const navigationItems = [
   { id: 'pricing', label: 'Harga Pasar', icon: PriceCheckRoundedIcon },
 ]
 
-export function AppShell({ activePage, onNavigate, onDataChanged, children }) {
+export function AppShell({ activePage, onNavigate, onDataChanged, onBackToLanding, children }) {
   const theme = useTheme()
   const isDesktop = useMediaQuery(theme.breakpoints.up('md'))
   const [mobileOpen, setMobileOpen] = useState(false)
@@ -79,6 +82,36 @@ export function AppShell({ activePage, onNavigate, onDataChanged, children }) {
           </IconButton>
         )}
       </Toolbar>
+
+      <Box sx={{ px: 1.5, pt: 0.5, pb: 0.5 }}>
+        <ListItemButton
+          onClick={() => {
+            if (typeof onBackToLanding === 'function') {
+              onBackToLanding()
+            } else {
+              onNavigate('landing')
+            }
+            setMobileOpen(false)
+          }}
+          sx={{
+            borderRadius: 1.75,
+            minHeight: 38,
+            px: 1.25,
+            bgcolor: 'rgba(23, 63, 50, 0.06)',
+            border: '1px solid rgba(23, 63, 50, 0.12)',
+            transition: 'all 0.15s ease',
+            '&:hover': { bgcolor: 'rgba(23, 63, 50, 0.12)' },
+          }}
+        >
+          <ListItemIcon sx={{ color: 'primary.dark', minWidth: 30 }}>
+            <HomeRoundedIcon fontSize="small" />
+          </ListItemIcon>
+          <ListItemText
+            primary="Halaman Depan (Landing)"
+            slotProps={{ primary: { sx: { fontSize: 12, fontWeight: 700, color: 'primary.dark' } } }}
+          />
+        </ListItemButton>
+      </Box>
 
       <Box sx={{ px: 1.5, py: 1 }}>
         <Typography color="text.secondary" sx={{ px: 1.5, pb: 1.25, fontSize: 10, fontWeight: 800, letterSpacing: '0.12em' }}>
@@ -171,6 +204,17 @@ export function AppShell({ activePage, onNavigate, onDataChanged, children }) {
             </IconButton>
             <Typography color="text.primary" fontWeight={800} variant="subtitle1">Agri-Sort AI</Typography>
             <Box sx={{ flexGrow: 1 }} />
+            <Button
+              size="small"
+              startIcon={<HomeRoundedIcon sx={{ fontSize: 16 }} />}
+              onClick={() => {
+                if (typeof onBackToLanding === 'function') onBackToLanding()
+                else onNavigate('landing')
+              }}
+              sx={{ mr: 1, fontSize: 12, fontWeight: 700, textTransform: 'none', color: 'primary.dark' }}
+            >
+              Beranda
+            </Button>
             <IconButton aria-label="Buka pengaturan" onClick={() => setSettingsOpen(true)} size="small" sx={{ mr: 1 }}>
               <SettingsRoundedIcon fontSize="small" />
             </IconButton>

@@ -41,6 +41,7 @@ import { QCResults } from './components/QCResults.jsx'
 import { ErrorBoundary } from './components/ErrorBoundary.jsx'
 import { PageHeader } from './components/PageHeader.jsx'
 import { PricingDashboard } from './components/PricingDashboard.jsx'
+import { LandingPage } from './pages/LandingPage.jsx'
 
 const pages = {
   overview: { title: 'Dashboard', description: 'Pantau kualitas panen dan peluang harga dalam satu tampilan.' },
@@ -444,13 +445,34 @@ function FoundationPage({
   )
 }
 
+function getInitialRoute() {
+  if (typeof window !== 'undefined') {
+    const rawHash = window.location.hash.replace('#', '')
+    if (pages[rawHash]) {
+      return { view: 'app', page: rawHash }
+    }
+    try {
+      const params = new URLSearchParams(window.location.search)
+      const pageParam = params.get('page')
+      if (pages[pageParam]) {
+        return { view: 'app', page: pageParam }
+      }
+      if (params.get('view') === 'app') {
+        return { view: 'app', page: 'overview' }
+      }
+    } catch {}
+  }
+  return { view: 'landing', page: 'overview' }
+}
+
 function App() {
-  const [activePage, setActivePage] = useState('overview')
+  const [currentView, setCurrentView] = useState(() => getInitialRoute().view)
+  const [activePage, setActivePage] = useState(() => getInitialRoute().page)
   const [batches, setBatches] = useState([])
   const [selectedBatch, setSelectedBatch] = useState(null)
   const [openCertModal, setOpenCertModal] = useState(false)
   const [harvestMessage, setHarvestMessage] = useState('')
-  const page = pages[activePage]
+  const page = pages[activePage] || pages.overview
 
   useEffect(() => {
     const storedBatches = readBatches()
@@ -458,8 +480,42 @@ function App() {
     setSelectedBatch(storedBatches[storedBatches.length - 1] || null)
   }, [])
 
+  useEffect(() => {
+    const handleHash = () => {
+      const hash = window.location.hash.replace('#', '')
+      if (pages[hash]) {
+        setCurrentView('app')
+        setActivePage(hash)
+      } else if (hash === '' || hash === 'landing') {
+        setCurrentView('landing')
+      }
+    }
+    window.addEventListener('hashchange', handleHash)
+    return () => window.removeEventListener('hashchange', handleHash)
+  }, [])
+
+  const handleOpenApp = (targetPage = 'overview') => {
+    const pageToOpen = pages[targetPage] ? targetPage : 'overview'
+    setCurrentView('app')
+    setActivePage(pageToOpen)
+    window.location.hash = pageToOpen
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  const handleBackToLanding = () => {
+    setCurrentView('landing')
+    window.location.hash = ''
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
   const handleNavigate = (pageId) => {
+    if (pageId === 'landing') {
+      handleBackToLanding()
+      return
+    }
+    setCurrentView('app')
     setActivePage(pageId)
+    window.location.hash = pageId
     setHarvestMessage('')
     setOpenCertModal(false)
   }
@@ -468,18 +524,21 @@ function App() {
     setHarvestMessage('')
     setOpenCertModal(false)
     setActivePage('scanner')
+    window.location.hash = 'scanner'
   }
 
   const handleViewRecap = () => {
     setHarvestMessage('')
     setOpenCertModal(false)
     setActivePage('results-list')
+    window.location.hash = 'results-list'
   }
 
   const handleSelectBatch = (batch, options = {}) => {
     setSelectedBatch(batch)
     setOpenCertModal(Boolean(options?.openCertificate))
     setActivePage('results')
+    window.location.hash = 'results'
   }
 
   const handleDataChanged = () => {
@@ -533,12 +592,18 @@ function App() {
     setSelectedBatch(savedBatch)
     setHarvestMessage(`Batch ${savedBatch.id} berhasil disimpan ke rekap.`)
     setActivePage('results')
+    window.location.hash = 'results'
+  }
+
+  if (currentView === 'landing') {
+    return <LandingPage onOpenApp={handleOpenApp} />
   }
 
   return (
     <AppShell
       activePage={activePage}
       onNavigate={handleNavigate}
+      onBackToLanding={handleBackToLanding}
       onDataChanged={handleDataChanged}
     >
       <Container maxWidth="lg" sx={{ px: { xs: 1.5, sm: 2, md: 3 }, py: { xs: 2.5, sm: 3.5, md: 4.5 } }}>
