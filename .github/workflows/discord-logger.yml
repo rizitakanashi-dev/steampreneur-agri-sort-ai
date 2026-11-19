@@ -1,0 +1,49 @@
+name: Discord GitHub Logger
+
+on:
+  push:
+    branches: ["**"]
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Send notification to Discord
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+          REPOSITORY: ${{ github.repository }}
+          BRANCH: ${{ github.ref_name }}
+          AUTHOR: ${{ github.actor }}
+          COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
+          COMMIT_URL: ${{ github.event.head_commit.url }}
+          COMMIT_SHA: ${{ github.sha }}
+        run: |
+          jq -n \
+            --arg repo "$REPOSITORY" \
+            --arg branch "$BRANCH" \
+            --arg author "$AUTHOR" \
+            --arg message "$COMMIT_MESSAGE" \
+            --arg url "$COMMIT_URL" \
+            --arg sha "${COMMIT_SHA:0:7}" \
+            '{
+              embeds: [{
+                title: "New GitHub Push",
+                url: $url,
+                color: 5763719,
+                fields: [
+                  {name: "Repository", value: $repo, inline: true},
+                  {name: "Branch", value: $branch, inline: true},
+                  {name: "Author", value: $author, inline: true},
+                  {name: "Commit", value: $sha, inline: true},
+                  {name: "Message", value: $message}
+                ],
+                footer: {text: "GitHub Logger"}
+              }]
+            }' > payload.json
+
+          curl -fsS \
+            -H "Content-Type: application/json" \
+            -X POST \
+            -d @payload.json \
+            "$DISCORD_WEBHOOK"
