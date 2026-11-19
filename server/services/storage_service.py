@@ -305,7 +305,10 @@ class SupabaseScanStorage:
         fallback: Optional[LocalScanStorage] = None,
         timeout_seconds: float = 10.0,
     ):
-        self.base_url = supabase_url.rstrip("/")
+        base = supabase_url.strip().rstrip("/")
+        if base.endswith("/rest/v1"):
+            base = base[: -len("/rest/v1")]
+        self.base_url = base
         self.api_key = supabase_key
         self.fallback = fallback or LocalScanStorage()
         self.timeout_seconds = timeout_seconds
@@ -320,9 +323,11 @@ class SupabaseScanStorage:
         url = f"{self.base_url}/rest/v1/scans{query}"
         headers = {
             "apikey": self.api_key,
-            "Authorization": f"Bearer {self.api_key}",
             "Content-Type": "application/json",
         }
+        # New Supabase opaque keys (sb_secret_ / sb_publishable_) are not JWTs and must NOT be sent as Bearer tokens
+        if not self.api_key.startswith(("sb_secret_", "sb_publishable_")):
+            headers["Authorization"] = f"Bearer {self.api_key}"
         if prefer:
             headers["Prefer"] = prefer
 
