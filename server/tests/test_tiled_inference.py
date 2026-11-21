@@ -516,6 +516,161 @@ class TestTiledInferenceAndDisambiguation(unittest.TestCase):
         self.assertFalse(is_watermark_or_text_artifact([20, 20, 180, 180], red_img, "tomat"))
         self.assertFalse(is_watermark_or_text_artifact([20, 20, 180, 180], red_img, "cabai"))
 
+    def test_cabai_2x2_grid_and_elongated_seam_merge(self):
+        """Memastikan cabai beresolusi 1280x960 memakai grid 2x2 (4 tile) dan menggabungkan seam lintas batas tile."""
+        mock_model = MagicMock()
+        mock_model.names = {0: "Grade A", 1: "Grade B", 2: "Reject"}
+        img = Image.new("RGB", (1280, 960), color="red")
+
+        def side_effect_predict(source, **kwargs):
+            mock_res = MagicMock()
+            w, _ = source.size
+            if w == 1280:
+                mock_res.boxes = []
+            else:
+                # Simulasikan 1 fragmen cabai vertikal yang terbelah di tepi bawah/atas tile
+                b = MagicMock()
+                b.cls = [0]
+                b.conf = [0.75]
+                b.xyxy = [[200.0, 200.0, 260.0, 520.0]]
+                mock_res.boxes = [b]
+            return [mock_res]
+
+        mock_model.predict.side_effect = side_effect_predict
+        result = run_sliced_yolo_inference(
+            image=img,
+            model=mock_model,
+            commodity="cabai",
+            confidence_threshold=0.35,
+            enable_slicing=True,
+        )
+        self.assertTrue(result["is_sliced"])
+        self.assertEqual(result["tiles_processed"], 4)
+
+    def test_nested_fragment_suppressed_while_stacked_preserved(self):
+        """Memastikan fragmen mungil di dalam box buah utuh ditekan, namun 2 buah bertumpuk sebanding tetap dipertahankan."""
+        mock_model = MagicMock()
+        mock_model.names = {0: "Grade A", 1: "Grade B", 2: "Reject"}
+        img = Image.new("RGB", (640, 480), color="red")
+
+        b_left = MagicMock()
+        b_left.cls = [0]
+        b_left.conf = [0.81]
+        b_left.xyxy = [[100.0, 100.0, 320.0, 400.0]]  # 220x300 = 66,000
+
+        b_right = MagicMock()
+        b_right.cls = [0]
+        b_right.conf = [0.72]
+        b_right.xyxy = [[240.0, 120.0, 460.0, 390.0]]  # 220x270 = 59,400 (stacked sibling)
+
+        b_sliver = MagicMock()
+        b_sliver.cls = [0]
+        b_sliver.conf = [0.50]
+        b_sliver.xyxy = [[330.0, 220.0, 380.0, 260.0]]  # 50x40 = 2,000 (nested inside b_right)
+
+        mock_model.predict.return_value = [MagicMock(boxes=[b_left, b_right, b_sliver])]
+        result = run_sliced_yolo_inference(
+            image=img,
+            model=mock_model,
+            commodity="cabai",
+            confidence_threshold=0.35,
+            enable_slicing=True,
+        )
+        self.assertEqual(len(result["detections"]), 2)
+        confs = sorted([d["confidence"] for d in result["detections"]], reverse=True)
+        self.assertEqual(confs, [0.81, 0.72])
+
+    def test_map_rotated_box_to_original_exact_inversion(self):
+        """Memastikan pemetaan balik koordinat rotasi 90 dan 270 derajat akurat secara matematis."""
+        from server.services.tiled_inference import _map_rotated_box_to_original
+
+        # Titik (30, 10) pada citra 200x100:
+        # rot=90 CCW (ukuran 100x200) -> rx=10, ry=200-31=169
+        inv90 = _map_rotated_box_to_original([10.0, 169.0, 11.0, 170.0], 90, 200, 100)
+        self.assertEqual(inv90, [30.0, 10.0, 31.0, 11.0])
+
+        # rot=270 CCW (ukuran 100x200) -> rx=100-11=89, ry=30
+        inv270 = _map_rotated_box_to_original([89.0, 30.0, 90.0, 31.0], 270, 200, 100)
+        self.assertEqual(inv270, [30.0, 10.0, 31.0, 11.0])
+
+    def test_outer_image_border_detections_not_discarded_as_internal_seam(self):
+        """Memastikan buah di tepi luar bingkai foto (x1=0, y1=0) dengan conf 0.55 tidak dibuang sebagai fragmen seam."""
+        mock_model = MagicMock()
+        mock_model.names = {0: "Grade A", 1: "Grade B", 2: "Reject"}
+        img = Image.new("RGB", (1280, 960), color="red")
+
+        tile_idx = [0]
+
+        def side_effect_predict(source, **kwargs):
+            mock_res = MagicMock()
+            w, _ = source.size
+            if w == 1280:
+                mock_res.boxes = []
+            else:
+                tile_idx[0] += 1
+                if tile_idx[0] == 1:
+                    # Tile kiri-atas (x1=0, y1=0): buah menyentuh tepi kiri luar foto (bx[0]=2.0) dengan conf=0.55
+                    b = MagicMock()
+                    b.cls = [0]
+                    b.conf = [0.55]
+                    b.xyxy = [[2.0, 100.0, 120.0, 260.0]]
+                    mock_res.boxes = [b]
+                else:
+                    mock_res.boxes = []
+            return [mock_res]
+
+        mock_model.predict.side_effect = side_effect_predict
+        result = run_sliced_yolo_inference(
+            image=img,
+            model=mock_model,
+            commodity="cabai",
+            confidence_threshold=0.35,
+            enable_slicing=True,
+        )
+        self.assertEqual(len(result["detections"]), 1)
+        self.assertAlmostEqual(result["detections"][0]["confidence"], 0.55, places=2)
+
+    def test_multi_object_giant_box_suppressed_all_4_chilies_preserved(self):
+        """
+        Memastikan jika terdapat 4 cabai dan model menghasilkan 2 box raksasa yang menelan masing-masing 2 cabai,
+        kedua box raksasa multi-objek tersebut ditekan dan keempat cabai individual dipertahankan secara utuh.
+        """
+        mock_model = MagicMock()
+        mock_model.names = {0: "Grade A", 1: "Grade B", 2: "Reject"}
+        img = Image.new("RGB", (1280, 720), color="white")
+
+        def _create_mock_box(c, conf, xyxy):
+            m = MagicMock()
+            m.cls = [c]
+            m.conf = [conf]
+            m.xyxy = [xyxy]
+            return m
+
+        # 4 cabai individual
+        chili1 = _create_mock_box(0, 0.58, [440.0, 290.0, 560.0, 420.0])
+        chili2 = _create_mock_box(0, 0.62, [575.0, 275.0, 670.0, 435.0])
+        chili3 = _create_mock_box(0, 0.55, [640.0, 280.0, 740.0, 430.0])
+        chili4 = _create_mock_box(0, 0.59, [750.0, 270.0, 850.0, 440.0])
+
+        # 2 box gabungan raksasa yang menelan (multi-fruit merge)
+        big1 = _create_mock_box(0, 0.65, [430.0, 260.0, 680.0, 450.0])
+        big2 = _create_mock_box(0, 0.61, [630.0, 260.0, 860.0, 450.0])
+
+        mock_res = MagicMock()
+        mock_res.boxes = [big1, chili1, chili2, big2, chili3, chili4]
+        mock_model.predict.return_value = [mock_res]
+
+        result = run_sliced_yolo_inference(
+            image=img,
+            model=mock_model,
+            commodity="cabai",
+            confidence_threshold=0.35,
+            enable_slicing=False,
+        )
+        self.assertEqual(len(result["detections"]), 4)
+        det_x1s = sorted([d["box"]["x1"] for d in result["detections"]])
+        self.assertEqual(det_x1s, [440.0, 575.0, 640.0, 750.0])
+
 
 if __name__ == "__main__":
     unittest.main()

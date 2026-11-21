@@ -165,8 +165,10 @@ async def scan_harvest_batch(
                 raw_detection = None
             else:
                 try:
+                    use_clahe = quality_info.get("clahe_recommended", False)
+                    proc_image_bytes = apply_clahe_enhancement(image_bytes) if use_clahe else image_bytes
                     raw_detection = ai_engine.predict(
-                        image_bytes=image_bytes,
+                        image_bytes=proc_image_bytes,
                         commodity=commodity,
                         confidence_threshold=confidence_threshold,
                         enable_slicing=enable_slicing,
