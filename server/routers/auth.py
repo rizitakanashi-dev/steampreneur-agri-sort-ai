@@ -1,199 +1,140 @@
-"""
-Router Autentikasi, Registrasi, Google OAuth 2.0 Resmi & OTP Gmail — Agri-Sort AI Backend
-Prefix: /api/v1/auth
-"""
+"""Supabase Auth routes for signup, OTP, login, and session management."""
 
 from typing import Any, Dict, Optional
-from fastapi import APIRouter, HTTPException, status
+
+from fastapi import APIRouter, Header, HTTPException, status
 from pydantic import BaseModel, Field
 
 from server.services.auth_service import auth_service
 
-router = APIRouter(prefix="/api/v1/auth", tags=["Authentication & OTP Gmail"])
+router = APIRouter(prefix="/api/v1/auth", tags=["Authentication"])
 
 
-class RegisterGmailRequest(BaseModel):
-    fullName: str = Field(..., min_length=2, description="Nama lengkap pengguna")
-    email: str = Field(..., description="Alamat Gmail pengguna (@gmail.com)")
-    password: str = Field(..., min_length=8, description="Password akun")
+class RegisterRequest(BaseModel):
+    fullName: str = Field(..., min_length=3)
+    email: str
+    password: str = Field(..., min_length=8)
 
 
-class LoginGmailRequest(BaseModel):
-    email: str = Field(..., description="Alamat Gmail pengguna (@gmail.com)")
-    password: str = Field(..., min_length=1, description="Password akun")
+class LoginRequest(BaseModel):
+    email: str
+    password: str = Field(..., min_length=1)
 
 
 class GoogleAuthRequest(BaseModel):
-    accessToken: Optional[str] = Field(None, description="OAuth 2.0 Access Token resmi dari Google")
-    idToken: Optional[str] = Field(None, description="OpenID Connect JWT credential (id_token) resmi dari Google")
+    idToken: str = Field(..., min_length=1)
 
 
 class SendOtpRequest(BaseModel):
-    email: str = Field(..., description="Alamat Gmail tujuan pengiriman kode OTP")
-    purpose: str = Field("reset_password", description="'register' atau 'reset_password'")
+    email: str
+    purpose: str = "reset_password"
 
 
 class VerifyOtpRequest(BaseModel):
-    email: str = Field(..., description="Alamat Gmail pengguna")
-    otpCode: str = Field(..., min_length=6, max_length=6, description="6-digit kode OTP")
-    purpose: Optional[str] = Field(None, description="'register' atau 'reset_password'")
+    email: str
+    otpCode: str = Field(..., min_length=6, max_length=6)
+    purpose: str = Field(...)
 
 
-class ResetPasswordOtpRequest(BaseModel):
-    email: str = Field(..., description="Alamat Gmail pengguna")
-    otpCode: str = Field(..., min_length=6, max_length=6, description="6-digit kode OTP dari Gmail")
-    newPassword: str = Field(..., min_length=8, description="Password baru")
+class ResetPasswordRequest(BaseModel):
+    email: str
+    otpCode: str = Field(..., min_length=6, max_length=6)
+    newPassword: str = Field(..., min_length=8)
 
 
-@router.post("/register", status_code=status.HTTP_201_CREATED)
-async def register_user(payload: RegisterGmailRequest) -> Dict[str, Any]:
-    """Mendaftarkan pengguna baru dengan Gmail dan Password ke database server."""
+def _raise_auth_error(exc: Exception, code: str, default_status: int = 400) -> None:
+    if isinstance(exc, RuntimeError):
+        code = "AUTH_PROVIDER_UNAVAILABLE"
+        status_code = status.HTTP_503_SERVICE_UNAVAILABLE
+    else:
+        status_code = default_status
+    raise HTTPException(
+        status_code=status_code,
+        detail={"code": code, "message": str(exc)},
+    ) from exc
+
+
+def _session_response(session: Dict[str, Any]) -> Dict[str, Any]:
+    return {"status": "success", "data": session}
+
+
+@router.post("/register", status_code=status.HTTP_202_ACCEPTED)
+async def register_user(payload: RegisterRequest) -> Dict[str, Any]:
     try:
-        user = auth_service.register_gmail_user(
-            full_name=payload.fullName,
-            email=payload.email,
-            password=payload.password,
-        )
-        return {
-            "status": "success",
-            "message": "Akun Gmail berhasil didaftarkan.",
-            "data": user,
-        }
-    except ValueError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail={
-                "code": "REGISTRATION_VALIDATION_ERROR",
-                "message": str(exc),
-            },
-        ) from exc
+        data = auth_service.register_gmail_user(payload.fullName, payload.email, payload.password)
+        return {"status": "success", "message": data.get("message"), "data": data}
+    except (ValueError, RuntimeError) as exc:
+        _raise_auth_error(exc, "REGISTRATION_ERROR")
 
 
 @router.post("/login")
-async def login_user(payload: LoginGmailRequest) -> Dict[str, Any]:
-    """Autentikasi login pengguna dengan Gmail dan Password."""
+async def login_user(payload: LoginRequest) -> Dict[str, Any]:
     try:
-        user = auth_service.login_gmail_user(
-            email=payload.email,
-            password=payload.password,
-        )
-        return {
-            "status": "success",
-            "message": "Login berhasil.",
-            "data": user,
-        }
-    except ValueError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail={
-                "code": "LOGIN_AUTH_ERROR",
-                "message": str(exc),
-            },
-        ) from exc
+        return _session_response(auth_service.login_gmail_user(payload.email, payload.password))
+    except (ValueError, RuntimeError) as exc:
+        _raise_auth_error(exc, "LOGIN_AUTH_ERROR", status.HTTP_401_UNAUTHORIZED)
 
 
 @router.post("/google")
 async def authenticate_with_google(payload: GoogleAuthRequest) -> Dict[str, Any]:
-    """
-    Mendaftarkan atau masuk HANYA menggunakan token resmi dari Google OAuth 2.0.
-    Menolak keras permintaan tanpa accessToken atau idToken yang terverifikasi oleh server Google.
-    """
     try:
-        user = auth_service.authenticate_official_google(
-            access_token=payload.accessToken,
-            id_token=payload.idToken,
-        )
-        return {
-            "status": "success",
-            "message": "Autentikasi Google resmi berhasil.",
-            "data": user,
-        }
-    except ValueError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail={
-                "code": "GOOGLE_AUTH_ERROR",
-                "message": str(exc),
-            },
-        ) from exc
+        return _session_response(auth_service.authenticate_google(payload.idToken))
+    except (ValueError, RuntimeError) as exc:
+        _raise_auth_error(exc, "GOOGLE_AUTH_ERROR", status.HTTP_401_UNAUTHORIZED)
 
 
 @router.post("/send-otp")
-async def send_otp_to_gmail(payload: SendOtpRequest) -> Dict[str, Any]:
-    """
-    Mengirimkan kode OTP 6-digit ke alamat Gmail pengguna melalui SMTP Gmail.
-    """
+async def send_otp(payload: SendOtpRequest) -> Dict[str, Any]:
     try:
-        otp_info = auth_service.generate_and_send_otp(
-            email=payload.email,
-            purpose=payload.purpose,
-        )
-        if not otp_info.get("smtp_delivered"):
-            raise HTTPException(
-                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail={
-                    "code": "SMTP_NOT_CONFIGURED",
-                    "message": "Pengiriman email OTP belum aktif. Harap isi SMTP_EMAIL dan SMTP_APP_PASSWORD di file .env server.",
-                },
-            )
-        return {
-            "status": "success",
-            "message": f"Kode OTP 6-digit telah dikirim ke inbox Gmail {payload.email}.",
-            "data": otp_info,
-        }
-    except ValueError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail={
-                "code": "OTP_SEND_ERROR",
-                "message": str(exc),
-            },
-        ) from exc
+        result = auth_service.send_otp(payload.email, payload.purpose)
+        return {"status": "success", "message": result["message"], "data": result}
+    except (ValueError, RuntimeError) as exc:
+        _raise_auth_error(exc, "OTP_SEND_ERROR")
 
 
 @router.post("/verify-otp")
-async def verify_gmail_otp(payload: VerifyOtpRequest) -> Dict[str, Any]:
-    """Memverifikasi 6-digit kode OTP yang dikirim ke Gmail."""
+async def verify_otp(payload: VerifyOtpRequest) -> Dict[str, Any]:
     try:
-        auth_service.verify_otp_code(
-            email=payload.email,
-            otp_code=payload.otpCode,
-            purpose=payload.purpose,
-        )
-        return {
-            "status": "success",
-            "message": "Kode OTP valid dan terverifikasi.",
-            "data": {"email": payload.email.lower(), "verified": True},
-        }
-    except ValueError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail={
-                "code": "OTP_VERIFY_ERROR",
-                "message": str(exc),
-            },
-        ) from exc
+        return _session_response(auth_service.verify_otp(payload.email, payload.otpCode, payload.purpose))
+    except (ValueError, RuntimeError) as exc:
+        _raise_auth_error(exc, "OTP_VERIFY_ERROR", status.HTTP_401_UNAUTHORIZED)
 
 
 @router.post("/reset-password")
-async def reset_password_via_otp(payload: ResetPasswordOtpRequest) -> Dict[str, Any]:
-    """Mereset password akun setelah kode OTP Gmail terverifikasi."""
+async def reset_password(payload: ResetPasswordRequest) -> Dict[str, Any]:
     try:
-        user = auth_service.reset_password_with_otp(
-            email=payload.email,
-            otp_code=payload.otpCode,
-            new_password=payload.newPassword,
-        )
-        return {
-            "status": "success",
-            "message": "Kata sandi berhasil diperbarui.",
-            "data": user,
-        }
-    except ValueError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail={
-                "code": "RESET_PASSWORD_ERROR",
-                "message": str(exc),
-            },
-        ) from exc
+        result = auth_service.reset_password(payload.email, payload.otpCode, payload.newPassword)
+        return {"status": "success", **result}
+    except (ValueError, RuntimeError) as exc:
+        _raise_auth_error(exc, "RESET_PASSWORD_ERROR")
+
+
+@router.get("/session")
+async def verify_session(authorization: Optional[str] = Header(None)) -> Dict[str, Any]:
+    if not authorization or not authorization.lower().startswith("bearer "):
+        raise HTTPException(status_code=401, detail={"code": "AUTH_REQUIRED", "message": "Sesi tidak ditemukan."})
+    token = authorization.split(" ", 1)[1].strip()
+    try:
+        user = auth_service.get_user(token)
+        return {"status": "success", "data": {"user": user}}
+    except (ValueError, RuntimeError) as exc:
+        _raise_auth_error(exc, "INVALID_SESSION", status.HTTP_401_UNAUTHORIZED)
+
+
+@router.post("/refresh")
+async def refresh_session(payload: Dict[str, str]) -> Dict[str, Any]:
+    try:
+        return _session_response(auth_service.refresh_session(payload.get("refresh_token", "")))
+    except (ValueError, RuntimeError) as exc:
+        _raise_auth_error(exc, "SESSION_REFRESH_ERROR", status.HTTP_401_UNAUTHORIZED)
+
+
+@router.post("/logout")
+async def logout(authorization: Optional[str] = Header(None)) -> Dict[str, Any]:
+    if not authorization or not authorization.lower().startswith("bearer "):
+        return {"status": "success", "message": "Sesi lokal dibersihkan."}
+    try:
+        auth_service.logout(authorization.split(" ", 1)[1].strip())
+        return {"status": "success", "message": "Sesi berhasil diakhiri."}
+    except (ValueError, RuntimeError) as exc:
+        _raise_auth_error(exc, "LOGOUT_ERROR", status.HTTP_401_UNAUTHORIZED)

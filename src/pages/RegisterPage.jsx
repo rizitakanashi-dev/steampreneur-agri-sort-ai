@@ -135,17 +135,27 @@ export function RegisterPage({ onRegisterSuccess, onSwitchToLogin, onBackToLandi
 
     setErrors({})
     setIsSendingOtp(true)
-    const otpRes = await sendOtpToGmailBackend(validation.sanitized.email, 'register')
+    const signup = await registerWithGmailBackend({
+      fullName: validation.sanitized.fullName,
+      email: validation.sanitized.email,
+      password,
+      confirmPassword,
+    })
     setIsSendingOtp(false)
 
-    if (!otpRes.ok) {
-      setGeneralError(otpRes.message)
+    if (!signup.ok) {
+      setGeneralError(signup.errors?.email || 'Gagal memulai pendaftaran.')
+      return
+    }
+
+    if (!signup.confirmationRequired && signup.user) {
+      if (typeof onRegisterSuccess === 'function') onRegisterSuccess(signup.user)
       return
     }
 
     setOtpCode('')
     setOtpError('')
-    setOtpInfoMsg(otpRes.message)
+    setOtpInfoMsg(signup.message || 'Kode verifikasi telah dikirim ke email Anda.')
     setOtpStepOpen(true)
   }
 
@@ -161,29 +171,14 @@ export function RegisterPage({ onRegisterSuccess, onSwitchToLogin, onBackToLandi
 
     setIsSubmitting(true)
     const verifyRes = await verifyOtpBackend(email, otpCode, 'register')
+    setIsSubmitting(false)
     if (!verifyRes.ok) {
-      setIsSubmitting(false)
       setOtpError(verifyRes.message)
       return
     }
 
-    const regRes = await registerWithGmailBackend({
-      fullName,
-      email,
-      password,
-      confirmPassword,
-    })
-    setIsSubmitting(false)
-
-    if (!regRes.ok) {
-      setOtpError(regRes.errors?.email || 'Gagal menyelesaikan pendaftaran.')
-      return
-    }
-
     setOtpStepOpen(false)
-    if (typeof onRegisterSuccess === 'function') {
-      onRegisterSuccess(regRes.user)
-    }
+    if (typeof onRegisterSuccess === 'function') onRegisterSuccess(verifyRes.user)
   }
 
   const handleResendOtp = async () => {

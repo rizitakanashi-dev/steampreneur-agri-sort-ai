@@ -81,6 +81,26 @@ test('buildScanFormData menyusun FormData dengan field yang diharapkan', () => {
   assert.ok(formData.get('image'))
 })
 
+test('scanHarvestImage mengirim bearer token sesi saat memindai', async () => {
+  const originalFetch = globalThis.fetch
+  const originalWindow = globalThis.window
+  let sentHeaders
+  globalThis.window = { localStorage: { getItem: (key) => key === 'agri_sort_access_token_v1' ? 'session-token' : null } }
+  globalThis.fetch = async (_url, options) => {
+    sentHeaders = options.headers
+    return { ok: true, status: 200, json: async () => ({ status: 'success', data: { scan_id: 'scan_auth' } }) }
+  }
+  try {
+    const fakeFile = new Blob(['fake image bytes'], { type: 'image/jpeg' })
+    await scanHarvestImage({ imageFile: fakeFile })
+    assert.equal(sentHeaders.Authorization, 'Bearer session-token')
+  } finally {
+    globalThis.fetch = originalFetch
+    if (originalWindow === undefined) delete globalThis.window
+    else globalThis.window = originalWindow
+  }
+})
+
 test('scanHarvestImage berhasil memproses respons server sukses', async () => {
   const originalFetch = globalThis.fetch
   const mockPayload = {
