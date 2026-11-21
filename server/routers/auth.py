@@ -18,6 +18,11 @@ class RegisterGmailRequest(BaseModel):
     password: str = Field(..., min_length=8, description="Password akun")
 
 
+class LoginGmailRequest(BaseModel):
+    email: str = Field(..., description="Alamat Gmail pengguna (@gmail.com)")
+    password: str = Field(..., min_length=1, description="Password akun")
+
+
 class GoogleAuthRequest(BaseModel):
     accessToken: Optional[str] = Field(None, description="OAuth 2.0 Access Token resmi dari Google")
     idToken: Optional[str] = Field(None, description="OpenID Connect JWT credential (id_token) resmi dari Google")
@@ -40,15 +45,6 @@ class ResetPasswordOtpRequest(BaseModel):
     newPassword: str = Field(..., min_length=8, description="Password baru")
 
 
-@router.get("/users")
-async def get_registered_users() -> Dict[str, Any]:
-    """Mengambil daftar akun yang sudah terdaftar di server (tanpa password hash)."""
-    return {
-        "status": "success",
-        "data": auth_service.list_public_users(),
-    }
-
-
 @router.post("/register", status_code=status.HTTP_201_CREATED)
 async def register_user(payload: RegisterGmailRequest) -> Dict[str, Any]:
     """Mendaftarkan pengguna baru dengan Gmail dan Password ke database server."""
@@ -68,6 +64,29 @@ async def register_user(payload: RegisterGmailRequest) -> Dict[str, Any]:
             status_code=status.HTTP_400_BAD_REQUEST,
             detail={
                 "code": "REGISTRATION_VALIDATION_ERROR",
+                "message": str(exc),
+            },
+        ) from exc
+
+
+@router.post("/login")
+async def login_user(payload: LoginGmailRequest) -> Dict[str, Any]:
+    """Autentikasi login pengguna dengan Gmail dan Password."""
+    try:
+        user = auth_service.login_gmail_user(
+            email=payload.email,
+            password=payload.password,
+        )
+        return {
+            "status": "success",
+            "message": "Login berhasil.",
+            "data": user,
+        }
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail={
+                "code": "LOGIN_AUTH_ERROR",
                 "message": str(exc),
             },
         ) from exc

@@ -2,7 +2,9 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import {
   validateRegistrationInput,
+  validateLoginInput,
   registerWithGmail,
+  loginWithGmail,
   registerWithGoogleAccount,
   readActiveUser,
   readRegisteredUsers,
@@ -27,14 +29,14 @@ function createMemoryStorage() {
 
 test('validateRegistrationInput menerima input Gmail dan password yang valid', () => {
   const res = validateRegistrationInput({
-    fullName: 'Hieray Antovino',
-    email: 'Hieray.Agri@gmail.com',
-    password: 'Password123',
-    confirmPassword: 'Password123',
+    fullName: 'Pengguna Uji',
+    email: 'Pengguna.Uji@gmail.com',
+    password: 'ContohPassword123',
+    confirmPassword: 'ContohPassword123',
   })
   assert.equal(res.isValid, true)
   assert.deepEqual(res.errors, {})
-  assert.equal(res.sanitized.email, 'hieray.agri@gmail.com')
+  assert.equal(res.sanitized.email, 'pengguna.uji@gmail.com')
 })
 
 test('validateRegistrationInput menolak email non-gmail dan password lemah', () => {
@@ -55,31 +57,31 @@ test('registerWithGmail menyimpan user baru, melakukan hash password, dan menola
   const storage = createMemoryStorage()
   const first = registerWithGmail(
     {
-      fullName: 'Faris Al Farizi',
-      email: 'faris.ml@gmail.com',
-      password: 'AgriSort2026',
-      confirmPassword: 'AgriSort2026',
+      fullName: 'Petani Contoh',
+      email: 'petani.contoh@gmail.com',
+      password: 'ContohPassword123',
+      confirmPassword: 'ContohPassword123',
     },
     storage
   )
   assert.equal(first.ok, true)
-  assert.equal(first.user.email, 'faris.ml@gmail.com')
+  assert.equal(first.user.email, 'petani.contoh@gmail.com')
   assert.equal(first.user.provider, 'gmail')
 
   const savedList = readRegisteredUsers(storage)
   assert.equal(savedList.length, 1)
-  assert.equal(savedList[0].passwordHash, hashPassword('AgriSort2026'))
-  assert.notEqual(savedList[0].passwordHash, 'AgriSort2026')
+  assert.equal(savedList[0].passwordHash, hashPassword('ContohPassword123'))
+  assert.notEqual(savedList[0].passwordHash, 'ContohPassword123')
 
   const active = readActiveUser(storage)
-  assert.equal(active.email, 'faris.ml@gmail.com')
+  assert.equal(active.email, 'petani.contoh@gmail.com')
 
   const duplicate = registerWithGmail(
     {
-      fullName: 'Faris Duplikat',
-      email: 'FARIS.ML@gmail.com',
-      password: 'AgriSort2026',
-      confirmPassword: 'AgriSort2026',
+      fullName: 'Petani Duplikat',
+      email: 'PETANI.CONTOH@gmail.com',
+      password: 'ContohPassword123',
+      confirmPassword: 'ContohPassword123',
     },
     storage
   )
@@ -91,15 +93,41 @@ test('registerWithGoogleAccount mendaftarkan akun Google setelah persetujuan dan
   const storage = createMemoryStorage()
   const res = registerWithGoogleAccount(
     {
-      email: 'afif.qa@gmail.com',
+      email: 'akun.oauth@gmail.com',
     },
     storage
   )
   assert.equal(res.ok, true)
   assert.equal(res.user.provider, 'google')
-  assert.equal(res.user.fullName, 'Afif Qa')
-  assert.equal(readActiveUser(storage).email, 'afif.qa@gmail.com')
+  assert.equal(res.user.fullName, 'Akun Oauth')
+  assert.equal(readActiveUser(storage).email, 'akun.oauth@gmail.com')
 
   logoutActiveUser(storage)
   assert.equal(readActiveUser(storage), null)
+})
+
+test('validateLoginInput dan loginWithGmail memverifikasi email dan password dengan benar', () => {
+  const storage = createMemoryStorage()
+  registerWithGmail(
+    {
+      fullName: 'Pengguna Uji',
+      email: 'pengguna.login@gmail.com',
+      password: 'ContohPassword123',
+      confirmPassword: 'ContohPassword123',
+    },
+    storage
+  )
+  logoutActiveUser(storage)
+
+  const invalidLogin = validateLoginInput({ email: 'bukan-gmail@yahoo.com', password: '' })
+  assert.equal(invalidLogin.isValid, false)
+
+  const wrongPass = loginWithGmail({ email: 'pengguna.login@gmail.com', password: 'SalahPassword1' }, storage)
+  assert.equal(wrongPass.ok, false)
+  assert.ok(wrongPass.errors.password)
+
+  const validLogin = loginWithGmail({ email: 'PENGGUNA.LOGIN@gmail.com', password: 'ContohPassword123' }, storage)
+  assert.equal(validLogin.ok, true)
+  assert.equal(validLogin.user.email, 'pengguna.login@gmail.com')
+  assert.equal(readActiveUser(storage).email, 'pengguna.login@gmail.com')
 })

@@ -43,6 +43,7 @@ import { ErrorBoundary } from './components/ErrorBoundary.jsx'
 import { PageHeader } from './components/PageHeader.jsx'
 import { PricingDashboard } from './components/PricingDashboard.jsx'
 import { LandingPage } from './pages/LandingPage.jsx'
+import { LoginPage } from './pages/LoginPage.jsx'
 import { RegisterPage } from './pages/RegisterPage.jsx'
 import { logoutActiveUser, readActiveUser } from './business/authStorage.js'
 
@@ -452,20 +453,23 @@ function getInitialRoute() {
   if (typeof window !== 'undefined') {
     const rawHash = window.location.hash.replace('#', '')
     const currentUser = readActiveUser()
+    if (rawHash === 'login') {
+      return { view: 'login', page: 'overview' }
+    }
     if (rawHash === 'register' || rawHash.includes('access_token=')) {
       return { view: 'register', page: 'overview' }
     }
     if (pages[rawHash]) {
-      return { view: currentUser ? 'app' : 'register', page: rawHash }
+      return { view: currentUser ? 'app' : 'login', page: rawHash }
     }
     try {
       const params = new URLSearchParams(window.location.search)
       const pageParam = params.get('page')
       if (pages[pageParam]) {
-        return { view: currentUser ? 'app' : 'register', page: pageParam }
+        return { view: currentUser ? 'app' : 'login', page: pageParam }
       }
       if (params.get('view') === 'app') {
-        return { view: currentUser ? 'app' : 'register', page: 'overview' }
+        return { view: currentUser ? 'app' : 'login', page: 'overview' }
       }
     } catch {}
   }
@@ -494,7 +498,10 @@ function App() {
       const hash = window.location.hash.replace('#', '')
       const user = readActiveUser()
       setActiveUser(user)
-      if (hash === 'register' || hash.includes('access_token=')) {
+      if (hash === 'login') {
+        stopAllActiveCameraStreams()
+        setCurrentView('login')
+      } else if (hash === 'register' || hash.includes('access_token=')) {
         stopAllActiveCameraStreams()
         setCurrentView('register')
       } else if (pages[hash]) {
@@ -503,7 +510,7 @@ function App() {
         }
         if (!user) {
           setPendingPage(hash)
-          setCurrentView('register')
+          setCurrentView('login')
         } else {
           setCurrentView('app')
           setActivePage(hash)
@@ -526,14 +533,36 @@ function App() {
     setActiveUser(user)
     if (!user) {
       setPendingPage(pageToOpen)
-      setCurrentView('register')
-      window.location.hash = 'register'
+      setCurrentView('login')
+      window.location.hash = 'login'
       window.scrollTo({ top: 0, behavior: 'smooth' })
       return
     }
     setCurrentView('app')
     setActivePage(pageToOpen)
     window.location.hash = pageToOpen
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  const handleSwitchToRegister = () => {
+    setCurrentView('register')
+    window.location.hash = 'register'
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  const handleSwitchToLogin = () => {
+    setCurrentView('login')
+    window.location.hash = 'login'
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  const handleLoginSuccess = (loggedInUser) => {
+    setActiveUser(loggedInUser)
+    const destination = pages[pendingPage] ? pendingPage : 'overview'
+    setCurrentView('app')
+    setActivePage(destination)
+    window.location.hash = destination
+    setHarvestMessage(`Selamat datang kembali, ${loggedInUser.fullName} (${loggedInUser.email})!`)
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
@@ -660,10 +689,21 @@ function App() {
     return <LandingPage onOpenApp={handleOpenApp} />
   }
 
+  if (currentView === 'login') {
+    return (
+      <LoginPage
+        onLoginSuccess={handleLoginSuccess}
+        onSwitchToRegister={handleSwitchToRegister}
+        onBackToLanding={handleBackToLanding}
+      />
+    )
+  }
+
   if (currentView === 'register') {
     return (
       <RegisterPage
         onRegisterSuccess={handleRegisterSuccess}
+        onSwitchToLogin={handleSwitchToLogin}
         onBackToLanding={handleBackToLanding}
       />
     )

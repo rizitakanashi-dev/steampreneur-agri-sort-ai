@@ -32,7 +32,7 @@ import {
   verifyOtpBackend,
 } from '../business/authStorage.js'
 
-export function RegisterPage({ onRegisterSuccess, onBackToLanding }) {
+export function RegisterPage({ onRegisterSuccess, onSwitchToLogin, onBackToLanding }) {
   const [fullName, setFullName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -551,6 +551,32 @@ export function RegisterPage({ onRegisterSuccess, onBackToLanding }) {
                 </Button>
               </Stack>
             </Box>
+
+            {/* Tautan Pindah ke Halaman Login */}
+            {typeof onSwitchToLogin === 'function' && (
+              <Box sx={{ textAlign: 'center', pt: 0.5 }}>
+                <Typography variant="body2" sx={{ color: AGRI_COLORS.slateMuted }}>
+                  Sudah punya akun Agri-Sort AI?{' '}
+                  <Box
+                    component="button"
+                    type="button"
+                    onClick={onSwitchToLogin}
+                    sx={{
+                      background: 'none',
+                      border: 'none',
+                      p: 0,
+                      color: AGRI_COLORS.emerald,
+                      fontWeight: 700,
+                      fontSize: '0.875rem',
+                      cursor: 'pointer',
+                      textDecoration: 'underline',
+                    }}
+                  >
+                    Masuk di sini
+                  </Box>
+                </Typography>
+              </Box>
+            )}
           </Stack>
         </Box>
       </Container>

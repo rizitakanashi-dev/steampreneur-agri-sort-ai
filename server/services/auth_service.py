@@ -117,11 +117,7 @@ def send_gmail_otp_email(recipient_email: str, otp_code: str, purpose: str = "re
     subject = subject_map.get(purpose, f"[{otp_code}] Kode OTP Keamanan Agri-Sort AI")
 
     if not smtp_email or not smtp_password:
-        logger.info(
-            "Mode Dev (SMTP_EMAIL belum diisi di .env) — Kode OTP untuk %s: %s",
-            recipient_email,
-            otp_code,
-        )
+        logger.warning("Pengiriman OTP dibatalkan karena SMTP_EMAIL atau SMTP_APP_PASSWORD belum dikonfigurasi di .env.")
         return False, "SMTP_NOT_CONFIGURED"
 
     msg = EmailMessage()
@@ -287,10 +283,6 @@ class AuthService:
             "createdAt": user.get("created_at") or user.get("createdAt"),
         }
 
-    def list_public_users(self) -> List[Dict[str, Any]]:
-        users = self._read_users()
-        return [self._sanitize_user(u) for u in users]
-
     def register_gmail_user(
         self,
         full_name: str,
@@ -325,6 +317,39 @@ class AuthService:
         users.append(new_user)
         self._write_users(users)
         return self._sanitize_user(new_user)
+
+    def login_gmail_user(
+        self,
+        email: str,
+        password: str,
+    ) -> Dict[str, Any]:
+        """Memverifikasi login pengguna menggunakan alamat Gmail dan Password."""
+        clean_email = (email or "").strip().lower()
+        raw_password = password or ""
+
+        if not GMAIL_REGEX.match(clean_email):
+            raise ValueError("Gunakan alamat Gmail yang valid (contoh: nama@gmail.com).")
+        if not raw_password:
+            raise ValueError("Password wajib diisi.")
+
+        users = self._read_users()
+        target_user = next(
+            (u for u in users if str(u.get("email", "")).lower() == clean_email),
+            None,
+        )
+        if not target_user:
+            raise ValueError("Akun Gmail tersebut belum terdaftar. Silakan daftar terlebih dahulu.")
+
+        stored_hash = target_user.get("password_hash")
+        if not stored_hash:
+            raise ValueError(
+                "Akun ini terdaftar melalui Google. Silakan gunakan tombol Login dengan Google atau atur sandi lewat Lupa Kata Sandi."
+            )
+
+        if not verify_password_pbkdf2(raw_password, stored_hash):
+            raise ValueError("Kata sandi yang Anda masukkan salah.")
+
+        return self._sanitize_user(target_user)
 
     def authenticate_official_google(
         self,

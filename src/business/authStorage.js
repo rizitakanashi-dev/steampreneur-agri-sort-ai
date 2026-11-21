@@ -422,26 +422,168 @@ export async function verifyOtpBackend(email, otpCode, purpose = 'reset_password
 }
 
 /**
- * Mengambil daftar akun yang sudah terdaftar di server backend dan menggabungkannya dengan localStorage
+ * Validasi input form login Gmail & Password
  */
-export async function fetchServerRegisteredUsers(customStorage) {
-  const localUsers = readRegisteredUsers(customStorage)
-  try {
-    const response = await fetch('/api/v1/auth/users')
-    if (!response.ok) return localUsers
-    const payload = await response.json()
-    const serverUsers = Array.isArray(payload?.data) ? payload.data : []
+export function validateLoginInput({ email = '', password = '' } = {}) {
+  const errors = {}
+  const trimmedEmail = String(email || '').trim().toLowerCase()
+  const rawPassword = String(password || '')
 
-    const mergedMap = new Map()
-    localUsers.forEach((u) => {
-      if (u?.email) mergedMap.set(String(u.email).toLowerCase(), u)
+  if (!trimmedEmail) {
+    errors.email = 'Alamat Gmail wajib diisi.'
+  } else {
+    const gmailRegex = /^[a-zA-Z0-9._%+-]+@gmail\.com$/i
+    if (!gmailRegex.test(trimmedEmail)) {
+      errors.email = 'Gunakan alamat Gmail yang valid (contoh: nama@gmail.com).'
+    }
+  }
+
+  if (!rawPassword) {
+    errors.password = 'Password wajib diisi.'
+  }
+
+  return {
+    isValid: Object.keys(errors).length === 0,
+    errors,
+    sanitized: {
+      email: trimmedEmail,
+    },
+  }
+}
+
+/**
+ * Login pengguna dengan Gmail & Password pada storage lokal
+ */
+export function loginWithGmail({ email = '', password = '' } = {}, customStorage) {
+  const validation = validateLoginInput({ email, password })
+  if (!validation.isValid) {
+    return { ok: false, errors: validation.errors }
+  }
+
+  const storage = resolveStorage(customStorage)
+  const existingUsers = readRegisteredUsers(storage)
+  const targetUser = existingUsers.find(
+    (u) => String(u.email || '').toLowerCase() === validation.sanitized.email
+  )
+
+  if (!targetUser) {
+    return {
+      ok: false,
+      errors: {
+        email: 'Akun Gmail tersebut belum terdaftar. Silakan daftar terlebih dahulu.',
+      },
+    }
+  }
+
+  if (targetUser.passwordHash && targetUser.passwordHash !== hashPassword(password)) {
+    return {
+      ok: false,
+      errors: {
+        password: 'Kata sandi yang Anda masukkan salah.',
+      },
+    }
+  }
+
+  const sessionUser = persistAuthenticatedUser(targetUser, storage)
+  return { ok: true, user: sessionUser }
+}
+
+/**
+ * Memanggil Backend FastAPI POST /api/v1/auth/login
+ */
+export async function loginWithGmailBackend(input = {}, customStorage) {
+  const validation = validateLoginInput(input)
+  if (!validation.isValid) {
+    return { ok: false, errors: validation.errors }
+  }
+
+  try {
+    const response = await fetch('/api/v1/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email: validation.sanitized.email,
+        password: input.password,
+      }),
     })
-    serverUsers.forEach((u) => {
-      if (u?.email) mergedMap.set(String(u.email).toLowerCase(), u)
-    })
-    return Array.from(mergedMap.values())
+    const payload = await response.json().catch(() => null)
+
+    if (!response.ok) {
+      const msg =
+        payload?.detail?.message ||
+        payload?.error?.message ||
+        'Gagal masuk. Periksa kembali Gmail dan kata sandi Anda.'
+      const isPasswordErr = msg.toLowerCase().includes('sandi')
+      return {
+        ok: false,
+        errors: isPasswordErr ? { password: msg } : { email: msg },
+      }
+    }
+
+    const savedUser = persistAuthenticatedUser(payload.data, customStorage)
+    return { ok: true, user: savedUser }
   } catch {
-    return localUsers
+    return loginWithGmail(input, customStorage)
+  }
+}
+
+/**
+ * Memanggil Backend FastAPI POST /api/v1/auth/reset-password untuk mengganti password via OTP Gmail
+ */
+export async function resetPasswordWithOtpBackend({
+  email = '',
+  otpCode = '',
+  newPassword = '',
+  confirmNewPassword = '',
+} = {}) {
+  const cleanEmail = String(email || '').trim().toLowerCase()
+  const cleanOtp = String(otpCode || '').trim()
+  const rawNewPass = String(newPassword || '')
+  const rawConfirm = String(confirmNewPassword || '')
+
+  if (cleanOtp.length !== 6) {
+    return { ok: false, message: 'Masukkan 6-digit kode OTP dari Gmail Anda.' }
+  }
+  if (rawNewPass.length < 8 || !/[A-Za-z]/.test(rawNewPass) || !/[0-9]/.test(rawNewPass)) {
+    return {
+      ok: false,
+      message: 'Password baru minimal 8 karakter dengan kombinasi huruf dan angka.',
+    }
+  }
+  if (rawNewPass !== rawConfirm) {
+    return { ok: false, message: 'Konfirmasi password baru tidak cocok.' }
+  }
+
+  try {
+    const response = await fetch('/api/v1/auth/reset-password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email: cleanEmail,
+        otpCode: cleanOtp,
+        newPassword: rawNewPass,
+      }),
+    })
+    const payload = await response.json().catch(() => null)
+    if (!response.ok) {
+      return {
+        ok: false,
+        message:
+          payload?.detail?.message ||
+          payload?.error?.message ||
+          'Gagal mereset kata sandi.',
+      }
+    }
+    return {
+      ok: true,
+      message: payload.message || 'Kata sandi berhasil diperbarui.',
+      data: payload.data,
+    }
+  } catch {
+    return {
+      ok: false,
+      message: 'Gagal menghubungi server untuk mereset kata sandi.',
+    }
   }
 }
 
