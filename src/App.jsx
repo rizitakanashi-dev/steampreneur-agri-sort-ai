@@ -43,6 +43,8 @@ import { ErrorBoundary } from './components/ErrorBoundary.jsx'
 import { PageHeader } from './components/PageHeader.jsx'
 import { PricingDashboard } from './components/PricingDashboard.jsx'
 import { LandingPage } from './pages/LandingPage.jsx'
+import { RegisterPage } from './pages/RegisterPage.jsx'
+import { logoutActiveUser, readActiveUser } from './business/authStorage.js'
 
 const pages = {
   overview: { title: 'Dashboard', description: 'Pantau kualitas panen dan peluang harga dalam satu tampilan.' },
@@ -449,17 +451,21 @@ function FoundationPage({
 function getInitialRoute() {
   if (typeof window !== 'undefined') {
     const rawHash = window.location.hash.replace('#', '')
+    const currentUser = readActiveUser()
+    if (rawHash === 'register' || rawHash.includes('access_token=')) {
+      return { view: 'register', page: 'overview' }
+    }
     if (pages[rawHash]) {
-      return { view: 'app', page: rawHash }
+      return { view: currentUser ? 'app' : 'register', page: rawHash }
     }
     try {
       const params = new URLSearchParams(window.location.search)
       const pageParam = params.get('page')
       if (pages[pageParam]) {
-        return { view: 'app', page: pageParam }
+        return { view: currentUser ? 'app' : 'register', page: pageParam }
       }
       if (params.get('view') === 'app') {
-        return { view: 'app', page: 'overview' }
+        return { view: currentUser ? 'app' : 'register', page: 'overview' }
       }
     } catch {}
   }
@@ -467,8 +473,10 @@ function getInitialRoute() {
 }
 
 function App() {
+  const [activeUser, setActiveUser] = useState(() => readActiveUser())
   const [currentView, setCurrentView] = useState(() => getInitialRoute().view)
   const [activePage, setActivePage] = useState(() => getInitialRoute().page)
+  const [pendingPage, setPendingPage] = useState(() => getInitialRoute().page)
   const [batches, setBatches] = useState([])
   const [selectedBatch, setSelectedBatch] = useState(null)
   const [openCertModal, setOpenCertModal] = useState(false)
@@ -484,12 +492,22 @@ function App() {
   useEffect(() => {
     const handleHash = () => {
       const hash = window.location.hash.replace('#', '')
-      if (pages[hash]) {
+      const user = readActiveUser()
+      setActiveUser(user)
+      if (hash === 'register' || hash.includes('access_token=')) {
+        stopAllActiveCameraStreams()
+        setCurrentView('register')
+      } else if (pages[hash]) {
         if (hash !== 'scanner') {
           stopAllActiveCameraStreams()
         }
-        setCurrentView('app')
-        setActivePage(hash)
+        if (!user) {
+          setPendingPage(hash)
+          setCurrentView('register')
+        } else {
+          setCurrentView('app')
+          setActivePage(hash)
+        }
       } else if (hash === '' || hash === 'landing') {
         stopAllActiveCameraStreams()
         setCurrentView('landing')
@@ -504,9 +522,38 @@ function App() {
     if (pageToOpen !== 'scanner') {
       stopAllActiveCameraStreams()
     }
+    const user = readActiveUser()
+    setActiveUser(user)
+    if (!user) {
+      setPendingPage(pageToOpen)
+      setCurrentView('register')
+      window.location.hash = 'register'
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+      return
+    }
     setCurrentView('app')
     setActivePage(pageToOpen)
     window.location.hash = pageToOpen
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  const handleRegisterSuccess = (newUser) => {
+    setActiveUser(newUser)
+    const destination = pages[pendingPage] ? pendingPage : 'overview'
+    setCurrentView('app')
+    setActivePage(destination)
+    window.location.hash = destination
+    setHarvestMessage(`Selamat datang, ${newUser.fullName} (${newUser.email})! Akun Anda berhasil terdaftar.`)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  const handleLogout = () => {
+    stopAllActiveCameraStreams()
+    logoutActiveUser()
+    setActiveUser(null)
+    setHarvestMessage('')
+    setCurrentView('landing')
+    window.location.hash = ''
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
@@ -613,9 +660,20 @@ function App() {
     return <LandingPage onOpenApp={handleOpenApp} />
   }
 
+  if (currentView === 'register') {
+    return (
+      <RegisterPage
+        onRegisterSuccess={handleRegisterSuccess}
+        onBackToLanding={handleBackToLanding}
+      />
+    )
+  }
+
   return (
     <AppShell
       activePage={activePage}
+      activeUser={activeUser}
+      onLogout={handleLogout}
       onNavigate={handleNavigate}
       onBackToLanding={handleBackToLanding}
       onDataChanged={handleDataChanged}

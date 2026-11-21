@@ -23,6 +23,7 @@ import CloseRoundedIcon from '@mui/icons-material/CloseRounded'
 import DashboardRoundedIcon from '@mui/icons-material/DashboardRounded'
 import HomeRoundedIcon from '@mui/icons-material/HomeRounded'
 import MenuRoundedIcon from '@mui/icons-material/MenuRounded'
+import LogoutRoundedIcon from '@mui/icons-material/LogoutRounded'
 import PriceCheckRoundedIcon from '@mui/icons-material/PriceCheckRounded'
 import QrCodeScannerRoundedIcon from '@mui/icons-material/QrCodeScannerRounded'
 import SettingsRoundedIcon from '@mui/icons-material/SettingsRounded'
@@ -39,11 +40,20 @@ const navigationItems = [
   { id: 'pricing', label: 'Harga Pasar', icon: PriceCheckRoundedIcon },
 ]
 
-export function AppShell({ activePage, onNavigate, onDataChanged, onBackToLanding, children }) {
+export function AppShell({ activePage, activeUser, onLogout, onNavigate, onDataChanged, onBackToLanding, children }) {
   const theme = useTheme()
   const isDesktop = useMediaQuery(theme.breakpoints.up('md'))
   const [mobileOpen, setMobileOpen] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
+
+  const userInitials = activeUser?.fullName
+    ? activeUser.fullName
+        .split(' ')
+        .map((n) => n[0])
+        .join('')
+        .slice(0, 2)
+        .toUpperCase()
+    : 'AS'
 
   const handleNavigate = (pageId) => {
     onNavigate(pageId)
@@ -168,29 +178,59 @@ export function AppShell({ activePage, onNavigate, onDataChanged, onBackToLandin
       </Box>
 
       <Box sx={{ flexGrow: 1 }} />
-      <Stack
-        direction="row"
-        spacing={1.25}
-        onClick={() => {
-          setSettingsOpen(true)
-          setMobileOpen(false)
-        }}
-        sx={{
-          alignItems: 'center',
-          borderTop: '1px solid',
-          borderColor: 'divider',
-          p: 2,
-          cursor: 'pointer',
-          transition: 'background-color 0.15s ease',
-          '&:hover': { bgcolor: 'rgba(1, 110, 68, 0.08)' },
-        }}
-      >
-        <Avatar sx={{ bgcolor: 'primary.dark', fontSize: 13, height: 32, width: 32 }}>AS</Avatar>
-        <Box sx={{ minWidth: 0 }}>
-          <Typography noWrap fontWeight={700} variant="body2">SMKN 4 Payakumbuh</Typography>
-          <Typography color="text.secondary" noWrap variant="caption">STEAMPreneur 2026</Typography>
-        </Box>
-      </Stack>
+      <Box sx={{ borderTop: '1px solid', borderColor: 'divider', p: 1.75 }}>
+        <Stack
+          direction="row"
+          spacing={1.25}
+          onClick={() => {
+            setSettingsOpen(true)
+            setMobileOpen(false)
+          }}
+          sx={{
+            alignItems: 'center',
+            p: 1,
+            borderRadius: 1.75,
+            cursor: 'pointer',
+            transition: 'background-color 0.15s ease',
+            '&:hover': { bgcolor: 'rgba(1, 110, 68, 0.08)' },
+          }}
+        >
+          <Avatar sx={{ bgcolor: 'primary.dark', fontSize: 13, height: 34, width: 34, fontWeight: 700 }}>
+            {userInitials}
+          </Avatar>
+          <Box sx={{ minWidth: 0, flexGrow: 1 }}>
+            <Typography noWrap fontWeight={700} variant="body2">
+              {activeUser?.fullName || 'SMKN 4 Payakumbuh'}
+            </Typography>
+            <Typography color="text.secondary" noWrap variant="caption">
+              {activeUser?.email || 'STEAMPreneur 2026'}
+            </Typography>
+          </Box>
+        </Stack>
+
+        {typeof onLogout === 'function' && (
+          <Button
+            fullWidth
+            size="small"
+            color="error"
+            variant="outlined"
+            startIcon={<LogoutRoundedIcon fontSize="small" />}
+            onClick={() => {
+              setMobileOpen(false)
+              onLogout()
+            }}
+            sx={{
+              mt: 1,
+              borderRadius: 1.75,
+              textTransform: 'none',
+              fontWeight: 700,
+              fontSize: 12,
+            }}
+          >
+            Keluar Akun (Ganti Akun)
+          </Button>
+        )}
+      </Box>
     </Stack>
   )
 
