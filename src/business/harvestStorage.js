@@ -1,4 +1,14 @@
 export const HARVEST_STORAGE_KEY = 'agrisort.panen.v1'
+const ACTIVE_USER_STORAGE_KEY = 'agri_sort_active_user_v1'
+
+function getStorageKey(storage) {
+  try {
+    const user = JSON.parse(storage?.getItem(ACTIVE_USER_STORAGE_KEY) || 'null')
+    return user?.id ? `${HARVEST_STORAGE_KEY}:${user.id}` : HARVEST_STORAGE_KEY
+  } catch {
+    return HARVEST_STORAGE_KEY
+  }
+}
 
 function getStorage(storage) {
   if (storage) return storage
@@ -15,7 +25,7 @@ export function readBatches(storage) {
   if (!target) return []
 
   try {
-    const raw = target.getItem(HARVEST_STORAGE_KEY)
+    const raw = target.getItem(getStorageKey(target))
     if (!raw) return []
     const parsed = JSON.parse(raw)
     return Array.isArray(parsed) ? parsed.filter(isBatchRecord) : []
@@ -57,13 +67,13 @@ export function saveBatch(batch, storage) {
   const batches = readBatches(target)
   const id = createUniqueId(new Set(batches.map((item) => item.id)), batch.id)
   const savedBatch = { ...batch, id }
-  target.setItem(HARVEST_STORAGE_KEY, JSON.stringify([...batches, savedBatch]))
+  target.setItem(getStorageKey(target), JSON.stringify([...batches, savedBatch]))
   return savedBatch
 }
 
 export function clearBatches(storage) {
   const target = getStorage(storage)
-  if (target) target.removeItem(HARVEST_STORAGE_KEY)
+  if (target) target.removeItem(getStorageKey(target))
 }
 
 export function deleteBatch(batchId, storage) {
@@ -73,7 +83,7 @@ export function deleteBatch(batchId, storage) {
 
   const batches = readBatches(target)
   const remaining = batches.filter((b) => b.id !== batchId)
-  target.setItem(HARVEST_STORAGE_KEY, JSON.stringify(remaining))
+  target.setItem(getStorageKey(target), JSON.stringify(remaining))
   return remaining
 }
 
@@ -135,7 +145,7 @@ export function importBatchesFromJson(rawInput, storage) {
     importedCount += 1
   }
 
-  target.setItem(HARVEST_STORAGE_KEY, JSON.stringify(merged))
+  target.setItem(getStorageKey(target), JSON.stringify(merged))
 
   return {
     success: true,

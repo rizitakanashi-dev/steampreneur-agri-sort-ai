@@ -34,6 +34,17 @@ test('saveBatch menambah batch dan dapat dibaca kembali dari storage', () => {
   assert.deepEqual(readBatches(storage), [sampleBatch])
 })
 
+test('riwayat batch terisolasi berdasarkan akun aktif', () => {
+  const storage = makeStorage()
+  storage.setItem('agri_sort_active_user_v1', JSON.stringify({ id: 'user-a', email: 'a@gmail.com' }))
+  saveBatch({ id: 'batch-a', komoditas: 'Tomat' }, storage)
+  storage.setItem('agri_sort_active_user_v1', JSON.stringify({ id: 'user-b', email: 'b@gmail.com' }))
+  assert.deepEqual(readBatches(storage), [])
+  saveBatch({ id: 'batch-b', komoditas: 'Terung' }, storage)
+  storage.setItem('agri_sort_active_user_v1', JSON.stringify({ id: 'user-a', email: 'a@gmail.com' }))
+  assert.deepEqual(readBatches(storage).map((batch) => batch.id), ['batch-a'])
+})
+
 test('saveBatch membuat ID unik ketika ID yang diminta sudah ada', () => {
   const storage = makeStorage()
   saveBatch(sampleBatch, storage)

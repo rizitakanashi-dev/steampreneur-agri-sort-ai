@@ -43,6 +43,9 @@ import { ErrorBoundary } from './components/ErrorBoundary.jsx'
 import { PageHeader } from './components/PageHeader.jsx'
 import { PricingDashboard } from './components/PricingDashboard.jsx'
 import { LandingPage } from './pages/LandingPage.jsx'
+import { LoginPage } from './pages/LoginPage.jsx'
+import { RegisterPage } from './pages/RegisterPage.jsx'
+import { logoutActiveUser, readActiveUser, restoreAuthSession, getAuthHeaders } from './business/authStorage.js'
 
 const pages = {
   overview: { title: 'Dashboard', description: 'Pantau kualitas panen dan peluang harga dalam satu tampilan.' },
@@ -449,17 +452,24 @@ function FoundationPage({
 function getInitialRoute() {
   if (typeof window !== 'undefined') {
     const rawHash = window.location.hash.replace('#', '')
+    const hasSession = Boolean(getAuthHeaders().Authorization)
+    if (rawHash === 'login') {
+      return { view: 'login', page: 'overview' }
+    }
+    if (rawHash === 'register' || rawHash.includes('access_token=')) {
+      return { view: 'register', page: 'overview' }
+    }
     if (pages[rawHash]) {
-      return { view: 'app', page: rawHash }
+      return { view: hasSession ? 'app' : 'login', page: rawHash }
     }
     try {
       const params = new URLSearchParams(window.location.search)
       const pageParam = params.get('page')
       if (pages[pageParam]) {
-        return { view: 'app', page: pageParam }
+        return { view: hasSession ? 'app' : 'login', page: pageParam }
       }
       if (params.get('view') === 'app') {
-        return { view: 'app', page: 'overview' }
+        return { view: hasSession ? 'app' : 'login', page: 'overview' }
       }
     } catch {}
   }
@@ -467,8 +477,11 @@ function getInitialRoute() {
 }
 
 function App() {
+  const [activeUser, setActiveUser] = useState(() => readActiveUser())
+  const [sessionChecking, setSessionChecking] = useState(() => Boolean(getAuthHeaders().Authorization))
   const [currentView, setCurrentView] = useState(() => getInitialRoute().view)
   const [activePage, setActivePage] = useState(() => getInitialRoute().page)
+  const [pendingPage, setPendingPage] = useState(() => getInitialRoute().page)
   const [batches, setBatches] = useState([])
   const [selectedBatch, setSelectedBatch] = useState(null)
   const [openCertModal, setOpenCertModal] = useState(false)
@@ -482,14 +495,43 @@ function App() {
   }, [])
 
   useEffect(() => {
+    if (!sessionChecking) return
+    let cancelled = false
+    restoreAuthSession().then((user) => {
+      if (cancelled) return
+      setActiveUser(user)
+      if (!user && pages[window.location.hash.replace('#', '')]) {
+        setPendingPage(window.location.hash.replace('#', ''))
+        setCurrentView('login')
+        window.location.hash = 'login'
+      }
+      setSessionChecking(false)
+    })
+    return () => { cancelled = true }
+  }, [sessionChecking])
+
+  useEffect(() => {
     const handleHash = () => {
       const hash = window.location.hash.replace('#', '')
-      if (pages[hash]) {
+      const user = getAuthHeaders().Authorization ? readActiveUser() : null
+      setActiveUser(user)
+      if (hash === 'login') {
+        stopAllActiveCameraStreams()
+        setCurrentView('login')
+      } else if (hash === 'register' || hash.includes('access_token=')) {
+        stopAllActiveCameraStreams()
+        setCurrentView('register')
+      } else if (pages[hash]) {
         if (hash !== 'scanner') {
           stopAllActiveCameraStreams()
         }
-        setCurrentView('app')
-        setActivePage(hash)
+        if (!user) {
+          setPendingPage(hash)
+          setCurrentView('login')
+        } else {
+          setCurrentView('app')
+          setActivePage(hash)
+        }
       } else if (hash === '' || hash === 'landing') {
         stopAllActiveCameraStreams()
         setCurrentView('landing')
@@ -504,9 +546,68 @@ function App() {
     if (pageToOpen !== 'scanner') {
       stopAllActiveCameraStreams()
     }
+    const user = getAuthHeaders().Authorization ? readActiveUser() : null
+    setActiveUser(user)
+    if (!user) {
+      setPendingPage(pageToOpen)
+      setCurrentView('login')
+      window.location.hash = 'login'
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+      return
+    }
     setCurrentView('app')
     setActivePage(pageToOpen)
     window.location.hash = pageToOpen
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  const handleSwitchToRegister = () => {
+    setCurrentView('register')
+    window.location.hash = 'register'
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  const handleSwitchToLogin = () => {
+    setCurrentView('login')
+    window.location.hash = 'login'
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  const handleLoginSuccess = (loggedInUser) => {
+    setActiveUser(loggedInUser)
+    const userBatches = readBatches()
+    setBatches(userBatches)
+    setSelectedBatch(userBatches[userBatches.length - 1] || null)
+    const destination = pages[pendingPage] ? pendingPage : 'overview'
+    setCurrentView('app')
+    setActivePage(destination)
+    window.location.hash = destination
+    setHarvestMessage(`Selamat datang kembali, ${loggedInUser.fullName} (${loggedInUser.email})!`)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  const handleRegisterSuccess = (newUser) => {
+    setActiveUser(newUser)
+    const userBatches = readBatches()
+    setBatches(userBatches)
+    setSelectedBatch(userBatches[userBatches.length - 1] || null)
+    const destination = pages[pendingPage] ? pendingPage : 'overview'
+    setCurrentView('app')
+    setActivePage(destination)
+    window.location.hash = destination
+    setHarvestMessage(`Selamat datang, ${newUser.fullName} (${newUser.email})! Akun Anda berhasil terdaftar.`)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  const handleLogout = () => {
+    stopAllActiveCameraStreams()
+    void logoutActiveUser()
+    setActiveUser(null)
+    setBatches([])
+    setSelectedBatch(null)
+    setHarvestMessage('')
+    setCurrentView('landing')
+    window.location.hash = ''
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
@@ -609,13 +710,43 @@ function App() {
     window.location.hash = 'results'
   }
 
+  if (sessionChecking) {
+    return (
+      <Box sx={{ minHeight: '100vh', display: 'grid', placeItems: 'center', bgcolor: '#f2f5f3' }}>
+        <Typography color="text.secondary">Memverifikasi sesi...</Typography>
+      </Box>
+    )
+  }
+
   if (currentView === 'landing') {
     return <LandingPage onOpenApp={handleOpenApp} />
+  }
+
+  if (currentView === 'login') {
+    return (
+      <LoginPage
+        onLoginSuccess={handleLoginSuccess}
+        onSwitchToRegister={handleSwitchToRegister}
+        onBackToLanding={handleBackToLanding}
+      />
+    )
+  }
+
+  if (currentView === 'register') {
+    return (
+      <RegisterPage
+        onRegisterSuccess={handleRegisterSuccess}
+        onSwitchToLogin={handleSwitchToLogin}
+        onBackToLanding={handleBackToLanding}
+      />
+    )
   }
 
   return (
     <AppShell
       activePage={activePage}
+      activeUser={activeUser}
+      onLogout={handleLogout}
       onNavigate={handleNavigate}
       onBackToLanding={handleBackToLanding}
       onDataChanged={handleDataChanged}

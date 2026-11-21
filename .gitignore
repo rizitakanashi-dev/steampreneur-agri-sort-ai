@@ -44,3 +44,4 @@ runs/
 Eggplant-Quality-Grades-*/
 .vercel
 .env*
+!.env.example

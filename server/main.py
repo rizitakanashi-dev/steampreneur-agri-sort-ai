@@ -40,10 +40,12 @@ app.add_middleware(
 from server.routers.qc import router as qc_router
 from server.routers.pricing import router as pricing_router
 from server.routers.history import router as history_router
+from server.routers.auth import router as auth_router
 
 app.include_router(qc_router)
 app.include_router(pricing_router)
 app.include_router(history_router)
+app.include_router(auth_router)
 
 
 @app.exception_handler(Exception)
