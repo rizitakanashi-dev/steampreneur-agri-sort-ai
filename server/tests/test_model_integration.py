@@ -9,6 +9,8 @@ import os
 import unittest
 
 from server.services.pricing_service import calculate_business_grading
+from server.services.model_registry import CANONICAL_CLASSES, load_model_manifest
+from server.services.ai_engine import YOLOInferenceEngine
 
 
 class TestModelIntegrationAndBusinessGrading(unittest.TestCase):
@@ -135,6 +137,21 @@ class TestModelIntegrationAndBusinessGrading(unittest.TestCase):
         self.assertEqual(res["estimated_weights_kg"]["grade_a_kg"], 14.0)
         self.assertEqual(res["estimated_weights_kg"]["grade_b_kg"], 4.0)
         self.assertEqual(res["estimated_weights_kg"]["reject_kg"], 2.0)
+
+    def test_ai_engine_configs_are_manifest_backed_for_each_commodity(self):
+        engine = YOLOInferenceEngine()
+        expected_classes = list(CANONICAL_CLASSES.values())
+        models_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "models"))
+
+        for commodity, config in engine.model_configs.items():
+            with self.subTest(commodity=commodity):
+                manifest = load_model_manifest(commodity, models_root)
+                self.assertEqual(config["name"], manifest["model"]["name"])
+                self.assertEqual(config["version"], manifest["model"]["version"])
+                self.assertEqual(config["expected_classes"], expected_classes)
+                self.assertEqual(config["expected_classes"], list(manifest["dataset"]["classes"].values()))
+                self.assertEqual(config["onnx_path"], os.path.join(models_root, commodity, manifest["model"]["files"]["onnx"]))
+                self.assertEqual(config["manifest"]["deployment"]["status"], manifest["deployment"]["status"])
 
     def test_cabai_model_artifacts_presence(self):
         """Memverifikasi artefak model Cabai 3-kelas lengkap di server/models/cabai/"""
