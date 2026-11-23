@@ -38,6 +38,7 @@ import { AppShell } from './components/AppShell.jsx'
 import { stopAllActiveCameraStreams } from './components/LiveCameraViewfinder.jsx'
 import { ErrorBoundary } from './components/ErrorBoundary.jsx'
 import { PageHeader } from './components/PageHeader.jsx'
+import { logoutActiveUser, readActiveUser, restoreAuthSession, getAuthHeaders } from './business/authStorage.js'
 
 /*
  * Code splitting per halaman: komponen berat (scanner AI, chart, sertifikat)
@@ -60,7 +61,6 @@ function PageLoadingFallback() {
     </Box>
   )
 }
-import { logoutActiveUser, readActiveUser, restoreAuthSession, getAuthHeaders } from './business/authStorage.js'
 
 const pages = {
   overview: { title: 'Dashboard', description: 'Pantau kualitas panen dan peluang harga dalam satu tampilan.' },

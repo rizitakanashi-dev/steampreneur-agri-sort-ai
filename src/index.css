@@ -1,29 +1,8 @@
 :root {
-  /* Agri-Sort AI Editorial Paper & Botanical System */
-  --agri-ink-black: #17191c;
-  --agri-paper-white: #ffffff;
-  --agri-mist-surface: #f2f5f3;
-  --agri-fog-surface: #fafcfb;
-  --agri-slate-muted: #68736d;
-  --agri-ash-tag: #8c9690;
-  --agri-smoke-placeholder: #9da6a0;
-  --agri-blush-mint: #e3f3ea;
-  --agri-deep-emerald: #034d32;
-  --agri-emerald: #036e45;
-  --agri-leaf: #289d67;
-  --agri-gold: #c68f2f;
-  --agri-crimson: #a94f46;
-
+  /* Dua-satunya variabel CSS yang dipakai (direferensikan components/landing/tokens.js).
+     Warna & radius sudah menjadi sumber kebenaran di src/theme.js + tokens.js. */
   --font-agri-serif: 'Source Serif 4', ui-serif, Georgia, Cambria, serif;
   --font-agri-sans: 'Inter', 'Plus Jakarta Sans', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-
-  --radius-cards: 24px;
-  --radius-images: 12px;
-  --radius-inputs: 16px;
-  --radius-buttons: 9999px;
-  --radius-elevated: 20px;
-
-  --shadow-artifact: 0 0 0 1px rgba(4, 23, 43, 0.05), 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
 }
 
 html {
