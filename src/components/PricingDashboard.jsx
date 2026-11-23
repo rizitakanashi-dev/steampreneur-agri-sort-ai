@@ -30,6 +30,8 @@ import {
   TextField,
   Tooltip,
   Typography,
+  useMediaQuery,
+  useTheme,
 } from '@mui/material'
 import CalculateRoundedIcon from '@mui/icons-material/CalculateRounded'
 import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded'
@@ -196,6 +198,8 @@ const DEFAULT_GOVERNMENT_COMPARISON = Object.freeze({
 })
 
 export function PricingDashboard() {
+  const theme = useTheme()
+  const isCompactLayout = useMediaQuery(theme.breakpoints.down('sm'))
   const [commodity, setCommodity] = useState(COMMODITY_OPTIONS[0])
   const [volumeKg, setVolumeKg] = useState('500')
   const [persenA, setPersenA] = useState('72')
@@ -629,6 +633,74 @@ export function PricingDashboard() {
                   ? `${currentFeedPayload.market_center || 'Pasar Ibuh Payakumbuh'} — Diperbarui per ${currentFeedPayload.data_date}`
                   : `Diperbarui: ${PRICE_REFERENCE_SOURCE.updatedAt}`}
               </Typography>
+              {isCompactLayout ? (
+                /* Mobile: daftar kartu pemilih harga, tanpa scroll horizontal */
+                <Stack spacing={1}>
+                  {COMMODITY_OPTIONS.map((option) => {
+                    const itemKey = normalizeToBapanasKey(option)
+                    let price = REFERENCE_PRICES_PER_KG[option]
+                    let trendLabel = 'Stabil'
+                    let changeRp = 0
+                    let categorySub = null
+
+                    if (isTriangulasiActive) {
+                      const tItem = effectiveComparisonList.find((c) => c.commodity_key === itemKey)
+                      if (tItem) {
+                        price = tItem.composite_fair_price
+                        trendLabel = `Konv ${tItem.convergence_index_percent}%`
+                        changeRp = 0
+                        categorySub = `BAPANAS ${formatRupiah(tItem.bapanas_price_per_kg)} • SP2KP ${formatRupiah(tItem.sp2kp_kemendag_price_per_kg)}`
+                      }
+                    } else if (isFeedActive) {
+                      const bItem = currentCommodities[itemKey]
+                      if (bItem) {
+                        price = bItem.price_per_kg
+                        trendLabel = bItem.trend_label
+                        changeRp = bItem.price_change_rp ?? 0
+                        categorySub = bItem.category
+                      }
+                    }
+
+                    const isSelected = option === commodity
+                    return (
+                      <Box
+                        key={option}
+                        onClick={() => setCommodity(option)}
+                        sx={{
+                          bgcolor: isSelected ? 'rgba(1, 110, 68, 0.08)' : '#fafcfb',
+                          border: '1px solid',
+                          borderColor: isSelected ? 'primary.main' : '#e3e8e7',
+                          borderRadius: 2,
+                          cursor: 'pointer',
+                          p: 1.5,
+                        }}
+                      >
+                        <Stack alignItems="center" direction="row" justifyContent="space-between" spacing={1.5}>
+                          <Box sx={{ flex: 1, minWidth: 0 }}>
+                            <Typography fontWeight={isSelected ? 700 : 600} variant="body2">{option}</Typography>
+                            {categorySub && (
+                              <Typography color="text.secondary" noWrap sx={{ display: 'block' }} variant="caption">
+                                {categorySub}
+                              </Typography>
+                            )}
+                          </Box>
+                          <Stack alignItems="flex-end" spacing={0.5}>
+                            <Typography color="primary.dark" fontWeight={700} noWrap variant="body2">
+                              {formatRupiah(price)} / kg
+                            </Typography>
+                            <Chip
+                              color={changeRp > 0 ? 'success' : changeRp < 0 ? 'error' : isTriangulasiActive ? 'primary' : 'default'}
+                              label={trendLabel}
+                              size="small"
+                              variant="outlined"
+                            />
+                          </Stack>
+                        </Stack>
+                      </Box>
+                    )
+                  })}
+                </Stack>
+              ) : (
               <TableContainer sx={{ overflowX: 'auto' }}>
                 <Table size="small" sx={{ minWidth: 360 }}>
                   <TableHead>
@@ -701,6 +773,7 @@ export function PricingDashboard() {
                   </TableBody>
                 </Table>
               </TableContainer>
+              )}
             </CardContent>
           </Card>
         </Grid>
@@ -795,6 +868,43 @@ export function PricingDashboard() {
                         Harga rata-rata tertimbang: {formatRupiah(weightedPrice)} / kg
                       </Typography>
                     </Box>
+                    {isCompactLayout ? (
+                      /* Mobile: rincian grade bertumpuk, tanpa scroll horizontal */
+                      <Stack spacing={1.25}>
+                        {[
+                          { key: 'gradeA', color: 'success', label: 'Grade A', persen: projection.persentase.gradeA, berat: projection.beratKg.gradeA, nilai: formatRupiah(projection.nilai.gradeA) },
+                          { key: 'gradeB', color: 'warning', label: 'Grade B', persen: projection.persentase.gradeB, berat: projection.beratKg.gradeB, nilai: formatRupiah(projection.nilai.gradeB) },
+                          { key: 'reject', color: 'error', label: 'Reject', persen: projection.persentase.reject, berat: projection.beratKg.reject, nilai: includeReject ? formatRupiah(projection.nilai.reject) : 'Tidak dihitung' },
+                        ].map((grade) => (
+                          <Stack
+                            key={grade.key}
+                            alignItems="center"
+                            direction="row"
+                            justifyContent="space-between"
+                            spacing={1.5}
+                            sx={{ borderBottom: '1px solid', borderColor: 'divider', pb: 1 }}
+                          >
+                            <Chip color={grade.color} label={grade.label} size="small" />
+                            <Box sx={{ textAlign: 'right' }}>
+                              <Typography variant="body2">{formatNumber(grade.persen)}% • {formatNumber(grade.berat)} kg</Typography>
+                              <Typography color="primary.dark" fontWeight={700} variant="body2">{grade.nilai}</Typography>
+                            </Box>
+                          </Stack>
+                        ))}
+                        <Stack
+                          alignItems="center"
+                          direction="row"
+                          justifyContent="space-between"
+                          spacing={1.5}
+                          sx={{ bgcolor: '#f7f9fa', borderRadius: 1.5, px: 1.5, py: 1 }}
+                        >
+                          <Typography fontWeight={700} variant="body2">Total volume</Typography>
+                          <Typography fontWeight={700} variant="body2">
+                            {formatNumber(projection.volumeKg)} kg • {formatRupiah(projection.totalNilai)}
+                          </Typography>
+                        </Stack>
+                      </Stack>
+                    ) : (
                     <TableContainer sx={{ overflowX: 'auto' }}>
                       <Table size="small" sx={{ minWidth: 480 }}>
                         <TableHead>
@@ -832,6 +942,7 @@ export function PricingDashboard() {
                         </TableBody>
                       </Table>
                     </TableContainer>
+                    )}
                   </Stack>
                 ) : (
                   <Typography color="text.secondary" variant="body2">
