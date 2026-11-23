@@ -1036,7 +1036,6 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm }
                         <IconButton
                           aria-label="Hapus foto sampel, pilih gambar lain"
                           onClick={handleClearImage}
-                          size="small"
                           disabled={isScanning}
                           sx={{
                             position: 'absolute',
@@ -1299,7 +1298,6 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm }
                         <IconButton
                           aria-label="Hapus foto sampel, pilih gambar lain"
                           onClick={handleClearImage}
-                          size="small"
                           sx={{
                             position: 'absolute',
                             top: 12,

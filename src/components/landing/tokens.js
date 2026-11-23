@@ -11,8 +11,9 @@ export const AGRI_COLORS = {
   fogSurface: '#FAFCFB',
   hairline: '#E6ECE8',
   slateMuted: '#68736D',
-  ashTag: '#8C9690',
-  smokePlaceholder: '#9DA6A0',
+  // Digelapkan dari #8C9690/#9DA6A0 agar lolos WCAG AA (>= 4.5:1) untuk teks kecil
+  ashTag: '#5F6A64',
+  smokePlaceholder: '#68747A',
   blushMint: '#E3F3EA',
   deepEmerald: '#034D32',
   emerald: '#036E45',

@@ -277,7 +277,6 @@ export function HarvestForm({ onSave }) {
                     <IconButton
                       aria-label="Hapus foto panen, pilih gambar lain"
                       onClick={handleClearImage}
-                      size="small"
                       sx={{
                         position: 'absolute',
                         top: 8,
