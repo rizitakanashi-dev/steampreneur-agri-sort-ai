@@ -7,15 +7,10 @@ import {
   CardContent,
   Chip,
   CircularProgress,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
   Divider,
   FormControl,
   FormControlLabel,
   Grid,
-  IconButton,
   InputAdornment,
   MenuItem,
   Select,
@@ -34,16 +29,11 @@ import {
   useTheme,
 } from '@mui/material'
 import CalculateRoundedIcon from '@mui/icons-material/CalculateRounded'
-import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded'
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined'
 import SyncRoundedIcon from '@mui/icons-material/SyncRounded'
-import TrendingUpRoundedIcon from '@mui/icons-material/TrendingUpRounded'
-import TrendingDownRoundedIcon from '@mui/icons-material/TrendingDownRounded'
 import VerifiedRoundedIcon from '@mui/icons-material/VerifiedRounded'
-import MonetizationOnRoundedIcon from '@mui/icons-material/MonetizationOnRounded'
 import AccountBalanceRoundedIcon from '@mui/icons-material/AccountBalanceRounded'
 import BalanceRoundedIcon from '@mui/icons-material/BalanceRounded'
-import CloseRoundedIcon from '@mui/icons-material/CloseRounded'
 import StorefrontRoundedIcon from '@mui/icons-material/StorefrontRounded'
 import { calculateMinimumPrice, parseNumeric } from '../business/harvestCalculation.js'
 import { calculateRevenueProjection, calculateWeightedPricePerKg } from '../business/harvestProjection.js'
@@ -57,19 +47,13 @@ import {
   syncSp2kpPrices,
   fetchGovernmentPriceComparison,
 } from '../services/scanService.js'
+import { formatNumber, formatRupiah } from './pricing/formatters.js'
+import { DEFAULT_GOVERNMENT_COMPARISON, mapComparisonKeyToCommodity } from './pricing/governmentComparisonData.js'
+import { FarmerFinanceCard } from './pricing/FarmerFinanceCard.jsx'
+import { TriangulasiComparisonModal } from './pricing/TriangulasiComparisonModal.jsx'
 
-const rupiahFormatter = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 })
-const numberFormatter = new Intl.NumberFormat('id-ID', { maximumFractionDigits: 2 })
-
-function formatRupiah(value) {
-  return typeof value === 'number' && Number.isFinite(value)
-    ? rupiahFormatter.format(value).replace(/^Rp\s*/, 'Rp ')
-    : '-'
-}
-
-function formatNumber(value) {
-  return typeof value === 'number' && Number.isFinite(value) ? numberFormatter.format(value) : '-'
-}
+// API kompatibilitas: helper ini sebelumnya diekspor dari file ini
+export { mapComparisonKeyToCommodity }
 
 function normalizeToBapanasKey(name) {
   const norm = String(name || '').trim().toLowerCase()
@@ -90,112 +74,6 @@ function normalizeToBapanasKey(name) {
   }
   return norm
 }
-
-export function mapComparisonKeyToCommodity(key, name) {
-  const norm = String(name || key || '').trim().toLowerCase()
-  if (norm.includes('keriting') || (norm.includes('cabai merah') && !norm.includes('rawit'))) {
-    return 'Cabai Merah Keriting'
-  }
-  if (norm.includes('rawit merah') || norm.includes('setan')) {
-    return 'Cabai Rawit Merah'
-  }
-  if (norm.includes('rawit')) {
-    return 'Cabai Rawit Hijau'
-  }
-  if (norm.includes('terung') || norm.includes('terong')) {
-    return 'Terung'
-  }
-  if (norm.includes('tomat')) {
-    return 'Tomat'
-  }
-  return null
-}
-
-const DEFAULT_GOVERNMENT_COMPARISON = Object.freeze({
-  title: 'Triangulasi Harga Pangan Resmi Pemerintah RI',
-  region: 'Sumatera Barat',
-  market_center: 'Pasar Ibuh Payakumbuh',
-  date: '2026-11-08',
-  last_synced: '2026-11-08T07:00:00+07:00',
-  institutions: {
-    bapanas: {
-      name: 'Badan Pangan Nasional (BAPANAS)',
-      url: 'https://panelharga.badanpangan.go.id',
-    },
-    kemendag: {
-      name: 'Kementerian Perdagangan (SP2KP Kemendag RI)',
-      url: 'https://sp2kp.kemendag.go.id/',
-    },
-  },
-  comparison: Object.freeze([
-    {
-      commodity_key: 'cabai merah keriting',
-      commodity_name: 'Cabai Merah Keriting',
-      bapanas_price_per_kg: 45000,
-      sp2kp_kemendag_price_per_kg: 44800,
-      composite_fair_price: 44900,
-      disparity_rp: 200,
-      convergence_index_percent: 99.55,
-      market: 'Pasar Ibuh Payakumbuh',
-      region: 'Sumatera Barat',
-    },
-    {
-      commodity_key: 'cabai rawit merah',
-      commodity_name: 'Cabai Rawit Merah',
-      bapanas_price_per_kg: 42000,
-      sp2kp_kemendag_price_per_kg: 42500,
-      composite_fair_price: 42250,
-      disparity_rp: 500,
-      convergence_index_percent: 98.82,
-      market: 'Pasar Ibuh Payakumbuh',
-      region: 'Sumatera Barat',
-    },
-    {
-      commodity_key: 'cabai rawit hijau',
-      commodity_name: 'Cabai Rawit Hijau',
-      bapanas_price_per_kg: 30000,
-      sp2kp_kemendag_price_per_kg: 30000,
-      composite_fair_price: 30000,
-      disparity_rp: 0,
-      convergence_index_percent: 100.0,
-      market: 'Pasar Ibuh Payakumbuh',
-      region: 'Sumatera Barat',
-    },
-    {
-      commodity_key: 'tomat',
-      commodity_name: 'Tomat',
-      bapanas_price_per_kg: 12000,
-      sp2kp_kemendag_price_per_kg: 12000,
-      composite_fair_price: 12000,
-      disparity_rp: 0,
-      convergence_index_percent: 100.0,
-      market: 'Pasar Ibuh Payakumbuh',
-      region: 'Sumatera Barat',
-    },
-    {
-      commodity_key: 'terung',
-      commodity_name: 'Terung',
-      bapanas_price_per_kg: 10000,
-      sp2kp_kemendag_price_per_kg: 10000,
-      composite_fair_price: 10000,
-      disparity_rp: 0,
-      convergence_index_percent: 100.0,
-      market: 'Pasar Ibuh Payakumbuh',
-      region: 'Sumatera Barat',
-    },
-    {
-      commodity_key: 'bawang merah',
-      commodity_name: 'Bawang Merah',
-      bapanas_price_per_kg: null,
-      sp2kp_kemendag_price_per_kg: 34500,
-      composite_fair_price: 34500,
-      disparity_rp: 0,
-      convergence_index_percent: 100.0,
-      market: 'Pasar Ibuh Payakumbuh',
-      region: 'Sumatera Barat',
-    },
-  ]),
-})
 
 export function PricingDashboard() {
   const theme = useTheme()
@@ -953,271 +831,28 @@ export function PricingDashboard() {
             </Card>
 
             {/* KARTU FINANSIAL PETANI: HPP, BEP, DAN LABA BERSIH (STEAM MATH & ENTREPRENEURSHIP) */}
-            <Card sx={{ border: '1px solid #e0e0e0', borderRadius: 2 }}>
-              <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
-                <Stack alignItems="center" direction="row" justifyContent="space-between" sx={{ mb: 1.5 }}>
-                  <Stack alignItems="center" direction="row" spacing={1}>
-                    <MonetizationOnRoundedIcon color="primary" />
-                    <Typography variant="h6">Titik Impas (BEP) & Laba Petani</Typography>
-                  </Stack>
-                  <Chip
-                    color="primary"
-                    label="STEAM: Preneur"
-                    size="small"
-                    sx={{ fontWeight: 700, fontSize: '0.75rem' }}
-                  />
-                </Stack>
-                <Typography color="text.secondary" sx={{ mb: 2 }} variant="body2">
-                  Kalkulator kelayakan finansial agribisnis: bandingkan nilai sortasi pasar dengan Biaya Pokok Produksi (BPP) budidaya.
-                </Typography>
-
-                <Grid container spacing={2} sx={{ mb: 2 }}>
-                  <Grid size={{ xs: 12, sm: 6 }}>
-                    <TextField
-                      fullWidth
-                      helperText="Estimasi modal bibit, pupuk, pestisida & tenaga kerja"
-                      inputMode="decimal"
-                      label="BPP / Modal per kg"
-                      onChange={(e) => setBppInput(e.target.value)}
-                      size="small"
-                      slotProps={{
-                        input: {
-                          startAdornment: <InputAdornment position="start">Rp</InputAdornment>,
-                          endAdornment: <InputAdornment position="end">/ kg</InputAdornment>,
-                        },
-                      }}
-                      value={bppInput}
-                    />
-                  </Grid>
-                  <Grid size={{ xs: 12, sm: 6 }}>
-                    <TextField
-                      fullWidth
-                      helperText="Target margin laba bersih yang diharapkan"
-                      inputMode="decimal"
-                      label="Target Margin Petani"
-                      onChange={(e) => setTargetMargin(e.target.value)}
-                      size="small"
-                      slotProps={{
-                        input: {
-                          endAdornment: <InputAdornment position="end">%</InputAdornment>,
-                        },
-                      }}
-                      value={targetMargin}
-                    />
-                  </Grid>
-                </Grid>
-
-                {farmerFinance ? (
-                  <Stack spacing={2}>
-                    {/* Status Laba / Rugi Banner */}
-                    <Box
-                      sx={{
-                        bgcolor: farmerFinance.isProfitable ? '#f0fdf4' : '#fef2f2',
-                        border: '1px solid',
-                        borderColor: farmerFinance.isProfitable ? '#86efac' : '#fca5a5',
-                        borderRadius: 2,
-                        p: 2,
-                      }}
-                    >
-                      <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ xs: 'flex-start', sm: 'center' }} spacing={1}>
-                        <Box>
-                          <Stack direction="row" alignItems="center" spacing={1}>
-                            {farmerFinance.isProfitable ? (
-                              <TrendingUpRoundedIcon sx={{ color: '#16a34a' }} />
-                            ) : (
-                              <TrendingDownRoundedIcon sx={{ color: '#dc2626' }} />
-                            )}
-                            <Typography fontWeight={700} variant="subtitle2" sx={{ color: farmerFinance.isProfitable ? '#15803d' : '#b91c1c' }}>
-                              {farmerFinance.isProfitable ? 'Prospek Panen Menguntungkan (Surplus)' : 'Potensi Defisit / Risiko Rugi'}
-                            </Typography>
-                          </Stack>
-                          <Typography fontWeight={800} variant="h5" sx={{ color: farmerFinance.isProfitable ? '#166534' : '#991b1b', mt: 0.5 }}>
-                            {formatRupiah(farmerFinance.netProfit)}
-                          </Typography>
-                          <Typography variant="caption" sx={{ color: farmerFinance.isProfitable ? '#15803d' : '#b91c1c' }}>
-                            Margin Bersih: {farmerFinance.profitMarginPercent}% &bull; ROI Modal: {farmerFinance.roiPercent}%
-                          </Typography>
-                        </Box>
-
-                        <Chip
-                          color={farmerFinance.isProfitable ? 'success' : 'error'}
-                          label={farmerFinance.isProfitable ? `Laba Bersih` : `Defisit Modal`}
-                          sx={{ fontWeight: 700 }}
-                        />
-                      </Stack>
-                    </Box>
-
-                    {/* Rincian Finansial & Titik Impas (BEP) */}
-                    <TableContainer sx={{ overflowX: 'auto', border: '1px solid #f1f5f9', borderRadius: 1.5 }}>
-                      <Table size="small">
-                        <TableBody>
-                          <TableRow>
-                            <TableCell sx={{ color: 'text.secondary' }}>Total Modal Budidaya (HPP Total)</TableCell>
-                            <TableCell align="right" sx={{ fontWeight: 600 }}>{formatRupiah(farmerFinance.totalCost)}</TableCell>
-                          </TableRow>
-                          <TableRow>
-                            <TableCell sx={{ color: 'text.secondary' }}>Titik Impas Harga (BEP Harga)</TableCell>
-                            <TableCell align="right" sx={{ fontWeight: 600, color: 'primary.dark' }}>
-                              {formatRupiah(farmerFinance.bepPricePerKg)} / kg
-                            </TableCell>
-                          </TableRow>
-                          <TableRow>
-                            <TableCell sx={{ color: 'text.secondary' }}>Volume Balik Modal (BEP Volume)</TableCell>
-                            <TableCell align="right" sx={{ fontWeight: 600 }}>
-                              {formatNumber(farmerFinance.bepVolumeKg)} kg dari {formatNumber(farmerFinance.sellableVolumeKg)} kg
-                            </TableCell>
-                          </TableRow>
-                          {targetPriceRec && (
-                            <TableRow sx={{ bgcolor: '#f8fafc' }}>
-                              <TableCell sx={{ fontWeight: 600, color: '#036e45' }}>
-                                Rekomendasi Jual (Target Margin {targetMargin}%)
-                              </TableCell>
-                              <TableCell align="right" sx={{ fontWeight: 800, color: '#036e45' }}>
-                                {formatRupiah(targetPriceRec)} / kg
-                              </TableCell>
-                            </TableRow>
-                          )}
-                        </TableBody>
-                      </Table>
-                    </TableContainer>
-
-                    {error && <Alert severity="info">{error}</Alert>}
-                  </Stack>
-                ) : (
-                  <Alert severity="info" icon={<InfoOutlinedIcon />}>
-                    Lengkapi form volume panen dan persentase grade di atas untuk melihat analisis laba dan titik impas.
-                  </Alert>
-                )}
-              </CardContent>
-            </Card>
+            <FarmerFinanceCard
+              error={error}
+              farmerFinance={farmerFinance}
+              bppInput={bppInput}
+              onBppChange={(e) => setBppInput(e.target.value)}
+              onTargetMarginChange={(e) => setTargetMargin(e.target.value)}
+              targetMargin={targetMargin}
+              targetPriceRec={targetPriceRec}
+            />
           </Stack>
         </Grid>
       </Grid>
 
       {/* DIALOG TRIANGULASI HARGA RESMI PEMERINTAH (BAPANAS VS SP2KP KEMENDAG) */}
-      <Dialog
-        open={isComparisonModalOpen}
+      <TriangulasiComparisonModal
+        commodity={commodity}
+        effectiveComparisonList={effectiveComparisonList}
+        isTriangulasiActive={isTriangulasiActive}
         onClose={() => setIsComparisonModalOpen(false)}
-        maxWidth="md"
-        fullWidth
-      >
-        <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Stack direction="row" spacing={1.5} alignItems="center">
-            <BalanceRoundedIcon color="primary" />
-            <Box>
-              <Typography variant="h6" fontWeight={800}>
-                Triangulasi Harga Pangan Resmi Pemerintah RI
-              </Typography>
-              <Typography variant="caption" color="text.secondary">
-                Komparasi BAPANAS RI vs SP2KP Kemendag RI (Wilayah: Sumatera Barat / Pasar Ibuh Payakumbuh)
-              </Typography>
-            </Box>
-          </Stack>
-          <IconButton aria-label="Tutup modal perbandingan harga" onClick={() => setIsComparisonModalOpen(false)} size="small">
-            <CloseRoundedIcon />
-          </IconButton>
-        </DialogTitle>
-        <DialogContent dividers>
-          <Alert severity="info" icon={<InfoOutlinedIcon />} sx={{ mb: 2.5, borderRadius: 2 }}>
-            <Typography variant="body2">
-              Sistem membandingkan data harian dari <strong>Panel Harga BAPANAS (Badan Pangan Nasional)</strong> dan{' '}
-              <strong>SP2KP (Kementerian Perdagangan RI)</strong> untuk menghitung harga komposit yang adil (<em>fair market price</em>).
-            </Typography>
-            <Typography variant="caption" sx={{ display: 'block', mt: 0.5, color: 'text.secondary', fontWeight: 600 }}>
-              💡 <strong>Tips Interaktif:</strong> Klik pada baris komoditas atau tombol <strong>&quot;Gunakan&quot;</strong> di bawah untuk langsung menerapkan harga komposit ke kalkulator pendapatan dan analisis laba petani.
-            </Typography>
-          </Alert>
-
-          <TableContainer sx={{ border: '1px solid #e2e8f0', borderRadius: 2 }}>
-            <Table size="small">
-              <TableHead sx={{ bgcolor: '#f8fafc' }}>
-                <TableRow>
-                  <TableCell sx={{ fontWeight: 700 }}>Komoditas</TableCell>
-                  <TableCell align="right" sx={{ fontWeight: 700 }}>BAPANAS RI</TableCell>
-                  <TableCell align="right" sx={{ fontWeight: 700 }}>SP2KP Kemendag</TableCell>
-                  <TableCell align="right" sx={{ fontWeight: 700, bgcolor: 'rgba(5, 150, 105, 0.08)' }}>Harga Komposit Adil</TableCell>
-                  <TableCell align="right" sx={{ fontWeight: 700 }}>Disparitas</TableCell>
-                  <TableCell align="center" sx={{ fontWeight: 700 }}>Indeks Konvergensi</TableCell>
-                  <TableCell align="center" sx={{ fontWeight: 700 }}>Aksi</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {effectiveComparisonList.map((row) => {
-                  const matched = mapComparisonKeyToCommodity(row.commodity_key, row.commodity_name)
-                  const isSupported = Boolean(matched && COMMODITY_OPTIONS.includes(matched))
-                  const isCurrentCommodity = isSupported && commodity === matched && isTriangulasiActive
-
-                  return (
-                    <TableRow
-                      hover
-                      key={row.commodity_key}
-                      onClick={() => handleSelectTriangulationCommodity(row)}
-                      sx={{
-                        cursor: 'pointer',
-                        bgcolor: isCurrentCommodity ? 'rgba(5, 150, 105, 0.08)' : 'inherit',
-                        transition: 'background-color 0.15s ease',
-                        '&:hover': { bgcolor: 'rgba(5, 150, 105, 0.12)' },
-                      }}
-                    >
-                      <TableCell sx={{ fontWeight: 600 }}>
-                        <Stack direction="row" spacing={1} alignItems="center">
-                          <Typography variant="body2" fontWeight={700}>
-                            {row.commodity_name}
-                          </Typography>
-                          {isCurrentCommodity && (
-                            <Chip size="small" label="Aktif" color="success" sx={{ height: 20, fontSize: '0.75rem', fontWeight: 800 }} />
-                          )}
-                        </Stack>
-                      </TableCell>
-                      <TableCell align="right">{row.bapanas_price_per_kg ? formatRupiah(row.bapanas_price_per_kg) : '-'}</TableCell>
-                      <TableCell align="right">{row.sp2kp_kemendag_price_per_kg ? formatRupiah(row.sp2kp_kemendag_price_per_kg) : '-'}</TableCell>
-                      <TableCell align="right" sx={{ fontWeight: 800, color: 'primary.main', bgcolor: 'rgba(5, 150, 105, 0.04)' }}>
-                        {formatRupiah(row.composite_fair_price)}
-                      </TableCell>
-                      <TableCell align="right">{row.disparity_rp ? formatRupiah(row.disparity_rp) : 'Rp 0'}</TableCell>
-                      <TableCell align="center">
-                        <Chip
-                          label={`${row.convergence_index_percent}%`}
-                          size="small"
-                          color={row.convergence_index_percent >= 98 ? 'success' : 'default'}
-                          variant={row.convergence_index_percent >= 98 ? 'filled' : 'outlined'}
-                          sx={{ fontWeight: 700, fontSize: '0.75rem', height: 22 }}
-                        />
-                      </TableCell>
-                      <TableCell align="center">
-                        {isSupported ? (
-                          <Button
-                            size="small"
-                            variant={isCurrentCommodity ? 'contained' : 'outlined'}
-                            color="primary"
-                            startIcon={isCurrentCommodity ? <CheckCircleRoundedIcon /> : <CalculateRoundedIcon />}
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              handleSelectTriangulationCommodity(row)
-                            }}
-                            sx={{ textTransform: 'none', py: 0.25, px: 1.25, fontSize: '0.75rem', fontWeight: 700, borderRadius: 1.5 }}
-                          >
-                            {isCurrentCommodity ? 'Sedang Aktif' : 'Gunakan'}
-                          </Button>
-                        ) : (
-                          <Tooltip title="Data acuan pasar Kemendag RI">
-                            <Chip label="Referensi" size="small" variant="outlined" sx={{ fontSize: '0.7rem', height: 22 }} />
-                          </Tooltip>
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  )
-                })}
-              </TableBody>
-            </Table>
-          </TableContainer>
-        </DialogContent>
-        <DialogActions sx={{ p: 2 }}>
-          <Button onClick={() => setIsComparisonModalOpen(false)} variant="contained" color="primary">
-            Tutup
-          </Button>
-        </DialogActions>
-      </Dialog>
+        onSelectTriangulationCommodity={handleSelectTriangulationCommodity}
+        open={isComparisonModalOpen}
+      />
     </Stack>
   )
 }
