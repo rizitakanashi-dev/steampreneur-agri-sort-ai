@@ -58,9 +58,14 @@ def compute_vectorized_nms(
     boxes: Any,
     scores: Any,
     iou_threshold: float = 0.45,
+    classes: Any = None,
+    cross_class_iou_threshold: float = 0.75,
 ) -> List[int]:
     """
     Eksekusi Non-Maximum Suppression (NMS) berbasis NumPy murni.
+    Jika `classes` diberikan, menerapkan occlusion-aware NMS:
+    - Kelas sama: ditekan pada `iou_threshold` (default 0.45).
+    - Kelas berbeda (buah bertumpuk beda mutu): hanya ditekan jika overlap sangat tinggi (`cross_class_iou_threshold`, default 0.75).
     """
     if np is None or len(boxes) == 0:
         return []
@@ -90,7 +95,12 @@ def compute_vectorized_nms(
         union = areas[i] + areas[order[1:]] - inter
         iou = np.where(union > 0, inter / union, 0.0)
 
-        inds = np.where(iou <= iou_threshold)[0]
+        if classes is not None:
+            same_cls = classes[order[1:]] == classes[i]
+            eff_thresh = np.where(same_cls, iou_threshold, cross_class_iou_threshold)
+            inds = np.where(iou <= eff_thresh)[0]
+        else:
+            inds = np.where(iou <= iou_threshold)[0]
         order = order[inds + 1]
 
     return keep
@@ -149,7 +159,7 @@ class ONNXYOLOModel:
         self,
         source: Union[str, Image.Image, np.ndarray],
         conf: float = 0.25,
-        iou: float = 0.45,
+        iou: float = 0.55,
         imgsz: int = 640,
         verbose: bool = False,
         **kwargs: Any,
@@ -230,8 +240,8 @@ class ONNXYOLOModel:
 
         xyxy_boxes = np.column_stack([x1, y1, x2, y2])
 
-        # 5. Non-Maximum Suppression (NMS)
-        keep = compute_vectorized_nms(xyxy_boxes, f_scores, iou_threshold=iou)
+        # 5. Non-Maximum Suppression (NMS) sadar-oklusi antar kelas
+        keep = compute_vectorized_nms(xyxy_boxes, f_scores, iou_threshold=iou, classes=f_classes)
 
         boxes: List[ONNXBox] = []
         for idx in keep:

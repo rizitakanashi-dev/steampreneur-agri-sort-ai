@@ -53,6 +53,20 @@ class TestONNXEngine(unittest.TestCase):
         self.assertEqual(len(keep), 1)
         self.assertEqual(keep[0], 1)
 
+    def test_vectorized_nms_occlusion_aware_cross_class(self):
+        """Memverifikasi buah bertumpuk beda kelas dengan IoU menengah (~0.56) tidak saling menghapus."""
+        boxes = np.array([
+            [0.0, 0.0, 100.0, 100.0],
+            [25.0, 0.0, 125.0, 100.0],  # Intersection=75x100=7500, Union=12500 -> IoU=0.60
+        ])
+        scores = np.array([0.90, 0.85])
+        # Kelas sama -> ditekan pada iou_threshold=0.45
+        keep_same = compute_vectorized_nms(boxes, scores, iou_threshold=0.45, classes=np.array([0, 0]))
+        self.assertEqual(keep_same, [0])
+        # Kelas berbeda -> dipertahankan karena IoU=0.60 <= cross_class_iou_threshold=0.75
+        keep_diff = compute_vectorized_nms(boxes, scores, iou_threshold=0.45, classes=np.array([0, 1]))
+        self.assertEqual(keep_diff, [0, 1])
+
     def test_onnx_model_predict_real_weights(self):
         """Memverifikasi ONNXYOLOModel dapat memuat server/models/terung/best.onnx dan mengeksekusi inferensi."""
         if not is_onnx_available():

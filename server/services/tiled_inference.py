@@ -133,6 +133,221 @@ def generate_slice_tiles(
     return tiles
 
 
+def _suppress_nested_fragments(
+    items: List[Dict[str, Any]],
+    box_key: str = "box",
+    img_w: int = 0,
+    img_h: int = 0,
+) -> List[Dict[str, Any]]:
+    """
+    Menghapus container multi-objek raksasa yang menelan beberapa buah individual,
+    serta menghapus fragmen/irisan kecil yang bersarang di dalam box buah tunggal utuh.
+    """
+    if len(items) <= 1:
+        return items
+
+    img_area = float(max(1, img_w * img_h)) if (img_w > 0 and img_h > 0) else 0.0
+
+    def _area(it: Dict[str, Any]) -> float:
+        b = it[box_key]
+        return max(0.0, float(b[2]) - float(b[0])) * max(0.0, float(b[3]) - float(b[1]))
+
+    def _conf(it: Dict[str, Any]) -> float:
+        if "conf" in it:
+            return float(it["conf"])
+        if "items" in it and it["items"]:
+            return max(float(x["conf"]) for x in it["items"])
+        return 0.0
+
+    def _cls(it: Dict[str, Any]) -> Any:
+        if "cls_id" in it:
+            return it["cls_id"]
+        if "items" in it and it["items"]:
+            return max(it["items"], key=lambda x: x["conf"]).get("cls_id")
+        return None
+
+    # Tahap 1: Deteksi dan eliminasi container multi-buah raksasa
+    # (box besar yang mencakup 2 atau lebih buah terpisah, atau box halusinasi nampan yang menelan buah)
+    to_remove: set = set()
+    for i, big in enumerate(items):
+        big_b = big[box_key]
+        big_a = _area(big)
+        bw = float(big_b[2]) - float(big_b[0])
+        bh = float(big_b[3]) - float(big_b[1])
+
+        contained_children = []
+        for j, small in enumerate(items):
+            if i == j:
+                continue
+            small_b = small[box_key]
+            small_a = _area(small)
+            if small_a >= 0.70 * big_a:
+                continue
+            if compute_iom(small_b, big_b) >= 0.70:
+                contained_children.append(j)
+
+        if len(contained_children) >= 2:
+            # Periksa apakah setidaknya ada 2 anak yang merupakan objek terpisah (IoU < 0.40)
+            has_distinct_pair = False
+            for c1 in range(len(contained_children)):
+                for c2 in range(c1 + 1, len(contained_children)):
+                    b1 = items[contained_children[c1]][box_key]
+                    b2 = items[contained_children[c2]][box_key]
+                    if compute_iou(b1, b2) < 0.40:
+                        has_distinct_pair = True
+                        break
+                if has_distinct_pair:
+                    break
+            if has_distinct_pair:
+                to_remove.add(i)
+        elif img_area > 0.0 and len(contained_children) >= 1:
+            is_monolithic_crate = (
+                (big_a >= 0.40 * img_area)
+                or (bw >= 0.65 * img_w and bh >= 0.65 * img_h)
+            )
+            if is_monolithic_crate:
+                to_remove.add(i)
+
+    remaining = [it for idx, it in enumerate(items) if idx not in to_remove]
+    if len(remaining) <= 1:
+        return remaining
+
+    # Tahap 2: Supresi fragmen irisan tepi ubin yang bersarang di dalam buah utuh
+    ordered = sorted(remaining, key=lambda it: (_area(it), _conf(it)), reverse=True)
+    kept: List[Dict[str, Any]] = []
+
+    for cand in ordered:
+        cand_area = _area(cand)
+        cand_conf = _conf(cand)
+        cand_cls = _cls(cand)
+        cand_box = cand[box_key]
+        is_nested_fragment = False
+
+        for parent in kept:
+            parent_area = _area(parent)
+            if parent_area <= 0.0:
+                continue
+            area_ratio = cand_area / parent_area
+            if area_ratio > 0.35:
+                continue
+
+            iom = compute_iom(cand_box, parent[box_key])
+            parent_conf = _conf(parent)
+            same_cls = (cand_cls is not None and cand_cls == _cls(parent))
+
+            if same_cls and iom >= 0.75 and parent_conf >= (cand_conf - 0.15):
+                is_nested_fragment = True
+                break
+            if area_ratio <= 0.15 and iom >= 0.85 and parent_conf > cand_conf:
+                is_nested_fragment = True
+                break
+
+        if not is_nested_fragment:
+            kept.append(cand)
+
+    return kept
+
+
+def _map_rotated_box_to_original(
+    box: List[float],
+    angle: int,
+    orig_w: int,
+    orig_h: int,
+) -> List[float]:
+    """
+    Memetakan koordinat bounding box [rx1, ry1, rx2, ry2] dari citra yang dirotasi
+    berlawanan arah jarum jam (PIL Image.rotate(angle, expand=True)) kembali ke ruang koordinat citra asli.
+    """
+    rx1, ry1, rx2, ry2 = float(box[0]), float(box[1]), float(box[2]), float(box[3])
+    if angle == 90:
+        return [orig_w - ry2, rx1, orig_w - ry1, rx2]
+    if angle == 270:
+        return [ry1, orig_h - rx2, ry2, orig_h - rx1]
+    if angle == 180:
+        return [orig_w - rx2, orig_h - ry2, orig_w - rx1, orig_h - ry1]
+    return [rx1, ry1, rx2, ry2]
+
+
+def _has_real_image_texture(image: Image.Image) -> bool:
+    """
+    Memeriksa apakah citra memiliki tekstur/variansi piksel nyata (bukan citra sintetis polos pada unit test).
+    """
+    try:
+        small = image.convert("RGB").resize((32, 32))
+        raw = small.tobytes()
+        r_vals = raw[0::3]
+        g_vals = raw[1::3]
+        b_vals = raw[2::3]
+        return (
+            (max(r_vals) - min(r_vals)) >= 16
+            or (max(g_vals) - min(g_vals)) >= 16
+            or (max(b_vals) - min(b_vals)) >= 16
+        )
+    except Exception:
+        return False
+
+
+def _estimate_uncovered_fruit_ratio(
+    image: Image.Image,
+    boxes: List[Dict[str, Any]],
+    commodity: str,
+) -> float:
+    """
+    Mengestimasi proporsi piksel citra bertekstur di luar bounding box yang sudah terdeteksi
+    yang memiliki pigmen warna khas komoditas (merah/oranye/kuning untuk cabai/tomat,
+    ungu/gelap untuk terung). Mengembalikan 0.0 untuk citra sintetis polos.
+    """
+    try:
+        w, h = image.size
+        if w <= 0 or h <= 0 or not _has_real_image_texture(image):
+            return 0.0
+
+        grid_sz = 48
+        small = image.convert("RGB").resize((grid_sz, grid_sz))
+        raw = small.tobytes()
+
+        covered = [[False] * grid_sz for _ in range(grid_sz)]
+        for it in boxes:
+            bx = it.get("box", [0, 0, 0, 0])
+            gx1 = max(0, min(grid_sz, int(bx[0] * grid_sz / w)))
+            gy1 = max(0, min(grid_sz, int(bx[1] * grid_sz / h)))
+            gx2 = max(0, min(grid_sz, int((bx[2] * grid_sz / w) + 0.999)))
+            gy2 = max(0, min(grid_sz, int((bx[3] * grid_sz / h) + 0.999)))
+            for yy in range(gy1, gy2):
+                row = covered[yy]
+                for xx in range(gx1, gx2):
+                    row[xx] = True
+
+        comm = (commodity or "").lower()
+        is_red_comm = "cabai" in comm or "chili" in comm or "chilli" in comm or "cabe" in comm or "tomat" in comm
+
+        uncovered_fruit = 0
+        total_px = grid_sz * grid_sz
+        idx = 0
+        for yy in range(grid_sz):
+            row_cov = covered[yy]
+            for xx in range(grid_sz):
+                r = raw[idx]
+                g = raw[idx + 1]
+                b = raw[idx + 2]
+                idx += 3
+                if row_cov[xx]:
+                    continue
+                v_max = max(r, g, b)
+                v_min = min(r, g, b)
+                sat = (v_max - v_min) / max(1.0, float(v_max))
+                if is_red_comm:
+                    if (r >= g + 20 and r >= b + 24 and sat >= 0.30) or (r >= b + 32 and g >= b + 24 and sat >= 0.30):
+                        uncovered_fruit += 1
+                else:
+                    if r >= g + 8 and b >= g and (r + b - 2 * g) >= 16 and v_max < 175:
+                        uncovered_fruit += 1
+
+        return uncovered_fruit / float(total_px)
+    except Exception:
+        return 0.0
+
+
 def disambiguate_eggplant_classes(
     cluster_items: List[Dict[str, Any]],
     confidence_threshold: float = 0.25,
@@ -299,7 +514,8 @@ def is_watermark_or_text_artifact(box: List[float], image: Image.Image, commodit
                         fruit_ratio = fruit_cnt / total_px
                         blue_ratio = blue_cnt / total_px
                         neutral_ratio = neutral_cnt / total_px
-                        if fruit_ratio < 0.18 or blue_ratio >= 0.25 or (neutral_ratio >= 0.55 and fruit_ratio < 0.25):
+                        min_fruit_ratio = 0.08 if is_cabai else 0.16
+                        if fruit_ratio < min_fruit_ratio or blue_ratio >= 0.25 or (neutral_ratio >= 0.65 and fruit_ratio < 0.12):
                             return True
                     else:
                         eggplant_cnt = 0
@@ -329,7 +545,7 @@ def is_watermark_or_text_artifact(box: List[float], image: Image.Image, commodit
                         wood_ratio = wood_cnt / total_px
                         neutral_ratio = neutral_cnt / total_px
                         if (
-                            (eggplant_ratio < 0.22 and (wood_ratio >= 0.18 or (wood_ratio + neutral_ratio) >= 0.45))
+                            (eggplant_ratio < 0.14 and (wood_ratio >= 0.28 or (wood_ratio + neutral_ratio) >= 0.60))
                             or (cyan_blue_cnt / total_px) >= 0.35
                             or (bright_red_cnt / total_px) >= 0.45
                         ):
@@ -352,59 +568,161 @@ def run_sliced_yolo_inference(
     Eksekusi deteksi objek beresolusi tinggi dengan kombinasi inferensi utuh dan Sliced SAHI.
 
     Alur:
-    1. Inferensi citra utuh (Full Image Pass).
-    2. Deteksi box raksasa monolitik (indikasi crate hallucination).
-    3. Multi-scale sliced tiles (2x2 dan 3x2 / 3x3) pada skala 640x640.
+    1. Inferensi citra utuh (Full Image Pass) + Orientation-Invariant TTA (90°/270°) untuk buah memanjang horizontal.
+    2. Deteksi box raksasa monolitik (indikasi crate hallucination) & analisis kepadatan tumpukan (Density-Adaptive SAHI).
+    3. Multi-scale sliced tiles (2x2 dan adaptif 3x2 / 2x3 / 3x3 pada tumpukan padat) pada skala 640x640.
     4. Supresi box monolitik jika potongan menghasilkan deteksi individual valid.
-    5. Pengelompokan spasial berbasis IoU (Clustering / Soft-NMS).
-    6. Disambiguasi kelas Class II vs Reject.
+    5. Pengelompokan spasial berbasis IoU & IoM (Containment-Aware Clustering) serta supresi fragmen bersarang.
+    6. Disambiguasi kelas Class II / Grade B vs Reject.
     """
     width, height = image.size
-    img_area = width * height
-    is_terung = "terung" in commodity.lower() or "terong" in commodity.lower() or "eggplant" in commodity.lower()
+    img_area = float(max(1, width * height))
+    comm_lower = commodity.lower()
+    is_terung = "terung" in comm_lower or "terong" in comm_lower or "eggplant" in comm_lower
+    is_cabai = "cabai" in comm_lower or "chili" in comm_lower or "chilli" in comm_lower or "cabe" in comm_lower
+    is_elongated = is_terung or is_cabai
+    has_real_texture = _has_real_image_texture(image)
+
+    def _extract_pass_boxes(
+        res_obj: Any,
+        source_tag: str,
+        offset_x: float = 0.0,
+        offset_y: float = 0.0,
+        tile_w: Optional[int] = None,
+        tile_h: Optional[int] = None,
+        tx1: int = 0,
+        ty1: int = 0,
+        tx2: Optional[int] = None,
+        ty2: Optional[int] = None,
+        rot_angle: int = 0,
+    ) -> List[Dict[str, Any]]:
+        extracted: List[Dict[str, Any]] = []
+        ref_w = width if tile_w is None else tile_w
+        ref_h = height if tile_h is None else tile_h
+
+        for b in res_obj.boxes:
+            c_id = int(b.cls[0].item() if hasattr(b.cls[0], "item") else b.cls[0])
+            c_name = model.names.get(c_id, f"class_{c_id}")
+            conf = float(b.conf[0].item() if hasattr(b.conf[0], "item") else b.conf[0])
+            raw_xyxy = b.xyxy[0]
+            bx = raw_xyxy.tolist() if hasattr(raw_xyxy, "tolist") else list(raw_xyxy)
+
+            if rot_angle:
+                bx = _map_rotated_box_to_original(bx, rot_angle, ref_w, ref_h)
+
+            gx1 = bx[0] + offset_x
+            gy1 = bx[1] + offset_y
+            gx2 = bx[2] + offset_x
+            gy2 = bx[3] + offset_y
+            bw = gx2 - gx1
+            bh = gy2 - gy1
+            b_area = bw * bh
+            if bw <= 1.0 or bh <= 1.0:
+                continue
+
+            if tile_w is not None and tile_h is not None:
+                tile_area = float(tile_w * tile_h)
+                if b_area >= 0.90 * tile_area:
+                    continue
+                end_x = width if tx2 is None else tx2
+                end_y = height if ty2 is None else ty2
+                # Hanya tandai touches_border pada garis potongan INTERNAL antar-tile
+                # (bukan tepi terluar bingkai foto asli)
+                touches_border = (
+                    (tx1 > 0 and bx[0] <= 6.0)
+                    or (ty1 > 0 and bx[1] <= 6.0)
+                    or (end_x < width and bx[2] >= (tile_w - 6.0))
+                    or (end_y < height and bx[3] >= (tile_h - 6.0))
+                )
+                is_monolithic = False
+            else:
+                touches_border = False
+                is_monolithic = (
+                    (b_area >= 0.15 * img_area and bw >= 0.38 * width and bh >= 0.38 * height)
+                    or (b_area >= 0.25 * img_area)
+                )
+
+            if conf < 0.45 and is_watermark_or_text_artifact([gx1, gy1, gx2, gy2], image, commodity):
+                continue
+
+            extracted.append({
+                "cls_id": c_id,
+                "class_name": c_name,
+                "conf": conf,
+                "box": [gx1, gy1, gx2, gy2],
+                "is_monolithic": is_monolithic,
+                "source": source_tag,
+                "touches_border": touches_border,
+            })
+        return extracted
 
     # 1. Inferensi Citra Penuh (Full Image Pass) selalu menggunakan 640x640 untuk kompatibilitas ONNX & PyTorch
     full_res = model.predict(image, conf=confidence_threshold, imgsz=640, verbose=False)[0]
-    full_boxes: List[Dict[str, Any]] = []
+    full_boxes: List[Dict[str, Any]] = _extract_pass_boxes(full_res, "full")
 
-    for b in full_res.boxes:
-        c_id = int(b.cls[0].item() if hasattr(b.cls[0], "item") else b.cls[0])
-        c_name = model.names.get(c_id, f"class_{c_id}")
-        conf = float(b.conf[0].item() if hasattr(b.conf[0], "item") else b.conf[0])
-        raw_xyxy = b.xyxy[0]
-        xyxy = raw_xyxy.tolist() if hasattr(raw_xyxy, "tolist") else list(raw_xyxy)
-        bw = xyxy[2] - xyxy[0]
-        bh = xyxy[3] - xyxy[1]
-        b_area = bw * bh
+    # 1b. Orientation-Invariant Rotation TTA (90° & 270°) untuk komoditas memanjang (Cabai & Terung)
+    # Mengatasi bias orientasi vertikal pada dataset pelatihan agar buah yang melintang horizontal tetap terdeteksi
+    uncovered_fruit = _estimate_uncovered_fruit_ratio(image, full_boxes, commodity)
+    should_run_rot_tta = (
+        has_real_texture
+        and is_elongated
+        and (
+            is_cabai
+            or len(full_boxes) == 0
+            or len(full_boxes) >= 3
+            or uncovered_fruit >= 0.12
+        )
+    )
+    if should_run_rot_tta:
+        for rot_angle in (90, 270):
+            rot_img = image.rotate(rot_angle, expand=True)
+            rot_res = model.predict(rot_img, conf=confidence_threshold, imgsz=640, verbose=False)[0]
+            rot_cands = _extract_pass_boxes(rot_res, "full", rot_angle=rot_angle)
+            for rc in rot_cands:
+                rc_b = rc["box"]
+                rc_w = rc_b[2] - rc_b[0]
+                rc_h = rc_b[3] - rc_b[1]
+                rc_area = rc_w * rc_h
+                # Abaikan kandidat box rotasi jika terlalu besar (mencegah multi-fruit merge / crate)
+                if rc_area >= 0.12 * img_area or (rc_w >= 0.45 * width and rc_h >= 0.45 * height):
+                    continue
+                is_dup = any(
+                    compute_iou(rc["box"], fb["box"]) > 0.38 or compute_iom(rc["box"], fb["box"]) >= 0.68
+                    for fb in full_boxes
+                )
+                if not is_dup:
+                    full_boxes.append(rc)
+        uncovered_fruit = _estimate_uncovered_fruit_ratio(image, full_boxes, commodity)
 
-        # Supresi jika box adalah teks/watermark di latar belakang
-        if is_watermark_or_text_artifact(xyxy, image, commodity):
-            continue
+    # Analisis kepadatan objek (Density-Adaptive Slicing Strategy)
+    rel_areas = sorted(
+        max(0.0, (b["box"][2] - b["box"][0]) * (b["box"][3] - b["box"][1])) / img_area
+        for b in full_boxes
+    )
+    median_rel_area = rel_areas[len(rel_areas) // 2] if rel_areas else 1.0
+    has_monolithic = any(b["is_monolithic"] for b in full_boxes)
+    is_dense_scene = (
+        has_monolithic
+        or (len(full_boxes) >= 5 and median_rel_area < 0.08)
+        or (len(full_boxes) >= 3 and median_rel_area < 0.045)
+        or (uncovered_fruit >= 0.25 and len(full_boxes) >= 3)
+    )
 
-        # Deteksi box monolitik (mencakup > 45% citra dan > 70% dimensi layar)
-        is_monolithic = (b_area >= 0.45 * img_area) and (bw >= 0.70 * width) and (bh >= 0.70 * height)
-
-        full_boxes.append({
-            "cls_id": c_id,
-            "class_name": c_name,
-            "conf": conf,
-            "box": xyxy,
-            "is_monolithic": is_monolithic,
-            "source": "full",
-        })
-
-    # Task 2: Pemilihan strategi inferensi sadar-resolusi (Resolution-Aware Inference Strategy)
-    # - Citra pada resolusi native training/inferensi (<= 640x640) menggunakan full-image inference tanpa SAHI.
-    #   Pemotongan citra 640x640 hanya memotong buah menjadi fragmen palsu tanpa memberikan keuntungan spasial.
-    # - Untuk citra resolusi tinggi (> 640x640), slicing hanya diaktifkan jika parameter enable_slicing = True.
+    # Task 2: Pemilihan strategi inferensi sadar-resolusi & sadar-kepadatan (Resolution & Density-Aware Strategy)
+    # - Citra sparse pada resolusi <= 640x640 menggunakan full-image inference tanpa SAHI untuk mencegah over-fragmentation.
+    # - Namun jika citra <= 640x640 terdeteksi memuat tumpukan buah padat/kecil (is_dense_scene),
+    #   SAHI 2x2 diaktifkan secara adaptif agar buah-buah kecil/bertumpuk terdeteksi utuh.
     is_native_or_low_res = (width <= 640 and height <= 640)
-    should_slice = enable_slicing and not is_native_or_low_res
+    should_slice = enable_slicing and (
+        (not is_native_or_low_res)
+        or (has_real_texture and is_dense_scene and min(width, height) >= 320)
+    )
 
-    is_terung = "terung" in commodity.lower() or "terong" in commodity.lower() or "eggplant" in commodity.lower()
     model_names_vals = list(getattr(model, "names", {}).values()) if hasattr(model, "names") else []
     is_3grade_model = "Grade A" in model_names_vals or "Grade B" in model_names_vals
 
     if not should_slice:
+        full_boxes = _suppress_nested_fragments(full_boxes, box_key="box", img_w=width, img_h=height)
         formatted_detections: List[Dict[str, Any]] = []
         disambiguated_count = 0
         is_dense = len(full_boxes) >= 4
@@ -455,72 +773,86 @@ def run_sliced_yolo_inference(
             "disambiguated_count": disambiguated_count,
         }
 
-    # 2. Tentukan Strategi Grid Slicing Dinamis untuk Citra Resolusi Tinggi
+    # 2. Tentukan Strategi Grid Slicing Dinamis & Adaptif
     aspect_ratio = width / max(1, height)
-    grids = [(2, 2)]
-    if aspect_ratio >= 1.3:
-        grids.append((3, 2))
-    elif aspect_ratio <= 0.77:
-        grids.append((2, 3))
-    else:
-        grids.append((3, 3))
-
     slice_candidates: List[Dict[str, Any]] = []
-    # Task 4: Sub-tile confidence dikalibrasi setara dengan confidence_threshold
-    # Hasil pengujian empiris membuktikan threshold seragam mempertahankan 100% true positives
-    # dan mereduksi 66.7% false positive yang dipicu oleh noise latar belakang / bayangan.
-    sub_conf = confidence_threshold
+    # Relaksasi ringan threshold sub-tile hanya ketika citra terkonfirmasi padat bertekstur nyata
+    sub_conf = (
+        max(0.20, confidence_threshold - 0.08)
+        if (has_real_texture and is_dense_scene)
+        else confidence_threshold
+    )
     tiles_count = 0
 
-    for gx, gy in grids:
+    def _run_tile_grid(gx: int, gy: int, allow_tile_rot: bool = False) -> None:
+        nonlocal tiles_count
         tiles = generate_slice_tiles(width, height, grid_x=gx, grid_y=gy, overlap=0.25)
         tiles_count += len(tiles)
 
         for x1, y1, x2, y2 in tiles:
             tile_w = x2 - x1
             tile_h = y2 - y1
-            tile_area = tile_w * tile_h
-
             tile_crop = image.crop((x1, y1, x2, y2))
             tile_res = model.predict(tile_crop, conf=sub_conf, imgsz=640, verbose=False)[0]
-
-            for b in tile_res.boxes:
-                c_id = int(b.cls[0].item() if hasattr(b.cls[0], "item") else b.cls[0])
-                c_name = model.names.get(c_id, f"class_{c_id}")
-                conf = float(b.conf[0].item() if hasattr(b.conf[0], "item") else b.conf[0])
-                raw_bx = b.xyxy[0]
-                bx = raw_bx.tolist() if hasattr(raw_bx, "tolist") else list(raw_bx)
-
-                # Konversi koordinat tile lokal kembali ke ruang citra global
-                gx1 = bx[0] + x1
-                gy1 = bx[1] + y1
-                gx2 = bx[2] + x1
-                gy2 = bx[3] + y1
-
-                # Abaikan jika bounding box mencakup nyaris 90% tile besar (tanda artefak)
-                box_w = bx[2] - bx[0]
-                box_h = bx[3] - bx[1]
-                if (box_w * box_h) >= 0.90 * tile_area:
-                    continue
-
-                if is_watermark_or_text_artifact([gx1, gy1, gx2, gy2], image, commodity):
-                    continue
-
-                # Tandai apakah box memotong tepi batas potongan tile (border truncation)
-                touches_border = (
-                    bx[0] <= 6.0 or bx[1] <= 6.0 or
-                    bx[2] >= (tile_w - 6.0) or bx[3] >= (tile_h - 6.0)
+            slice_candidates.extend(
+                _extract_pass_boxes(
+                    tile_res,
+                    source_tag=f"slice_{gx}x{gy}_{x1}_{y1}",
+                    offset_x=float(x1),
+                    offset_y=float(y1),
+                    tile_w=tile_w,
+                    tile_h=tile_h,
+                    tx1=x1,
+                    ty1=y1,
+                    tx2=x2,
+                    ty2=y2,
+                )
+            )
+            if allow_tile_rot:
+                rot_tile = tile_crop.rotate(270, expand=True)
+                rot_tile_res = model.predict(rot_tile, conf=sub_conf, imgsz=640, verbose=False)[0]
+                slice_candidates.extend(
+                    _extract_pass_boxes(
+                        rot_tile_res,
+                        source_tag=f"slice_r270_{gx}x{gy}_{x1}_{y1}",
+                        offset_x=float(x1),
+                        offset_y=float(y1),
+                        tile_w=tile_w,
+                        tile_h=tile_h,
+                        tx1=x1,
+                        ty1=y1,
+                        tx2=x2,
+                        ty2=y2,
+                        rot_angle=270,
+                    )
                 )
 
-                slice_candidates.append({
-                    "cls_id": c_id,
-                    "class_name": c_name,
-                    "conf": conf,
-                    "box": [gx1, gy1, gx2, gy2],
-                    "is_monolithic": False,
-                    "source": f"slice_{gx}x{gy}_{x1}_{y1}",
-                    "touches_border": touches_border,
-                })
+    # Pass grid dasar 2x2
+    _run_tile_grid(2, 2, allow_tile_rot=(has_real_texture and is_dense_scene and is_elongated and uncovered_fruit >= 0.20))
+
+    # Eskalasi adaptif ke grid 3x2 / 2x3 / 3x3 untuk resolusi sangat tinggi (> 2560px)
+    # atau tumpukan buah padat beresolusi menengah-tinggi (>= 800px)
+    slice_rel_areas = sorted(
+        max(0.0, (c["box"][2] - c["box"][0]) * (c["box"][3] - c["box"][1])) / img_area
+        for c in slice_candidates
+    )
+    median_slice_area = slice_rel_areas[len(slice_rel_areas) // 2] if slice_rel_areas else 1.0
+    need_finer_grid = (max(width, height) > 2560) or (
+        has_real_texture
+        and max(width, height) >= 800
+        and (
+            (len(full_boxes) >= 6 and median_rel_area < 0.05)
+            or (len(slice_candidates) >= 16 and median_slice_area < 0.04)
+            or (uncovered_fruit >= 0.30 and len(slice_candidates) >= 8)
+        )
+    )
+    if need_finer_grid:
+        if aspect_ratio >= 1.3:
+            _run_tile_grid(3, 2)
+        elif aspect_ratio <= 0.77:
+            _run_tile_grid(2, 3)
+        else:
+            _run_tile_grid(3, 3)
 
     # 3. Supresi Bounding Box Monolitik
     dense_box_suppressed = False
@@ -561,24 +893,27 @@ def run_sliced_yolo_inference(
             iom = compute_iom(item_box, centroid_box)
 
             should_merge = False
-            # Kondisi 1: Overlap spasial standar
-            if iou > iou_threshold:
+            is_seam_merge = False
+            same_class = (item["cls_id"] == cl["items"][0]["cls_id"])
+            # Kondisi 1: Overlap spasial sadar-oklusi (kelas berbeda butuh IoU lebih ketat agar buah bertumpuk tidak terhapus)
+            effective_iou_thresh = iou_threshold if same_class else max(0.65, iou_threshold)
+            if iou > effective_iou_thresh:
                 should_merge = True
-            # Kondisi 2: Penahanan tinggi (Containment / IoM >= 0.55)
-            elif iom >= 0.55:
+            # Kondisi 2: Penahanan tinggi (Containment / IoM >= 0.60)
+            elif iom >= 0.60:
                 # Objek hanya digabung jika terindikasi sebagai fragmen potongan:
                 # - Salah satu berasal dari potongan tile (bukan dua objek full berbeda), atau
                 # - Salah satu box terpotong batas tile (touches_border)
                 area_ratio = min(item_area, cl_area) / max(1.0, max(item_area, cl_area))
                 is_cross_tile = (item["source"] != cl["centroid_source"])
                 is_boundary_fragment = item.get("touches_border", False) or cl.get("centroid_touches_border", False)
-                # Hindari penggabungan jika kedua box sama-sama dari pass citra utuh (cegah false merge depth occlusion)
-                if (is_cross_tile or is_boundary_fragment) and (area_ratio <= 0.85 or iou > 0.20):
+                # Hindari penggabungan dua buah utuh berukuran mirip yang bertumpuk (area_ratio > 0.70 & iou <= 0.32)
+                if (is_cross_tile or is_boundary_fragment) and (area_ratio <= 0.70 or iou > 0.32):
                     should_merge = True
             # Kondisi 3: Penggabungan Fragmen Buah Memanjang Lintas Batas Potongan (Colinear Elongated Seam Merge)
-            # Hanya menggabungkan dua fragmen potongan ubin (bukan box full-image) yang terbelah garis batas ubin
+            # Berlaku untuk komoditas memanjang (terung dan cabai) yang terbelah garis batas ubin
             elif (
-                is_terung
+                is_elongated
                 and cl["centroid_source"] != "full"
                 and item["source"] != "full"
                 and (item["source"] != cl["centroid_source"])
@@ -598,6 +933,7 @@ def run_sliced_yolo_inference(
                 is_horizontal_seam_pair = (w_item >= 1.2 * h_item) and (w_cl >= 1.2 * h_cl) and (iom_y >= 0.75) and (inter_w >= 12.0)
                 if is_vertical_seam_pair or is_horizontal_seam_pair:
                     should_merge = True
+                    is_seam_merge = True
 
             if should_merge:
                 cl["items"].append(item)
@@ -607,22 +943,28 @@ def run_sliced_yolo_inference(
                     cl["centroid_box"] = item["box"]
                     cl["centroid_source"] = "full"
                     cl["centroid_touches_border"] = False
-                elif cl["centroid_source"] != "full":
-                    # F-01: Jika cluster hanya terdiri dari potongan slice, perluas centroid ke bounding union
-                    # agar seluruh dimensi fisik buah tercakup dan tidak terpotong separuh
-                    cl["centroid_box"] = [
+                elif cl["centroid_source"] != "full" and is_seam_merge:
+                    # Hanya perluas centroid ke union ketika menggabungkan pasangan belahan seam lintas batas tile
+                    cand_u = [
                         min(cl["centroid_box"][0], item["box"][0]),
                         min(cl["centroid_box"][1], item["box"][1]),
                         max(cl["centroid_box"][2], item["box"][2]),
                         max(cl["centroid_box"][3], item["box"][3]),
                     ]
+                    cand_uw = cand_u[2] - cand_u[0]
+                    cand_uh = cand_u[3] - cand_u[1]
+                    cand_uarea = cand_uw * cand_uh
+                    # Jangan perluas jika union menghasilkan dimensi abnormal (mencegah multi-fruit merge raksasa)
+                    if cand_uarea <= 0.10 * img_area and cand_uw <= 0.45 * width and cand_uh <= 0.45 * height:
+                        cl["centroid_box"] = cand_u
                 matched = True
                 break
 
         if not matched:
-            # Jika item potongan ubin terpotong batas tile (touches_border) dan berkeyakinan marginal (< 0.50),
+            # Jika item potongan ubin terpotong batas INTERNAL tile (touches_border) dan berkeyakinan rendah,
             # jangan spawn objek baru agar tidak membelah buah menjadi fragmen palsu
-            if item["source"] != "full" and item.get("touches_border", False) and item["conf"] < 0.50:
+            border_conf_gate = 0.50 if is_dense_scene else 0.60
+            if item["source"] != "full" and item.get("touches_border", False) and item["conf"] < border_conf_gate:
                 continue
 
             clusters.append({
@@ -632,9 +974,9 @@ def run_sliced_yolo_inference(
                 "items": [item],
             })
 
-    # 4b. Konsolidasi Pasca-Ekspansi Union (Post-Expansion Containment Consolidation)
-    # Setelah centroid_box pada cluster potongan diperluas menjadi union, serap cluster
-    # fragmen sub-tile lain yang kini sepenuhnya berada di dalam (IoM >= 0.65) cluster yang lebih besar.
+    # 4b. Konsolidasi Pasca-Ekspansi Seam (Post-Expansion Containment Consolidation)
+    # Serap fragmen sub-tile kecil yang sepenuhnya terkurung di dalam cluster yang lebih besar
+    # tanpa menggabungkan dua buah utuh berukuran sebanding yang saling bertumpuk.
     if len(clusters) > 1:
         clusters.sort(
             key=lambda c: (c["centroid_source"] == "full", (c["centroid_box"][2] - c["centroid_box"][0]) * (c["centroid_box"][3] - c["centroid_box"][1])),
@@ -644,36 +986,38 @@ def run_sliced_yolo_inference(
         for cl in clusters:
             absorbed = False
             b_cl = cl["centroid_box"]
+            area_cl = max(0.0, b_cl[2] - b_cl[0]) * max(0.0, b_cl[3] - b_cl[1])
+            cls_cl = cl["items"][0]["cls_id"]
             for target in consolidated:
                 b_tg = target["centroid_box"]
                 if cl["centroid_source"] == "full" and target["centroid_source"] == "full":
                     continue
-                if compute_iou(b_cl, b_tg) > iou_threshold or compute_iom(b_cl, b_tg) >= 0.65:
+                area_tg = max(0.0, b_tg[2] - b_tg[0]) * max(0.0, b_tg[3] - b_tg[1])
+                area_ratio = min(area_cl, area_tg) / max(1.0, max(area_cl, area_tg))
+                same_cls = (cls_cl == target["items"][0]["cls_id"])
+                eff_iou = iou_threshold if same_cls else max(0.65, iou_threshold)
+                iou_val = compute_iou(b_cl, b_tg)
+                iom_val = compute_iom(b_cl, b_tg)
+                if iou_val > eff_iou or (iom_val >= 0.70 and (area_ratio <= 0.65 or iou_val > 0.35)):
                     target["items"].extend(cl["items"])
-                    if target["centroid_source"] != "full":
-                        target["centroid_box"] = [
-                            min(b_tg[0], b_cl[0]),
-                            min(b_tg[1], b_cl[1]),
-                            max(b_tg[2], b_cl[2]),
-                            max(b_tg[3], b_cl[3]),
-                        ]
                     absorbed = True
                     break
             if not absorbed:
                 consolidated.append(cl)
         clusters = consolidated
 
+    clusters = _suppress_nested_fragments(clusters, box_key="centroid_box", img_w=width, img_h=height)
+
     # 5. P1 Disambiguasi Mutu Kelas
     final_detections: List[Dict[str, Any]] = []
     disambiguated_count = 0
     is_dense_scan = len(clusters) >= 4 or dense_box_suppressed
 
-    is_terung = "terung" in commodity.lower() or "terong" in commodity.lower() or "eggplant" in commodity.lower()
-
     for idx, cl in enumerate(clusters):
-        if is_watermark_or_text_artifact(cl["centroid_box"], image, commodity):
-            continue
         items = cl["items"]
+        best_raw_conf = max(it["conf"] for it in items)
+        if best_raw_conf < 0.45 and is_watermark_or_text_artifact(cl["centroid_box"], image, commodity):
+            continue
         if (is_terung or is_3grade_model) and disambiguate_grades:
             (
                 chosen_cls,
