@@ -1,4 +1,4 @@
-import { Suspense, lazy, useEffect, useState } from 'react'
+import { Suspense, lazy, useEffect, useRef, useState } from 'react'
 import {
   Alert,
   Box,
@@ -114,36 +114,38 @@ function formatBatchDisplayId(rawId) {
 
 function DashboardPreview({ onNavigate, batches = [], onSelectBatch }) {
   const [bapanasData, setBapanasData] = useState(null)
+  const [bapanasOffline, setBapanasOffline] = useState(false)
   const [isRefreshingPrice, setIsRefreshingPrice] = useState(false)
+  // Pengunci dedupe: efek mount (termasuk double-invoke StrictMode) dan tombol
+  // refresh tidak boleh mengirim dua request BAPANAS bersamaan.
+  const bapanasInFlightRef = useRef(false)
 
-  const handleRefreshBapanas = () => {
+  const loadBapanas = (timeoutMs) => {
+    if (bapanasInFlightRef.current) return
+    bapanasInFlightRef.current = true
     setIsRefreshingPrice(true)
-    fetchBapanasLive(5000)
+    fetchBapanasLive(timeoutMs)
       .then((data) => {
         if (data?.commodities) {
           setBapanasData(data)
+          setBapanasOffline(false)
         }
       })
-      .catch(() => {})
+      .catch(() => {
+        // Backend/BAPANAS tidak terjangkau: tampilkan indikator offline,
+        // harga acuan lokal tetap dipakai sebagai fallback.
+        setBapanasOffline(true)
+      })
       .finally(() => {
+        bapanasInFlightRef.current = false
         setIsRefreshingPrice(false)
       })
   }
 
+  const handleRefreshBapanas = () => loadBapanas(5000)
+
   useEffect(() => {
-    let isMounted = true
-    fetchBapanasLive(4000)
-      .then((data) => {
-        if (isMounted && data?.commodities) {
-          setBapanasData(data)
-        }
-      })
-      .catch(() => {
-        // Fallback anggun ke harga acuan lokal tanpa melempar exception
-      })
-    return () => {
-      isMounted = false
-    }
+    loadBapanas(4000)
   }, [])
 
   const dynamicMetrics = [
@@ -214,6 +216,8 @@ function DashboardPreview({ onNavigate, batches = [], onSelectBatch }) {
                   </Typography>
                   {bapanasData ? (
                     <Chip color="success" icon={<CheckCircleRoundedIcon />} label="BAPANAS Terverifikasi" size="small" />
+                  ) : bapanasOffline ? (
+                    <Chip color="warning" label="Offline — pakai acuan lokal" size="small" />
                   ) : (
                     <Chip color="default" label="Acuan BAPANAS Payakumbuh" size="small" variant="outlined" />
                   )}
@@ -231,7 +235,9 @@ function DashboardPreview({ onNavigate, batches = [], onSelectBatch }) {
                   </Tooltip>
                 </Stack>
                 <Typography color="text.secondary" sx={{ display: 'block', mt: 0.5 }} variant="caption">
-                  {bapanasData ? `Panel BAPANAS • ${bapanasData.market_center}` : `Acuan Pasar • Diperbarui ${PRICE_REFERENCE_SOURCE.updatedAt}`}
+                  {bapanasData
+                    ? `Panel BAPANAS • ${bapanasData.market_center}`
+                    : `Acuan Pasar • Diperbarui ${PRICE_REFERENCE_SOURCE.updatedAt}${bapanasOffline ? ' (gagal sinkron, menampilkan acuan lokal)' : ''}`}
                 </Typography>
               </Box>
 
