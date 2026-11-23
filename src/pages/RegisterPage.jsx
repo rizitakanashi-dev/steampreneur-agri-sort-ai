@@ -650,16 +650,17 @@ export function RegisterPage({ onRegisterSuccess, onSwitchToLogin, onBackToLandi
                 />
 
                 <Stack
-                  direction="row"
-                  justifyContent="space-between"
-                  alignItems="center"
+                  direction={{ xs: 'column-reverse', sm: 'row' }}
+                  justifyContent={{ sm: 'space-between' }}
+                  alignItems={{ sm: 'center' }}
+                  spacing={0.5}
                   sx={{ width: '100%', pt: 0.5 }}
                 >
                   <Button
                     size="small"
                     disabled={isSendingOtp}
                     onClick={handleResendOtp}
-                    sx={{ textTransform: 'none', fontWeight: 600, color: AGRI_COLORS.emerald }}
+                    sx={{ textTransform: 'none', fontWeight: 600, color: AGRI_COLORS.emerald, width: { xs: '100%', sm: 'auto' } }}
                   >
                     Kirim Ulang Kode OTP
                   </Button>
@@ -675,6 +676,7 @@ export function RegisterPage({ onRegisterSuccess, onSwitchToLogin, onBackToLandi
                       borderRadius: AGRI_RADII.buttons,
                       px: 3,
                       py: 1,
+                      width: { xs: '100%', sm: 'auto' },
                       boxShadow: 'none',
                       '&:hover': { bgcolor: AGRI_COLORS.emeraldHover, boxShadow: 'none' },
                     }}

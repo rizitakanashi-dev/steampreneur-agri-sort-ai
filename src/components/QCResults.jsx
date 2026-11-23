@@ -237,7 +237,7 @@ export function QCResults({ batch, onBackToInput, onViewRecap, initialOpenCertif
               justifyContent="space-between"
               spacing={2}
             >
-              <Stack alignItems="center" direction="row" spacing={1.5}>
+              <Stack alignItems="center" direction="row" spacing={1.5} sx={{ flexShrink: 0 }}>
                 <Box
                   sx={{
                     alignItems: 'center',
@@ -270,6 +270,7 @@ export function QCResults({ batch, onBackToInput, onViewRecap, initialOpenCertif
                 }}
                 size="small"
                 value={viewAngleMode}
+                sx={{ flexWrap: 'wrap', rowGap: 1 }}
               >
                 <ToggleButton sx={{ fontWeight: 700, px: 1.5, textTransform: 'none' }} value="compare">
                   <CompareArrowsRoundedIcon sx={{ mr: 0.75, fontSize: 18 }} />

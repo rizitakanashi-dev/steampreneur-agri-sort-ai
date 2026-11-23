@@ -279,7 +279,9 @@ function MobileBatchCard({ batch, onSelectBatch, onDeleteBatch, onViewDetail }) 
 
 export function HarvestRecap({ batches = [], onSelectBatch, onDeleteBatch }) {
   const theme = useTheme()
-  const isMobileLayout = useMediaQuery(theme.breakpoints.down('md'))
+  // Kartu dipakai di bawah lg: pada tablet (768-1024px) area konten setelah drawer
+  // hanya ±776px, tabel 900px tetap terpaksa scroll horizontal di sana.
+  const isMobileLayout = useMediaQuery(theme.breakpoints.down('lg'))
   const [page, setPage] = useState(0)
   const [rowsPerPage, setRowsPerPage] = useState(5)
   const [selectedBatch, setSelectedBatch] = useState(null)
@@ -813,7 +815,11 @@ export function HarvestRecap({ batches = [], onSelectBatch, onDeleteBatch }) {
           page={page}
           rowsPerPage={rowsPerPage}
           rowsPerPageOptions={[5, 10, 25]}
-          sx={{ borderBottom: 'none' }}
+          sx={{
+            borderBottom: 'none',
+            // Mobile: label "Baris per halaman:" disembunyikan agar paginasi muat di 360px
+            '& .MuiTablePagination-selectLabel': { display: { xs: 'none', sm: 'block' } },
+          }}
         />
       </Paper>
       <Dialog fullWidth maxWidth="sm" onClose={() => setSelectedBatch(null)} open={Boolean(selectedBatch)}>

@@ -338,9 +338,12 @@ export function QCPrintCertificate({ batch, showPrintButton = false, onPrint }) 
         <Typography sx={{ fontSize: 13, fontWeight: 700, mb: 1, color: '#1f2937' }}>
           A. Rincian Klasifikasi & Distribusi Mutu Panen
         </Typography>
+        {/* Scroll horizontal hanya saat layar sempit; saat cetak A4 (±170mm) tabel 640px tetap muat utuh */}
+        <Box sx={{ overflowX: 'auto' }}>
         <table
           style={{
             width: '100%',
+            minWidth: 640,
             borderCollapse: 'collapse',
             fontSize: '11.5px',
             textAlign: 'left',
@@ -405,6 +408,7 @@ export function QCPrintCertificate({ batch, showPrintButton = false, onPrint }) 
             </tr>
           </tfoot>
         </table>
+        </Box>
       </Box>
 
       {/* REKAPITULASI STEAM MATH & REKOMENDASI TINDAKAN */}

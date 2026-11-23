@@ -261,7 +261,16 @@ export function AppShell({ activePage, activeUser, onLogout, onNavigate, onDataC
                 if (typeof onBackToLanding === 'function') onBackToLanding()
                 else onNavigate('landing')
               }}
-              sx={{ mr: 1, fontSize: 12, fontWeight: 700, textTransform: 'none', color: 'primary.dark' }}
+              sx={{
+                mr: 1,
+                fontSize: 12,
+                fontWeight: 700,
+                textTransform: 'none',
+                color: 'primary.dark',
+                // Mobile sempit: drawer & logo sudah menyediakan navigasi beranda,
+                // tombol teks disembunyikan agar AppBar tidak sesak
+                display: { xs: 'none', sm: 'inline-flex' },
+              }}
             >
               Beranda
             </Button>
