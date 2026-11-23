@@ -881,7 +881,17 @@ export function HarvestRecap({ batches = [], onSelectBatch, onDeleteBatch }) {
             </Stack>
           )}
         </DialogContent>
-        <DialogActions sx={{ px: 2.5, py: 1.5, justifyContent: 'space-between' }}>
+        <DialogActions
+          sx={{
+            px: 2.5,
+            py: 1.5,
+            justifyContent: 'space-between',
+            // Mobile: tombol ditumpuk vertikal agar tidak overflow di layar sempit
+            flexDirection: { xs: 'column-reverse', sm: 'row' },
+            alignItems: { xs: 'stretch', sm: 'center' },
+            gap: 1,
+          }}
+        >
           <Button
             color="error"
             onClick={() => {
@@ -894,8 +904,8 @@ export function HarvestRecap({ batches = [], onSelectBatch, onDeleteBatch }) {
           >
             Hapus Batch
           </Button>
-          <Stack direction="row" spacing={1}>
-            <Button onClick={() => setSelectedBatch(null)} variant="outlined">Tutup</Button>
+          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} sx={{ width: { xs: '100%', sm: 'auto' } }}>
+            <Button onClick={() => setSelectedBatch(null)} variant="outlined" sx={{ width: { xs: '100%', sm: 'auto' } }}>Tutup</Button>
             {onSelectBatch && selectedBatch && (
               <>
                 <Button
@@ -907,6 +917,7 @@ export function HarvestRecap({ batches = [], onSelectBatch, onDeleteBatch }) {
                   }}
                   startIcon={<AssessmentRoundedIcon />}
                   variant="outlined"
+                  sx={{ width: { xs: '100%', sm: 'auto' } }}
                 >
                   Buka Analisis QC
                 </Button>
@@ -918,6 +929,7 @@ export function HarvestRecap({ batches = [], onSelectBatch, onDeleteBatch }) {
                   }}
                   startIcon={<PrintRoundedIcon />}
                   variant="contained"
+                  sx={{ width: { xs: '100%', sm: 'auto' } }}
                 >
                   Cetak Sertifikat
                 </Button>
