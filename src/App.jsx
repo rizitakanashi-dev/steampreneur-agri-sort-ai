@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { Suspense, lazy, useEffect, useState } from 'react'
 import {
   Alert,
   Box,
@@ -7,6 +7,7 @@ import {
   CardContent,
   Chip,
   Container,
+  CircularProgress,
   FormControl,
   FormLabel,
   Grid,
@@ -34,17 +35,31 @@ import { deleteBatch, readBatches, saveBatch } from './business/harvestStorage.j
 import { COMMODITY_OPTIONS, PRICE_REFERENCE_SOURCE, REFERENCE_PRICES_PER_KG } from './business/priceReference.js'
 import { fetchBapanasLive } from './services/scanService.js'
 import { AppShell } from './components/AppShell.jsx'
-import { BatchQCScanner } from './components/BatchQCScanner.jsx'
 import { stopAllActiveCameraStreams } from './components/LiveCameraViewfinder.jsx'
-import { HarvestForm } from './components/HarvestForm.jsx'
-import { HarvestRecap } from './components/HarvestRecap.jsx'
-import { QCResults } from './components/QCResults.jsx'
 import { ErrorBoundary } from './components/ErrorBoundary.jsx'
 import { PageHeader } from './components/PageHeader.jsx'
-import { PricingDashboard } from './components/PricingDashboard.jsx'
-import { LandingPage } from './pages/LandingPage.jsx'
-import { LoginPage } from './pages/LoginPage.jsx'
-import { RegisterPage } from './pages/RegisterPage.jsx'
+
+/*
+ * Code splitting per halaman: komponen berat (scanner AI, chart, sertifikat)
+ * hanya diunduh saat benar-benar dibuka, memotong bundle awal untuk
+ * pengguna di jaringan lambat (jaringan lapangan petani).
+ */
+const LandingPage = lazy(() => import('./pages/LandingPage.jsx'))
+const LoginPage = lazy(() => import('./pages/LoginPage.jsx'))
+const RegisterPage = lazy(() => import('./pages/RegisterPage.jsx'))
+const BatchQCScanner = lazy(() => import('./components/BatchQCScanner.jsx').then((m) => ({ default: m.BatchQCScanner })))
+const HarvestForm = lazy(() => import('./components/HarvestForm.jsx').then((m) => ({ default: m.HarvestForm })))
+const HarvestRecap = lazy(() => import('./components/HarvestRecap.jsx').then((m) => ({ default: m.HarvestRecap })))
+const QCResults = lazy(() => import('./components/QCResults.jsx').then((m) => ({ default: m.QCResults })))
+const PricingDashboard = lazy(() => import('./components/PricingDashboard.jsx').then((m) => ({ default: m.PricingDashboard })))
+
+function PageLoadingFallback() {
+  return (
+    <Box alignItems="center" display="flex" justifyContent="center" sx={{ minHeight: { xs: '40vh', md: '50vh' }, width: '100%' }}>
+      <CircularProgress size={32} />
+    </Box>
+  )
+}
 import { logoutActiveUser, readActiveUser, restoreAuthSession, getAuthHeaders } from './business/authStorage.js'
 
 const pages = {
@@ -719,26 +734,34 @@ function App() {
   }
 
   if (currentView === 'landing') {
-    return <LandingPage onOpenApp={handleOpenApp} />
+    return (
+      <Suspense fallback={<PageLoadingFallback />}>
+        <LandingPage onOpenApp={handleOpenApp} />
+      </Suspense>
+    )
   }
 
   if (currentView === 'login') {
     return (
-      <LoginPage
-        onLoginSuccess={handleLoginSuccess}
-        onSwitchToRegister={handleSwitchToRegister}
-        onBackToLanding={handleBackToLanding}
-      />
+      <Suspense fallback={<PageLoadingFallback />}>
+        <LoginPage
+          onLoginSuccess={handleLoginSuccess}
+          onSwitchToRegister={handleSwitchToRegister}
+          onBackToLanding={handleBackToLanding}
+        />
+      </Suspense>
     )
   }
 
   if (currentView === 'register') {
     return (
-      <RegisterPage
-        onRegisterSuccess={handleRegisterSuccess}
-        onSwitchToLogin={handleSwitchToLogin}
-        onBackToLanding={handleBackToLanding}
-      />
+      <Suspense fallback={<PageLoadingFallback />}>
+        <RegisterPage
+          onRegisterSuccess={handleRegisterSuccess}
+          onSwitchToLogin={handleSwitchToLogin}
+          onBackToLanding={handleBackToLanding}
+        />
+      </Suspense>
     )
   }
 
@@ -755,23 +778,25 @@ function App() {
         <PageHeader eyebrow="Agri-Sort AI / Precision Agriculture" title={page.title} description={page.description} />
         {harvestMessage && <Alert onClose={() => setHarvestMessage('')} severity="success" sx={{ mb: 2 }}>{harvestMessage}</Alert>}
         <ErrorBoundary key={activePage} onReset={() => setActivePage('overview')}>
-          <FoundationPage
-            activePage={activePage}
-            batches={batches}
-            onBackToInput={handleBackToInput}
-            onHarvestConfirm={handleHarvestConfirm}
-            onNavigate={handleNavigate}
-            onSelectBatch={handleSelectBatch}
-            onViewRecap={handleViewRecap}
-            selectedBatch={selectedBatch}
-            openCertModal={openCertModal}
-            onDeleteBatch={handleDeleteBatch}
-            onBatchSaved={(newBatch) => {
-              setBatches((current) => [...current, newBatch])
-              setSelectedBatch(newBatch)
-              setHarvestMessage(`Batch ${newBatch.id} (${newBatch.komoditas}) berhasil disimpan ke rekap data panen.`)
-            }}
-          />
+          <Suspense fallback={<PageLoadingFallback />}>
+            <FoundationPage
+              activePage={activePage}
+              batches={batches}
+              onBackToInput={handleBackToInput}
+              onHarvestConfirm={handleHarvestConfirm}
+              onNavigate={handleNavigate}
+              onSelectBatch={handleSelectBatch}
+              onViewRecap={handleViewRecap}
+              selectedBatch={selectedBatch}
+              openCertModal={openCertModal}
+              onDeleteBatch={handleDeleteBatch}
+              onBatchSaved={(newBatch) => {
+                setBatches((current) => [...current, newBatch])
+                setSelectedBatch(newBatch)
+                setHarvestMessage(`Batch ${newBatch.id} (${newBatch.komoditas}) berhasil disimpan ke rekap data panen.`)
+              }}
+            />
+          </Suspense>
         </ErrorBoundary>
       </Container>
     </AppShell>
