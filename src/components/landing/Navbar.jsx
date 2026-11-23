@@ -36,6 +36,24 @@ const DRAWER_ICONS = {
   '#tentang-kami': GroupsRoundedIcon,
 }
 
+/**
+ * Mulai aksi begitu scroll body sudah tidak dikunci. MUI Drawer/Modal
+ * memasang overflow:hidden di <body> selama terbuka; scroll yang jalan
+ * sebelum kunci lepas jadi mendorong tembok (delay saat drawer menutup).
+ */
+function runWhenScrollable(fn, tries = 0) {
+  const locked =
+    typeof document !== 'undefined' &&
+    document.body &&
+    (document.body.style.overflow === 'hidden' ||
+      getComputedStyle(document.body).overflow === 'hidden')
+  if (!locked || tries > 16) {
+    fn()
+    return
+  }
+  requestAnimationFrame(() => runWhenScrollable(fn, tries + 1))
+}
+
 export function Navbar({ onOpenApp }) {
   const progressBarRef = useRef(null)
   const scrolled = useNavbarScrollProgress(progressBarRef)
@@ -48,6 +66,9 @@ export function Navbar({ onOpenApp }) {
   const activeSection = useActiveSection(sectionIds)
   const [pinnedSection, setPinnedSection] = useState(null)
   const rafScrollRef = useRef(null)
+  // ID sesi scroll: setiap tekan menu menaikkan ID — animasi/callback lama
+  // yang menyisip otomatis gugur sehingga tidak ada tarik-menarik antar loop
+  const scrollSessionRef = useRef(0)
   // Saat link ditekan: highlight dikunci ke tujuan selama animasi scroll,
   // sehingga tidak kedip melewati section-section di tengah
   const currentSection = pinnedSection || activeSection
@@ -58,35 +79,47 @@ export function Navbar({ onOpenApp }) {
    * jarak jauh di halaman berat — terasa patah-patah. Animasi rAF ini
    * memberi laju konstan (easeInOutCubic) dan bisa diinterupsi pengguna.
    */
-  const smoothScrollTo = (targetY, onDone) => {
+  const smoothScrollTo = (targetY, session) => {
     const startY = window.pageYOffset
     const dist = targetY - startY
-    const finish = () => {
-      if (rafScrollRef.current) cancelAnimationFrame(rafScrollRef.current)
-      rafScrollRef.current = null
+    const isCurrent = () => scrollSessionRef.current === session
+    const detach = () => {
       window.removeEventListener('wheel', cancel)
       window.removeEventListener('touchstart', cancel)
       window.removeEventListener('keydown', cancel)
-      if (onDone) onDone()
     }
-    const cancel = () => {
+    const stop = () => {
       if (rafScrollRef.current) cancelAnimationFrame(rafScrollRef.current)
       rafScrollRef.current = null
-      window.removeEventListener('wheel', cancel)
-      window.removeEventListener('touchstart', cancel)
-      window.removeEventListener('keydown', cancel)
-      if (onDone) onDone()
+      detach()
+    }
+    const finish = () => {
+      stop()
+      // Lepas pin hanya jika tidak ada tekan baru yang menggantikan sesi ini
+      if (isCurrent()) setPinnedSection(null)
+    }
+    // Interupsi manual (user scroll/touch/tombol) saat animasi berjalan
+    const cancel = () => {
+      if (!isCurrent()) return
+      scrollSessionRef.current++
+      stop()
+      setPinnedSection(null)
     }
     const reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches
-    if (reduced || Math.abs(dist) < 2) {
+    if (Math.abs(dist) < 2) {
       window.scrollTo(0, targetY)
       finish()
       return
     }
-    const duration = Math.min(1000, Math.max(450, Math.abs(dist) * 0.45))
+    // Klik menu adalah interaksi eksplisit: selalu dianimasikan.
+    // Pengguna reduced-motion tetap mendapat glide, hanya lebih singkat.
+    const base = reduced ? 350 : 450
+    const duration = Math.min(1000, Math.max(base, Math.abs(dist) * 0.45))
     const t0 = performance.now()
     const ease = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2)
     const step = (now) => {
+      // Sesi digantikan tekan baru: berhenti diam-diam, jangan tarik-menarik
+      if (!isCurrent()) return
       const p = Math.min(1, (now - t0) / duration)
       window.scrollTo(0, startY + dist * ease(p))
       if (p < 1) {
@@ -107,8 +140,16 @@ export function Navbar({ onOpenApp }) {
     const element = document.querySelector(href)
     if (element) {
       const offsetPosition = element.getBoundingClientRect().top + window.pageYOffset - 72
+      // Sesi baru menggantikan sesi lama secara tegas: animasi lama berhenti,
+      // callback tertunda batal, hanya satu loop scroll yang pernah aktif
+      const session = ++scrollSessionRef.current
       setPinnedSection(href.slice(1))
-      smoothScrollTo(offsetPosition, () => setPinnedSection(null))
+      // Scroll mulai di frame pertama setelah tekan — tanpa jeda artifisial;
+      // runWhenScrollable hanya menunggu kunci scroll body drawer lepas
+      runWhenScrollable(() => {
+        if (scrollSessionRef.current !== session) return
+        smoothScrollTo(offsetPosition, session)
+      })
     }
   }
 
@@ -242,6 +283,7 @@ export function Navbar({ onOpenApp }) {
         anchor="right"
         open={mobileOpen}
         onClose={() => setMobileOpen(false)}
+        transitionDuration={{ enter: 220, exit: 110 }}
         PaperProps={{
           sx: {
             width: 280,
@@ -310,7 +352,9 @@ export function Navbar({ onOpenApp }) {
                     borderRadius: AGRI_RADII.images,
                     py: 1,
                     px: 1,
-                    transition: 'background-color 0.2s ease, color 0.2s ease',
+                    transition: 'background-color 0.15s ease, color 0.15s ease',
+                    // Feedback tekan yang jelas: item gelap sesaat saat ditekan
+                    '&:active': { bgcolor: 'rgba(3, 78, 50, 0.16)' },
                     ...(isCurrent
                       ? { bgcolor: AGRI_COLORS.blushMint, '&:hover': { bgcolor: AGRI_COLORS.blushMint } }
                       : { '&:hover': { bgcolor: AGRI_COLORS.fogSurface } }),
