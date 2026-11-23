@@ -7,14 +7,9 @@ import {
   CardContent,
   Chip,
   CircularProgress,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
   Divider,
   Grid,
   IconButton,
-  InputAdornment,
   Slider,
   Stack,
   Tab,
@@ -40,8 +35,6 @@ import VideocamRoundedIcon from '@mui/icons-material/VideocamRounded'
 import AssessmentRoundedIcon from '@mui/icons-material/AssessmentRounded'
 import RecyclingRoundedIcon from '@mui/icons-material/RecyclingRounded'
 import VerifiedRoundedIcon from '@mui/icons-material/VerifiedRounded'
-import PrintRoundedIcon from '@mui/icons-material/PrintRounded'
-import CloseRoundedIcon from '@mui/icons-material/CloseRounded'
 import FlipCameraAndroidRoundedIcon from '@mui/icons-material/FlipCameraAndroidRounded'
 import ShieldRoundedIcon from '@mui/icons-material/ShieldRounded'
 import WarningAmberRoundedIcon from '@mui/icons-material/WarningAmberRounded'
@@ -50,7 +43,6 @@ import HelpOutlineRoundedIcon from '@mui/icons-material/HelpOutlineRounded'
 
 import { LiveCameraViewfinder, stopAllActiveCameraStreams } from './LiveCameraViewfinder.jsx'
 import { ScanCanvasOverlay } from './ScanCanvasOverlay.jsx'
-import { QCPrintCertificate } from './QCPrintCertificate.jsx'
 import { scanHarvestImage, scanMultiAngleHarvestImages } from '../services/scanService.js'
 import { aggregateMultiAngleScanResults } from '../business/multiAngleHelper.js'
 import { saveBatch } from '../business/harvestStorage.js'
@@ -58,49 +50,9 @@ import { REFERENCE_PRICES_PER_KG } from '../business/priceReference.js'
 import { calculateHarvest, calculateHarvestValue } from '../business/harvestCalculation.js'
 import { getTodayDateString } from '../business/harvestValidation.js'
 import { isSceneStationary } from '../utils/imageSimilarity.js'
-
-const rupiahFormatter = new Intl.NumberFormat('id-ID', {
-  style: 'currency',
-  currency: 'IDR',
-  maximumFractionDigits: 0,
-})
-
-function formatRupiah(val) {
-  return typeof val === 'number' && Number.isFinite(val) ? rupiahFormatter.format(val) : '-'
-}
-
-const COMMODITIES = [
-  {
-    id: 'Cabai',
-    name: 'Cabai (Chili)',
-    badge: 'YOLO11 3-Class',
-    badgeColor: 'error',
-    classes: ['Grade A', 'Grade B', 'Reject'],
-    defaultConf: 0.35,
-    emoji: '🌶️',
-    supported: true,
-  },
-  {
-    id: 'Terung',
-    name: 'Terung (Eggplant)',
-    badge: 'YOLO11 3-Class',
-    badgeColor: 'primary',
-    classes: ['Grade A', 'Grade B', 'Reject'],
-    defaultConf: 0.35,
-    emoji: '🍆',
-    supported: true,
-  },
-  {
-    id: 'Tomat',
-    name: 'Tomat (Tomato)',
-    badge: 'YOLO11 3-Class',
-    badgeColor: 'success',
-    classes: ['Grade A', 'Grade B', 'Reject'],
-    defaultConf: 0.35,
-    emoji: '🍅',
-    supported: true,
-  },
-]
+import { COMMODITIES, formatRupiah } from './scanner/constants.js'
+import { SaveToRecapDialog } from './scanner/SaveToRecapDialog.jsx'
+import { CertificatePreviewDialog } from './scanner/CertificatePreviewDialog.jsx'
 
 export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm }) {
   const [selectedCommodity, setSelectedCommodity] = useState('Terung')
@@ -700,7 +652,7 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm }
       {/* 1. KARTU SELEKSI KOMODITAS UTAMA (PROMINENT DI ATAS) */}
       <Card elevation={2} sx={{ borderRadius: 3, border: '1px solid', borderColor: 'divider' }}>
         <CardContent sx={{ p: { xs: 2, sm: 2.5 } }}>
-          <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ sm: 'center' }} spacing={1} sx={{ mb: 2 }}>
+          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} sx={{justifyContent: 'space-between', alignItems: { sm: 'center' },  mb: 2 }}>
             <Box>
               <Typography variant="h6" fontWeight={800}>
                 Pilih Komoditas Panen
@@ -725,7 +677,7 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm }
           {/* Opsi Sensitivitas Slider */}
           {showSensitivitySetting && (
             <Box sx={{ mb: 2.5, p: 2, bgcolor: '#f8fafc', borderRadius: 2, border: '1px dashed #cbd5e1' }}>
-              <Stack direction="row" justifyContent="space-between" alignItems="center">
+              <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center' }}>
                 <Typography variant="caption" fontWeight={700} color="text.secondary">
                   Confidence Threshold (Batas Keyakinan Deteksi): {confidenceThreshold.toFixed(2)}
                 </Typography>
@@ -786,7 +738,7 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm }
                       },
                     }}
                   >
-                    <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ width: '100%', mb: 0.75 }}>
+                    <Stack direction="row" sx={{alignItems: 'center', justifyContent: 'space-between',  width: '100%', mb: 0.75 }}>
                       <Typography fontSize="1.6rem">{c.emoji}</Typography>
                       <Chip
                         label={c.badge}
@@ -810,9 +762,9 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm }
 
           {/* Mode Inspeksi: Sudut Tunggal vs Multi-Sudut (Anti-Kecurangan / Goyang Nampan) */}
           <Box sx={{ mt: 2.5, pt: 2, borderTop: '1px solid', borderColor: 'divider' }}>
-            <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ sm: 'center' }} spacing={1.5}>
+            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} sx={{ justifyContent: 'space-between', alignItems: { sm: 'center' } }}>
               <Box>
-                <Stack direction="row" alignItems="center" spacing={1}>
+                <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
                   <ShieldRoundedIcon color={isMultiAngleMode ? 'success' : 'action'} />
                   <Typography variant="subtitle2" fontWeight={800}>
                     Mode Inspeksi: {isMultiAngleMode ? 'Multi-Sudut (2 Sisi — Goyang Nampan)' : 'Sudut Tunggal (1 Sisi Standar)'}
@@ -822,7 +774,7 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm }
                     size="small"
                     color={isMultiAngleMode ? 'success' : 'default'}
                     variant={isMultiAngleMode ? 'filled' : 'outlined'}
-                    sx={{ fontWeight: 700, fontSize: '0.72rem', height: 22 }}
+                    sx={{ fontWeight: 700, fontSize: '0.75rem', height: 22 }}
                   />
                 </Stack>
                 <Typography variant="caption" color="text.secondary">
@@ -894,19 +846,42 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm }
             <Tabs
               value={activeTab}
               onChange={(_, val) => setActiveTab(val)}
-              sx={{ borderBottom: 1, borderColor: 'divider', mb: 2.5 }}
+              variant={{ xs: 'fullWidth', sm: 'standard' }}
+              sx={{
+                borderBottom: 1,
+                borderColor: 'divider',
+                mb: 2.5,
+                // Mobile: label tab ringkas agar 2 tab muat berdampingan
+                '& .MuiTab-root': { fontSize: { xs: '0.8125rem', sm: '0.875rem' }, minWidth: { xs: 0, sm: 90 } },
+              }}
             >
               <Tab
+                value={0}
+                icon={<VideocamRoundedIcon />}
+                iconPosition="start"
+                label="Kamera"
+                sx={{ fontWeight: 700, display: { xs: 'flex', sm: 'none' } }}
+              />
+              <Tab
+                value={0}
                 icon={<VideocamRoundedIcon />}
                 iconPosition="start"
                 label="Live Kamera Langsung"
-                sx={{ fontWeight: 700 }}
+                sx={{ fontWeight: 700, display: { xs: 'none', sm: 'flex' } }}
               />
               <Tab
+                value={1}
+                icon={<PhotoLibraryRoundedIcon />}
+                iconPosition="start"
+                label="Unggah"
+                sx={{ fontWeight: 700, display: { xs: 'flex', sm: 'none' } }}
+              />
+              <Tab
+                value={1}
                 icon={<PhotoLibraryRoundedIcon />}
                 iconPosition="start"
                 label="Unggah Berkas Citra"
-                sx={{ fontWeight: 700 }}
+                sx={{ fontWeight: 700, display: { xs: 'none', sm: 'flex' } }}
               />
             </Tabs>
 
@@ -944,8 +919,8 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm }
                   <Box>
                     {/* Stepper Indikator 2 Langkah */}
                     <Box sx={{ mb: 2.5, p: 2, bgcolor: '#f0fdf4', borderRadius: 2, border: '1px solid #bbf7d0' }}>
-                      <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ sm: 'center' }} spacing={1}>
-                        <Stack direction="row" spacing={1} alignItems="center">
+                      <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} sx={{ justifyContent: 'space-between', alignItems: { sm: 'center' } }}>
+                        <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
                           <Chip
                             label={`Langkah ${multiStep} dari 2`}
                             color="success"
@@ -985,7 +960,7 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm }
                     {/* Pratinjau Sisi 1 jika sedang di Langkah 2 */}
                     {multiStep === 2 && imagePreviewFront && (
                       <Box sx={{ mb: 2, p: 1.5, bgcolor: '#f8fafc', borderRadius: 2, border: '1px dashed #cbd5e1' }}>
-                        <Stack direction="row" spacing={1.5} alignItems="center">
+                        <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center' }}>
                           <Box
                             component="img"
                             src={imagePreviewFront}
@@ -993,7 +968,7 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm }
                             sx={{ width: 64, height: 64, objectFit: 'cover', borderRadius: 1.5, border: '1px solid #94a3b8' }}
                           />
                           <Box sx={{ flex: 1 }}>
-                            <Stack direction="row" spacing={1} alignItems="center">
+                            <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
                               <CheckCircleRoundedIcon color="success" sx={{ fontSize: 18 }} />
                               <Typography variant="body2" fontWeight={700}>
                                 Sisi 1 (Depan) Siap &amp; Tersimpan
@@ -1014,7 +989,7 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm }
                     />
 
                     {isScanning && (
-                      <Stack direction="row" spacing={1.5} alignItems="center" justifyContent="center" sx={{ mt: 2 }}>
+                      <Stack direction="row" spacing={1.5} sx={{alignItems: 'center', justifyContent: 'center',  mt: 2 }}>
                         <CircularProgress size={20} color="primary" />
                         <Typography variant="body2" fontWeight={600} color="primary.main">
                           Sedang menganalisis 2 sudut foto dengan model YOLO11 {selectedCommodity}...
@@ -1034,8 +1009,8 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm }
                           sx={{ maxHeight: 380, maxWidth: '100%', objectFit: 'contain' }}
                         />
                         <IconButton
+                          aria-label="Hapus foto sampel, pilih gambar lain"
                           onClick={handleClearImage}
-                          size="small"
                           disabled={isScanning}
                           sx={{
                             position: 'absolute',
@@ -1051,7 +1026,7 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm }
                         </IconButton>
 
                         <Box sx={{ p: 2, bgcolor: '#ffffff', borderTop: '1px solid', borderColor: 'divider' }}>
-                          <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems="center" spacing={1.5}>
+                          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} sx={{ justifyContent: 'space-between', alignItems: 'center' }}>
                             <Box sx={{ textAlign: 'left' }}>
                               <Typography variant="body2" fontWeight={700}>
                                 Foto Berhasil Diambil
@@ -1082,7 +1057,7 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm }
                     )}
 
                     {isScanning && (
-                      <Stack direction="row" spacing={1.5} alignItems="center" justifyContent="center" sx={{ mt: 2 }}>
+                      <Stack direction="row" spacing={1.5} sx={{alignItems: 'center', justifyContent: 'center',  mt: 2 }}>
                         <CircularProgress size={20} color="primary" />
                         <Typography variant="body2" fontWeight={600} color="primary.main">
                           Sedang menganalisis foto dengan model YOLO11 {selectedCommodity}...
@@ -1128,7 +1103,7 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm }
                       {/* SISI 1: DEPAN */}
                       <Grid size={{ xs: 12, sm: 6 }}>
                         <Card variant="outlined" sx={{ borderRadius: 2.5, p: 2, height: '100%', display: 'flex', flexDirection: 'column' }}>
-                          <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1.5 }}>
+                          <Stack direction="row" sx={{justifyContent: 'space-between', alignItems: 'center',  mb: 1.5 }}>
                             <Typography variant="subtitle2" fontWeight={800}>
                               1. Sisi Depan / Tampak Atas
                             </Typography>
@@ -1150,7 +1125,7 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm }
                                 variant="contained"
                                 color="inherit"
                                 onClick={() => fileInputRefFront.current?.click()}
-                                sx={{ position: 'absolute', bottom: 8, right: 8, fontSize: '0.72rem' }}
+                                sx={{ position: 'absolute', bottom: 8, right: 8, fontSize: '0.75rem' }}
                               >
                                 Ganti Foto
                               </Button>
@@ -1189,7 +1164,7 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm }
                       {/* SISI 2: BELAKANG / GOYANG NAMPAN */}
                       <Grid size={{ xs: 12, sm: 6 }}>
                         <Card variant="outlined" sx={{ borderRadius: 2.5, p: 2, height: '100%', display: 'flex', flexDirection: 'column' }}>
-                          <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1.5 }}>
+                          <Stack direction="row" sx={{justifyContent: 'space-between', alignItems: 'center',  mb: 1.5 }}>
                             <Typography variant="subtitle2" fontWeight={800}>
                               2. Sisi Belakang (Setelah Dibalik)
                             </Typography>
@@ -1211,7 +1186,7 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm }
                                 variant="contained"
                                 color="inherit"
                                 onClick={() => fileInputRefBack.current?.click()}
-                                sx={{ position: 'absolute', bottom: 8, right: 8, fontSize: '0.72rem' }}
+                                sx={{ position: 'absolute', bottom: 8, right: 8, fontSize: '0.75rem' }}
                               >
                                 Ganti Foto
                               </Button>
@@ -1296,8 +1271,8 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm }
                           sx={{ maxHeight: 380, maxWidth: '100%', objectFit: 'contain' }}
                         />
                         <IconButton
+                          aria-label="Hapus foto sampel, pilih gambar lain"
                           onClick={handleClearImage}
-                          size="small"
                           sx={{
                             position: 'absolute',
                             top: 12,
@@ -1312,7 +1287,7 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm }
                         </IconButton>
 
                         <Box sx={{ p: 2, bgcolor: '#ffffff', borderTop: '1px solid', borderColor: 'divider' }}>
-                          <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems="center" spacing={1.5}>
+                          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} sx={{ justifyContent: 'space-between', alignItems: 'center' }}>
                             <Box sx={{ textAlign: 'left' }}>
                               <Typography variant="body2" fontWeight={700}>
                                 {imageFile?.name || 'Citra Panen Terpilih'}
@@ -1413,11 +1388,9 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm }
             <CardContent sx={{ p: 2 }}>
               <Stack
                 direction={{ xs: 'column', sm: 'row' }}
-                justifyContent="space-between"
-                alignItems={{ sm: 'center' }}
                 spacing={1.5}
-              >
-                <Stack direction="row" spacing={1.5} alignItems="center">
+               sx={{ justifyContent: 'space-between', alignItems: { sm: 'center' } }}>
+                <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center' }}>
                   {execStatus === 'model_unavailable' ? (
                     <ErrorOutlineRoundedIcon color="error" sx={{ fontSize: 32 }} />
                   ) : execStatus === 'needs_review' ? (
@@ -1430,7 +1403,7 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm }
                     <CheckCircleRoundedIcon color="success" sx={{ fontSize: 32 }} />
                   )}
                   <Box>
-                    <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
+                    <Stack direction="row" spacing={1} sx={{ alignItems: 'center', flexWrap: 'wrap' }} useFlexGap>
                       <Typography
                         variant="subtitle1"
                         fontWeight={800}
@@ -1539,7 +1512,7 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm }
                   </Box>
                 </Stack>
 
-                <Stack direction="row" spacing={1.25} flexWrap="wrap">
+                <Stack direction="row" spacing={1.25} sx={{ flexWrap: 'wrap' }} useFlexGap>
                   <Button
                     variant="outlined"
                     color="inherit"
@@ -1833,7 +1806,7 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm }
               {/* Rekomendasi Pintar Smart Pricing */}
               {pricing && (
                 <Box sx={{ mt: 3, p: 2, bgcolor: '#f8fafc', borderRadius: 2, border: '1px solid #e2e8f0' }}>
-                  <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ sm: 'center' }} spacing={1}>
+                  <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} sx={{ justifyContent: 'space-between', alignItems: { sm: 'center' } }}>
                     <Box>
                       <Typography variant="subtitle2" fontWeight={800} color="primary.main">
                         Estimasi Smart Pricing ({pricing.price_tier || 'Grade Komersial'})
@@ -1859,99 +1832,29 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm }
       )}
 
       {/* DIALOG SIMPAN KE REKAP DATA PANEN */}
-      <Dialog open={isSaveModalOpen} onClose={() => setIsSaveModalOpen(false)} maxWidth="xs" fullWidth>
-        <DialogTitle sx={{ fontWeight: 800 }}>Simpan ke Rekap Data Panen</DialogTitle>
-        <DialogContent dividers>
-          <Stack spacing={2} sx={{ pt: 1 }}>
-            <Alert severity="info" icon={<InfoOutlinedIcon />}>
-              Hasil deteksi AI ({selectedCommodity}) akan dicatat ke dalam database rekap lokal.
-            </Alert>
-            <TextField
-              label="Estimasi Berat Timbangan (kg)"
-              value={saveWeight}
-              onChange={(e) => setSaveWeight(e.target.value)}
-              placeholder="Contoh: 15"
-              slotProps={{ input: { endAdornment: <InputAdornment position="end">kg</InputAdornment> } }}
-              helperText="Opsional. Default 10 kg jika dikosongkan."
-              fullWidth
-            />
-            <TextField
-              label="Catatan Panen"
-              value={saveNotes}
-              onChange={(e) => setSaveNotes(e.target.value)}
-              placeholder="Contoh: Panen pagi keranjang 3"
-              multiline
-              rows={2}
-              fullWidth
-            />
-          </Stack>
-        </DialogContent>
-        <DialogActions sx={{ p: 2 }}>
-          <Button onClick={() => setIsSaveModalOpen(false)} color="inherit">
-            Batal
-          </Button>
-          <Button onClick={handleConfirmSaveToRecap} variant="contained" color="primary">
-            Simpan Sekarang
-          </Button>
-        </DialogActions>
-      </Dialog>
+      <SaveToRecapDialog
+        onClose={() => setIsSaveModalOpen(false)}
+        onConfirm={handleConfirmSaveToRecap}
+        onNotesChange={(e) => setSaveNotes(e.target.value)}
+        onWeightChange={(e) => setSaveWeight(e.target.value)}
+        open={isSaveModalOpen}
+        saveNotes={saveNotes}
+        saveWeight={saveWeight}
+        selectedCommodity={selectedCommodity}
+      />
 
       {/* DIALOG PRATINJAU SERTIFIKAT MUTU QC */}
-      <Dialog
-        open={isCertModalOpen}
+      <CertificatePreviewDialog
+        execStatus={execStatus}
+        inference={inference}
         onClose={() => setIsCertModalOpen(false)}
-        maxWidth="md"
-        fullWidth
-        scroll="paper"
-      >
-        <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Stack direction="row" spacing={1} alignItems="center">
-            <VerifiedRoundedIcon color="primary" />
-            <Typography variant="h6" fontWeight={800}>
-              Sertifikat Mutu QC Resmi (A4)
-            </Typography>
-          </Stack>
-          <IconButton onClick={() => setIsCertModalOpen(false)} size="small">
-            <CloseRoundedIcon />
-          </IconButton>
-        </DialogTitle>
-        <DialogContent dividers sx={{ p: { xs: 1, sm: 2 } }}>
-          {scanResult && (
-            <QCPrintCertificate
-              batch={{
-                id: scanResult.scan_id || 'QC-SCAN',
-                tanggal: getTodayDateString(),
-                komoditas: selectedCommodity,
-                beratKg: Number(saveWeight ? saveWeight.replace(',', '.') : 10) || 10,
-                fotoKeranjang: scanResult.imagePreview,
-                ai_scan_performed: execStatus === 'ai_detected',
-                execution_status: execStatus,
-                status_details: statusDetails,
-                is_simulated: execStatus === 'simulated',
-                inference: inference,
-                pricing: pricing,
-                scanResult: scanResult,
-                business_grading: scanResult.business_grading,
-              }}
-              showPrintButton
-              onPrint={() => window.print()}
-            />
-          )}
-        </DialogContent>
-        <DialogActions sx={{ p: 2 }}>
-          <Button onClick={() => setIsCertModalOpen(false)} color="inherit">
-            Tutup
-          </Button>
-          <Button
-            onClick={() => window.print()}
-            variant="contained"
-            color="primary"
-            startIcon={<PrintRoundedIcon />}
-          >
-            Cetak / Unduh PDF
-          </Button>
-        </DialogActions>
-      </Dialog>
+        open={isCertModalOpen}
+        pricing={pricing}
+        saveWeight={saveWeight}
+        scanResult={scanResult}
+        selectedCommodity={selectedCommodity}
+        statusDetails={statusDetails}
+      />
     </Stack>
   )
 }

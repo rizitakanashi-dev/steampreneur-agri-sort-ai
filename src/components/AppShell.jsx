@@ -23,6 +23,7 @@ import CloseRoundedIcon from '@mui/icons-material/CloseRounded'
 import DashboardRoundedIcon from '@mui/icons-material/DashboardRounded'
 import HomeRoundedIcon from '@mui/icons-material/HomeRounded'
 import MenuRoundedIcon from '@mui/icons-material/MenuRounded'
+import LogoutRoundedIcon from '@mui/icons-material/LogoutRounded'
 import PriceCheckRoundedIcon from '@mui/icons-material/PriceCheckRounded'
 import QrCodeScannerRoundedIcon from '@mui/icons-material/QrCodeScannerRounded'
 import SettingsRoundedIcon from '@mui/icons-material/SettingsRounded'
@@ -39,11 +40,20 @@ const navigationItems = [
   { id: 'pricing', label: 'Harga Pasar', icon: PriceCheckRoundedIcon },
 ]
 
-export function AppShell({ activePage, onNavigate, onDataChanged, onBackToLanding, children }) {
+export function AppShell({ activePage, activeUser, onLogout, onNavigate, onDataChanged, onBackToLanding, children }) {
   const theme = useTheme()
   const isDesktop = useMediaQuery(theme.breakpoints.up('md'))
   const [mobileOpen, setMobileOpen] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
+
+  const userInitials = activeUser?.fullName
+    ? activeUser.fullName
+        .split(' ')
+        .map((n) => n[0])
+        .join('')
+        .slice(0, 2)
+        .toUpperCase()
+    : 'AS'
 
   const handleNavigate = (pageId) => {
     onNavigate(pageId)
@@ -114,7 +124,7 @@ export function AppShell({ activePage, onNavigate, onDataChanged, onBackToLandin
       </Box>
 
       <Box sx={{ px: 1.5, py: 1 }}>
-        <Typography color="text.secondary" sx={{ px: 1.5, pb: 1.25, fontSize: 10, fontWeight: 800, letterSpacing: '0.12em' }}>
+        <Typography color="text.secondary" sx={{ px: 1.5, pb: 1.25, fontSize: 12, fontWeight: 800, letterSpacing: '0.12em' }}>
           WORKSPACE
         </Typography>
         <List disablePadding>
@@ -143,7 +153,7 @@ export function AppShell({ activePage, onNavigate, onDataChanged, onBackToLandin
       </Box>
 
       <Box sx={{ mt: 1, px: 1.5 }}>
-        <Typography color="text.secondary" sx={{ px: 1.5, pb: 1.25, fontSize: 10, fontWeight: 800, letterSpacing: '0.12em' }}>
+        <Typography color="text.secondary" sx={{ px: 1.5, pb: 1.25, fontSize: 12, fontWeight: 800, letterSpacing: '0.12em' }}>
           SYSTEM
         </Typography>
         <List disablePadding>
@@ -168,36 +178,76 @@ export function AppShell({ activePage, onNavigate, onDataChanged, onBackToLandin
       </Box>
 
       <Box sx={{ flexGrow: 1 }} />
-      <Stack
-        direction="row"
-        spacing={1.25}
-        onClick={() => {
-          setSettingsOpen(true)
-          setMobileOpen(false)
-        }}
-        sx={{
-          alignItems: 'center',
-          borderTop: '1px solid',
-          borderColor: 'divider',
-          p: 2,
-          cursor: 'pointer',
-          transition: 'background-color 0.15s ease',
-          '&:hover': { bgcolor: 'rgba(1, 110, 68, 0.08)' },
-        }}
-      >
-        <Avatar sx={{ bgcolor: 'primary.dark', fontSize: 13, height: 32, width: 32 }}>AS</Avatar>
-        <Box sx={{ minWidth: 0 }}>
-          <Typography noWrap fontWeight={700} variant="body2">SMKN 4 Payakumbuh</Typography>
-          <Typography color="text.secondary" noWrap variant="caption">STEAMPreneur 2026</Typography>
-        </Box>
-      </Stack>
+      <Box sx={{ borderTop: '1px solid', borderColor: 'divider', p: 1.75 }}>
+        <Stack
+          direction="row"
+          spacing={1.25}
+          onClick={() => {
+            setSettingsOpen(true)
+            setMobileOpen(false)
+          }}
+          sx={{
+            alignItems: 'center',
+            p: 1,
+            borderRadius: 1.75,
+            cursor: 'pointer',
+            transition: 'background-color 0.15s ease',
+            '&:hover': { bgcolor: 'rgba(1, 110, 68, 0.08)' },
+          }}
+        >
+          <Avatar sx={{ bgcolor: 'primary.dark', fontSize: 13, height: 34, width: 34, fontWeight: 700 }}>
+            {userInitials}
+          </Avatar>
+          <Box sx={{ minWidth: 0, flexGrow: 1 }}>
+            <Typography noWrap fontWeight={700} variant="body2">
+              {activeUser?.fullName || 'SMKN 4 Payakumbuh'}
+            </Typography>
+            <Typography color="text.secondary" noWrap variant="caption">
+              {activeUser?.email || 'STEAMPreneur 2026'}
+            </Typography>
+          </Box>
+        </Stack>
+
+        {typeof onLogout === 'function' && (
+          <Button
+            fullWidth
+            size="small"
+            color="error"
+            variant="outlined"
+            startIcon={<LogoutRoundedIcon fontSize="small" />}
+            onClick={() => {
+              setMobileOpen(false)
+              onLogout()
+            }}
+            sx={{
+              mt: 1,
+              borderRadius: 1.75,
+              textTransform: 'none',
+              fontWeight: 700,
+              fontSize: 12,
+            }}
+          >
+            Keluar Akun (Ganti Akun)
+          </Button>
+        )}
+      </Box>
     </Stack>
   )
 
   return (
-    <Box sx={{ display: 'flex', minHeight: '100vh', overflow: 'hidden' }}>
+    <Box sx={{ display: 'flex', minHeight: ['100vh', '100dvh'], overflow: 'hidden' }}>
       {!isDesktop && (
-        <AppBar color="inherit" elevation={0} position="fixed" sx={{ borderBottom: '1px solid', borderColor: 'divider' }}>
+        <AppBar
+          color="inherit"
+          elevation={0}
+          position="fixed"
+          sx={{
+            // Safe-area iPhone (mode PWA standalone): tidak tertutup notch/status bar
+            pt: 'env(safe-area-inset-top)',
+            borderBottom: '1px solid',
+            borderColor: 'divider',
+          }}
+        >
           <Toolbar sx={{ minHeight: 64 }}>
             <IconButton aria-label="Buka navigasi" edge="start" onClick={() => setMobileOpen(true)} sx={{ mr: 1 }}>
               <MenuRoundedIcon />
@@ -211,7 +261,16 @@ export function AppShell({ activePage, onNavigate, onDataChanged, onBackToLandin
                 if (typeof onBackToLanding === 'function') onBackToLanding()
                 else onNavigate('landing')
               }}
-              sx={{ mr: 1, fontSize: 12, fontWeight: 700, textTransform: 'none', color: 'primary.dark' }}
+              sx={{
+                mr: 1,
+                fontSize: 12,
+                fontWeight: 700,
+                textTransform: 'none',
+                color: 'primary.dark',
+                // Mobile sempit: drawer & logo sudah menyediakan navigasi beranda,
+                // tombol teks disembunyikan agar AppBar tidak sesak
+                display: { xs: 'none', sm: 'inline-flex' },
+              }}
             >
               Beranda
             </Button>
@@ -242,8 +301,17 @@ export function AppShell({ activePage, onNavigate, onDataChanged, onBackToLandin
         {drawerContent}
       </Drawer>
 
-      <Box component="main" sx={{ flexGrow: 1, minWidth: 0, width: '100%' }}>
-        {!isDesktop && <Toolbar sx={{ minHeight: 64 }} />}
+      <Box
+        component="main"
+        sx={{
+          flexGrow: 1,
+          minWidth: 0,
+          width: '100%',
+          // Safe-area bawah: aksi penting tidak tertutup gesture bar iPhone
+          pb: 'env(safe-area-inset-bottom)',
+        }}
+      >
+        {!isDesktop && <Toolbar sx={{ minHeight: 'calc(64px + env(safe-area-inset-top))' }} />}
         {children}
       </Box>
 

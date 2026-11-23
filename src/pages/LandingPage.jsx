@@ -16,7 +16,7 @@ export function LandingPage({ onOpenApp }) {
       sx={{
         bgcolor: AGRI_COLORS.paperWhite,
         color: AGRI_COLORS.ink,
-        minHeight: '100vh',
+        minHeight: ['100vh', '100dvh'],
         width: '100%',
         overflowX: 'hidden',
       }}

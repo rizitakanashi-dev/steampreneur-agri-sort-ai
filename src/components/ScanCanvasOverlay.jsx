@@ -17,8 +17,10 @@ import StarRoundedIcon from '@mui/icons-material/StarRounded'
 
 import {
   drawDetectionBox,
+  drawDetectionLabel,
   formatConfidenceLabel,
   getClassTheme,
+  placeDetectionLabels,
   scaleBoundingBox,
 } from '../utils/canvasOverlayHelper.js'
 
@@ -95,13 +97,26 @@ export function ScanCanvasOverlay({
       height: canvas.height,
     }
 
-    detections.forEach((det) => {
+    ctx.font = 'bold 11px Inter, sans-serif'
+    const annotations = detections.map((det) => {
       const theme = getClassTheme(det.class_name)
       const scaled = scaleBoundingBox(det.box, originalDims, displayDims)
-      const label = formatConfidenceLabel(det.class_name, det.confidence)
-      const isSelected = selectedId === det.id
+      return {
+        det,
+        theme,
+        scaled,
+        label: formatConfidenceLabel(det.class_name, det.confidence),
+      }
+    })
+    const labelPositions = placeDetectionLabels(
+      annotations.map(({ scaled, label }) => ({ box: scaled, label })),
+      displayDims,
+      (label) => ctx.measureText(label).width
+    )
 
-      drawDetectionBox(ctx, scaled, theme, label, isSelected)
+    annotations.forEach(({ det, theme, scaled, label }, index) => {
+      drawDetectionBox(ctx, scaled, theme, null, selectedId === det.id)
+      drawDetectionLabel(ctx, theme, label, labelPositions[index])
     })
   }, [showAnnotations, detections, imageDimensions, canvasDimensions, selectedId])
 
@@ -167,7 +182,7 @@ export function ScanCanvasOverlay({
           py: 1,
         }}
       >
-        <Stack alignItems="center" direction="row" spacing={1}>
+        <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
           <FormControlLabel
             control={
               <Switch
@@ -187,7 +202,7 @@ export function ScanCanvasOverlay({
         </Stack>
 
         {/* Badge Hitungan Kelas */}
-        <Stack direction="row" flexWrap="wrap" gap={1}>
+        <Stack direction="row" sx={{ flexWrap: 'wrap', gap: 1 }}>
           {Object.entries(summaryCounts).map(([className, count]) => {
             const theme = getClassTheme(className)
             return (

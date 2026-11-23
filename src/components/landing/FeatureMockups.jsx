@@ -44,7 +44,7 @@ function ScannerMockup() {
           <LiveYoloScanMotion height={175} badgeText="Deteksi Langsung 3-Class" />
           {rows.map((r) => (
             <Box key={r.label}>
-              <Stack direction="row" justifyContent="space-between" sx={{ mb: 0.4 }}>
+              <Stack direction="row" sx={{justifyContent: 'space-between',  mb: 0.4 }}>
                 <Typography sx={{ fontFamily: AGRI_FONTS.sans, fontSize: '0.82rem', color: AGRI_COLORS.ink }}>
                   {r.label}
                 </Typography>

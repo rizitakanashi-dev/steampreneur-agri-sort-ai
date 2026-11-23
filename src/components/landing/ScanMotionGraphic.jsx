@@ -155,8 +155,8 @@ export function CsvArchiveMotion() {
       }}
     >
       <Stack spacing={1.25}>
-        <Stack direction="row" justifyContent="space-between" alignItems="center">
-          <Stack direction="row" spacing={1} alignItems="center">
+        <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center' }}>
+          <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
             <TableViewRoundedIcon sx={{ color: AGRI_COLORS.emerald, fontSize: 18 }} />
             <Typography sx={{ fontFamily: AGRI_FONTS.sans, fontSize: '0.78rem', fontWeight: 500, color: AGRI_COLORS.ink }}>
               Ekspor CSV RFC 4180 &amp; Cetak A4
@@ -207,7 +207,7 @@ export function CsvArchiveMotion() {
                 {r.split}
               </Typography>
             </Box>
-            <Stack direction="row" spacing={0.75} alignItems="center">
+            <Stack direction="row" spacing={0.75} sx={{ alignItems: 'center' }}>
               <Typography sx={{ fontFamily: AGRI_FONTS.sans, fontSize: '0.8rem', fontWeight: 600, color: AGRI_COLORS.emerald }}>
                 {r.total}
               </Typography>

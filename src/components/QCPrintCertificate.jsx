@@ -58,9 +58,8 @@ export function QCPrintCertificate({ batch, showPrintButton = false, onPrint }) 
         <Stack
           className="no-print"
           direction="row"
-          justifyContent="flex-end"
           spacing={1.5}
-          sx={{ mb: 3 }}
+          sx={{justifyContent: 'flex-end',  mb: 3 }}
         >
           <Button
             onClick={handlePrint}
@@ -75,7 +74,7 @@ export function QCPrintCertificate({ batch, showPrintButton = false, onPrint }) 
 
       {/* KOP SURAT RESMI */}
       <Box sx={{ borderBottom: '3px double #111827', pb: 2, mb: 3 }}>
-        <Stack alignItems="center" direction="row" spacing={2.5}>
+        <Stack direction="row" spacing={2.5} sx={{ alignItems: 'center' }}>
           <Box
             sx={{
               alignItems: 'center',
@@ -338,9 +337,12 @@ export function QCPrintCertificate({ batch, showPrintButton = false, onPrint }) 
         <Typography sx={{ fontSize: 13, fontWeight: 700, mb: 1, color: '#1f2937' }}>
           A. Rincian Klasifikasi & Distribusi Mutu Panen
         </Typography>
+        {/* Scroll horizontal hanya saat layar sempit; saat cetak A4 (±170mm) tabel 640px tetap muat utuh */}
+        <Box sx={{ overflowX: 'auto' }}>
         <table
           style={{
             width: '100%',
+            minWidth: 640,
             borderCollapse: 'collapse',
             fontSize: '11.5px',
             textAlign: 'left',
@@ -405,6 +407,7 @@ export function QCPrintCertificate({ batch, showPrintButton = false, onPrint }) 
             </tr>
           </tfoot>
         </table>
+        </Box>
       </Box>
 
       {/* REKAPITULASI STEAM MATH & REKOMENDASI TINDAKAN */}
@@ -459,7 +462,7 @@ export function QCPrintCertificate({ batch, showPrintButton = false, onPrint }) 
 
       {/* KOLOM TANDA TANGAN & PENGESAHAN */}
       <Box sx={{ mt: 4, pt: 2, borderTop: '1px dashed #d1d5db', pageBreakInside: 'avoid', breakInside: 'avoid' }}>
-        <Stack direction="row" justifyContent="space-between" sx={{ textAlign: 'center', px: 2 }}>
+        <Stack direction="row" sx={{justifyContent: 'space-between',  textAlign: 'center', px: 2 }}>
           {/* Tanda Tangan Petani */}
           <Box sx={{ width: 190 }}>
             <Typography sx={{ fontSize: 11, color: '#4b5563' }}>

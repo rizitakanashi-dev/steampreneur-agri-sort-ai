@@ -87,14 +87,12 @@ export function FarmerProfitabilityCard({
       <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
         {/* Header Modul STEAM Math */}
         <Stack
-          alignItems={{ xs: 'flex-start', md: 'center' }}
           direction={{ xs: 'column', md: 'row' }}
-          justifyContent="space-between"
           spacing={2}
-          sx={{ mb: 2.5 }}
+          sx={{alignItems: { xs: 'flex-start', md: 'center' }, justifyContent: 'space-between',  mb: 2.5 }}
         >
           <Box sx={{ flexGrow: 1 }}>
-            <Stack alignItems="center" direction="row" spacing={1.5} flexWrap="wrap">
+            <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center', flexWrap: 'wrap' }} useFlexGap>
               <Box
                 sx={{
                   alignItems: 'center',
@@ -136,10 +134,9 @@ export function FarmerProfitabilityCard({
 
           {/* Toggle Mode Biaya: samakan tata letak persis dengan sertifikat QC di kanan tengah */}
           <Stack
-            alignItems="center"
             direction="row"
             spacing={1.5}
-            sx={{
+            sx={{alignItems: 'center', 
               alignSelf: { xs: 'flex-start', md: 'center' },
               mt: { xs: 1.5, md: 0 },
               flexShrink: 0,
@@ -177,7 +174,7 @@ export function FarmerProfitabilityCard({
 
         {/* Input Parameter Biaya Modal */}
         <Box sx={{ p: 2, bgcolor: '#f8fafc', borderRadius: 2.5, border: '1px solid #e2e8f0', mb: 2.5 }}>
-          <Grid container alignItems="center" spacing={2}>
+          <Grid container spacing={2} sx={{ alignItems: 'center' }}>
             <Grid size={{ xs: 12, sm: 6, md: 5 }}>
               {costMode === 'perKg' ? (
                 <TextField
@@ -214,7 +211,7 @@ export function FarmerProfitabilityCard({
             </Grid>
 
             <Grid size={{ xs: 12, sm: 6, md: 7 }}>
-              <Stack direction="row" flexWrap="wrap" gap={1.25} alignItems="center">
+              <Stack direction="row" sx={{ flexWrap: 'wrap', gap: 1.25, alignItems: 'center' }}>
                 <Typography sx={{ fontWeight: 700, fontSize: '0.875rem', color: '#1e293b', display: 'flex', alignItems: 'center', lineHeight: 1 }}>
                   Preset Standar Petani:
                 </Typography>
@@ -276,7 +273,7 @@ export function FarmerProfitabilityCard({
                 justifyContent: 'space-between',
               }}
             >
-              <Stack direction="row" justifyContent="space-between" alignItems="center">
+              <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center' }}>
                 <Typography color="text.secondary" variant="caption" fontWeight={600}>
                   PROYEKSI LABA BERSIH
                 </Typography>
@@ -300,7 +297,7 @@ export function FarmerProfitabilityCard({
                 color={isLoss ? 'error' : isProfitable ? 'success' : 'default'}
                 label={isLoss ? '⚠️ Risiko Defisit' : isProfitable ? '✅ Laba Menguntungkan' : 'Titik Impas (BEP)'}
                 size="small"
-                sx={{ fontWeight: 700, fontSize: '0.72rem', alignSelf: 'flex-start' }}
+                sx={{ fontWeight: 700, fontSize: '0.75rem', alignSelf: 'flex-start' }}
               />
             </Box>
           </Grid>
@@ -347,7 +344,7 @@ export function FarmerProfitabilityCard({
                 justifyContent: 'space-between',
               }}
             >
-              <Stack direction="row" justifyContent="space-between" alignItems="center">
+              <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center' }}>
                 <Typography color="text.secondary" variant="caption" fontWeight={600}>
                   TITIK IMPAS HARGA (BEP)
                 </Typography>
@@ -378,7 +375,7 @@ export function FarmerProfitabilityCard({
                 justifyContent: 'space-between',
               }}
             >
-              <Stack direction="row" justifyContent="space-between" alignItems="center">
+              <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center' }}>
                 <Typography color="text.secondary" variant="caption" fontWeight={600}>
                   VOLUME MINIMAL IMPAS
                 </Typography>
@@ -398,7 +395,7 @@ export function FarmerProfitabilityCard({
 
         {/* Edukasi Kewirausahaan: Nilai Tambah Sortir AI */}
         <Box sx={{ mt: 2.5, p: 2, bgcolor: 'rgba(3, 110, 69, 0.04)', borderRadius: 2, border: '1px solid rgba(3, 110, 69, 0.12)' }}>
-          <Stack direction="row" spacing={1.5} alignItems="flex-start">
+          <Stack direction="row" spacing={1.5} sx={{ alignItems: 'flex-start' }}>
             <CheckCircleRoundedIcon color="primary" sx={{ mt: 0.25, fontSize: 20 }} />
             <Box>
               <Typography variant="subtitle2" fontWeight={800} color="primary.main">

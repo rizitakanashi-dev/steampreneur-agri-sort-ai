@@ -33,7 +33,7 @@ export function PriceTrendChart({ history = [], commodity, isOfficialBapanas = f
           showMark: true,
           valueFormatter: (value) => `Rp${rupiahFormatter.format(value ?? 0)}`,
         }]}
-        xAxis={[{ data: history.map((point) => point.label), scaleType: 'point', tickLabelStyle: { fontSize: 11 } }]}
+        xAxis={[{ data: history.map((point) => point.label), scaleType: 'point', tickLabelStyle: { fontSize: 12 } }]}
         yAxis={[{ label: 'Rp/kg', width: 68, valueFormatter: (value) => rupiahFormatter.format(value) }]}
       />
       <Typography color="text.secondary" variant="caption">

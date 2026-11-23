@@ -154,7 +154,7 @@ export function HeroMockupComposite({ onOpenApp, isConverged, trackRef }) {
           >
             <Stack spacing={2}>
               {/* Brand Header */}
-              <Stack direction="row" spacing={1.25} alignItems="center" sx={{ px: 0.5 }}>
+              <Stack direction="row" spacing={1.25} sx={{alignItems: 'center',  px: 0.5 }}>
                 <Box
                   sx={{
                     width: 36,
@@ -300,8 +300,7 @@ export function HeroMockupComposite({ onOpenApp, isConverged, trackRef }) {
             <Stack
               direction="row"
               spacing={1.25}
-              alignItems="center"
-              sx={{ pt: 2, borderTop: '1px solid #E3E8E7' }}
+              sx={{alignItems: 'center',  pt: 2, borderTop: '1px solid #E3E8E7' }}
             >
               <Box
                 sx={{
@@ -479,7 +478,7 @@ export function HeroMockupComposite({ onOpenApp, isConverged, trackRef }) {
                       arrowSide="top-right"
                       sx={{ left: -14, top: -12 }}
                     />
-                    <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
+                    <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'flex-start' }}>
                       <Box>
                         <Typography sx={{ fontFamily: AGRI_FONTS.sans, fontSize: '0.78rem', color: '#68747A' }}>
                           Batch tersimpan
@@ -526,7 +525,7 @@ export function HeroMockupComposite({ onOpenApp, isConverged, trackRef }) {
                       willChange: 'transform, opacity',
                     }}
                   >
-                    <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
+                    <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'flex-start' }}>
                       <Box>
                         <Typography sx={{ fontFamily: AGRI_FONTS.sans, fontSize: '0.78rem', color: '#68747A' }}>
                           Komoditas terdaftar
@@ -580,7 +579,7 @@ export function HeroMockupComposite({ onOpenApp, isConverged, trackRef }) {
                       arrowSide="top-left"
                       sx={{ right: -12, top: -12 }}
                     />
-                    <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
+                    <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'flex-start' }}>
                       <Box>
                         <Typography sx={{ fontFamily: AGRI_FONTS.sans, fontSize: '0.78rem', color: '#68747A' }}>
                           Sumber acuan harga
@@ -612,7 +611,7 @@ export function HeroMockupComposite({ onOpenApp, isConverged, trackRef }) {
               </Grid>
 
               {/* BOTTOM 2-COLUMN ROW: Harga acuan pasar + Batch Panen Terakhir */}
-              <Grid container spacing={2} alignItems="stretch">
+              <Grid container spacing={2} sx={{ alignItems: 'stretch' }}>
                 {/* Left: Harga acuan pasar — Floats Bottom-Left below Hero CTA at scroll=0 */}
                 <Grid size={{ xs: 12, md: 6.8 }}>
                   <Box
@@ -630,7 +629,7 @@ export function HeroMockupComposite({ onOpenApp, isConverged, trackRef }) {
                       willChange: 'transform',
                     }}
                   >
-                    <Stack direction="row" spacing={1.5} alignItems="center" sx={{ mb: 0.4 }}>
+                    <Stack direction="row" spacing={1.5} sx={{alignItems: 'center',  mb: 0.4 }}>
                       <Typography sx={{ fontFamily: AGRI_FONTS.sans, fontSize: '0.92rem', fontWeight: 700, color: '#1D2326' }}>
                         Harga acuan pasar
                       </Typography>
@@ -670,7 +669,7 @@ export function HeroMockupComposite({ onOpenApp, isConverged, trackRef }) {
                             '&:last-of-type': { borderBottom: 'none', pb: 0 },
                           }}
                         >
-                          <Stack direction="row" spacing={1} alignItems="center">
+                          <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
                             <Box sx={{ width: 7, height: 7, borderRadius: '50%', bgcolor: '#289D67' }} />
                             <Typography sx={{ fontFamily: AGRI_FONTS.sans, fontSize: '0.82rem', color: '#1D2326' }}>
                               {item.name}
@@ -711,7 +710,7 @@ export function HeroMockupComposite({ onOpenApp, isConverged, trackRef }) {
                     }}
                   >
                     <Box>
-                      <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1.5 }}>
+                      <Stack direction="row" sx={{justifyContent: 'space-between', alignItems: 'center',  mb: 1.5 }}>
                         <Typography sx={{ fontFamily: AGRI_FONTS.sans, fontSize: '0.92rem', fontWeight: 700, color: '#1D2326' }}>
                           Batch Panen Terakhir
                         </Typography>

@@ -16,22 +16,18 @@ import {
   Stack,
   ToggleButton,
   ToggleButtonGroup,
-  Tooltip,
   Typography,
 } from '@mui/material'
 import ArrowBackRoundedIcon from '@mui/icons-material/ArrowBackRounded'
 import AssessmentRoundedIcon from '@mui/icons-material/AssessmentRounded'
-import AutoAwesomeRoundedIcon from '@mui/icons-material/AutoAwesomeRounded'
 import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded'
 import CloseRoundedIcon from '@mui/icons-material/CloseRounded'
 
 import CompareArrowsRoundedIcon from '@mui/icons-material/CompareArrowsRounded'
 import FlipCameraAndroidRoundedIcon from '@mui/icons-material/FlipCameraAndroidRounded'
 import ErrorOutlineRoundedIcon from '@mui/icons-material/ErrorOutlineRounded'
-import HelpOutlineRoundedIcon from '@mui/icons-material/HelpOutlineRounded'
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined'
 import Inventory2RoundedIcon from '@mui/icons-material/Inventory2Rounded'
-import LocalShippingRoundedIcon from '@mui/icons-material/LocalShippingRounded'
 import PrintRoundedIcon from '@mui/icons-material/PrintRounded'
 import RecyclingRoundedIcon from '@mui/icons-material/RecyclingRounded'
 import ShieldRoundedIcon from '@mui/icons-material/ShieldRounded'
@@ -40,116 +36,18 @@ import VerifiedRoundedIcon from '@mui/icons-material/VerifiedRounded'
 import WarningAmberRoundedIcon from '@mui/icons-material/WarningAmberRounded'
 import { PieChart } from '@mui/x-charts/PieChart'
 
+import { ResponsiveDonutChart } from './ResponsiveDonutChart.jsx'
+
 import { ScanCanvasOverlay } from './ScanCanvasOverlay.jsx'
 import { QCPrintCertificate } from './QCPrintCertificate.jsx'
 import { PostHarvestPathologyCards } from './PostHarvestPathologyCards.jsx'
 import { FarmerProfitabilityCard } from './FarmerProfitabilityCard.jsx'
-import { formatBatchDisplayId } from '../utils/qcCertificateHelper.js'
 import { getClassTheme } from '../utils/canvasOverlayHelper.js'
 import { calculateHarvest, calculateHarvestValue } from '../business/harvestCalculation.js'
-
-const numberFormatter = new Intl.NumberFormat('id-ID', { maximumFractionDigits: 2 })
-const rupiahFormatter = new Intl.NumberFormat('id-ID', {
-  style: 'currency',
-  currency: 'IDR',
-  maximumFractionDigits: 0,
-})
-
-function formatNumber(value) {
-  return typeof value === 'number' && Number.isFinite(value) ? numberFormatter.format(value) : '-'
-}
-
-function formatRupiah(value) {
-  return typeof value === 'number' && Number.isFinite(value)
-    ? rupiahFormatter.format(value).replace(/^Rp\s*/, 'Rp ')
-    : 'Belum tersedia'
-}
-
-function QualityIndicator({ color, icon: Icon, label, percentage, count, weight }) {
-  return (
-    <Stack
-      direction="row"
-      spacing={1.5}
-      sx={{
-        alignItems: 'center',
-        border: '1px solid',
-        borderColor: 'divider',
-        borderRadius: 2,
-        flex: 1,
-        minWidth: { xs: '100%', sm: 160 },
-        p: 1.75,
-      }}
-    >
-      <Box
-        sx={{
-          alignItems: 'center',
-          bgcolor: `${color}18`,
-          borderRadius: 2,
-          color,
-          display: 'flex',
-          height: 42,
-          justifyContent: 'center',
-          width: 42,
-        }}
-      >
-        <Icon fontSize="small" />
-      </Box>
-      <Box sx={{ minWidth: 0, flex: 1 }}>
-        <Typography color="text.secondary" noWrap variant="body2">
-          {label}
-        </Typography>
-        <Typography color={color} fontWeight={800} variant="h6">
-          {formatNumber(percentage)}%
-        </Typography>
-        <Typography color="text.secondary" variant="caption">
-          {count !== undefined ? `${count} butir` : `${formatNumber(weight)} kg`}
-        </Typography>
-      </Box>
-    </Stack>
-  )
-}
-
-function ActionRecommendationCard({ recommendationNote, rejectCount, rejectPercentage }) {
-  if (recommendationNote) {
-    const isWarning = (rejectCount && rejectCount > 0) || (rejectPercentage && rejectPercentage > 0)
-    return (
-      <Alert
-        icon={isWarning ? <WarningAmberRoundedIcon /> : <CheckCircleRoundedIcon />}
-        severity={isWarning ? 'warning' : 'success'}
-        sx={{ borderRadius: 2 }}
-      >
-        <Typography fontWeight={700} variant="body2">
-          Rekomendasi Tindakan Sortir:
-        </Typography>
-        <Typography variant="body2">{recommendationNote}</Typography>
-      </Alert>
-    )
-  }
-
-  if (typeof rejectPercentage === 'number' && rejectPercentage > 0) {
-    return (
-      <Alert icon={<RecyclingRoundedIcon />} severity="warning" sx={{ borderRadius: 2 }}>
-        <Typography fontWeight={700} variant="body2">
-          Pisahkan produk Reject sebelum pengiriman.
-        </Typography>
-        <Typography variant="body2">
-          Sebanyak {formatNumber(rejectPercentage)}% terindikasi cacat/reject. Pisahkan segera untuk mencegah penularan pembusukan.
-        </Typography>
-      </Alert>
-    )
-  }
-
-  return (
-    <Alert icon={<LocalShippingRoundedIcon />} severity="info" sx={{ borderRadius: 2 }}>
-      <Typography fontWeight={700} variant="body2">
-        Batch siap dipasarkan.
-      </Typography>
-      <Typography variant="body2">
-        Seluruh sampel berada dalam kondisi prima untuk dipasarkan ke mitra pengepul.
-      </Typography>
-    </Alert>
-  )
-}
+import { formatNumber, formatRupiah } from './qc/formatters.js'
+import { QualityIndicator } from './qc/QualityIndicator.jsx'
+import { ActionRecommendationCard } from './qc/ActionRecommendationCard.jsx'
+import { QCResultHeader } from './qc/QCResultHeader.jsx'
 
 export function QCResults({ batch, onBackToInput, onViewRecap, initialOpenCertificate = false }) {
   const [selectedDetection, setSelectedDetection] = useState(null)
@@ -322,165 +220,22 @@ export function QCResults({ batch, onBackToInput, onViewRecap, initialOpenCertif
     <>
       <Stack className="qc-screen-only" spacing={3}>
         {/* Header Utama Hasil QC */}
-        <Card elevation={2} sx={{ borderRadius: 3 }}>
-          <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
-            <Stack
-              alignItems={{ xs: 'flex-start', md: 'center' }}
-              direction={{ xs: 'column', md: 'row' }}
-              justifyContent="space-between"
-              spacing={2}
-            >
-              <Box sx={{ flexGrow: 1 }}>
-                {/* Baris Judul + Chip AI lurus di samping kanannya persis */}
-                <Stack alignItems="center" direction="row" spacing={1.5} flexWrap="wrap">
-                  <Box sx={{ color: '#036e45', display: 'flex', alignItems: 'center' }}>
-                    {executionStatus === 'ai_detected' ? (
-                      <AutoAwesomeRoundedIcon sx={{ fontSize: 30 }} />
-                    ) : (
-                      <AssessmentRoundedIcon sx={{ fontSize: 30 }} />
-                    )}
-                  </Box>
-                  <Typography fontWeight={800} variant="h5" sx={{ color: '#1d2326', lineHeight: 1.2 }}>
-                    Hasil Pemeriksaan Mutu Panen
-                  </Typography>
-
-                  {/* Status Chips lurus sejajar dengan Judul */}
-                  {executionStatus === 'ai_detected' && (
-                    <Chip
-                      color="success"
-                      icon={<VerifiedRoundedIcon />}
-                      label="AI Computer Vision (Optimal)"
-                      size="small"
-                      sx={{ fontWeight: 700 }}
-                    />
-                  )}
-                  {executionStatus === 'needs_review' && (
-                    <Chip
-                      color="warning"
-                      icon={<WarningAmberRoundedIcon />}
-                      label="Perlu Verifikasi Manual"
-                      size="small"
-                      sx={{ fontWeight: 700 }}
-                    />
-                  )}
-                  {executionStatus === 'simulated' && (
-                    <Chip
-                      color="info"
-                      icon={<AssessmentRoundedIcon />}
-                      label="Simulasi (Non-AI)"
-                      size="small"
-                      sx={{ fontWeight: 700 }}
-                    />
-                  )}
-                  {executionStatus === 'unsupported' && (
-                    <Chip
-                      color="default"
-                      icon={<HelpOutlineRoundedIcon />}
-                      label="Model AI Belum Didukung"
-                      size="small"
-                      sx={{ fontWeight: 700 }}
-                    />
-                  )}
-                  {executionStatus === 'model_unavailable' && (
-                    <Chip
-                      color="error"
-                      icon={<ErrorOutlineRoundedIcon />}
-                      label="Model AI Tidak Tersedia"
-                      size="small"
-                      sx={{ fontWeight: 700 }}
-                    />
-                  )}
-                  {isMultiAngle && executionStatus === 'ai_detected' && (
-                    <Chip
-                      color="success"
-                      icon={<VerifiedRoundedIcon />}
-                      label="🛡️ Multi-Angle Verified"
-                      size="small"
-                      sx={{ fontWeight: 700 }}
-                    />
-                  )}
-                </Stack>
-
-                {/* Baris Subjudul: Huruf B pada Batch ID lurus tepat di bawah huruf H pada Hasil */}
-                <Typography
-                  color="text.secondary"
-                  variant="body2"
-                  sx={{
-                    mt: 0.75,
-                    pl: { xs: 0, sm: '42px' },
-                    fontSize: '0.875rem',
-                    lineHeight: 1.5,
-                  }}
-                >
-                  Batch ID: <strong style={{ color: '#036e45', fontWeight: 800 }}>{formatBatchDisplayId(batch.id)}</strong> &nbsp;•&nbsp; Tanggal: <strong style={{ color: '#1d2326' }}>{batch.tanggal || batch.tanggalPanen || '-'}</strong> &nbsp;•&nbsp; Komoditas: <strong style={{ color: '#1d2326' }}>{commodity}</strong>
-                </Typography>
-              </Box>
-
-              {/* Tombol Aksi di sisi kanan: Posisi pas di kanan tengah, rapi dan tombol cetak bulat */}
-              <Stack
-                alignItems="center"
-                direction="row"
-                spacing={1.5}
-                sx={{
-                  alignSelf: { xs: 'flex-start', md: 'center' },
-                  mt: { xs: 1.5, md: 0 },
-                  flexShrink: 0,
-                }}
-              >
-                <Button
-                  color="primary"
-                  onClick={() => setIsCertModalOpen(true)}
-                  size="small"
-                  startIcon={<VerifiedRoundedIcon />}
-                  sx={{
-                    fontWeight: 700,
-                    px: 2.25,
-                    height: 38,
-                    borderRadius: 2,
-                    textTransform: 'none',
-                  }}
-                  variant="contained"
-                >
-                  Sertifikat QC
-                </Button>
-                <Tooltip title="Cetak atau simpan bukti QC resmi sebagai PDF (A4)">
-                  <IconButton
-                    aria-label="Cetak bukti QC"
-                    onClick={() => window.print()}
-                    size="small"
-                    sx={{
-                      width: 38,
-                      height: 38,
-                      minWidth: 38,
-                      borderRadius: '50%',
-                      border: '1px solid #d1d5db',
-                      bgcolor: '#ffffff',
-                      p: 0,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      flexShrink: 0,
-                      '&:hover': { bgcolor: '#f3f4f6' },
-                    }}
-                  >
-                    <PrintRoundedIcon fontSize="small" />
-                  </IconButton>
-                </Tooltip>
-              </Stack>
-            </Stack>
-          </CardContent>
-        </Card>
+        <QCResultHeader
+          batch={batch}
+          commodity={commodity}
+          executionStatus={executionStatus}
+          isMultiAngle={isMultiAngle}
+          onOpenCertificate={() => setIsCertModalOpen(true)}
+        />
 
         {/* Toolbar Mode Inspeksi Multi-Sudut (Jika Tersedia Dual-Angle) */}
         {hasDualPhoto && (
           <Card elevation={1} sx={{ borderRadius: 3, p: 2, bgcolor: '#f8fafc', border: '1px solid #e2e8f0' }}>
             <Stack
-              alignItems={{ xs: 'flex-start', md: 'center' }}
               direction={{ xs: 'column', md: 'row' }}
-              justifyContent="space-between"
               spacing={2}
-            >
-              <Stack alignItems="center" direction="row" spacing={1.5}>
+             sx={{ alignItems: { xs: 'flex-start', md: 'center' }, justifyContent: 'space-between' }}>
+              <Stack direction="row" spacing={1.5} sx={{alignItems: 'center',  flexShrink: 0 }}>
                 <Box
                   sx={{
                     alignItems: 'center',
@@ -513,6 +268,7 @@ export function QCResults({ batch, onBackToInput, onViewRecap, initialOpenCertif
                 }}
                 size="small"
                 value={viewAngleMode}
+                sx={{ flexWrap: 'wrap', rowGap: 1 }}
               >
                 <ToggleButton sx={{ fontWeight: 700, px: 1.5, textTransform: 'none' }} value="compare">
                   <CompareArrowsRoundedIcon sx={{ mr: 0.75, fontSize: 18 }} />
@@ -663,30 +419,16 @@ export function QCResults({ batch, onBackToInput, onViewRecap, initialOpenCertif
           <Grid size={{ xs: 12 }}>
             <Card elevation={2} sx={{ borderRadius: 3 }}>
               <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
-                <Grid container alignItems="center" spacing={3}>
+                <Grid container spacing={3} sx={{ alignItems: 'center' }}>
                   <Grid size={{ xs: 12, md: 5 }}>
-                    <Stack direction="row" justifyContent="space-between" sx={{ mb: 1 }}>
+                    <Stack direction="row" sx={{justifyContent: 'space-between',  mb: 1 }}>
                       <Typography fontWeight={700} variant="h6">
                         Agregasi Mutu 2-Sudut Pandang
                       </Typography>
                       <Inventory2RoundedIcon color="primary" />
                     </Stack>
                     {pieChartData.length > 0 ? (
-                      <Box sx={{ alignItems: 'center', display: 'flex', justifyContent: 'center', my: 1 }}>
-                        <PieChart
-                          height={200}
-                          series={[
-                            {
-                              data: pieChartData,
-                              innerRadius: 50,
-                              outerRadius: 85,
-                              paddingAngle: 3,
-                              cornerRadius: 4,
-                            },
-                          ]}
-                          width={280}
-                        />
-                      </Box>
+                      <ResponsiveDonutChart data={pieChartData} height={200} maxOuterRadius={85} sx={{ my: 1 }} />
                     ) : (
                       <Alert severity="info">Tidak ada data proporsi untuk ditampilkan.</Alert>
                     )}
@@ -767,7 +509,7 @@ export function QCResults({ batch, onBackToInput, onViewRecap, initialOpenCertif
           <Grid size={{ xs: 12, md: photoUrl ? 5 : 12 }}>
             <Card elevation={2} sx={{ borderRadius: 3, height: '100%' }}>
               <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
-                <Stack direction="row" justifyContent="space-between" sx={{ mb: 1.5 }}>
+                <Stack direction="row" sx={{justifyContent: 'space-between',  mb: 1.5 }}>
                   <Typography fontWeight={700} variant="h6">
                     Proporsi Kondisi Sampel
                   </Typography>
@@ -775,28 +517,7 @@ export function QCResults({ batch, onBackToInput, onViewRecap, initialOpenCertif
                 </Stack>
 
                 {pieChartData.length > 0 ? (
-                  <Box
-                    sx={{
-                      alignItems: 'center',
-                      display: 'flex',
-                      justifyContent: 'center',
-                      my: 1,
-                    }}
-                  >
-                    <PieChart
-                      height={220}
-                      series={[
-                        {
-                          data: pieChartData,
-                          innerRadius: 55,
-                          outerRadius: 95,
-                          paddingAngle: 3,
-                          cornerRadius: 4,
-                        },
-                      ]}
-                      width={290}
-                    />
-                  </Box>
+                    <ResponsiveDonutChart data={pieChartData} height={220} maxOuterRadius={95} sx={{ my: 1 }} />
                 ) : (
                   <Alert severity="info" sx={{ my: 2 }}>
                     Tidak ada data proporsi untuk ditampilkan.
@@ -809,11 +530,9 @@ export function QCResults({ batch, onBackToInput, onViewRecap, initialOpenCertif
                 {hasAiScan && inference ? (
                   <Stack spacing={0} sx={{ width: '100%' }}>
                     <Stack
-                      alignItems="center"
                       direction="row"
-                      justifyContent="space-between"
                       spacing={2}
-                      sx={{ borderBottom: '1px solid', borderColor: 'divider', py: 1.25 }}
+                      sx={{alignItems: 'center', justifyContent: 'space-between',  borderBottom: '1px solid', borderColor: 'divider', py: 1.25 }}
                     >
                       <Typography color="text.secondary" variant="body2" sx={{ flexGrow: 1 }}>
                         Total Buah Terdeteksi:
@@ -823,11 +542,9 @@ export function QCResults({ batch, onBackToInput, onViewRecap, initialOpenCertif
                       </Typography>
                     </Stack>
                     <Stack
-                      alignItems="center"
                       direction="row"
-                      justifyContent="space-between"
                       spacing={2}
-                      sx={{ borderBottom: '1px solid', borderColor: 'divider', py: 1.25 }}
+                      sx={{alignItems: 'center', justifyContent: 'space-between',  borderBottom: '1px solid', borderColor: 'divider', py: 1.25 }}
                     >
                       <Typography color="text.secondary" variant="body2" sx={{ flexGrow: 1 }}>
                         Waktu Inferensi AI:
@@ -837,11 +554,9 @@ export function QCResults({ batch, onBackToInput, onViewRecap, initialOpenCertif
                       </Typography>
                     </Stack>
                     <Stack
-                      alignItems="center"
                       direction="row"
-                      justifyContent="space-between"
                       spacing={2}
-                      sx={{ py: 1.25 }}
+                      sx={{alignItems: 'center', justifyContent: 'space-between',  py: 1.25 }}
                     >
                       <Typography color="text.secondary" variant="body2" sx={{ flexGrow: 1 }}>
                         Versi Model:
@@ -854,11 +569,9 @@ export function QCResults({ batch, onBackToInput, onViewRecap, initialOpenCertif
                 ) : (
                   <Stack spacing={0} sx={{ width: '100%' }}>
                     <Stack
-                      alignItems="center"
                       direction="row"
-                      justifyContent="space-between"
                       spacing={2}
-                      sx={{ borderBottom: '1px solid', borderColor: 'divider', py: 1.25 }}
+                      sx={{alignItems: 'center', justifyContent: 'space-between',  borderBottom: '1px solid', borderColor: 'divider', py: 1.25 }}
                     >
                       <Typography color="text.secondary" variant="body2" sx={{ flexGrow: 1 }}>
                         Berat Total Batch:
@@ -868,11 +581,9 @@ export function QCResults({ batch, onBackToInput, onViewRecap, initialOpenCertif
                       </Typography>
                     </Stack>
                     <Stack
-                      alignItems="center"
                       direction="row"
-                      justifyContent="space-between"
                       spacing={2}
-                      sx={{ py: 1.25 }}
+                      sx={{alignItems: 'center', justifyContent: 'space-between',  py: 1.25 }}
                     >
                       <Typography color="text.secondary" variant="body2" sx={{ flexGrow: 1 }}>
                         Metode Penilaian:
@@ -904,7 +615,7 @@ export function QCResults({ batch, onBackToInput, onViewRecap, initialOpenCertif
               inference?.object_counts?.rotten_tomato === undefined &&
               inference?.condition_ratios?.fresh_ratio_percent === undefined)) ? (
             // Indikator 3 Kelas (Grade A, Grade B, Reject)
-            <Stack direction={{ xs: 'column', sm: 'row' }} flexWrap="wrap" gap={2}>
+            <Stack direction={{ xs: 'column', sm: 'row' }} sx={{ flexWrap: 'wrap', gap: 2 }}>
               <QualityIndicator
                 color="#059669"
                 count={
@@ -939,7 +650,7 @@ export function QCResults({ batch, onBackToInput, onViewRecap, initialOpenCertif
             </Stack>
           ) : hasAiScan ? (
             // Indikator 2 Kelas Tomat
-            <Stack direction={{ xs: 'column', sm: 'row' }} flexWrap="wrap" gap={2}>
+            <Stack direction={{ xs: 'column', sm: 'row' }} sx={{ flexWrap: 'wrap', gap: 2 }}>
               <QualityIndicator
                 color="#047857"
                 count={inference?.object_counts?.fresh_tomato || 0}
@@ -957,7 +668,7 @@ export function QCResults({ batch, onBackToInput, onViewRecap, initialOpenCertif
             </Stack>
           ) : (
             // Indikator Manual Grade A/B/Reject
-            <Stack direction={{ xs: 'column', sm: 'row' }} flexWrap="wrap" gap={2}>
+            <Stack direction={{ xs: 'column', sm: 'row' }} sx={{ flexWrap: 'wrap', gap: 2 }}>
               <QualityIndicator
                 color="#289d67"
                 icon={AssessmentRoundedIcon}
@@ -988,13 +699,11 @@ export function QCResults({ batch, onBackToInput, onViewRecap, initialOpenCertif
       <Card elevation={2} sx={{ borderRadius: 3 }}>
         <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
           <Stack
-            alignItems={{ xs: 'flex-start', sm: 'center' }}
             direction={{ xs: 'column', sm: 'row' }}
-            justifyContent="space-between"
             spacing={1}
-            sx={{ mb: 2 }}
+            sx={{alignItems: { xs: 'flex-start', sm: 'center' }, justifyContent: 'space-between',  mb: 2 }}
           >
-            <Stack alignItems="center" direction="row" spacing={1}>
+            <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
               <TrendingUpRoundedIcon color="primary" />
               <Typography fontWeight={700} variant="h6">
                 Proyeksi Nilai Ekonomi (Smart Pricing)
@@ -1104,7 +813,7 @@ export function QCResults({ batch, onBackToInput, onViewRecap, initialOpenCertif
       />
 
       {/* Tombol Aksi Navigasi */}
-      <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" spacing={1.5}>
+      <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} sx={{ justifyContent: 'space-between' }}>
         <Button
           fullWidth
           onClick={onBackToInput}
@@ -1147,7 +856,7 @@ export function QCResults({ batch, onBackToInput, onViewRecap, initialOpenCertif
       open={isCertModalOpen}
     >
       <DialogTitle sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', pb: 1 }}>
-        <Stack alignItems="center" direction="row" spacing={1}>
+        <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
           <VerifiedRoundedIcon sx={{ color: '#036e45' }} />
           <Typography fontWeight={700} variant="h6">
             Pratinjau Sertifikat Uji Mutu Digital

@@ -202,9 +202,107 @@ export function formatConfidenceLabel(className, confidence) {
 }
 
 /**
+ * Places annotation pills so dense detections keep readable, non-overlapping labels.
+ */
+export function placeDetectionLabels(items, dimensions, measureText) {
+  const canvasWidth = Math.max(0, Number(dimensions?.width) || 0)
+  const canvasHeight = Math.max(0, Number(dimensions?.height) || 0)
+  const labelHeight = 18
+  const gap = 2
+  const placed = []
+
+  const normalized = (items || []).map((item, index) => {
+    const box = item?.box || {}
+    const label = String(item?.label || '')
+    const textWidth = Math.max(0, Number(measureText(label)) || 0)
+    return {
+      index,
+      label,
+      box,
+      width: Math.min(canvasWidth, Math.ceil(textWidth + 12)),
+      height: Math.min(labelHeight, canvasHeight),
+    }
+  })
+
+  // Give upper, left-most fruit first dibs on available label space.
+  normalized.sort((a, b) => (a.box.y - b.box.y) || (a.box.x - b.box.x) || (a.index - b.index))
+
+  for (const item of normalized) {
+    const maxX = Math.max(0, canvasWidth - item.width)
+    const maxY = Math.max(0, canvasHeight - item.height)
+    const preferredY = item.box.y - item.height
+    const preferredX = item.box.x
+    const candidates = []
+
+    for (let y = 0; y <= maxY; y += labelHeight + gap) {
+      const anchorX = Math.max(0, Math.min(maxX, preferredX))
+      const rightX = Math.max(0, Math.min(maxX, item.box.x + item.box.width - item.width))
+      const centerX = Math.max(0, Math.min(maxX, item.box.x + (item.box.width - item.width) / 2))
+      for (const x of new Set([anchorX, rightX, centerX, 0, maxX])) {
+        candidates.push({
+          x,
+          y,
+          score: Math.abs(y - preferredY) * 2 + Math.abs(x - preferredX),
+        })
+      }
+    }
+    candidates.sort((a, b) => a.score - b.score)
+
+    const position = candidates.find((candidate) =>
+      placed.every((other) =>
+        candidate.x + item.width + gap <= other.x ||
+        other.x + other.width + gap <= candidate.x ||
+        candidate.y + item.height + gap <= other.y ||
+        other.y + other.height + gap <= candidate.y
+      )
+    ) || candidates[0] || { x: 0, y: 0 }
+
+    placed.push({ ...position, width: item.width, height: item.height, index: item.index })
+  }
+
+  const result = new Array(normalized.length)
+  for (const position of placed) {
+    result[position.index] = {
+      x: Math.round(position.x),
+      y: Math.round(position.y),
+      width: position.width,
+      height: position.height,
+    }
+  }
+  return result
+}
+
+/** Paint one annotation pill at its precomputed non-overlapping position. */
+export function drawDetectionLabel(ctx, theme, labelText, labelPosition) {
+  if (!ctx || !labelText || !labelPosition) return
+  const paddingX = 6
+  const paddingY = 3
+  const textH = 12
+  const textW = ctx.measureText(labelText).width
+  const pillW = textW + paddingX * 2
+  const pillH = textH + paddingY * 2
+  // Clamp ke dimensi kanvas aktual: posisi bisa dihitung saat dimensi kanvas
+  // belum sinkron (foto besar resize belakangan) sehingga pill terpotong tepi.
+  const canvasW = Number(ctx.canvas?.width) || 0
+  const canvasH = Number(ctx.canvas?.height) || 0
+  const drawX = canvasW > 0 ? Math.max(0, Math.min(labelPosition.x, canvasW - pillW)) : labelPosition.x
+  const drawY = canvasH > 0 ? Math.max(0, Math.min(labelPosition.y, canvasH - pillH)) : labelPosition.y
+  ctx.fillStyle = theme.textBg
+  if (typeof ctx.roundRect === 'function') {
+    ctx.beginPath()
+    ctx.roundRect(drawX, drawY, pillW, pillH, 4)
+    ctx.fill()
+  } else {
+    ctx.fillRect(drawX, drawY, pillW, pillH)
+  }
+  ctx.fillStyle = '#ffffff'
+  ctx.fillText(labelText, drawX + paddingX, drawY + textH + paddingY - 2)
+}
+
+/**
  * Menggambar satu kotak bounding box pada konteks Canvas 2D dengan aksen label pill.
  */
-export function drawDetectionBox(ctx, { x, y, width, height }, theme, labelText, isSelected = false) {
+export function drawDetectionBox(ctx, { x, y, width, height }, theme, labelText, isSelected = false, labelPosition = null) {
   if (!ctx || width <= 0 || height <= 0) return
 
   ctx.save()
@@ -238,36 +336,10 @@ export function drawDetectionBox(ctx, { x, y, width, height }, theme, labelText,
   ctx.lineTo(x + width, y + height - cornerLen)
   ctx.stroke()
 
-  // 4. Gambar label pill
+  // 4. Gambar label di lokasi terhindar dari label deteksi lain.
   if (labelText) {
     ctx.font = 'bold 11px Inter, sans-serif'
-    const paddingX = 6
-    const paddingY = 3
-    const textMetrics = ctx.measureText(labelText)
-    const textW = textMetrics.width
-    const textH = 12
-    const pillW = textW + paddingX * 2
-    const pillH = textH + paddingY * 2
-
-    // Posisikan label di atas kotak (jika ruang cukup), atau di dalam kotak
-    let pillY = y - pillH
-    if (pillY < 0) {
-      pillY = y
-    }
-
-    // Gambar background pill
-    ctx.fillStyle = theme.textBg
-    if (typeof ctx.roundRect === 'function') {
-      ctx.beginPath()
-      ctx.roundRect(x, pillY, pillW, pillH, 4)
-      ctx.fill()
-    } else {
-      ctx.fillRect(x, pillY, pillW, pillH)
-    }
-
-    // Tulis teks label
-    ctx.fillStyle = '#ffffff'
-    ctx.fillText(labelText, x + paddingX, pillY + textH + paddingY - 2)
+    drawDetectionLabel(ctx, theme, labelText, labelPosition || { x, y: Math.max(0, y - 18) })
   }
 
   ctx.restore()

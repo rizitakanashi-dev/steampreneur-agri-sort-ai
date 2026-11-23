@@ -3,6 +3,8 @@ import {
   Alert,
   Box,
   Button,
+  Card,
+  CardContent,
   Chip,
   Dialog,
   DialogActions,
@@ -29,6 +31,8 @@ import {
   TextField,
   Tooltip,
   Typography,
+  useMediaQuery,
+  useTheme,
 } from '@mui/material'
 import AssessmentRoundedIcon from '@mui/icons-material/AssessmentRounded'
 import AutoAwesomeRoundedIcon from '@mui/icons-material/AutoAwesomeRounded'
@@ -68,6 +72,20 @@ function GradeChip({ label, value, color }) {
     return null
   }
   return <Chip color={color} label={`${label} ${formatNumber(value)}%`} size="small" sx={{ mr: 0.5, mb: 0.5 }} />
+}
+
+/**
+ * Normalisasi status eksekusi batch untuk badge (AI / Review / Simulasi).
+ * Dipakai bersama oleh tabel desktop dan kartu mobile.
+ */
+function getBatchExecStatus(batch) {
+  return (
+    batch.execution_status ||
+    batch.scanResult?.execution_status ||
+    (batch.is_simulated || batch.scanResult?.is_simulated
+      ? 'simulated'
+      : (batch.ai_scan_performed ? 'ai_detected' : null))
+  )
 }
 
 function getBatchEstimatedValue(batch) {
@@ -117,7 +135,7 @@ function BatchGradeDistribution({ batch }) {
     const valRej = ratios.reject_percent ?? ratios.reject_ratio_percent ?? batch?.hasil?.persenC
 
     return (
-      <Stack direction="row" flexWrap="wrap">
+      <Stack direction="row" sx={{ flexWrap: 'wrap' }}>
         <GradeChip color="success" label="Grade A" value={valA} />
         <GradeChip color="warning" label="Grade B" value={valB} />
         <GradeChip color="error" label="Reject" value={valRej} />
@@ -141,7 +159,7 @@ function BatchGradeDistribution({ batch }) {
     const valRej = ratios.reject_percent ?? ratios.reject_ratio_percent
 
     return (
-      <Stack direction="row" flexWrap="wrap">
+      <Stack direction="row" sx={{ flexWrap: 'wrap' }}>
         <GradeChip color="success" label="Extra" value={valExtra} />
         <GradeChip color="info" label="Class 1" value={valC1} />
         <GradeChip color="warning" label="Class 2" value={valC2} />
@@ -155,7 +173,7 @@ function BatchGradeDistribution({ batch }) {
     const valFresh = ratios.fresh_ratio_percent ?? ratios.fresh_percent
     const valRotten = ratios.rotten_ratio_percent ?? ratios.rotten_percent
     return (
-      <Stack direction="row" flexWrap="wrap">
+      <Stack direction="row" sx={{ flexWrap: 'wrap' }}>
         <GradeChip color="success" label="Segar" value={valFresh} />
         <GradeChip color="error" label="Busuk" value={valRotten} />
       </Stack>
@@ -166,7 +184,7 @@ function BatchGradeDistribution({ batch }) {
   const result = batch?.hasil || {}
   if (result.persenA !== undefined || result.persenB !== undefined || result.persenC !== undefined) {
     return (
-      <Stack direction="row" flexWrap="wrap">
+      <Stack direction="row" sx={{ flexWrap: 'wrap' }}>
         <GradeChip color="success" label="A" value={result.persenA} />
         <GradeChip color="warning" label="B" value={result.persenB} />
         <GradeChip color="error" label="Reject" value={result.persenC} />
@@ -177,7 +195,93 @@ function BatchGradeDistribution({ batch }) {
   return <Typography color="text.secondary" variant="caption">-</Typography>
 }
 
+/**
+ * Kartu batch panen untuk layar sempit (< md). Pengganti tabel agar
+ * tidak perlu scroll horizontal dan target sentuh tombol lebih besar.
+ */
+function MobileBatchCard({ batch, onSelectBatch, onDeleteBatch, onViewDetail }) {
+  const estValue = getBatchEstimatedValue(batch)
+  const execStatus = getBatchExecStatus(batch)
+
+  return (
+    <Card variant="outlined" sx={{ borderRadius: 2 }}>
+      <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
+        <Stack direction="row" spacing={1} sx={{ alignItems: 'flex-start', justifyContent: 'space-between' }}>
+          <Box sx={{ flex: 1, minWidth: 0 }}>
+            <Typography fontWeight={700} noWrap variant="body2">{batch.id}</Typography>
+            <Typography color="text.secondary" variant="caption">{batch.tanggal}</Typography>
+          </Box>
+          {execStatus === 'ai_detected' && (
+            <Chip color="success" icon={<AutoAwesomeRoundedIcon style={{ fontSize: 13 }} />} label="AI" size="small" sx={{ height: 20, fontSize: 12, fontWeight: 700 }} />
+          )}
+          {execStatus === 'needs_review' && (
+            <Chip color="warning" icon={<WarningAmberRoundedIcon style={{ fontSize: 13 }} />} label="Review" size="small" sx={{ height: 20, fontSize: 12, fontWeight: 700 }} />
+          )}
+          {execStatus === 'simulated' && (
+            <Chip color="info" label="Simulasi" size="small" sx={{ height: 20, fontSize: 12, fontWeight: 700 }} />
+          )}
+        </Stack>
+
+        <Stack direction="row" spacing={1.5} sx={{alignItems: 'baseline', justifyContent: 'space-between',  mt: 1 }}>
+          <Typography fontWeight={600} variant="body2">{batch.komoditas}</Typography>
+          <Typography fontWeight={600} variant="body2">{formatNumber(batch.beratKg ?? batch.volume_kg)} kg</Typography>
+        </Stack>
+
+        <Box sx={{ mt: 1 }}>
+          <BatchGradeDistribution batch={batch} />
+        </Box>
+
+        <Stack direction="row" spacing={1.5} sx={{alignItems: 'baseline', justifyContent: 'space-between',  mt: 0.5 }}>
+          <Typography color="text.secondary" variant="caption">Estimasi nilai</Typography>
+          <Typography color="success.main" fontWeight={700} variant="body2">{formatRupiah(estValue)}</Typography>
+        </Stack>
+
+        <Divider sx={{ my: 1.25 }} />
+
+        <Stack direction="row" sx={{ justifyContent: 'space-between' }}>
+          {onSelectBatch && (
+            <Tooltip title="Buka Hasil Analisis QC">
+              <IconButton
+                aria-label={`Buka Analisis QC ${batch.id}`}
+                color="success"
+                onClick={() => onSelectBatch(batch, { openCertificate: false })}
+              >
+                <AssessmentRoundedIcon />
+              </IconButton>
+            </Tooltip>
+          )}
+          {onSelectBatch && (
+            <Tooltip title="Buka Hasil QC & Cetak Sertifikat">
+              <IconButton
+                aria-label={`Buka QC ${batch.id}`}
+                color="primary"
+                onClick={() => onSelectBatch(batch, { openCertificate: true })}
+              >
+                <PrintRoundedIcon />
+              </IconButton>
+            </Tooltip>
+          )}
+          <Tooltip title="Lihat detail ringkasan">
+            <IconButton aria-label={`Lihat detail ${batch.id}`} onClick={() => onViewDetail(batch)}>
+              <VisibilityRoundedIcon />
+            </IconButton>
+          </Tooltip>
+          <Tooltip title="Hapus batch">
+            <IconButton aria-label={`Hapus ${batch.id}`} color="error" onClick={() => onDeleteBatch(batch)}>
+              <DeleteOutlineRoundedIcon />
+            </IconButton>
+          </Tooltip>
+        </Stack>
+      </CardContent>
+    </Card>
+  )
+}
+
 export function HarvestRecap({ batches = [], onSelectBatch, onDeleteBatch }) {
+  const theme = useTheme()
+  // Kartu dipakai di bawah lg: pada tablet (768-1024px) area konten setelah drawer
+  // hanya ±776px, tabel 900px tetap terpaksa scroll horizontal di sana.
+  const isMobileLayout = useMediaQuery(theme.breakpoints.down('lg'))
   const [page, setPage] = useState(0)
   const [rowsPerPage, setRowsPerPage] = useState(5)
   const [selectedBatch, setSelectedBatch] = useState(null)
@@ -274,8 +378,8 @@ export function HarvestRecap({ batches = [], onSelectBatch, onDeleteBatch }) {
     <>
       <Paper sx={{ border: '1px solid', borderColor: 'divider', mb: 2, p: { xs: 2, sm: 2.5 } }}>
         {/* Baris Filter Cepat (Quick Chips) */}
-        <Stack direction={{ xs: 'column', md: 'row' }} spacing={1.5} justifyContent="space-between" alignItems={{ xs: 'flex-start', md: 'center' }} sx={{ mb: 2 }}>
-          <Stack direction="row" flexWrap="wrap" gap={0.75} alignItems="center">
+        <Stack direction={{ xs: 'column', md: 'row' }} spacing={1.5} sx={{justifyContent: 'space-between', alignItems: { xs: 'flex-start', md: 'center' },  mb: 2 }}>
+          <Stack direction="row" sx={{ flexWrap: 'wrap', gap: 0.75, alignItems: 'center' }}>
             <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 700, mr: 0.5, display: 'flex', alignItems: 'center', gap: 0.5 }}>
               <FilterListRoundedIcon sx={{ fontSize: 16 }} /> Filter:
             </Typography>
@@ -306,7 +410,7 @@ export function HarvestRecap({ batches = [], onSelectBatch, onDeleteBatch }) {
             ))}
           </Stack>
 
-          <Stack direction="row" flexWrap="wrap" gap={0.75} alignItems="center">
+          <Stack direction="row" sx={{ flexWrap: 'wrap', gap: 0.75, alignItems: 'center' }}>
             <Chip
               clickable
               color={methodFilter === 'ai' ? 'success' : 'default'}
@@ -472,13 +576,13 @@ export function HarvestRecap({ batches = [], onSelectBatch, onDeleteBatch }) {
         </Grid>
 
         {/* Status Baris & Active Filter Badges */}
-        <Stack direction="row" flexWrap="wrap" justifyContent="space-between" alignItems="center" sx={{ mt: 1.5, pt: 1, borderTop: '1px solid #f1f5f9' }}>
+        <Stack direction="row" sx={{flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center',  mt: 1.5, pt: 1, borderTop: '1px solid #f1f5f9' }}>
           <Typography color="text.secondary" variant="caption">
             Menampilkan <strong>{sortedBatches.length}</strong> dari total <strong>{batches.length}</strong> batch tersimpan
             {filterActive && ' (tersaring)'}
           </Typography>
           {filterActive && (
-            <Stack direction="row" spacing={0.5} flexWrap="wrap">
+            <Stack direction="row" spacing={0.5} sx={{ flexWrap: 'wrap' }} useFlexGap>
               {filter.search && (
                 <Chip
                   label={`Cari: "${filter.search}"`}
@@ -528,8 +632,42 @@ export function HarvestRecap({ batches = [], onSelectBatch, onDeleteBatch }) {
       </Paper>
 
       <Paper sx={{ border: '1px solid', borderColor: 'divider' }}>
-        <TableContainer sx={{ overflowX: 'auto' }}>
-        <Table aria-label="Rekap data panen" size="small" sx={{ minWidth: 900 }}>
+        {isMobileLayout ? (
+          <>
+            <Stack spacing={1.5} sx={{ p: { xs: 1.5, sm: 2 } }}>
+              {visibleBatches.length === 0 && (
+                <Typography align="center" color="text.secondary" sx={{ py: 3 }} variant="body2">
+                  Data tidak ditemukan
+                </Typography>
+              )}
+              {visibleBatches.map((batch) => (
+                <MobileBatchCard
+                  key={batch.id}
+                  batch={batch}
+                  onDeleteBatch={setBatchToDelete}
+                  onSelectBatch={onSelectBatch}
+                  onViewDetail={setSelectedBatch}
+                />
+              ))}
+            </Stack>
+            {visibleBatches.length > 0 && (
+              <Stack
+                direction="row"
+                spacing={1.5}
+                sx={{alignItems: 'baseline', justifyContent: 'space-between',  borderTop: '1px solid', borderColor: 'divider', px: 2, py: 1.5 }}
+              >
+                <Typography color="text.secondary" variant="caption">
+                  Total halaman ini ({visibleBatches.length} batch):
+                </Typography>
+                <Typography fontWeight={700} noWrap variant="caption">
+                  {formatNumber(totals.totalBeratKg)} kg • {formatRupiah(totals.totalNilai)}
+                </Typography>
+              </Stack>
+            )}
+          </>
+        ) : (
+          <TableContainer sx={{ overflowX: 'auto' }}>
+          <Table aria-label="Rekap data panen" size="small" sx={{ minWidth: 900 }}>
           <TableHead>
             <TableRow sx={{ bgcolor: '#f2f4f6' }}>
               <TableCell>ID / Tanggal</TableCell>
@@ -552,17 +690,12 @@ export function HarvestRecap({ batches = [], onSelectBatch, onDeleteBatch }) {
             )}
             {visibleBatches.map((batch) => {
               const estValue = getBatchEstimatedValue(batch)
-              const execStatus =
-                batch.execution_status ||
-                batch.scanResult?.execution_status ||
-                (batch.is_simulated || batch.scanResult?.is_simulated
-                  ? 'simulated'
-                  : (batch.ai_scan_performed ? 'ai_detected' : null))
+              const execStatus = getBatchExecStatus(batch)
 
               return (
                 <TableRow hover key={batch.id}>
                   <TableCell>
-                    <Stack alignItems="center" direction="row" spacing={0.75}>
+                    <Stack direction="row" spacing={0.75} sx={{ alignItems: 'center' }}>
                       <Typography fontWeight={700} variant="body2">{batch.id}</Typography>
                       {execStatus === 'ai_detected' && (
                         <Tooltip title="Dianalisis menggunakan AI Computer Vision (Optimal)">
@@ -571,7 +704,7 @@ export function HarvestRecap({ batches = [], onSelectBatch, onDeleteBatch }) {
                             icon={<AutoAwesomeRoundedIcon style={{ fontSize: 13 }} />}
                             label="AI"
                             size="small"
-                            sx={{ height: 20, fontSize: 10, fontWeight: 700 }}
+                            sx={{ height: 20, fontSize: 12, fontWeight: 700 }}
                           />
                         </Tooltip>
                       )}
@@ -582,7 +715,7 @@ export function HarvestRecap({ batches = [], onSelectBatch, onDeleteBatch }) {
                             icon={<WarningAmberRoundedIcon style={{ fontSize: 13 }} />}
                             label="Review"
                             size="small"
-                            sx={{ height: 20, fontSize: 10, fontWeight: 700 }}
+                            sx={{ height: 20, fontSize: 12, fontWeight: 700 }}
                           />
                         </Tooltip>
                       )}
@@ -592,7 +725,7 @@ export function HarvestRecap({ batches = [], onSelectBatch, onDeleteBatch }) {
                             color="info"
                             label="Simulasi"
                             size="small"
-                            sx={{ height: 20, fontSize: 10, fontWeight: 700 }}
+                            sx={{ height: 20, fontSize: 12, fontWeight: 700 }}
                           />
                         </Tooltip>
                       )}
@@ -606,7 +739,7 @@ export function HarvestRecap({ batches = [], onSelectBatch, onDeleteBatch }) {
                   </TableCell>
                   <TableCell align="right" sx={{ fontWeight: 600 }}>{formatRupiah(estValue)}</TableCell>
                   <TableCell align="center">
-                    <Stack direction="row" justifyContent="center" spacing={0.5}>
+                    <Stack direction="row" spacing={0.5} sx={{ justifyContent: 'center' }}>
                       {onSelectBatch && (
                         <Tooltip title="Buka Hasil Analisis QC">
                           <IconButton
@@ -669,6 +802,7 @@ export function HarvestRecap({ batches = [], onSelectBatch, onDeleteBatch }) {
           </TableFooter>
         </Table>
         </TableContainer>
+        )}
         <TablePagination
           component="div"
           count={sortedBatches.length}
@@ -679,7 +813,11 @@ export function HarvestRecap({ batches = [], onSelectBatch, onDeleteBatch }) {
           page={page}
           rowsPerPage={rowsPerPage}
           rowsPerPageOptions={[5, 10, 25]}
-          sx={{ borderBottom: 'none' }}
+          sx={{
+            borderBottom: 'none',
+            // Mobile: label "Baris per halaman:" disembunyikan agar paginasi muat di 360px
+            '& .MuiTablePagination-selectLabel': { display: { xs: 'none', sm: 'block' } },
+          }}
         />
       </Paper>
       <Dialog fullWidth maxWidth="sm" onClose={() => setSelectedBatch(null)} open={Boolean(selectedBatch)}>
@@ -747,7 +885,17 @@ export function HarvestRecap({ batches = [], onSelectBatch, onDeleteBatch }) {
             </Stack>
           )}
         </DialogContent>
-        <DialogActions sx={{ px: 2.5, py: 1.5, justifyContent: 'space-between' }}>
+        <DialogActions
+          sx={{
+            px: 2.5,
+            py: 1.5,
+            justifyContent: 'space-between',
+            // Mobile: tombol ditumpuk vertikal agar tidak overflow di layar sempit
+            flexDirection: { xs: 'column-reverse', sm: 'row' },
+            alignItems: { xs: 'stretch', sm: 'center' },
+            gap: 1,
+          }}
+        >
           <Button
             color="error"
             onClick={() => {
@@ -760,8 +908,8 @@ export function HarvestRecap({ batches = [], onSelectBatch, onDeleteBatch }) {
           >
             Hapus Batch
           </Button>
-          <Stack direction="row" spacing={1}>
-            <Button onClick={() => setSelectedBatch(null)} variant="outlined">Tutup</Button>
+          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} sx={{ width: { xs: '100%', sm: 'auto' } }}>
+            <Button onClick={() => setSelectedBatch(null)} variant="outlined" sx={{ width: { xs: '100%', sm: 'auto' } }}>Tutup</Button>
             {onSelectBatch && selectedBatch && (
               <>
                 <Button
@@ -773,6 +921,7 @@ export function HarvestRecap({ batches = [], onSelectBatch, onDeleteBatch }) {
                   }}
                   startIcon={<AssessmentRoundedIcon />}
                   variant="outlined"
+                  sx={{ width: { xs: '100%', sm: 'auto' } }}
                 >
                   Buka Analisis QC
                 </Button>
@@ -784,6 +933,7 @@ export function HarvestRecap({ batches = [], onSelectBatch, onDeleteBatch }) {
                   }}
                   startIcon={<PrintRoundedIcon />}
                   variant="contained"
+                  sx={{ width: { xs: '100%', sm: 'auto' } }}
                 >
                   Cetak Sertifikat
                 </Button>

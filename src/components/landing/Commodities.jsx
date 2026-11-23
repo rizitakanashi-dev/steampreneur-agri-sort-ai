@@ -24,11 +24,11 @@ export function Commodities() {
       id="komoditas"
       component="section"
       sx={{
-        py: '80px',
+        py: { xs: '48px', md: '80px' },
         bgcolor: AGRI_COLORS.fogSurface,
       }}
     >
-      <Container maxWidth="lg" sx={{ maxWidth: '1200px !important', px: { xs: 2.5, sm: 3 } }}>
+      <Container maxWidth="lg" sx={{ maxWidth: 1200, px: { xs: 2.5, sm: 3 } }}>
         <Stack spacing={2} sx={{ maxWidth: 740, mb: 6 }}>
           <DisplayHeadline variant="hero">
             Tiga model AI 3-Class untuk hortikultura{' '}
@@ -55,7 +55,7 @@ export function Commodities() {
             <Grid key={item.id} size={{ xs: 12, md: 4 }}>
               <EditorialNeutralCard sx={{ height: '100%', p: '32px 24px' }}>
                 <Stack spacing={2}>
-                  <Stack direction="row" justifyContent="space-between" alignItems="center">
+                  <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center' }}>
                     <CommodityVisual id={item.id} />
                     <Box sx={{ textAlign: 'right' }}>
                       <GhostCategoryTag>{item.badge}</GhostCategoryTag>

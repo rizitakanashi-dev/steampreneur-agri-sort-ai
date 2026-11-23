@@ -9,9 +9,10 @@ from datetime import datetime, timezone
 from typing import Optional
 import uuid
 
-from fastapi import APIRouter, File, Form, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 from fastapi.responses import JSONResponse
 
+from server.utils.auth import get_current_user
 from server.services.ai_engine import ai_engine
 from server.services.mock_engine import predict_harvest_image_mock
 from server.services.multi_angle_service import aggregate_multi_view_qc
@@ -31,6 +32,21 @@ logger = logging.getLogger("agrisort.qc_router")
 router = APIRouter(prefix="/api/v1/qc", tags=["Quality Control"])
 
 
+def _persist_scan_record(data: dict, current_user: dict) -> None:
+    try:
+        storage_service.save_scan(
+            data,
+            user_id=current_user["id"],
+            access_token=current_user["_access_token"],
+        )
+    except Exception as exc:
+        logger.exception("Gagal menyimpan scan terautentikasi ke penyimpanan persisten")
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail={"code": "SCAN_STORAGE_UNAVAILABLE", "message": "Hasil scan tidak dapat disimpan. Coba lagi."},
+        ) from exc
+
+
 @router.post("/scan")
 async def scan_harvest_batch(
     image: UploadFile = File(..., description="Berkas citra keranjang panen (JPG, PNG, WebP)"),
@@ -40,6 +56,7 @@ async def scan_harvest_batch(
     mode: str = Form("production", description="Mode eksekusi: 'production' atau 'mock'"),
     enable_slicing: bool = Form(True, description="Aktifkan Tiled Inference (SAHI) untuk objek bertumpuk"),
     disambiguate_grades: bool = Form(True, description="Aktifkan kalibrasi diskriminasi mutu Class II vs Reject"),
+    current_user: dict = Depends(get_current_user),
 ):
     """
     Endpoint pemindaian kualitas panen (POST /api/v1/qc/scan).
@@ -216,10 +233,7 @@ async def scan_harvest_batch(
                     "smart_pricing": pricing_info,
                 },
             }
-            try:
-                storage_service.save_scan(result_data["data"])
-            except Exception:
-                pass
+            _persist_scan_record(result_data["data"], current_user)
             return result_data
 
         # 7. Evaluasi Mutu Deteksi Riil (ai_detected vs needs_review)
@@ -482,13 +496,12 @@ async def scan_harvest_batch(
             }
 
         # Simpan otomatis ke lapisan persistensi (Task FS-BE-05)
-        try:
-            storage_service.save_scan(result_data["data"])
-        except Exception:
-            pass
+        _persist_scan_record(result_data["data"], current_user)
 
         return result_data
 
+    except HTTPException:
+        raise
     except ImageValidationError as exc:
         return JSONResponse(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -501,6 +514,8 @@ async def scan_harvest_batch(
                 },
             },
         )
+    except HTTPException:
+        raise
     except Exception as exc:
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -528,6 +543,7 @@ async def scan_multi_angle_harvest_batch(
     enable_slicing: bool = Form(True, description="Aktifkan Tiled Inference (SAHI) untuk objek bertumpuk"),
     disambiguate_grades: bool = Form(True, description="Aktifkan kalibrasi diskriminasi mutu Class II vs Reject"),
     auto_clahe: bool = Form(True, description="Aktifkan adaptif CLAHE otomatis jika citra remang-remang"),
+    current_user: dict = Depends(get_current_user),
 ):
     """
     Endpoint pemindaian kualitas panen Multi-Angle / Multi-Shot (POST /api/v1/qc/scan-multi).
@@ -811,10 +827,7 @@ async def scan_multi_angle_harvest_batch(
                     "smart_pricing": pricing_info,
                 },
             }
-            try:
-                storage_service.save_scan(result_data["data"])
-            except Exception:
-                pass
+            _persist_scan_record(result_data["data"], current_user)
             return result_data
 
         # 8. Agregasi Multi-Sudut (Weighted Defect Aggregation & Occlusion Bias Detection)
@@ -897,13 +910,12 @@ async def scan_multi_angle_harvest_batch(
         }
 
         # Simpan otomatis ke persistensi scans.json
-        try:
-            storage_service.save_scan(result_data["data"])
-        except Exception:
-            pass
+        _persist_scan_record(result_data["data"], current_user)
 
         return result_data
 
+    except HTTPException:
+        raise
     except ImageValidationError as exc:
         return JSONResponse(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -916,6 +928,8 @@ async def scan_multi_angle_harvest_batch(
                 },
             },
         )
+    except HTTPException:
+        raise
     except Exception as exc:
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

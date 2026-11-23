@@ -183,7 +183,7 @@ export function useActiveSection(sectionIds = []) {
   const [activeId, setActiveId] = useState(sectionIds[0] || 'beranda')
 
   useEffect(() => {
-    if (typeof window === 'undefined' || typeof IntersectionObserver === 'undefined') return undefined
+    if (typeof window === 'undefined') return undefined
 
     const elements = sectionIds
       .map((id) => document.getElementById(id))
@@ -191,23 +191,35 @@ export function useActiveSection(sectionIds = []) {
 
     if (elements.length === 0) return undefined
 
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const visible = entries
-          .filter((entry) => entry.isIntersecting)
-          .sort((a, b) => b.intersectionRatio - a.intersectionRatio)
-        if (visible.length > 0 && visible[0].target?.id) {
-          setActiveId(visible[0].target.id)
-        }
-      },
-      {
-        rootMargin: '-20% 0px -55% 0px',
-        threshold: [0.1, 0.25, 0.5],
-      }
-    )
+    let rafId = null
 
-    elements.forEach((el) => observer.observe(el))
-    return () => observer.disconnect()
+    // Deterministik: section aktif = section terakhir yang titik atasnya
+    // sudah melewati garis deteksi (35% tinggi viewport). Tidak bisa "stuck"
+    // seperti pendekatan IntersectionObserver yang hanya reaksi event.
+    const update = () => {
+      rafId = null
+      const line = window.innerHeight * 0.35
+      let current = elements[0].id
+      for (const el of elements) {
+        if (el.getBoundingClientRect().top <= line) current = el.id
+      }
+      setActiveId((prev) => (prev !== current ? current : prev))
+    }
+
+    const onScroll = () => {
+      if (rafId === null) {
+        rafId = window.requestAnimationFrame(update)
+      }
+    }
+
+    update()
+    window.addEventListener('scroll', onScroll, { passive: true })
+    window.addEventListener('resize', onScroll, { passive: true })
+    return () => {
+      window.removeEventListener('scroll', onScroll)
+      window.removeEventListener('resize', onScroll)
+      if (rafId !== null) window.cancelAnimationFrame(rafId)
+    }
   }, [sectionIds])
 
   return activeId

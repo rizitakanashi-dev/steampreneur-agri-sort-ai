@@ -16,8 +16,14 @@ export const theme = createTheme({
   spacing: 8,
   typography: {
     fontFamily: 'Inter, Roboto, Arial, sans-serif',
-    h4: { fontSize: '2rem', fontWeight: 800, letterSpacing: '-0.035em', lineHeight: 1.15 },
-    h5: { fontSize: '1.5rem', fontWeight: 800, letterSpacing: '-0.025em' },
+    // Heading bergaya editorial (serif) selaras dengan landing page;
+    // teks UI tetap sans (Inter). h6 dibiarkan sans karena dipakai
+    // sebagai judul kartu/panel level komponen.
+    h1: { fontFamily: '"Source Serif 4", Georgia, serif', letterSpacing: '-0.02em' },
+    h2: { fontFamily: '"Source Serif 4", Georgia, serif', letterSpacing: '-0.02em' },
+    h3: { fontFamily: '"Source Serif 4", Georgia, serif', letterSpacing: '-0.02em' },
+    h4: { fontFamily: '"Source Serif 4", Georgia, serif', fontSize: '2rem', fontWeight: 700, letterSpacing: '-0.02em', lineHeight: 1.15 },
+    h5: { fontFamily: '"Source Serif 4", Georgia, serif', fontSize: '1.5rem', fontWeight: 700, letterSpacing: '-0.015em' },
     h6: { fontSize: '1rem', fontWeight: 750, letterSpacing: '-0.01em' },
     body1: { lineHeight: 1.6 },
     body2: { lineHeight: 1.5 },
@@ -25,11 +31,13 @@ export const theme = createTheme({
   },
   components: {
     MuiPaper: { defaultProps: { elevation: 0 }, styleOverrides: { root: { backgroundImage: 'none' } } },
-    MuiCard: { defaultProps: { elevation: 0 }, styleOverrides: { root: { border: '1px solid #e3e8e7', boxShadow: surfaceShadow } } },
+    // Kartu sudut 24px & tombol pill selaras dengan landing page
+    MuiCard: { defaultProps: { elevation: 0 }, styleOverrides: { root: { borderRadius: 24, border: '1px solid #e3e8e7', boxShadow: surfaceShadow } } },
     MuiCardContent: { styleOverrides: { root: { '&:last-child': { paddingBottom: 24 } } } },
-    MuiButton: { defaultProps: { disableElevation: true }, styleOverrides: { root: { borderRadius: 9, textTransform: 'none', fontWeight: 700, minHeight: 40 } } },
+    MuiButton: { defaultProps: { disableElevation: true }, styleOverrides: { root: { borderRadius: 9999, textTransform: 'none', fontWeight: 700, minHeight: 40, paddingInline: 18 } } },
+    MuiOutlinedInput: { styleOverrides: { root: { borderRadius: 14 } } },
     MuiTextField: { defaultProps: { variant: 'outlined', size: 'small' } },
-    MuiChip: { styleOverrides: { root: { fontWeight: 700 } } },
-    MuiAlert: { styleOverrides: { root: { borderRadius: 10 } } },
+    MuiChip: { styleOverrides: { root: { fontWeight: 700, borderRadius: 9999 } } },
+    MuiAlert: { styleOverrides: { root: { borderRadius: 14 } } },
   },
 })

@@ -21,11 +21,11 @@ export function Features({ onOpenApp }) {
       id="fitur"
       component="section"
       sx={{
-        py: '80px',
+        py: { xs: '48px', md: '80px' },
         bgcolor: AGRI_COLORS.paperWhite,
       }}
     >
-      <Container maxWidth="lg" sx={{ maxWidth: '1200px !important', px: { xs: 2.5, sm: 3 } }}>
+      <Container maxWidth="lg" sx={{ maxWidth: 1200, px: { xs: 2.5, sm: 3 } }}>
         <Stack spacing="80px">
           {FEATURE_STAGES.map((stage) => (
             <Grid

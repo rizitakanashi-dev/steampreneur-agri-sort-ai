@@ -220,7 +220,7 @@ export function HarvestForm({ onSave }) {
 
             {/* Bagian 1: Pemindaian Citra Keranjang (Batch Camera / Image Upload) */}
             <Stack spacing={1.5}>
-              <Stack direction="row" alignItems="center" justifyContent="space-between">
+              <Stack direction="row" sx={{ alignItems: 'center', justifyContent: 'space-between' }}>
                 <Typography color="primary.dark" fontWeight={700} variant="subtitle2">
                   Pemindaian Keranjang Panen (Batch Scanner)
                 </Typography>
@@ -275,8 +275,8 @@ export function HarvestForm({ onSave }) {
                       }}
                     />
                     <IconButton
+                      aria-label="Hapus foto panen, pilih gambar lain"
                       onClick={handleClearImage}
-                      size="small"
                       sx={{
                         position: 'absolute',
                         top: 8,
@@ -291,7 +291,7 @@ export function HarvestForm({ onSave }) {
                     </IconButton>
                   </Box>
                   <CardContent sx={{ p: 1.5, '&:last-child': { pb: 1.5 } }}>
-                    <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ xs: 'flex-start', sm: 'center' }} spacing={1}>
+                    <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} sx={{ justifyContent: 'space-between', alignItems: { xs: 'flex-start', sm: 'center' } }}>
                       <Box>
                         <Typography variant="body2" fontWeight={600} noWrap sx={{ maxWidth: { xs: 260, sm: 320 } }}>
                           {imageFile?.name || 'Foto Keranjang Panen'}
@@ -322,7 +322,7 @@ export function HarvestForm({ onSave }) {
                   </CardContent>
 
                   <Box sx={{ p: 1.5, borderTop: '1px solid', borderColor: 'divider', bgcolor: 'rgba(3, 110, 69, 0.04)' }}>
-                    <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} alignItems="center" justifyContent="space-between">
+                    <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} sx={{ alignItems: 'center', justifyContent: 'space-between' }}>
                       <Button
                         variant="contained"
                         color="primary"
@@ -354,7 +354,7 @@ export function HarvestForm({ onSave }) {
                     transition: 'all 0.2s ease-in-out',
                   }}
                 >
-                  <Stack spacing={1.5} alignItems="center">
+                  <Stack spacing={1.5} sx={{ alignItems: 'center' }}>
                     <Box
                       sx={{
                         width: 48,
@@ -514,7 +514,7 @@ export function HarvestForm({ onSave }) {
               value={form.catatan}
             />
 
-            <Stack direction={{ xs: 'column-reverse', sm: 'row' }} justifyContent="flex-end" spacing={1.25}>
+            <Stack direction={{ xs: 'column-reverse', sm: 'row' }} spacing={1.25} sx={{ justifyContent: 'flex-end' }}>
               <Button fullWidth variant="outlined" onClick={resetForm} startIcon={<RestartAltRoundedIcon />} sx={{ maxWidth: { sm: 140 } }}>Reset</Button>
               <Button fullWidth type="submit" variant="contained" startIcon={<CalculateRoundedIcon />} sx={{ maxWidth: { sm: 190 } }}>Hitung &amp; periksa</Button>
             </Stack>

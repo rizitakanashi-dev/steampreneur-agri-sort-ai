@@ -35,7 +35,7 @@ export function Hero({ onOpenApp }) {
       <Container
         maxWidth="lg"
         sx={{
-          maxWidth: '1200px !important',
+          maxWidth: 1200,
           px: { xs: 2.5, sm: 3 },
           position: 'relative',
         }}
@@ -43,8 +43,7 @@ export function Hero({ onOpenApp }) {
         {/* ZONE 1: Top Centered Editorial Headline + Pill CTA Pair */}
         <Stack
           spacing={2.5}
-          alignItems="center"
-          sx={{
+          sx={{alignItems: 'center', 
             textAlign: 'center',
             maxWidth: 560,
             mx: 'auto',

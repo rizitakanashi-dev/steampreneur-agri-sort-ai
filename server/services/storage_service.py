@@ -22,6 +22,26 @@ import uuid
 
 logger = logging.getLogger("agrisort.storage")
 
+
+def _load_local_storage_config() -> None:
+    """Load server-side Supabase settings from .env without overriding deployment env."""
+    env_path = Path(__file__).resolve().parents[2] / ".env"
+    try:
+        with open(env_path, encoding="utf-8") as env_file:
+            for raw_line in env_file:
+                line = raw_line.strip()
+                if not line or line.startswith("#") or "=" not in line:
+                    continue
+                key, value = line.split("=", 1)
+                key = key.strip()
+                if key in {"SUPABASE_URL", "SUPABASE_ANON_KEY"} and key not in os.environ:
+                    os.environ[key] = value.strip().strip('"').strip("'")
+    except OSError:
+        pass
+
+
+_load_local_storage_config()
+
 # Direktori data lokal untuk persistensi lokal (development) atau /tmp pada Vercel Serverless
 DATA_DIR = (
     Path("/tmp/agri-sort-data")
@@ -44,7 +64,8 @@ def get_supabase_ddl() -> str:
 
 CREATE TABLE IF NOT EXISTS public.scans (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    scan_id VARCHAR(64) UNIQUE NOT NULL,
+    user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+    scan_id VARCHAR(64) NOT NULL,
     commodity VARCHAR(100) NOT NULL,
     ai_supported BOOLEAN NOT NULL DEFAULT true,
     actual_weight_kg NUMERIC(8, 2),
@@ -63,27 +84,48 @@ CREATE TABLE IF NOT EXISTS public.scans (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now())
 );
 
+-- Migrate existing installations; legacy rows remain unowned and are hidden by RLS.
+ALTER TABLE public.scans ADD COLUMN IF NOT EXISTS user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE;
+ALTER TABLE public.scans DROP CONSTRAINT IF EXISTS scans_scan_id_key;
+
 -- Indeks untuk pencarian dan filter cepat
 CREATE INDEX IF NOT EXISTS idx_scans_commodity ON public.scans (commodity);
 CREATE INDEX IF NOT EXISTS idx_scans_created_at ON public.scans (created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_scans_scan_id ON public.scans (scan_id);
+CREATE INDEX IF NOT EXISTS idx_scans_user_created_at ON public.scans (user_id, created_at DESC);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_scans_user_scan_id ON public.scans (user_id, scan_id);
 
--- Aktifkan Row Level Security (RLS)
+-- Aktifkan Row Level Security (RLS); requests must be authenticated and owned by the current user.
 ALTER TABLE public.scans ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Akses publik baca riwayat scan" ON public.scans;
+DROP POLICY IF EXISTS "Akses publik simpan riwayat scan" ON public.scans;
+DROP POLICY IF EXISTS "Users read own scan history" ON public.scans;
+DROP POLICY IF EXISTS "Users insert own scan history" ON public.scans;
+DROP POLICY IF EXISTS "Users update own scan history" ON public.scans;
+DROP POLICY IF EXISTS "Users delete own scan history" ON public.scans;
 
--- Kebijakan akses anonim baca/tulis untuk proto lomba (dapat dibatasi auth pada produksi)
-CREATE POLICY "Akses publik baca riwayat scan"
-    ON public.scans FOR SELECT
-    USING (true);
+CREATE POLICY "Users read own scan history"
+    ON public.scans FOR SELECT TO authenticated
+    USING (auth.uid() = user_id);
 
-CREATE POLICY "Akses publik simpan riwayat scan"
-    ON public.scans FOR INSERT
-    WITH CHECK (true);
+CREATE POLICY "Users insert own scan history"
+    ON public.scans FOR INSERT TO authenticated
+    WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users update own scan history"
+    ON public.scans FOR UPDATE TO authenticated
+    USING (auth.uid() = user_id)
+    WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users delete own scan history"
+    ON public.scans FOR DELETE TO authenticated
+    USING (auth.uid() = user_id);
 """
 
 
 _SUPABASE_SCAN_COLUMNS = (
     "id",
+    "user_id",
     "scan_id",
     "commodity",
     "ai_supported",
@@ -104,7 +146,7 @@ _SUPABASE_SCAN_COLUMNS = (
 )
 
 
-def _normalize_scan_record(scan_data: Dict[str, Any]) -> Dict[str, Any]:
+def _normalize_scan_record(scan_data: Dict[str, Any], user_id: Optional[str] = None) -> Dict[str, Any]:
     """Menormalisasi payload hasil pemindaian menjadi record terstandarisasi."""
     scan_id = scan_data.get("scan_id") or f"scan_{datetime.now(timezone.utc).strftime('%Y%m%d')}_{uuid.uuid4().hex[:6]}"
     now_iso = datetime.now(timezone.utc).isoformat()
@@ -138,6 +180,7 @@ def _normalize_scan_record(scan_data: Dict[str, Any]) -> Dict[str, Any]:
 
     return {
         "id": str(uuid.uuid4()),
+        "user_id": user_id or scan_data.get("user_id"),
         "scan_id": scan_id,
         "commodity": scan_data.get("commodity", "Tomat"),
         "ai_supported": bool(scan_data.get("ai_supported", True)),
@@ -219,18 +262,26 @@ class LocalScanStorage:
                     pass
             return False
 
-    def save_scan(self, scan_data: Dict[str, Any]) -> Dict[str, Any]:
+    def save_scan(self, scan_data: Dict[str, Any], user_id: Optional[str] = None, access_token: Optional[str] = None) -> Dict[str, Any]:
         """
         Menyimpan hasil pemindaian ke storage lokal.
         Menghasilkan scan_id dan created_at otomatis jika belum tersedia.
         """
         with _storage_lock:
             records = self._read_all()
-            record = _normalize_scan_record(scan_data)
+            record = _normalize_scan_record(scan_data, user_id=user_id)
 
             # Masukkan di awal daftar (urutan terbaru di atas)
             # Jika scan_id sudah ada, perbarui record lama
-            existing_idx = next((i for i, r in enumerate(records) if r.get("scan_id") == record["scan_id"]), None)
+            existing_idx = next(
+                (
+                    i
+                    for i, existing in enumerate(records)
+                    if existing.get("scan_id") == record["scan_id"]
+                    and existing.get("user_id") == record.get("user_id")
+                ),
+                None,
+            )
             if existing_idx is not None:
                 records[existing_idx] = record
             else:
@@ -244,12 +295,16 @@ class LocalScanStorage:
         limit: int = 50,
         offset: int = 0,
         commodity: Optional[str] = None,
+        user_id: Optional[str] = None,
+        access_token: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
         Mengambil daftar riwayat scan dengan fitur filter komoditas dan paginasi.
         """
         with _storage_lock:
             records = self._read_all()
+            if user_id:
+                records = [r for r in records if r.get("user_id") == user_id]
 
             if commodity:
                 comm_filter = commodity.strip().lower()
@@ -266,29 +321,34 @@ class LocalScanStorage:
                 "summary": _build_scans_summary(records, total_count=total_count),
             }
 
-    def get_scan_by_id(self, scan_id: str) -> Optional[Dict[str, Any]]:
+    def get_scan_by_id(self, scan_id: str, user_id: Optional[str] = None, access_token: Optional[str] = None) -> Optional[Dict[str, Any]]:
         """Mencari satu catatan pemindaian berdasarkan scan_id."""
         with _storage_lock:
             records = self._read_all()
-            return next((r for r in records if r.get("scan_id") == scan_id), None)
+            return next((r for r in records if r.get("scan_id") == scan_id and (not user_id or r.get("user_id") == user_id)), None)
 
-    def delete_scan(self, scan_id: str) -> bool:
+    def delete_scan(self, scan_id: str, user_id: Optional[str] = None, access_token: Optional[str] = None) -> bool:
         """Menghapus satu catatan pemindaian berdasarkan scan_id."""
         with _storage_lock:
             records = self._read_all()
             initial_len = len(records)
-            filtered = [r for r in records if r.get("scan_id") != scan_id]
+            filtered = [r for r in records if r.get("scan_id") != scan_id or (user_id and r.get("user_id") != user_id)]
             if len(filtered) < initial_len:
                 self._write_all(filtered)
                 return True
             return False
 
-    def clear_scans(self) -> int:
-        """Mengosongkan seluruh riwayat pemindaian."""
+    def clear_scans(self, user_id: Optional[str] = None, access_token: Optional[str] = None) -> int:
+        """Mengosongkan riwayat pemindaian untuk pengguna tertentu."""
         with _storage_lock:
             records = self._read_all()
-            count = len(records)
-            self._write_all([])
+            if user_id:
+                remaining = [record for record in records if record.get("user_id") != user_id]
+                count = len(records) - len(remaining)
+                self._write_all(remaining)
+            else:
+                count = len(records)
+                self._write_all([])
             return count
 
 
@@ -319,6 +379,7 @@ class SupabaseScanStorage:
         query: str = "",
         payload: Optional[Any] = None,
         prefer: Optional[str] = None,
+        access_token: Optional[str] = None,
     ) -> tuple[Any, Dict[str, str]]:
         url = f"{self.base_url}/rest/v1/scans{query}"
         headers = {
@@ -326,7 +387,9 @@ class SupabaseScanStorage:
             "Content-Type": "application/json",
         }
         # New Supabase opaque keys (sb_secret_ / sb_publishable_) are not JWTs and must NOT be sent as Bearer tokens
-        if not self.api_key.startswith(("sb_secret_", "sb_publishable_")):
+        if access_token:
+            headers["Authorization"] = f"Bearer {access_token}"
+        elif not self.api_key.startswith(("sb_secret_", "sb_publishable_")):
             headers["Authorization"] = f"Bearer {self.api_key}"
         if prefer:
             headers["Prefer"] = prefer
@@ -353,39 +416,48 @@ class SupabaseScanStorage:
             normalized["rotten_ratio_percent"] = float(normalized["rotten_ratio_percent"])
         return normalized
 
-    def save_scan(self, scan_data: Dict[str, Any]) -> Dict[str, Any]:
-        record = _normalize_scan_record(scan_data)
+    def save_scan(self, scan_data: Dict[str, Any], user_id: Optional[str] = None, access_token: Optional[str] = None) -> Dict[str, Any]:
+        record = _normalize_scan_record(scan_data, user_id=user_id)
         db_row = self._to_db_row(record)
         try:
             rows, _ = self._request(
                 "POST",
-                query="?on_conflict=scan_id",
+                query="?on_conflict=user_id,scan_id",
                 payload=db_row,
                 prefer="resolution=merge-duplicates,return=representation",
+                access_token=access_token,
             )
             if isinstance(rows, list) and rows:
                 return self._from_db_row(rows[0])
             return record
         except (urllib.error.URLError, urllib.error.HTTPError, TimeoutError, json.JSONDecodeError) as exc:
+            if access_token:
+                raise RuntimeError("Penyimpanan riwayat gagal; data tidak disimpan.") from exc
             logger.warning("Gagal menyimpan ke Supabase, menggunakan fallback lokal: %s", exc)
-            return self.fallback.save_scan(scan_data)
+            return self.fallback.save_scan(scan_data, user_id=user_id)
 
     def get_scans(
         self,
         limit: int = 50,
         offset: int = 0,
         commodity: Optional[str] = None,
+        user_id: Optional[str] = None,
+        access_token: Optional[str] = None,
     ) -> Dict[str, Any]:
         filter_q = ""
         if commodity:
             encoded_comm = urllib.parse.quote(commodity.strip(), safe="")
             filter_q = f"&commodity=ilike.{encoded_comm}"
+        if user_id:
+            encoded_user = urllib.parse.quote(user_id, safe="")
+            filter_q += f"&user_id=eq.{encoded_user}"
 
         try:
             rows, headers = self._request(
                 "GET",
                 query=f"?select=*&order=created_at.desc&limit={int(limit)}&offset={int(offset)}{filter_q}",
                 prefer="count=exact",
+                access_token=access_token,
             )
             paged_records = [self._from_db_row(r) for r in (rows or [])]
 
@@ -399,6 +471,7 @@ class SupabaseScanStorage:
             agg_rows, _ = self._request(
                 "GET",
                 query=f"?select=actual_weight_kg,estimated_economic_value{filter_q}",
+                access_token=access_token,
             )
             return {
                 "total_count": total_count,
@@ -408,58 +481,70 @@ class SupabaseScanStorage:
                 "summary": _build_scans_summary(agg_rows or [], total_count=total_count),
             }
         except (urllib.error.URLError, urllib.error.HTTPError, TimeoutError, json.JSONDecodeError) as exc:
+            if access_token:
+                raise RuntimeError("Riwayat gagal diambil dari penyimpanan terverifikasi.") from exc
             logger.warning("Gagal membaca riwayat dari Supabase, menggunakan fallback lokal: %s", exc)
-            return self.fallback.get_scans(limit=limit, offset=offset, commodity=commodity)
+            return self.fallback.get_scans(limit=limit, offset=offset, commodity=commodity, user_id=user_id)
 
-    def get_scan_by_id(self, scan_id: str) -> Optional[Dict[str, Any]]:
+    def get_scan_by_id(self, scan_id: str, user_id: Optional[str] = None, access_token: Optional[str] = None) -> Optional[Dict[str, Any]]:
         try:
             encoded_id = urllib.parse.quote(scan_id, safe="")
-            rows, _ = self._request("GET", query=f"?select=*&scan_id=eq.{encoded_id}&limit=1")
+            owner_filter = f"&user_id=eq.{urllib.parse.quote(user_id, safe='')}" if user_id else ""
+            rows, _ = self._request("GET", query=f"?select=*&scan_id=eq.{encoded_id}{owner_filter}&limit=1", access_token=access_token)
             if isinstance(rows, list) and rows:
                 return self._from_db_row(rows[0])
             return None
         except (urllib.error.URLError, urllib.error.HTTPError, TimeoutError, json.JSONDecodeError) as exc:
+            if access_token:
+                raise RuntimeError("Riwayat gagal diambil dari penyimpanan terverifikasi.") from exc
             logger.warning("Gagal mengambil scan_id dari Supabase, menggunakan fallback lokal: %s", exc)
-            return self.fallback.get_scan_by_id(scan_id)
+            return self.fallback.get_scan_by_id(scan_id, user_id=user_id)
 
-    def delete_scan(self, scan_id: str) -> bool:
+    def delete_scan(self, scan_id: str, user_id: Optional[str] = None, access_token: Optional[str] = None) -> bool:
         try:
             encoded_id = urllib.parse.quote(scan_id, safe="")
+            owner_filter = f"&user_id=eq.{urllib.parse.quote(user_id, safe='')}" if user_id else ""
             rows, _ = self._request(
                 "DELETE",
-                query=f"?scan_id=eq.{encoded_id}",
+                query=f"?scan_id=eq.{encoded_id}{owner_filter}",
                 prefer="return=representation",
+                access_token=access_token,
             )
             return bool(isinstance(rows, list) and len(rows) > 0)
         except (urllib.error.URLError, urllib.error.HTTPError, TimeoutError, json.JSONDecodeError) as exc:
+            if access_token:
+                raise RuntimeError("Riwayat gagal dihapus dari penyimpanan terverifikasi.") from exc
             logger.warning("Gagal menghapus scan dari Supabase, menggunakan fallback lokal: %s", exc)
-            return self.fallback.delete_scan(scan_id)
+            return self.fallback.delete_scan(scan_id, user_id=user_id)
 
-    def clear_scans(self) -> int:
+    def clear_scans(self, user_id: Optional[str] = None, access_token: Optional[str] = None) -> int:
         try:
+            if user_id:
+                query = f"?user_id=eq.{urllib.parse.quote(user_id, safe='')}"
+            else:
+                query = "?scan_id=neq."
             rows, _ = self._request(
                 "DELETE",
-                query="?scan_id=neq.",
+                query=query,
                 prefer="return=representation",
+                access_token=access_token,
             )
             return len(rows) if isinstance(rows, list) else 0
         except (urllib.error.URLError, urllib.error.HTTPError, TimeoutError, json.JSONDecodeError) as exc:
+            if access_token:
+                raise RuntimeError("Riwayat gagal dihapus dari penyimpanan terverifikasi.") from exc
             logger.warning("Gagal mengosongkan riwayat di Supabase, menggunakan fallback lokal: %s", exc)
-            return self.fallback.clear_scans()
+            return self.fallback.clear_scans(user_id=user_id)
 
 
 def create_storage_service():
     """
     Memilih backend persistensi:
-    - SupabaseScanStorage jika SUPABASE_URL dan SUPABASE_SERVICE_ROLE_KEY / SUPABASE_ANON_KEY tersedia.
+    - SupabaseScanStorage jika SUPABASE_URL dan SUPABASE_ANON_KEY tersedia.
     - LocalScanStorage sebagai fallback lokal/pengujian.
     """
     supabase_url = os.environ.get("SUPABASE_URL", "").strip()
-    supabase_key = (
-        os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "").strip()
-        or os.environ.get("SUPABASE_KEY", "").strip()
-        or os.environ.get("SUPABASE_ANON_KEY", "").strip()
-    )
+    supabase_key = os.environ.get("SUPABASE_ANON_KEY", "").strip()
     if supabase_url and supabase_key:
         return SupabaseScanStorage(supabase_url=supabase_url, supabase_key=supabase_key)
     return LocalScanStorage()

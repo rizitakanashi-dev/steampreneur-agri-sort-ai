@@ -6,6 +6,7 @@ import {
   drawDetectionBox,
   formatConfidenceLabel,
   getClassTheme,
+  placeDetectionLabels,
   scaleBoundingBox,
 } from '../src/utils/canvasOverlayHelper.js'
 
@@ -109,6 +110,33 @@ test('formatConfidenceLabel memformat nama kelas dan persentase', () => {
   // Tanpa confidence score
   assert.equal(formatConfidenceLabel('fresh-tomato', null), 'Tomat Segar')
   assert.equal(formatConfidenceLabel('rotten-tomato', undefined), 'Tomat Busuk')
+})
+
+test('placeDetectionLabels memisahkan label buah rapat tanpa keluar dari canvas', () => {
+  const labels = placeDetectionLabels(
+    [
+      { box: { x: 72, y: 45, width: 30, height: 55 }, label: 'Reject 67%' },
+      { box: { x: 77, y: 51, width: 30, height: 52 }, label: 'Grade A 49%' },
+      { box: { x: 80, y: 55, width: 30, height: 51 }, label: 'Reject 64%' },
+      { box: { x: 65, y: 60, width: 30, height: 47 }, label: 'Grade B 38%' },
+    ],
+    { width: 220, height: 150 },
+    (label) => label.length * 6
+  )
+
+  assert.equal(labels.length, 4)
+  for (let i = 0; i < labels.length; i += 1) {
+    assert.ok(labels[i].x >= 0 && labels[i].y >= 0)
+    assert.ok(labels[i].x + labels[i].width <= 220)
+    assert.ok(labels[i].y + labels[i].height <= 150)
+    for (let j = i + 1; j < labels.length; j += 1) {
+      const overlaps = labels[i].x < labels[j].x + labels[j].width &&
+        labels[i].x + labels[i].width > labels[j].x &&
+        labels[i].y < labels[j].y + labels[j].height &&
+        labels[i].y + labels[i].height > labels[j].y
+      assert.equal(overlaps, false, `label ${i} overlaps label ${j}`)
+    }
+  }
 })
 
 test('drawDetectionBox menolak eksekusi pada dimensi nol atau konteks null tanpa crash', () => {

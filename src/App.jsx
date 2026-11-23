@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { Suspense, lazy, useEffect, useRef, useState } from 'react'
 import {
   Alert,
   Box,
@@ -7,6 +7,7 @@ import {
   CardContent,
   Chip,
   Container,
+  CircularProgress,
   FormControl,
   FormLabel,
   Grid,
@@ -34,15 +35,32 @@ import { deleteBatch, readBatches, saveBatch } from './business/harvestStorage.j
 import { COMMODITY_OPTIONS, PRICE_REFERENCE_SOURCE, REFERENCE_PRICES_PER_KG } from './business/priceReference.js'
 import { fetchBapanasLive } from './services/scanService.js'
 import { AppShell } from './components/AppShell.jsx'
-import { BatchQCScanner } from './components/BatchQCScanner.jsx'
 import { stopAllActiveCameraStreams } from './components/LiveCameraViewfinder.jsx'
-import { HarvestForm } from './components/HarvestForm.jsx'
-import { HarvestRecap } from './components/HarvestRecap.jsx'
-import { QCResults } from './components/QCResults.jsx'
 import { ErrorBoundary } from './components/ErrorBoundary.jsx'
 import { PageHeader } from './components/PageHeader.jsx'
-import { PricingDashboard } from './components/PricingDashboard.jsx'
-import { LandingPage } from './pages/LandingPage.jsx'
+import { logoutActiveUser, readActiveUser, restoreAuthSession, getAuthHeaders } from './business/authStorage.js'
+
+/*
+ * Code splitting per halaman: komponen berat (scanner AI, chart, sertifikat)
+ * hanya diunduh saat benar-benar dibuka, memotong bundle awal untuk
+ * pengguna di jaringan lambat (jaringan lapangan petani).
+ */
+const LandingPage = lazy(() => import('./pages/LandingPage.jsx'))
+const LoginPage = lazy(() => import('./pages/LoginPage.jsx'))
+const RegisterPage = lazy(() => import('./pages/RegisterPage.jsx'))
+const BatchQCScanner = lazy(() => import('./components/BatchQCScanner.jsx').then((m) => ({ default: m.BatchQCScanner })))
+const HarvestForm = lazy(() => import('./components/HarvestForm.jsx').then((m) => ({ default: m.HarvestForm })))
+const HarvestRecap = lazy(() => import('./components/HarvestRecap.jsx').then((m) => ({ default: m.HarvestRecap })))
+const QCResults = lazy(() => import('./components/QCResults.jsx').then((m) => ({ default: m.QCResults })))
+const PricingDashboard = lazy(() => import('./components/PricingDashboard.jsx').then((m) => ({ default: m.PricingDashboard })))
+
+function PageLoadingFallback() {
+  return (
+    <Box alignItems="center" display="flex" justifyContent="center" sx={{ minHeight: { xs: '40vh', md: '50vh' }, width: '100%' }}>
+      <CircularProgress size={32} />
+    </Box>
+  )
+}
 
 const pages = {
   overview: { title: 'Dashboard', description: 'Pantau kualitas panen dan peluang harga dalam satu tampilan.' },
@@ -64,7 +82,7 @@ function MetricCard({ detail, icon: Icon, label, value, color }) {
   return (
     <Card sx={{ height: '100%' }}>
       <CardContent sx={{ p: { xs: 2, sm: 2.5 } }}>
-        <Stack direction="row" justifyContent="space-between" spacing={2}>
+        <Stack direction="row" spacing={2} sx={{ justifyContent: 'space-between' }}>
           <Box>
             <Typography color="text.secondary" sx={{ mb: 1 }} variant="body2">{label}</Typography>
             <Typography sx={{ fontSize: { xs: 25, sm: 30 }, fontWeight: 800, letterSpacing: '-0.03em' }} variant="h4">{value}</Typography>
@@ -96,36 +114,38 @@ function formatBatchDisplayId(rawId) {
 
 function DashboardPreview({ onNavigate, batches = [], onSelectBatch }) {
   const [bapanasData, setBapanasData] = useState(null)
+  const [bapanasOffline, setBapanasOffline] = useState(false)
   const [isRefreshingPrice, setIsRefreshingPrice] = useState(false)
+  // Pengunci dedupe: efek mount (termasuk double-invoke StrictMode) dan tombol
+  // refresh tidak boleh mengirim dua request BAPANAS bersamaan.
+  const bapanasInFlightRef = useRef(false)
 
-  const handleRefreshBapanas = () => {
+  const loadBapanas = (timeoutMs) => {
+    if (bapanasInFlightRef.current) return
+    bapanasInFlightRef.current = true
     setIsRefreshingPrice(true)
-    fetchBapanasLive(5000)
+    fetchBapanasLive(timeoutMs)
       .then((data) => {
         if (data?.commodities) {
           setBapanasData(data)
+          setBapanasOffline(false)
         }
       })
-      .catch(() => {})
+      .catch(() => {
+        // Backend/BAPANAS tidak terjangkau: tampilkan indikator offline,
+        // harga acuan lokal tetap dipakai sebagai fallback.
+        setBapanasOffline(true)
+      })
       .finally(() => {
+        bapanasInFlightRef.current = false
         setIsRefreshingPrice(false)
       })
   }
 
+  const handleRefreshBapanas = () => loadBapanas(5000)
+
   useEffect(() => {
-    let isMounted = true
-    fetchBapanasLive(4000)
-      .then((data) => {
-        if (isMounted && data?.commodities) {
-          setBapanasData(data)
-        }
-      })
-      .catch(() => {
-        // Fallback anggun ke harga acuan lokal tanpa melempar exception
-      })
-    return () => {
-      isMounted = false
-    }
+    loadBapanas(4000)
   }, [])
 
   const dynamicMetrics = [
@@ -158,7 +178,7 @@ function DashboardPreview({ onNavigate, batches = [], onSelectBatch }) {
     <>
       <Card sx={{ background: 'linear-gradient(135deg, #036e45 0%, #0b8a5a 100%)', color: 'common.white', mb: 2.5, overflow: 'hidden', position: 'relative' }}>
         <CardContent sx={{ p: { xs: 2.5, sm: 3.5 }, position: 'relative', zIndex: 1 }}>
-          <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" spacing={2}>
+          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ justifyContent: 'space-between' }}>
             <Box sx={{ maxWidth: { xs: '100%', sm: 560 } }}>
               <Chip icon={<CheckCircleRoundedIcon />} label="Sistem siap digunakan" size="small" sx={{ bgcolor: 'rgba(255,255,255,.16)', color: 'common.white', mb: 2, '& .MuiChip-icon': { color: '#b8e7d5' } }} />
               <Typography sx={{ fontSize: { xs: 26, sm: 34 }, fontWeight: 800, letterSpacing: '-0.035em', lineHeight: 1.1 }} variant="h4">
@@ -172,7 +192,7 @@ function DashboardPreview({ onNavigate, batches = [], onSelectBatch }) {
               </Button>
             </Box>
             <Box sx={{ alignItems: 'center', bgcolor: 'rgba(255,255,255,.1)', border: '1px solid rgba(255,255,255,.16)', borderRadius: 3, display: 'flex', justifyContent: 'center', minHeight: 150, minWidth: { sm: 190 }, p: 2 }}>
-              <Stack alignItems="center" spacing={1}>
+              <Stack spacing={1} sx={{ alignItems: 'center' }}>
                 <GrassRoundedIcon sx={{ fontSize: 48, color: '#b8e7d5' }} />
                 <Typography sx={{ color: 'rgba(255,255,255,.8)' }} variant="caption">Precision Agriculture</Typography>
               </Stack>
@@ -190,12 +210,14 @@ function DashboardPreview({ onNavigate, batches = [], onSelectBatch }) {
           <Card sx={{ height: '100%' }}>
             <CardContent sx={{ p: { xs: 2, sm: 2.5 } }}>
               <Box sx={{ mb: 2 }}>
-                <Stack alignItems="center" direction="row" spacing={1.5} flexWrap="wrap">
+                <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center', flexWrap: 'wrap' }} useFlexGap>
                   <Typography fontWeight={700} variant="h6">
                     Harga acuan pasar
                   </Typography>
                   {bapanasData ? (
                     <Chip color="success" icon={<CheckCircleRoundedIcon />} label="BAPANAS Terverifikasi" size="small" />
+                  ) : bapanasOffline ? (
+                    <Chip color="warning" label="Offline — pakai acuan lokal" size="small" />
                   ) : (
                     <Chip color="default" label="Acuan BAPANAS Payakumbuh" size="small" variant="outlined" />
                   )}
@@ -213,7 +235,9 @@ function DashboardPreview({ onNavigate, batches = [], onSelectBatch }) {
                   </Tooltip>
                 </Stack>
                 <Typography color="text.secondary" sx={{ display: 'block', mt: 0.5 }} variant="caption">
-                  {bapanasData ? `Panel BAPANAS • ${bapanasData.market_center}` : `Acuan Pasar • Diperbarui ${PRICE_REFERENCE_SOURCE.updatedAt}`}
+                  {bapanasData
+                    ? `Panel BAPANAS • ${bapanasData.market_center}`
+                    : `Acuan Pasar • Diperbarui ${PRICE_REFERENCE_SOURCE.updatedAt}${bapanasOffline ? ' (gagal sinkron, menampilkan acuan lokal)' : ''}`}
                 </Typography>
               </Box>
 
@@ -224,12 +248,10 @@ function DashboardPreview({ onNavigate, batches = [], onSelectBatch }) {
                   const priceToShow = livePrice || REFERENCE_PRICES_PER_KG[commodity]
                   return (
                     <Stack
-                      alignItems="center"
                       direction="row"
-                      justifyContent="space-between"
                       key={commodity}
                       spacing={2}
-                      sx={{
+                      sx={{alignItems: 'center', justifyContent: 'space-between', 
                         width: '100%',
                         borderBottom: '1px solid',
                         borderColor: 'divider',
@@ -256,7 +278,7 @@ function DashboardPreview({ onNavigate, batches = [], onSelectBatch }) {
               {lastBatch ? (
                 <Stack spacing={1.5}>
                   <Box sx={{ mb: 2 }}>
-                    <Stack alignItems="center" direction="row" spacing={1.5} flexWrap="wrap">
+                    <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center', flexWrap: 'wrap' }} useFlexGap>
                       <Typography fontWeight={700} variant="h6">
                         Batch Panen Terakhir
                       </Typography>
@@ -277,11 +299,9 @@ function DashboardPreview({ onNavigate, batches = [], onSelectBatch }) {
 
                   <Stack spacing={0} sx={{ width: '100%', mb: 2 }}>
                     <Stack
-                      alignItems="center"
                       direction="row"
-                      justifyContent="space-between"
                       spacing={2}
-                      sx={{ width: '100%', borderBottom: '1px solid', borderColor: 'divider', py: 1.5 }}
+                      sx={{alignItems: 'center', justifyContent: 'space-between',  width: '100%', borderBottom: '1px solid', borderColor: 'divider', py: 1.5 }}
                     >
                       <Typography color="text.secondary" fontWeight={600} variant="body2" sx={{ flexGrow: 1 }}>
                         Komoditas
@@ -291,11 +311,9 @@ function DashboardPreview({ onNavigate, batches = [], onSelectBatch }) {
                       </Typography>
                     </Stack>
                     <Stack
-                      alignItems="center"
                       direction="row"
-                      justifyContent="space-between"
                       spacing={2}
-                      sx={{ width: '100%', borderBottom: '1px solid', borderColor: 'divider', py: 1.5 }}
+                      sx={{alignItems: 'center', justifyContent: 'space-between',  width: '100%', borderBottom: '1px solid', borderColor: 'divider', py: 1.5 }}
                     >
                       <Typography color="text.secondary" fontWeight={600} variant="body2" sx={{ flexGrow: 1 }}>
                         Berat Total
@@ -305,11 +323,9 @@ function DashboardPreview({ onNavigate, batches = [], onSelectBatch }) {
                       </Typography>
                     </Stack>
                     <Stack
-                      alignItems="center"
                       direction="row"
-                      justifyContent="space-between"
                       spacing={2}
-                      sx={{ width: '100%', borderBottom: '1px solid', borderColor: 'divider', py: 1.5 }}
+                      sx={{alignItems: 'center', justifyContent: 'space-between',  width: '100%', borderBottom: '1px solid', borderColor: 'divider', py: 1.5 }}
                     >
                       <Typography color="text.secondary" fontWeight={600} variant="body2" sx={{ flexGrow: 1 }}>
                         Estimasi Nilai
@@ -319,11 +335,9 @@ function DashboardPreview({ onNavigate, batches = [], onSelectBatch }) {
                       </Typography>
                     </Stack>
                     <Stack
-                      alignItems="center"
                       direction="row"
-                      justifyContent="space-between"
                       spacing={2}
-                      sx={{ width: '100%', py: 1.5 }}
+                      sx={{alignItems: 'center', justifyContent: 'space-between',  width: '100%', py: 1.5 }}
                     >
                       <Typography color="text.secondary" fontWeight={600} variant="body2" sx={{ flexGrow: 1 }}>
                         Tanggal
@@ -394,7 +408,7 @@ function FoundationPage({
   if (activePage === 'scanner') {
     return (
       <Stack spacing={2.5}>
-        <Stack direction="row" justifyContent="flex-end">
+        <Stack direction="row" sx={{ justifyContent: 'flex-end' }}>
           <Button
             size="small"
             variant="text"
@@ -437,7 +451,7 @@ function FoundationPage({
     <Card>
       <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
         <Stack spacing={2}>
-          <Stack alignItems="center" direction="row" justifyContent="space-between"><Typography variant="h6">{page.title}</Typography><Chip color="warning" label="Segera hadir" size="small" /></Stack>
+          <Stack direction="row" sx={{ alignItems: 'center', justifyContent: 'space-between' }}><Typography variant="h6">{page.title}</Typography><Chip color="warning" label="Segera hadir" size="small" /></Stack>
           <Typography color="text.secondary" variant="body2">{page.description} Komponen lengkap halaman ini akan dikerjakan pada langkah implementasi berikutnya.</Typography>
           <Alert severity="info">Kerangka navigasi aktif. Belum ada kalkulasi bisnis atau integrasi AI.</Alert>
         </Stack>
@@ -449,17 +463,24 @@ function FoundationPage({
 function getInitialRoute() {
   if (typeof window !== 'undefined') {
     const rawHash = window.location.hash.replace('#', '')
+    const hasSession = Boolean(getAuthHeaders().Authorization)
+    if (rawHash === 'login') {
+      return { view: 'login', page: 'overview' }
+    }
+    if (rawHash === 'register' || rawHash.includes('access_token=')) {
+      return { view: 'register', page: 'overview' }
+    }
     if (pages[rawHash]) {
-      return { view: 'app', page: rawHash }
+      return { view: hasSession ? 'app' : 'login', page: rawHash }
     }
     try {
       const params = new URLSearchParams(window.location.search)
       const pageParam = params.get('page')
       if (pages[pageParam]) {
-        return { view: 'app', page: pageParam }
+        return { view: hasSession ? 'app' : 'login', page: pageParam }
       }
       if (params.get('view') === 'app') {
-        return { view: 'app', page: 'overview' }
+        return { view: hasSession ? 'app' : 'login', page: 'overview' }
       }
     } catch {}
   }
@@ -467,8 +488,11 @@ function getInitialRoute() {
 }
 
 function App() {
+  const [activeUser, setActiveUser] = useState(() => readActiveUser())
+  const [sessionChecking, setSessionChecking] = useState(() => Boolean(getAuthHeaders().Authorization))
   const [currentView, setCurrentView] = useState(() => getInitialRoute().view)
   const [activePage, setActivePage] = useState(() => getInitialRoute().page)
+  const [pendingPage, setPendingPage] = useState(() => getInitialRoute().page)
   const [batches, setBatches] = useState([])
   const [selectedBatch, setSelectedBatch] = useState(null)
   const [openCertModal, setOpenCertModal] = useState(false)
@@ -482,14 +506,43 @@ function App() {
   }, [])
 
   useEffect(() => {
+    if (!sessionChecking) return
+    let cancelled = false
+    restoreAuthSession().then((user) => {
+      if (cancelled) return
+      setActiveUser(user)
+      if (!user && pages[window.location.hash.replace('#', '')]) {
+        setPendingPage(window.location.hash.replace('#', ''))
+        setCurrentView('login')
+        window.location.hash = 'login'
+      }
+      setSessionChecking(false)
+    })
+    return () => { cancelled = true }
+  }, [sessionChecking])
+
+  useEffect(() => {
     const handleHash = () => {
       const hash = window.location.hash.replace('#', '')
-      if (pages[hash]) {
+      const user = getAuthHeaders().Authorization ? readActiveUser() : null
+      setActiveUser(user)
+      if (hash === 'login') {
+        stopAllActiveCameraStreams()
+        setCurrentView('login')
+      } else if (hash === 'register' || hash.includes('access_token=')) {
+        stopAllActiveCameraStreams()
+        setCurrentView('register')
+      } else if (pages[hash]) {
         if (hash !== 'scanner') {
           stopAllActiveCameraStreams()
         }
-        setCurrentView('app')
-        setActivePage(hash)
+        if (!user) {
+          setPendingPage(hash)
+          setCurrentView('login')
+        } else {
+          setCurrentView('app')
+          setActivePage(hash)
+        }
       } else if (hash === '' || hash === 'landing') {
         stopAllActiveCameraStreams()
         setCurrentView('landing')
@@ -504,9 +557,68 @@ function App() {
     if (pageToOpen !== 'scanner') {
       stopAllActiveCameraStreams()
     }
+    const user = getAuthHeaders().Authorization ? readActiveUser() : null
+    setActiveUser(user)
+    if (!user) {
+      setPendingPage(pageToOpen)
+      setCurrentView('login')
+      window.location.hash = 'login'
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+      return
+    }
     setCurrentView('app')
     setActivePage(pageToOpen)
     window.location.hash = pageToOpen
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  const handleSwitchToRegister = () => {
+    setCurrentView('register')
+    window.location.hash = 'register'
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  const handleSwitchToLogin = () => {
+    setCurrentView('login')
+    window.location.hash = 'login'
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  const handleLoginSuccess = (loggedInUser) => {
+    setActiveUser(loggedInUser)
+    const userBatches = readBatches()
+    setBatches(userBatches)
+    setSelectedBatch(userBatches[userBatches.length - 1] || null)
+    const destination = pages[pendingPage] ? pendingPage : 'overview'
+    setCurrentView('app')
+    setActivePage(destination)
+    window.location.hash = destination
+    setHarvestMessage(`Selamat datang kembali, ${loggedInUser.fullName} (${loggedInUser.email})!`)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  const handleRegisterSuccess = (newUser) => {
+    setActiveUser(newUser)
+    const userBatches = readBatches()
+    setBatches(userBatches)
+    setSelectedBatch(userBatches[userBatches.length - 1] || null)
+    const destination = pages[pendingPage] ? pendingPage : 'overview'
+    setCurrentView('app')
+    setActivePage(destination)
+    window.location.hash = destination
+    setHarvestMessage(`Selamat datang, ${newUser.fullName} (${newUser.email})! Akun Anda berhasil terdaftar.`)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  const handleLogout = () => {
+    stopAllActiveCameraStreams()
+    void logoutActiveUser()
+    setActiveUser(null)
+    setBatches([])
+    setSelectedBatch(null)
+    setHarvestMessage('')
+    setCurrentView('landing')
+    window.location.hash = ''
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
@@ -609,13 +721,51 @@ function App() {
     window.location.hash = 'results'
   }
 
+  if (sessionChecking) {
+    return (
+      <Box sx={{ minHeight: ['100vh', '100dvh'], display: 'grid', placeItems: 'center', bgcolor: '#f2f5f3' }}>
+        <Typography color="text.secondary">Memverifikasi sesi...</Typography>
+      </Box>
+    )
+  }
+
   if (currentView === 'landing') {
-    return <LandingPage onOpenApp={handleOpenApp} />
+    return (
+      <Suspense fallback={<PageLoadingFallback />}>
+        <LandingPage onOpenApp={handleOpenApp} />
+      </Suspense>
+    )
+  }
+
+  if (currentView === 'login') {
+    return (
+      <Suspense fallback={<PageLoadingFallback />}>
+        <LoginPage
+          onLoginSuccess={handleLoginSuccess}
+          onSwitchToRegister={handleSwitchToRegister}
+          onBackToLanding={handleBackToLanding}
+        />
+      </Suspense>
+    )
+  }
+
+  if (currentView === 'register') {
+    return (
+      <Suspense fallback={<PageLoadingFallback />}>
+        <RegisterPage
+          onRegisterSuccess={handleRegisterSuccess}
+          onSwitchToLogin={handleSwitchToLogin}
+          onBackToLanding={handleBackToLanding}
+        />
+      </Suspense>
+    )
   }
 
   return (
     <AppShell
       activePage={activePage}
+      activeUser={activeUser}
+      onLogout={handleLogout}
       onNavigate={handleNavigate}
       onBackToLanding={handleBackToLanding}
       onDataChanged={handleDataChanged}
@@ -624,23 +774,25 @@ function App() {
         <PageHeader eyebrow="Agri-Sort AI / Precision Agriculture" title={page.title} description={page.description} />
         {harvestMessage && <Alert onClose={() => setHarvestMessage('')} severity="success" sx={{ mb: 2 }}>{harvestMessage}</Alert>}
         <ErrorBoundary key={activePage} onReset={() => setActivePage('overview')}>
-          <FoundationPage
-            activePage={activePage}
-            batches={batches}
-            onBackToInput={handleBackToInput}
-            onHarvestConfirm={handleHarvestConfirm}
-            onNavigate={handleNavigate}
-            onSelectBatch={handleSelectBatch}
-            onViewRecap={handleViewRecap}
-            selectedBatch={selectedBatch}
-            openCertModal={openCertModal}
-            onDeleteBatch={handleDeleteBatch}
-            onBatchSaved={(newBatch) => {
-              setBatches((current) => [...current, newBatch])
-              setSelectedBatch(newBatch)
-              setHarvestMessage(`Batch ${newBatch.id} (${newBatch.komoditas}) berhasil disimpan ke rekap data panen.`)
-            }}
-          />
+          <Suspense fallback={<PageLoadingFallback />}>
+            <FoundationPage
+              activePage={activePage}
+              batches={batches}
+              onBackToInput={handleBackToInput}
+              onHarvestConfirm={handleHarvestConfirm}
+              onNavigate={handleNavigate}
+              onSelectBatch={handleSelectBatch}
+              onViewRecap={handleViewRecap}
+              selectedBatch={selectedBatch}
+              openCertModal={openCertModal}
+              onDeleteBatch={handleDeleteBatch}
+              onBatchSaved={(newBatch) => {
+                setBatches((current) => [...current, newBatch])
+                setSelectedBatch(newBatch)
+                setHarvestMessage(`Batch ${newBatch.id} (${newBatch.komoditas}) berhasil disimpan ke rekap data panen.`)
+              }}
+            />
+          </Suspense>
         </ErrorBoundary>
       </Container>
     </AppShell>

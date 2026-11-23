@@ -103,7 +103,7 @@ export function StepMotionVisual({ stepIndex }) {
       >
         {grades.map((g, idx) => (
           <Box key={g.label}>
-            <Stack direction="row" justifyContent="space-between" sx={{ mb: 0.4 }}>
+            <Stack direction="row" sx={{justifyContent: 'space-between',  mb: 0.4 }}>
               <Typography sx={{ fontFamily: AGRI_FONTS.sans, fontSize: '0.78rem', fontWeight: 500, color: AGRI_COLORS.ink }}>
                 {g.label}
               </Typography>
@@ -221,7 +221,7 @@ export function DashboardModuleMotion({ moduleId }) {
   if (moduleId === 'results') {
     return (
       <Box sx={{ p: 2, borderRadius: AGRI_RADII.images, bgcolor: AGRI_COLORS.fogSurface, minHeight: 300, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-        <Stack direction="row" justifyContent="space-between" alignItems="center">
+        <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center' }}>
           <Typography sx={{ fontFamily: AGRI_FONTS.sans, fontSize: '0.82rem', fontWeight: 500, color: AGRI_COLORS.ink }}>
             Sebaran Grade &amp; Smart Pricing
           </Typography>
@@ -230,7 +230,7 @@ export function DashboardModuleMotion({ moduleId }) {
           </Typography>
         </Stack>
 
-        <Grid container spacing={2} alignItems="center" sx={{ my: 1.5 }}>
+        <Grid container spacing={2} sx={{ alignItems: 'center', my: 1.5 }}>
           <Grid size={{ xs: 12, sm: 5 }} sx={{ display: 'flex', justifyContent: 'center' }}>
             <Box sx={{ position: 'relative', width: 152, height: 152, animation: `${floatVertical} 3.6s ease-in-out infinite`, ...reducedMotionSx }}>
               <svg viewBox="0 0 120 120" width="152" height="152" aria-hidden="true">
