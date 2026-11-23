@@ -16,10 +16,25 @@ import {
 import MenuRoundedIcon from '@mui/icons-material/MenuRounded'
 import CloseRoundedIcon from '@mui/icons-material/CloseRounded'
 import SpaRoundedIcon from '@mui/icons-material/SpaRounded'
+import HomeRoundedIcon from '@mui/icons-material/HomeRounded'
+import AppsRoundedIcon from '@mui/icons-material/AppsRounded'
+import HelpOutlineRoundedIcon from '@mui/icons-material/HelpOutlineRounded'
+import PreviewRoundedIcon from '@mui/icons-material/PreviewRounded'
+import CategoryRoundedIcon from '@mui/icons-material/CategoryRounded'
+import GroupsRoundedIcon from '@mui/icons-material/GroupsRounded'
 import { AGRI_COLORS, AGRI_FONTS, AGRI_RADII } from './tokens.js'
 import { NAV_LINKS } from './landingData.js'
 import { AgriPrimaryButton, EditorialTextLink, HeaderActionButton } from './AgriPrimitives.jsx'
 import { useActiveSection, useNavbarScrollProgress } from './useScrollChoreography.js'
+
+const DRAWER_ICONS = {
+  '#beranda': HomeRoundedIcon,
+  '#fitur': AppsRoundedIcon,
+  '#cara-kerja': HelpOutlineRoundedIcon,
+  '#dashboard': PreviewRoundedIcon,
+  '#komoditas': CategoryRoundedIcon,
+  '#tentang-kami': GroupsRoundedIcon,
+}
 
 export function Navbar({ onOpenApp }) {
   const progressBarRef = useRef(null)
@@ -184,32 +199,112 @@ export function Navbar({ onOpenApp }) {
         }}
       >
         <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center' }}>
-          <Typography sx={{ fontFamily: AGRI_FONTS.serif, fontWeight: 400, fontSize: '1.25rem', color: AGRI_COLORS.ink }}>
-            Agri-Sort AI
-          </Typography>
+          <Stack direction="row" spacing={1.25} useFlexGap sx={{ alignItems: 'center' }}>
+            <Box
+              sx={{
+                width: 30,
+                height: 30,
+                borderRadius: AGRI_RADII.buttons,
+                bgcolor: AGRI_COLORS.ink,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: AGRI_COLORS.paperWhite,
+              }}
+            >
+              <SpaRoundedIcon sx={{ fontSize: 17 }} />
+            </Box>
+            <Typography sx={{ fontFamily: AGRI_FONTS.serif, fontWeight: 400, fontSize: '1.25rem', color: AGRI_COLORS.ink }}>
+              Agri-Sort AI
+            </Typography>
+          </Stack>
           <IconButton aria-label="Tutup menu" onClick={() => setMobileOpen(false)} sx={{ color: AGRI_COLORS.ink }}>
             <CloseRoundedIcon />
           </IconButton>
         </Stack>
-        <List sx={{ pt: 1 }}>
-          {NAV_LINKS.map((link) => (
-            <ListItem key={link.href} disablePadding>
-              <ListItemButton
-                component="a"
-                href={link.href}
-                onClick={(e) => handleNavClick(e, link.href)}
-                sx={{ borderRadius: AGRI_RADII.images, py: 1.25 }}
-              >
-                <ListItemText
-                  primary={link.label}
-                  primaryTypographyProps={{ fontFamily: AGRI_FONTS.sans, fontWeight: 400, color: AGRI_COLORS.ink }}
-                />
-              </ListItemButton>
-            </ListItem>
-          ))}
+        <Box
+          aria-hidden="true"
+          sx={{ height: '1px', bgcolor: AGRI_COLORS.hairline, mx: -2.5, mt: 2 }}
+        />
+        <Typography
+          component="div"
+          sx={{
+            pt: 2,
+            pb: 1,
+            px: 0.5,
+            fontFamily: AGRI_FONTS.sans,
+            fontSize: '0.75rem',
+            fontWeight: 700,
+            letterSpacing: '0.08em',
+            color: AGRI_COLORS.slateMuted,
+          }}
+        >
+          NAVIGASI
+        </Typography>
+        <List sx={{ pt: 0 }} disablePadding>
+          {NAV_LINKS.map((link) => {
+            const isCurrent = activeSection === link.href.replace('#', '')
+            const IconComp = DRAWER_ICONS[link.href] || AppsRoundedIcon
+            return (
+              <ListItem key={link.href} disablePadding sx={{ mb: 0.5 }}>
+                <ListItemButton
+                  component="a"
+                  href={link.href}
+                  onClick={(e) => handleNavClick(e, link.href)}
+                  sx={{
+                    borderRadius: AGRI_RADII.images,
+                    py: 1,
+                    px: 1,
+                    transition: 'background-color 0.2s ease, color 0.2s ease',
+                    ...(isCurrent
+                      ? { bgcolor: AGRI_COLORS.blushMint, '&:hover': { bgcolor: AGRI_COLORS.blushMint } }
+                      : { '&:hover': { bgcolor: AGRI_COLORS.fogSurface } }),
+                  }}
+                >
+                  {/* Kotak ikon ala drawer aplikasi: aktif = emerald pekat, istirahat = mist */}
+                  <Box
+                    sx={{
+                      width: 34,
+                      height: 34,
+                      mr: 1.5,
+                      borderRadius: '10px',
+                      flexShrink: 0,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      bgcolor: isCurrent ? AGRI_COLORS.deepEmerald : AGRI_COLORS.mistSurface,
+                      color: isCurrent ? AGRI_COLORS.paperWhite : AGRI_COLORS.ashTag,
+                      transition: 'background-color 0.2s ease, color 0.2s ease',
+                    }}
+                  >
+                    <IconComp sx={{ fontSize: 19 }} />
+                  </Box>
+                  <ListItemText
+                    primary={link.label}
+                    primaryTypographyProps={{
+                      fontFamily: AGRI_FONTS.sans,
+                      fontWeight: isCurrent ? 700 : 400,
+                      color: isCurrent ? AGRI_COLORS.deepEmerald : AGRI_COLORS.ink,
+                    }}
+                  />
+                </ListItemButton>
+              </ListItem>
+            )
+          })}
         </List>
         {/* CTA dipin di dasar drawer: tidak melayang di tengah ruang kosong */}
-        <Box sx={{ mt: 'auto', pt: 2, pb: 0.5, borderTop: '1px solid rgba(23, 25, 28, 0.08)' }}>
+        <Box sx={{ mt: 'auto', pt: 2, pb: 0.5, borderTop: `1px solid ${AGRI_COLORS.hairline}` }}>
+          <Typography
+            variant="caption"
+            sx={{
+              display: 'block',
+              mb: 1.25,
+              fontFamily: AGRI_FONTS.sans,
+              color: AGRI_COLORS.slateMuted,
+            }}
+          >
+            SMK Negeri 4 Payakumbuh · STEAMPreneur 2026
+          </Typography>
           <AgriPrimaryButton fullWidth onClick={() => { setMobileOpen(false); onOpenApp('overview') }}>
             Buka Aplikasi
           </AgriPrimaryButton>
