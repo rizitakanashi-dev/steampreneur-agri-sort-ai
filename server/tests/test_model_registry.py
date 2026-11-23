@@ -24,8 +24,31 @@ class TestModelRegistry(unittest.TestCase):
         self.artifact.write_bytes(b"deployable model bytes")
         self.digest = hashlib.sha256(b"deployable model bytes").hexdigest()
         self.manifest = {
-            "dataset": {"classes": CANONICAL_CLASSES},
+            "model": {
+                "name": "Test model",
+                "version": "1.0",
+                "architecture": "YOLO11n",
+                "task": "object-detection",
+                "framework": "Ultralytics",
+                "framework_version": "8.4.208",
+                "input_size": 640,
+                "files": {
+                    "pytorch": "best.pt",
+                    "onnx": "best.onnx",
+                    "dataset_config": "data.yaml",
+                },
+            },
+            "dataset": {"name": "Test dataset", "source": "test fixture", "classes": CANONICAL_CLASSES},
             "artifacts": {"best.onnx": self.digest},
+            "grading": {
+                "mapping_status": "candidate",
+                "mapping": CANONICAL_CLASSES,
+            },
+            "inference": {
+                "default_confidence_threshold": 0.25,
+                "recommended_input_size": 640,
+            },
+            "deployment": {"status": "candidate", "recommended_backend": "ONNX Runtime"},
         }
 
     def test_accepts_canonical_order_and_matching_artifact(self):
@@ -80,6 +103,14 @@ class TestModelRegistry(unittest.TestCase):
 
         manifest_path.write_text("{invalid", encoding="utf-8")
         with self.assertRaises(ModelContractError):
+            load_model_manifest("tomat", str(self.root))
+
+    def test_rejects_structurally_incomplete_json_manifest(self):
+        manifest_path = self.root / "tomat" / "model-metadata.json"
+        manifest_path.parent.mkdir()
+        manifest_path.write_text("{}", encoding="utf-8")
+
+        with self.assertRaisesRegex(ModelContractError, "missing required field 'manifest.model'"):
             load_model_manifest("tomat", str(self.root))
 
     def test_fails_cleanly_when_artifact_is_missing(self):

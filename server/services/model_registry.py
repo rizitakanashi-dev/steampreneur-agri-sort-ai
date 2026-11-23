@@ -18,6 +18,117 @@ class ModelContractError(ValueError):
     """Raised when a manifest or model artifact violates the deployment contract."""
 
 
+def _require_fields(value: dict, fields: tuple[str, ...], section: str) -> None:
+    for field in fields:
+        if field not in value:
+            raise ModelContractError(f"Model manifest is missing required field '{section}.{field}'")
+
+
+def _require_nonempty_string(value: Any, field: str) -> None:
+    if not isinstance(value, str) or not value.strip():
+        raise ModelContractError(f"Model manifest field '{field}' must be a non-empty string")
+
+
+def _validate_manifest_structure(manifest: dict) -> None:
+    _require_fields(
+        manifest,
+        ("model", "artifacts", "dataset", "grading", "inference", "deployment"),
+        "manifest",
+    )
+
+    model = manifest["model"]
+    if not isinstance(model, dict):
+        raise ModelContractError("Model manifest field 'model' must be an object")
+    _require_fields(
+        model,
+        (
+            "name",
+            "version",
+            "architecture",
+            "task",
+            "framework",
+            "framework_version",
+            "input_size",
+            "files",
+        ),
+        "model",
+    )
+    for field in ("name", "version", "architecture", "task", "framework", "framework_version"):
+        _require_nonempty_string(model[field], f"model.{field}")
+    if (
+        isinstance(model["input_size"], bool)
+        or not isinstance(model["input_size"], int)
+        or model["input_size"] <= 0
+    ):
+        raise ModelContractError("Model manifest field 'model.input_size' must be a positive integer")
+    files = model["files"]
+    if not isinstance(files, dict):
+        raise ModelContractError("Model manifest field 'model.files' must be an object")
+    _require_fields(files, ("pytorch", "onnx", "dataset_config"), "model.files")
+    for field in ("pytorch", "onnx", "dataset_config"):
+        _require_nonempty_string(files[field], f"model.files.{field}")
+
+    artifacts = manifest["artifacts"]
+    if not isinstance(artifacts, dict) or not artifacts:
+        raise ModelContractError("Model manifest field 'artifacts' must be a non-empty object")
+    for filename, digest in artifacts.items():
+        _require_nonempty_string(filename, "artifacts filename")
+        if not isinstance(digest, str) or not _SHA256_RE.fullmatch(digest):
+            raise ModelContractError(f"Model manifest artifact '{filename}' must have a valid SHA-256 digest")
+
+    dataset = manifest["dataset"]
+    if not isinstance(dataset, dict):
+        raise ModelContractError("Model manifest field 'dataset' must be an object")
+    _require_fields(dataset, ("name", "source", "classes"), "dataset")
+    for field in ("name", "source"):
+        _require_nonempty_string(dataset[field], f"dataset.{field}")
+    _ordered_classes(dataset["classes"], "Manifest")
+
+    grading = manifest["grading"]
+    if not isinstance(grading, dict):
+        raise ModelContractError("Model manifest field 'grading' must be an object")
+    _require_fields(grading, ("mapping",), "grading")
+    status_field = "mapping_status" if "mapping_status" in grading else "system"
+    if status_field not in grading:
+        raise ModelContractError(
+            "Model manifest is missing required field 'grading.mapping_status' or 'grading.system'"
+        )
+    _require_nonempty_string(grading[status_field], f"grading.{status_field}")
+    if not isinstance(grading["mapping"], dict):
+        raise ModelContractError("Model manifest field 'grading.mapping' must be an object")
+
+    inference = manifest["inference"]
+    if not isinstance(inference, dict):
+        raise ModelContractError("Model manifest field 'inference' must be an object")
+    _require_fields(
+        inference,
+        ("default_confidence_threshold", "recommended_input_size"),
+        "inference",
+    )
+    threshold = inference["default_confidence_threshold"]
+    if (
+        isinstance(threshold, bool)
+        or not isinstance(threshold, (int, float))
+        or not 0 <= threshold <= 1
+    ):
+        raise ModelContractError("Model manifest field 'inference.default_confidence_threshold' must be between 0 and 1")
+    if (
+        isinstance(inference["recommended_input_size"], bool)
+        or not isinstance(inference["recommended_input_size"], int)
+        or inference["recommended_input_size"] <= 0
+    ):
+        raise ModelContractError(
+            "Model manifest field 'inference.recommended_input_size' must be a positive integer"
+        )
+
+    deployment = manifest["deployment"]
+    if not isinstance(deployment, dict):
+        raise ModelContractError("Model manifest field 'deployment' must be an object")
+    _require_fields(deployment, ("status", "recommended_backend"), "deployment")
+    for field in ("status", "recommended_backend"):
+        _require_nonempty_string(deployment[field], f"deployment.{field}")
+
+
 def load_model_manifest(commodity: str, base_dir: str) -> dict:
     """Load a commodity's JSON model manifest, rejecting invalid inputs clearly."""
     if not isinstance(commodity, str) or not commodity.strip():
@@ -36,6 +147,7 @@ def load_model_manifest(commodity: str, base_dir: str) -> dict:
 
     if not isinstance(manifest, dict):
         raise ModelContractError(f"Model manifest must contain a JSON object: {manifest_path}")
+    _validate_manifest_structure(manifest)
     return manifest
 
 
