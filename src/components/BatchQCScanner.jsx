@@ -7,14 +7,9 @@ import {
   CardContent,
   Chip,
   CircularProgress,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
   Divider,
   Grid,
   IconButton,
-  InputAdornment,
   Slider,
   Stack,
   Tab,
@@ -40,8 +35,6 @@ import VideocamRoundedIcon from '@mui/icons-material/VideocamRounded'
 import AssessmentRoundedIcon from '@mui/icons-material/AssessmentRounded'
 import RecyclingRoundedIcon from '@mui/icons-material/RecyclingRounded'
 import VerifiedRoundedIcon from '@mui/icons-material/VerifiedRounded'
-import PrintRoundedIcon from '@mui/icons-material/PrintRounded'
-import CloseRoundedIcon from '@mui/icons-material/CloseRounded'
 import FlipCameraAndroidRoundedIcon from '@mui/icons-material/FlipCameraAndroidRounded'
 import ShieldRoundedIcon from '@mui/icons-material/ShieldRounded'
 import WarningAmberRoundedIcon from '@mui/icons-material/WarningAmberRounded'
@@ -50,7 +43,6 @@ import HelpOutlineRoundedIcon from '@mui/icons-material/HelpOutlineRounded'
 
 import { LiveCameraViewfinder, stopAllActiveCameraStreams } from './LiveCameraViewfinder.jsx'
 import { ScanCanvasOverlay } from './ScanCanvasOverlay.jsx'
-import { QCPrintCertificate } from './QCPrintCertificate.jsx'
 import { scanHarvestImage, scanMultiAngleHarvestImages } from '../services/scanService.js'
 import { aggregateMultiAngleScanResults } from '../business/multiAngleHelper.js'
 import { saveBatch } from '../business/harvestStorage.js'
@@ -58,49 +50,9 @@ import { REFERENCE_PRICES_PER_KG } from '../business/priceReference.js'
 import { calculateHarvest, calculateHarvestValue } from '../business/harvestCalculation.js'
 import { getTodayDateString } from '../business/harvestValidation.js'
 import { isSceneStationary } from '../utils/imageSimilarity.js'
-
-const rupiahFormatter = new Intl.NumberFormat('id-ID', {
-  style: 'currency',
-  currency: 'IDR',
-  maximumFractionDigits: 0,
-})
-
-function formatRupiah(val) {
-  return typeof val === 'number' && Number.isFinite(val) ? rupiahFormatter.format(val) : '-'
-}
-
-const COMMODITIES = [
-  {
-    id: 'Cabai',
-    name: 'Cabai (Chili)',
-    badge: 'YOLO11 3-Class',
-    badgeColor: 'error',
-    classes: ['Grade A', 'Grade B', 'Reject'],
-    defaultConf: 0.35,
-    emoji: '🌶️',
-    supported: true,
-  },
-  {
-    id: 'Terung',
-    name: 'Terung (Eggplant)',
-    badge: 'YOLO11 3-Class',
-    badgeColor: 'primary',
-    classes: ['Grade A', 'Grade B', 'Reject'],
-    defaultConf: 0.35,
-    emoji: '🍆',
-    supported: true,
-  },
-  {
-    id: 'Tomat',
-    name: 'Tomat (Tomato)',
-    badge: 'YOLO11 3-Class',
-    badgeColor: 'success',
-    classes: ['Grade A', 'Grade B', 'Reject'],
-    defaultConf: 0.35,
-    emoji: '🍅',
-    supported: true,
-  },
-]
+import { COMMODITIES, formatRupiah } from './scanner/constants.js'
+import { SaveToRecapDialog } from './scanner/SaveToRecapDialog.jsx'
+import { CertificatePreviewDialog } from './scanner/CertificatePreviewDialog.jsx'
 
 export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm }) {
   const [selectedCommodity, setSelectedCommodity] = useState('Terung')
@@ -1859,99 +1811,29 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm }
       )}
 
       {/* DIALOG SIMPAN KE REKAP DATA PANEN */}
-      <Dialog open={isSaveModalOpen} onClose={() => setIsSaveModalOpen(false)} maxWidth="xs" fullWidth>
-        <DialogTitle sx={{ fontWeight: 800 }}>Simpan ke Rekap Data Panen</DialogTitle>
-        <DialogContent dividers>
-          <Stack spacing={2} sx={{ pt: 1 }}>
-            <Alert severity="info" icon={<InfoOutlinedIcon />}>
-              Hasil deteksi AI ({selectedCommodity}) akan dicatat ke dalam database rekap lokal.
-            </Alert>
-            <TextField
-              label="Estimasi Berat Timbangan (kg)"
-              value={saveWeight}
-              onChange={(e) => setSaveWeight(e.target.value)}
-              placeholder="Contoh: 15"
-              slotProps={{ input: { endAdornment: <InputAdornment position="end">kg</InputAdornment> } }}
-              helperText="Opsional. Default 10 kg jika dikosongkan."
-              fullWidth
-            />
-            <TextField
-              label="Catatan Panen"
-              value={saveNotes}
-              onChange={(e) => setSaveNotes(e.target.value)}
-              placeholder="Contoh: Panen pagi keranjang 3"
-              multiline
-              rows={2}
-              fullWidth
-            />
-          </Stack>
-        </DialogContent>
-        <DialogActions sx={{ p: 2 }}>
-          <Button onClick={() => setIsSaveModalOpen(false)} color="inherit">
-            Batal
-          </Button>
-          <Button onClick={handleConfirmSaveToRecap} variant="contained" color="primary">
-            Simpan Sekarang
-          </Button>
-        </DialogActions>
-      </Dialog>
+      <SaveToRecapDialog
+        onClose={() => setIsSaveModalOpen(false)}
+        onConfirm={handleConfirmSaveToRecap}
+        onNotesChange={(e) => setSaveNotes(e.target.value)}
+        onWeightChange={(e) => setSaveWeight(e.target.value)}
+        open={isSaveModalOpen}
+        saveNotes={saveNotes}
+        saveWeight={saveWeight}
+        selectedCommodity={selectedCommodity}
+      />
 
       {/* DIALOG PRATINJAU SERTIFIKAT MUTU QC */}
-      <Dialog
-        open={isCertModalOpen}
+      <CertificatePreviewDialog
+        execStatus={execStatus}
+        inference={inference}
         onClose={() => setIsCertModalOpen(false)}
-        maxWidth="md"
-        fullWidth
-        scroll="paper"
-      >
-        <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Stack direction="row" spacing={1} alignItems="center">
-            <VerifiedRoundedIcon color="primary" />
-            <Typography variant="h6" fontWeight={800}>
-              Sertifikat Mutu QC Resmi (A4)
-            </Typography>
-          </Stack>
-          <IconButton aria-label="Tutup pratinjau sertifikat" onClick={() => setIsCertModalOpen(false)} size="small">
-            <CloseRoundedIcon />
-          </IconButton>
-        </DialogTitle>
-        <DialogContent dividers sx={{ p: { xs: 1, sm: 2 } }}>
-          {scanResult && (
-            <QCPrintCertificate
-              batch={{
-                id: scanResult.scan_id || 'QC-SCAN',
-                tanggal: getTodayDateString(),
-                komoditas: selectedCommodity,
-                beratKg: Number(saveWeight ? saveWeight.replace(',', '.') : 10) || 10,
-                fotoKeranjang: scanResult.imagePreview,
-                ai_scan_performed: execStatus === 'ai_detected',
-                execution_status: execStatus,
-                status_details: statusDetails,
-                is_simulated: execStatus === 'simulated',
-                inference: inference,
-                pricing: pricing,
-                scanResult: scanResult,
-                business_grading: scanResult.business_grading,
-              }}
-              showPrintButton
-              onPrint={() => window.print()}
-            />
-          )}
-        </DialogContent>
-        <DialogActions sx={{ p: 2 }}>
-          <Button onClick={() => setIsCertModalOpen(false)} color="inherit">
-            Tutup
-          </Button>
-          <Button
-            onClick={() => window.print()}
-            variant="contained"
-            color="primary"
-            startIcon={<PrintRoundedIcon />}
-          >
-            Cetak / Unduh PDF
-          </Button>
-        </DialogActions>
-      </Dialog>
+        open={isCertModalOpen}
+        pricing={pricing}
+        saveWeight={saveWeight}
+        scanResult={scanResult}
+        selectedCommodity={selectedCommodity}
+        statusDetails={statusDetails}
+      />
     </Stack>
   )
 }
