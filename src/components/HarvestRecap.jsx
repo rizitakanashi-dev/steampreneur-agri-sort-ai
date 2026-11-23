@@ -3,6 +3,8 @@ import {
   Alert,
   Box,
   Button,
+  Card,
+  CardContent,
   Chip,
   Dialog,
   DialogActions,
@@ -29,6 +31,8 @@ import {
   TextField,
   Tooltip,
   Typography,
+  useMediaQuery,
+  useTheme,
 } from '@mui/material'
 import AssessmentRoundedIcon from '@mui/icons-material/AssessmentRounded'
 import AutoAwesomeRoundedIcon from '@mui/icons-material/AutoAwesomeRounded'
@@ -68,6 +72,20 @@ function GradeChip({ label, value, color }) {
     return null
   }
   return <Chip color={color} label={`${label} ${formatNumber(value)}%`} size="small" sx={{ mr: 0.5, mb: 0.5 }} />
+}
+
+/**
+ * Normalisasi status eksekusi batch untuk badge (AI / Review / Simulasi).
+ * Dipakai bersama oleh tabel desktop dan kartu mobile.
+ */
+function getBatchExecStatus(batch) {
+  return (
+    batch.execution_status ||
+    batch.scanResult?.execution_status ||
+    (batch.is_simulated || batch.scanResult?.is_simulated
+      ? 'simulated'
+      : (batch.ai_scan_performed ? 'ai_detected' : null))
+  )
 }
 
 function getBatchEstimatedValue(batch) {
@@ -177,7 +195,91 @@ function BatchGradeDistribution({ batch }) {
   return <Typography color="text.secondary" variant="caption">-</Typography>
 }
 
+/**
+ * Kartu batch panen untuk layar sempit (< md). Pengganti tabel agar
+ * tidak perlu scroll horizontal dan target sentuh tombol lebih besar.
+ */
+function MobileBatchCard({ batch, onSelectBatch, onDeleteBatch, onViewDetail }) {
+  const estValue = getBatchEstimatedValue(batch)
+  const execStatus = getBatchExecStatus(batch)
+
+  return (
+    <Card variant="outlined" sx={{ borderRadius: 2 }}>
+      <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
+        <Stack alignItems="flex-start" direction="row" justifyContent="space-between" spacing={1}>
+          <Box sx={{ flex: 1, minWidth: 0 }}>
+            <Typography fontWeight={700} noWrap variant="body2">{batch.id}</Typography>
+            <Typography color="text.secondary" variant="caption">{batch.tanggal}</Typography>
+          </Box>
+          {execStatus === 'ai_detected' && (
+            <Chip color="success" icon={<AutoAwesomeRoundedIcon style={{ fontSize: 13 }} />} label="AI" size="small" sx={{ height: 20, fontSize: 10, fontWeight: 700 }} />
+          )}
+          {execStatus === 'needs_review' && (
+            <Chip color="warning" icon={<WarningAmberRoundedIcon style={{ fontSize: 13 }} />} label="Review" size="small" sx={{ height: 20, fontSize: 10, fontWeight: 700 }} />
+          )}
+          {execStatus === 'simulated' && (
+            <Chip color="info" label="Simulasi" size="small" sx={{ height: 20, fontSize: 10, fontWeight: 700 }} />
+          )}
+        </Stack>
+
+        <Stack alignItems="baseline" direction="row" justifyContent="space-between" spacing={1.5} sx={{ mt: 1 }}>
+          <Typography fontWeight={600} variant="body2">{batch.komoditas}</Typography>
+          <Typography fontWeight={600} variant="body2">{formatNumber(batch.beratKg ?? batch.volume_kg)} kg</Typography>
+        </Stack>
+
+        <Box sx={{ mt: 1 }}>
+          <BatchGradeDistribution batch={batch} />
+        </Box>
+
+        <Stack alignItems="baseline" direction="row" justifyContent="space-between" spacing={1.5} sx={{ mt: 0.5 }}>
+          <Typography color="text.secondary" variant="caption">Estimasi nilai</Typography>
+          <Typography color="success.main" fontWeight={700} variant="body2">{formatRupiah(estValue)}</Typography>
+        </Stack>
+
+        <Divider sx={{ my: 1.25 }} />
+
+        <Stack direction="row" justifyContent="space-between">
+          {onSelectBatch && (
+            <Tooltip title="Buka Hasil Analisis QC">
+              <IconButton
+                aria-label={`Buka Analisis QC ${batch.id}`}
+                color="success"
+                onClick={() => onSelectBatch(batch, { openCertificate: false })}
+              >
+                <AssessmentRoundedIcon />
+              </IconButton>
+            </Tooltip>
+          )}
+          {onSelectBatch && (
+            <Tooltip title="Buka Hasil QC & Cetak Sertifikat">
+              <IconButton
+                aria-label={`Buka QC ${batch.id}`}
+                color="primary"
+                onClick={() => onSelectBatch(batch, { openCertificate: true })}
+              >
+                <PrintRoundedIcon />
+              </IconButton>
+            </Tooltip>
+          )}
+          <Tooltip title="Lihat detail ringkasan">
+            <IconButton aria-label={`Lihat detail ${batch.id}`} onClick={() => onViewDetail(batch)}>
+              <VisibilityRoundedIcon />
+            </IconButton>
+          </Tooltip>
+          <Tooltip title="Hapus batch">
+            <IconButton aria-label={`Hapus ${batch.id}`} color="error" onClick={() => onDeleteBatch(batch)}>
+              <DeleteOutlineRoundedIcon />
+            </IconButton>
+          </Tooltip>
+        </Stack>
+      </CardContent>
+    </Card>
+  )
+}
+
 export function HarvestRecap({ batches = [], onSelectBatch, onDeleteBatch }) {
+  const theme = useTheme()
+  const isMobileLayout = useMediaQuery(theme.breakpoints.down('md'))
   const [page, setPage] = useState(0)
   const [rowsPerPage, setRowsPerPage] = useState(5)
   const [selectedBatch, setSelectedBatch] = useState(null)
@@ -528,8 +630,44 @@ export function HarvestRecap({ batches = [], onSelectBatch, onDeleteBatch }) {
       </Paper>
 
       <Paper sx={{ border: '1px solid', borderColor: 'divider' }}>
-        <TableContainer sx={{ overflowX: 'auto' }}>
-        <Table aria-label="Rekap data panen" size="small" sx={{ minWidth: 900 }}>
+        {isMobileLayout ? (
+          <>
+            <Stack spacing={1.5} sx={{ p: { xs: 1.5, sm: 2 } }}>
+              {visibleBatches.length === 0 && (
+                <Typography align="center" color="text.secondary" sx={{ py: 3 }} variant="body2">
+                  Data tidak ditemukan
+                </Typography>
+              )}
+              {visibleBatches.map((batch) => (
+                <MobileBatchCard
+                  key={batch.id}
+                  batch={batch}
+                  onDeleteBatch={setBatchToDelete}
+                  onSelectBatch={onSelectBatch}
+                  onViewDetail={setSelectedBatch}
+                />
+              ))}
+            </Stack>
+            {visibleBatches.length > 0 && (
+              <Stack
+                alignItems="baseline"
+                direction="row"
+                justifyContent="space-between"
+                spacing={1.5}
+                sx={{ borderTop: '1px solid', borderColor: 'divider', px: 2, py: 1.5 }}
+              >
+                <Typography color="text.secondary" variant="caption">
+                  Total halaman ini ({visibleBatches.length} batch):
+                </Typography>
+                <Typography fontWeight={700} noWrap variant="caption">
+                  {formatNumber(totals.totalBeratKg)} kg • {formatRupiah(totals.totalNilai)}
+                </Typography>
+              </Stack>
+            )}
+          </>
+        ) : (
+          <TableContainer sx={{ overflowX: 'auto' }}>
+          <Table aria-label="Rekap data panen" size="small" sx={{ minWidth: 900 }}>
           <TableHead>
             <TableRow sx={{ bgcolor: '#f2f4f6' }}>
               <TableCell>ID / Tanggal</TableCell>
@@ -552,12 +690,7 @@ export function HarvestRecap({ batches = [], onSelectBatch, onDeleteBatch }) {
             )}
             {visibleBatches.map((batch) => {
               const estValue = getBatchEstimatedValue(batch)
-              const execStatus =
-                batch.execution_status ||
-                batch.scanResult?.execution_status ||
-                (batch.is_simulated || batch.scanResult?.is_simulated
-                  ? 'simulated'
-                  : (batch.ai_scan_performed ? 'ai_detected' : null))
+              const execStatus = getBatchExecStatus(batch)
 
               return (
                 <TableRow hover key={batch.id}>
@@ -669,6 +802,7 @@ export function HarvestRecap({ batches = [], onSelectBatch, onDeleteBatch }) {
           </TableFooter>
         </Table>
         </TableContainer>
+        )}
         <TablePagination
           component="div"
           count={sortedBatches.length}
