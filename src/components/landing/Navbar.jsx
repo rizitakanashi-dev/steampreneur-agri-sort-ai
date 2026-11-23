@@ -46,6 +46,60 @@ export function Navbar({ onOpenApp }) {
     []
   )
   const activeSection = useActiveSection(sectionIds)
+  const [pinnedSection, setPinnedSection] = useState(null)
+  const rafScrollRef = useRef(null)
+  // Saat link ditekan: highlight dikunci ke tujuan selama animasi scroll,
+  // sehingga tidak kedip melewati section-section di tengah
+  const currentSection = pinnedSection || activeSection
+
+  /**
+   * Scroll animasi kustom ber-easing konsisten.
+   * Native `behavior:'smooth'` Chrome durasinya variabel & melompat pada
+   * jarak jauh di halaman berat — terasa patah-patah. Animasi rAF ini
+   * memberi laju konstan (easeInOutCubic) dan bisa diinterupsi pengguna.
+   */
+  const smoothScrollTo = (targetY, onDone) => {
+    const startY = window.pageYOffset
+    const dist = targetY - startY
+    const finish = () => {
+      if (rafScrollRef.current) cancelAnimationFrame(rafScrollRef.current)
+      rafScrollRef.current = null
+      window.removeEventListener('wheel', cancel)
+      window.removeEventListener('touchstart', cancel)
+      window.removeEventListener('keydown', cancel)
+      if (onDone) onDone()
+    }
+    const cancel = () => {
+      if (rafScrollRef.current) cancelAnimationFrame(rafScrollRef.current)
+      rafScrollRef.current = null
+      window.removeEventListener('wheel', cancel)
+      window.removeEventListener('touchstart', cancel)
+      window.removeEventListener('keydown', cancel)
+      if (onDone) onDone()
+    }
+    const reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    if (reduced || Math.abs(dist) < 2) {
+      window.scrollTo(0, targetY)
+      finish()
+      return
+    }
+    const duration = Math.min(1000, Math.max(450, Math.abs(dist) * 0.45))
+    const t0 = performance.now()
+    const ease = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2)
+    const step = (now) => {
+      const p = Math.min(1, (now - t0) / duration)
+      window.scrollTo(0, startY + dist * ease(p))
+      if (p < 1) {
+        rafScrollRef.current = requestAnimationFrame(step)
+      } else {
+        finish()
+      }
+    }
+    window.addEventListener('wheel', cancel, { passive: true })
+    window.addEventListener('touchstart', cancel, { passive: true })
+    window.addEventListener('keydown', cancel)
+    rafScrollRef.current = requestAnimationFrame(step)
+  }
 
   const handleNavClick = (e, href) => {
     e.preventDefault()
@@ -53,7 +107,8 @@ export function Navbar({ onOpenApp }) {
     const element = document.querySelector(href)
     if (element) {
       const offsetPosition = element.getBoundingClientRect().top + window.pageYOffset - 72
-      window.scrollTo({ top: offsetPosition, behavior: 'smooth' })
+      setPinnedSection(href.slice(1))
+      smoothScrollTo(offsetPosition, () => setPinnedSection(null))
     }
   }
 
@@ -125,7 +180,7 @@ export function Navbar({ onOpenApp }) {
             {/* Centered Whisper-Quiet Nav Links */}
             <Stack direction="row" spacing={3.5} sx={{ display: { xs: 'none', md: 'flex' } }}>
               {NAV_LINKS.map((link) => {
-                const isCurrent = activeSection === link.href.replace('#', '')
+                const isCurrent = currentSection === link.href.replace('#', '')
                 return (
                   <Box
                     key={link.href}
@@ -243,7 +298,7 @@ export function Navbar({ onOpenApp }) {
         </Typography>
         <List sx={{ pt: 0 }} disablePadding>
           {NAV_LINKS.map((link) => {
-            const isCurrent = activeSection === link.href.replace('#', '')
+            const isCurrent = currentSection === link.href.replace('#', '')
             const IconComp = DRAWER_ICONS[link.href] || AppsRoundedIcon
             return (
               <ListItem key={link.href} disablePadding sx={{ mb: 0.5 }}>
