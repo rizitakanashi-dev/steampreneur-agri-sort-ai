@@ -55,7 +55,7 @@ export function Commodities() {
             <Grid key={item.id} size={{ xs: 12, md: 4 }}>
               <EditorialNeutralCard sx={{ height: '100%', p: '32px 24px' }}>
                 <Stack spacing={2}>
-                  <Stack direction="row" justifyContent="space-between" alignItems="center">
+                  <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center' }}>
                     <CommodityVisual id={item.id} />
                     <Box sx={{ textAlign: 'right' }}>
                       <GhostCategoryTag>{item.badge}</GhostCategoryTag>

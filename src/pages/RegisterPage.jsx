@@ -210,13 +210,12 @@ export function RegisterPage({ onRegisterSuccess, onSwitchToLogin, onBackToLandi
     >
       {/* Top Header Bar */}
       <Container maxWidth="lg" sx={{ pt: { xs: 2.5, sm: 3.5 }, px: { xs: 2.5, sm: 3 } }}>
-        <Stack direction="row" justifyContent="space-between" alignItems="center">
+        <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center' }}>
           <Stack
             direction="row"
             spacing={1.25}
-            alignItems="center"
             onClick={onBackToLanding}
-            sx={{ cursor: 'pointer' }}
+            sx={{alignItems: 'center',  cursor: 'pointer' }}
           >
             <Box
               sx={{
@@ -434,8 +433,8 @@ export function RegisterPage({ onRegisterSuccess, onSwitchToLogin, onBackToLandi
                 />
 
                 {/* Indikator Kekuatan Password */}
-                <Stack direction="row" spacing={1.5} alignItems="center" sx={{ px: 0.5 }}>
-                  <Stack direction="row" spacing={0.5} alignItems="center">
+                <Stack direction="row" spacing={1.5} sx={{alignItems: 'center',  px: 0.5 }}>
+                  <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>
                     <CheckCircleRoundedIcon
                       sx={{
                         fontSize: 15,
@@ -453,7 +452,7 @@ export function RegisterPage({ onRegisterSuccess, onSwitchToLogin, onBackToLandi
                     </Typography>
                   </Stack>
 
-                  <Stack direction="row" spacing={0.5} alignItems="center">
+                  <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>
                     <CheckCircleRoundedIcon
                       sx={{
                         fontSize: 15,
@@ -536,7 +535,7 @@ export function RegisterPage({ onRegisterSuccess, onSwitchToLogin, onBackToLandi
                   }}
                 >
                   {isSendingOtp ? (
-                    <Stack direction="row" spacing={1} alignItems="center">
+                    <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
                       <CircularProgress size={18} color="inherit" />
                       <span>Mengirim Kode OTP ke Gmail...</span>
                     </Stack>
@@ -595,11 +594,9 @@ export function RegisterPage({ onRegisterSuccess, onSwitchToLogin, onBackToLandi
           <Stack spacing={2.25}>
             <Stack
               direction="row"
-              justifyContent="space-between"
-              alignItems="center"
-              sx={{ width: '100%' }}
+              sx={{justifyContent: 'space-between', alignItems: 'center',  width: '100%' }}
             >
-              <Stack direction="row" spacing={1} alignItems="center">
+              <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
                 <MarkEmailReadOutlinedIcon sx={{ color: AGRI_COLORS.emerald }} />
                 <Typography fontWeight={700} variant="subtitle1">
                   Verifikasi Kode OTP Gmail
@@ -651,10 +648,8 @@ export function RegisterPage({ onRegisterSuccess, onSwitchToLogin, onBackToLandi
 
                 <Stack
                   direction={{ xs: 'column-reverse', sm: 'row' }}
-                  justifyContent={{ sm: 'space-between' }}
-                  alignItems={{ sm: 'center' }}
                   spacing={0.5}
-                  sx={{ width: '100%', pt: 0.5 }}
+                  sx={{justifyContent: { sm: 'space-between' }, alignItems: { sm: 'center' },  width: '100%', pt: 0.5 }}
                 >
                   <Button
                     size="small"

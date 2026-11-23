@@ -64,14 +64,12 @@ export function PostHarvestPathologyCards({ commodity, rejectCount = 0, rejectPe
       <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
         {/* Header Modul Sains STEAM */}
         <Stack
-          alignItems={{ xs: 'flex-start', md: 'center' }}
           direction={{ xs: 'column', md: 'row' }}
-          justifyContent="space-between"
           spacing={2}
-          sx={{ mb: 2 }}
+          sx={{alignItems: { xs: 'flex-start', md: 'center' }, justifyContent: 'space-between',  mb: 2 }}
         >
           <Box sx={{ flexGrow: 1 }}>
-            <Stack alignItems="center" direction="row" spacing={1.5} flexWrap="wrap">
+            <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
               <Box
                 sx={{
                   alignItems: 'center',
@@ -112,10 +110,9 @@ export function PostHarvestPathologyCards({ commodity, rejectCount = 0, rejectPe
 
           {/* Tombol Katalog Sains Patologi: samakan tata letak persis dengan sertifikat di kanan tengah */}
           <Stack
-            alignItems="center"
             direction="row"
             spacing={1.5}
-            sx={{
+            sx={{alignItems: 'center', 
               alignSelf: { xs: 'flex-start', md: 'center' },
               mt: { xs: 1.5, md: 0 },
               flexShrink: 0,
@@ -150,7 +147,7 @@ export function PostHarvestPathologyCards({ commodity, rejectCount = 0, rejectPe
             p: 1.75,
           }}
         >
-          <Stack alignItems="center" direction="row" spacing={1} sx={{ mb: 0.5 }}>
+          <Stack direction="row" spacing={1} sx={{alignItems: 'center',  mb: 0.5 }}>
             {hasReject ? (
               <WarningAmberRoundedIcon color="warning" fontSize="small" />
             ) : (
@@ -198,7 +195,7 @@ export function PostHarvestPathologyCards({ commodity, rejectCount = 0, rejectPe
                   }}
                 >
                   <AccordionSummary expandIcon={<ExpandMoreRoundedIcon />}>
-                    <Stack alignItems="center" direction="row" spacing={1.5} sx={{ width: '100%', pr: 1 }}>
+                    <Stack direction="row" spacing={1.5} sx={{alignItems: 'center',  width: '100%', pr: 1 }}>
                       {item.agentType.includes('Bakteri') ? (
                         <BiotechRoundedIcon color="error" fontSize="small" />
                       ) : item.agentType.includes('Jamur') ? (
@@ -301,7 +298,7 @@ export function PostHarvestPathologyCards({ commodity, rejectCount = 0, rejectPe
                     }}
                   >
                     <AccordionSummary expandIcon={<ExpandMoreRoundedIcon />}>
-                      <Stack alignItems="center" direction="row" spacing={1.5} sx={{ width: '100%', pr: 1 }}>
+                      <Stack direction="row" spacing={1.5} sx={{alignItems: 'center',  width: '100%', pr: 1 }}>
                         {item.agentType.includes('Bakteri') ? (
                           <BiotechRoundedIcon color="error" fontSize="small" />
                         ) : item.agentType.includes('Jamur') ? (
@@ -388,8 +385,8 @@ export function PostHarvestPathologyCards({ commodity, rejectCount = 0, rejectPe
         open={isCatalogOpen}
       >
         <DialogTitle sx={{ pb: 1 }}>
-          <Stack alignItems="center" direction="row" justifyContent="space-between">
-            <Stack alignItems="center" direction="row" spacing={1.5}>
+          <Stack direction="row" sx={{ alignItems: 'center', justifyContent: 'space-between' }}>
+            <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center' }}>
               <Box
                 sx={{
                   alignItems: 'center',
@@ -420,7 +417,7 @@ export function PostHarvestPathologyCards({ commodity, rejectCount = 0, rejectPe
         </DialogTitle>
         <DialogContent dividers>
           {/* Filter Komoditas di Katalog */}
-          <Stack direction="row" flexWrap="wrap" gap={1} sx={{ mb: 2.5 }}>
+          <Stack direction="row" sx={{flexWrap: 'wrap', gap: 1,  mb: 2.5 }}>
             {['Semua', 'Terung', 'Tomat', 'Cabai Merah Keriting', 'Cabai Rawit Merah'].map((comm) => (
               <Chip
                 clickable
@@ -439,7 +436,7 @@ export function PostHarvestPathologyCards({ commodity, rejectCount = 0, rejectPe
               <Grid key={item.id} size={{ xs: 12, md: 6 }}>
                 <Card sx={{ height: '100%', border: '1px solid #e0e0e0', borderRadius: 2 }}>
                   <CardContent sx={{ p: 2 }}>
-                    <Stack alignItems="center" direction="row" justifyContent="space-between" sx={{ mb: 1 }}>
+                    <Stack direction="row" sx={{alignItems: 'center', justifyContent: 'space-between',  mb: 1 }}>
                       <Typography fontWeight={700} variant="subtitle2">
                         {item.name}
                       </Typography>
@@ -467,7 +464,7 @@ export function PostHarvestPathologyCards({ commodity, rejectCount = 0, rejectPe
                       {item.mitigationAction}
                     </Typography>
 
-                    <Stack direction="row" flexWrap="wrap" gap={0.5} sx={{ mt: 1 }}>
+                    <Stack direction="row" sx={{flexWrap: 'wrap', gap: 0.5,  mt: 1 }}>
                       {item.affectedCommodities.map((c) => (
                         <Chip
                           key={c}

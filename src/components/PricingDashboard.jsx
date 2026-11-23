@@ -279,10 +279,8 @@ export function PricingDashboard() {
         <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
           <Stack
             direction={{ xs: 'column', md: 'row' }}
-            justifyContent="space-between"
-            alignItems={{ xs: 'flex-start', md: 'center' }}
             spacing={2}
-          >
+           sx={{ justifyContent: 'space-between', alignItems: { xs: 'flex-start', md: 'center' } }}>
             <Box>
               <Typography variant="subtitle2" fontWeight={800} sx={{ color: 'text.primary' }}>
                 Sumber Data Acuan Harga Pasar
@@ -482,7 +480,7 @@ export function PricingDashboard() {
         <Grid size={{ xs: 12, md: 7 }}>
           <Card sx={{ height: '100%' }}>
             <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
-              <Stack alignItems="center" direction="row" justifyContent="space-between" sx={{ mb: 1 }}>
+              <Stack direction="row" sx={{alignItems: 'center', justifyContent: 'space-between',  mb: 1 }}>
                 <Typography variant="h6">Harga referensi per komoditas</Typography>
                 {isTriangulasiActive ? (
                   <Chip
@@ -553,7 +551,7 @@ export function PricingDashboard() {
                           p: 1.5,
                         }}
                       >
-                        <Stack alignItems="center" direction="row" justifyContent="space-between" spacing={1.5}>
+                        <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center', justifyContent: 'space-between' }}>
                           <Box sx={{ flex: 1, minWidth: 0 }}>
                             <Typography fontWeight={isSelected ? 700 : 600} variant="body2">{option}</Typography>
                             {categorySub && (
@@ -562,7 +560,7 @@ export function PricingDashboard() {
                               </Typography>
                             )}
                           </Box>
-                          <Stack alignItems="flex-end" spacing={0.5}>
+                          <Stack spacing={0.5} sx={{ alignItems: 'flex-end' }}>
                             <Typography color="primary.dark" fontWeight={700} noWrap variant="body2">
                               {formatRupiah(price)} / kg
                             </Typography>
@@ -756,11 +754,9 @@ export function PricingDashboard() {
                         ].map((grade) => (
                           <Stack
                             key={grade.key}
-                            alignItems="center"
                             direction="row"
-                            justifyContent="space-between"
                             spacing={1.5}
-                            sx={{ borderBottom: '1px solid', borderColor: 'divider', pb: 1 }}
+                            sx={{alignItems: 'center', justifyContent: 'space-between',  borderBottom: '1px solid', borderColor: 'divider', pb: 1 }}
                           >
                             <Chip color={grade.color} label={grade.label} size="small" />
                             <Box sx={{ textAlign: 'right' }}>
@@ -770,11 +766,9 @@ export function PricingDashboard() {
                           </Stack>
                         ))}
                         <Stack
-                          alignItems="center"
                           direction="row"
-                          justifyContent="space-between"
                           spacing={1.5}
-                          sx={{ bgcolor: '#f7f9fa', borderRadius: 1.5, px: 1.5, py: 1 }}
+                          sx={{alignItems: 'center', justifyContent: 'space-between',  bgcolor: '#f7f9fa', borderRadius: 1.5, px: 1.5, py: 1 }}
                         >
                           <Typography fontWeight={700} variant="body2">Total volume</Typography>
                           <Typography fontWeight={700} variant="body2">

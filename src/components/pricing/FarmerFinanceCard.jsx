@@ -38,8 +38,8 @@ export function FarmerFinanceCard({
   return (
     <Card sx={{ border: '1px solid #e0e0e0', borderRadius: 2 }}>
       <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
-        <Stack alignItems="center" direction="row" justifyContent="space-between" sx={{ mb: 1.5 }}>
-          <Stack alignItems="center" direction="row" spacing={1}>
+        <Stack direction="row" sx={{alignItems: 'center', justifyContent: 'space-between',  mb: 1.5 }}>
+          <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
             <MonetizationOnRoundedIcon color="primary" />
             <Typography variant="h6">Titik Impas (BEP) & Laba Petani</Typography>
           </Stack>
@@ -102,9 +102,9 @@ export function FarmerFinanceCard({
                 p: 2,
               }}
             >
-              <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ xs: 'flex-start', sm: 'center' }} spacing={1}>
+              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} sx={{ justifyContent: 'space-between', alignItems: { xs: 'flex-start', sm: 'center' } }}>
                 <Box>
-                  <Stack direction="row" alignItems="center" spacing={1}>
+                  <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
                     {farmerFinance.isProfitable ? (
                       <TrendingUpRoundedIcon sx={{ color: '#16a34a' }} />
                     ) : (

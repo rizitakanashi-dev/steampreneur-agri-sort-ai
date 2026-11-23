@@ -27,14 +27,12 @@ export function QCResultHeader({ batch, commodity, executionStatus, isMultiAngle
     <Card elevation={2} sx={{ borderRadius: 3 }}>
       <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
         <Stack
-          alignItems={{ xs: 'flex-start', md: 'center' }}
           direction={{ xs: 'column', md: 'row' }}
-          justifyContent="space-between"
           spacing={2}
-        >
+         sx={{ alignItems: { xs: 'flex-start', md: 'center' }, justifyContent: 'space-between' }}>
           <Box sx={{ flexGrow: 1 }}>
             {/* Baris Judul + Chip AI lurus di samping kanannya persis */}
-            <Stack alignItems="center" direction="row" spacing={1.5} flexWrap="wrap">
+            <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
               <Box sx={{ color: '#036e45', display: 'flex', alignItems: 'center' }}>
                 {executionStatus === 'ai_detected' ? (
                   <AutoAwesomeRoundedIcon sx={{ fontSize: 30 }} />
@@ -120,10 +118,9 @@ export function QCResultHeader({ batch, commodity, executionStatus, isMultiAngle
 
           {/* Tombol Aksi di sisi kanan: Posisi pas di kanan tengah, rapi dan tombol cetak bulat */}
           <Stack
-            alignItems="center"
             direction="row"
             spacing={1.5}
-            sx={{
+            sx={{alignItems: 'center', 
               alignSelf: { xs: 'flex-start', md: 'center' },
               mt: { xs: 1.5, md: 0 },
               flexShrink: 0,

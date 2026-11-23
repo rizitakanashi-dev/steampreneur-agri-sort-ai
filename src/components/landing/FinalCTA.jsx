@@ -20,7 +20,7 @@ export function FinalCTA({ onOpenApp }) {
       <Container maxWidth="lg" sx={{ maxWidth: 1200, px: { xs: 2.5, sm: 3 } }}>
         {/* Rare Single Editorial Accent Card on #FFFFFF Canvas */}
         <EditorialAccentCard sx={{ p: { xs: 4, sm: '40px' } }}>
-          <Grid container spacing={{ xs: 4, md: 6 }} alignItems="center">
+          <Grid container spacing={{ xs: 4, md: 6 }} sx={{ alignItems: 'center' }}>
             <Grid size={{ xs: 12, md: 7.5 }}>
               <Stack spacing={2}>
                 <Typography
@@ -62,7 +62,7 @@ export function FinalCTA({ onOpenApp }) {
             </Grid>
 
             <Grid size={{ xs: 12, md: 4.5 }}>
-              <Stack spacing={2} alignItems={{ xs: 'flex-start', md: 'flex-end' }}>
+              <Stack spacing={2} sx={{ alignItems: { xs: 'flex-start', md: 'flex-end' } }}>
                 <DisplayHeadline
                   variant="subsection"
                   sx={{ color: AGRI_COLORS.deepEmerald, textAlign: { md: 'right' } }}
@@ -70,7 +70,7 @@ export function FinalCTA({ onOpenApp }) {
                   Siap digunakan di smartphone &amp; laptop.
                 </DisplayHeadline>
 
-                <Stack direction="row" spacing={1.5} flexWrap="wrap">
+                <Stack direction="row" spacing={1.5} sx={{ flexWrap: 'wrap' }}>
                   <AgriPrimaryButton onClick={() => onOpenApp('scanner')}>
                     Mulai Scan QC
                   </AgriPrimaryButton>

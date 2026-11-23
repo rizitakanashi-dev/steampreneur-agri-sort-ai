@@ -232,12 +232,10 @@ export function QCResults({ batch, onBackToInput, onViewRecap, initialOpenCertif
         {hasDualPhoto && (
           <Card elevation={1} sx={{ borderRadius: 3, p: 2, bgcolor: '#f8fafc', border: '1px solid #e2e8f0' }}>
             <Stack
-              alignItems={{ xs: 'flex-start', md: 'center' }}
               direction={{ xs: 'column', md: 'row' }}
-              justifyContent="space-between"
               spacing={2}
-            >
-              <Stack alignItems="center" direction="row" spacing={1.5} sx={{ flexShrink: 0 }}>
+             sx={{ alignItems: { xs: 'flex-start', md: 'center' }, justifyContent: 'space-between' }}>
+              <Stack direction="row" spacing={1.5} sx={{alignItems: 'center',  flexShrink: 0 }}>
                 <Box
                   sx={{
                     alignItems: 'center',
@@ -421,9 +419,9 @@ export function QCResults({ batch, onBackToInput, onViewRecap, initialOpenCertif
           <Grid size={{ xs: 12 }}>
             <Card elevation={2} sx={{ borderRadius: 3 }}>
               <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
-                <Grid container alignItems="center" spacing={3}>
+                <Grid container spacing={3} sx={{ alignItems: 'center' }}>
                   <Grid size={{ xs: 12, md: 5 }}>
-                    <Stack direction="row" justifyContent="space-between" sx={{ mb: 1 }}>
+                    <Stack direction="row" sx={{justifyContent: 'space-between',  mb: 1 }}>
                       <Typography fontWeight={700} variant="h6">
                         Agregasi Mutu 2-Sudut Pandang
                       </Typography>
@@ -511,7 +509,7 @@ export function QCResults({ batch, onBackToInput, onViewRecap, initialOpenCertif
           <Grid size={{ xs: 12, md: photoUrl ? 5 : 12 }}>
             <Card elevation={2} sx={{ borderRadius: 3, height: '100%' }}>
               <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
-                <Stack direction="row" justifyContent="space-between" sx={{ mb: 1.5 }}>
+                <Stack direction="row" sx={{justifyContent: 'space-between',  mb: 1.5 }}>
                   <Typography fontWeight={700} variant="h6">
                     Proporsi Kondisi Sampel
                   </Typography>
@@ -532,11 +530,9 @@ export function QCResults({ batch, onBackToInput, onViewRecap, initialOpenCertif
                 {hasAiScan && inference ? (
                   <Stack spacing={0} sx={{ width: '100%' }}>
                     <Stack
-                      alignItems="center"
                       direction="row"
-                      justifyContent="space-between"
                       spacing={2}
-                      sx={{ borderBottom: '1px solid', borderColor: 'divider', py: 1.25 }}
+                      sx={{alignItems: 'center', justifyContent: 'space-between',  borderBottom: '1px solid', borderColor: 'divider', py: 1.25 }}
                     >
                       <Typography color="text.secondary" variant="body2" sx={{ flexGrow: 1 }}>
                         Total Buah Terdeteksi:
@@ -546,11 +542,9 @@ export function QCResults({ batch, onBackToInput, onViewRecap, initialOpenCertif
                       </Typography>
                     </Stack>
                     <Stack
-                      alignItems="center"
                       direction="row"
-                      justifyContent="space-between"
                       spacing={2}
-                      sx={{ borderBottom: '1px solid', borderColor: 'divider', py: 1.25 }}
+                      sx={{alignItems: 'center', justifyContent: 'space-between',  borderBottom: '1px solid', borderColor: 'divider', py: 1.25 }}
                     >
                       <Typography color="text.secondary" variant="body2" sx={{ flexGrow: 1 }}>
                         Waktu Inferensi AI:
@@ -560,11 +554,9 @@ export function QCResults({ batch, onBackToInput, onViewRecap, initialOpenCertif
                       </Typography>
                     </Stack>
                     <Stack
-                      alignItems="center"
                       direction="row"
-                      justifyContent="space-between"
                       spacing={2}
-                      sx={{ py: 1.25 }}
+                      sx={{alignItems: 'center', justifyContent: 'space-between',  py: 1.25 }}
                     >
                       <Typography color="text.secondary" variant="body2" sx={{ flexGrow: 1 }}>
                         Versi Model:
@@ -577,11 +569,9 @@ export function QCResults({ batch, onBackToInput, onViewRecap, initialOpenCertif
                 ) : (
                   <Stack spacing={0} sx={{ width: '100%' }}>
                     <Stack
-                      alignItems="center"
                       direction="row"
-                      justifyContent="space-between"
                       spacing={2}
-                      sx={{ borderBottom: '1px solid', borderColor: 'divider', py: 1.25 }}
+                      sx={{alignItems: 'center', justifyContent: 'space-between',  borderBottom: '1px solid', borderColor: 'divider', py: 1.25 }}
                     >
                       <Typography color="text.secondary" variant="body2" sx={{ flexGrow: 1 }}>
                         Berat Total Batch:
@@ -591,11 +581,9 @@ export function QCResults({ batch, onBackToInput, onViewRecap, initialOpenCertif
                       </Typography>
                     </Stack>
                     <Stack
-                      alignItems="center"
                       direction="row"
-                      justifyContent="space-between"
                       spacing={2}
-                      sx={{ py: 1.25 }}
+                      sx={{alignItems: 'center', justifyContent: 'space-between',  py: 1.25 }}
                     >
                       <Typography color="text.secondary" variant="body2" sx={{ flexGrow: 1 }}>
                         Metode Penilaian:
@@ -627,7 +615,7 @@ export function QCResults({ batch, onBackToInput, onViewRecap, initialOpenCertif
               inference?.object_counts?.rotten_tomato === undefined &&
               inference?.condition_ratios?.fresh_ratio_percent === undefined)) ? (
             // Indikator 3 Kelas (Grade A, Grade B, Reject)
-            <Stack direction={{ xs: 'column', sm: 'row' }} flexWrap="wrap" gap={2}>
+            <Stack direction={{ xs: 'column', sm: 'row' }} sx={{ flexWrap: 'wrap', gap: 2 }}>
               <QualityIndicator
                 color="#059669"
                 count={
@@ -662,7 +650,7 @@ export function QCResults({ batch, onBackToInput, onViewRecap, initialOpenCertif
             </Stack>
           ) : hasAiScan ? (
             // Indikator 2 Kelas Tomat
-            <Stack direction={{ xs: 'column', sm: 'row' }} flexWrap="wrap" gap={2}>
+            <Stack direction={{ xs: 'column', sm: 'row' }} sx={{ flexWrap: 'wrap', gap: 2 }}>
               <QualityIndicator
                 color="#047857"
                 count={inference?.object_counts?.fresh_tomato || 0}
@@ -680,7 +668,7 @@ export function QCResults({ batch, onBackToInput, onViewRecap, initialOpenCertif
             </Stack>
           ) : (
             // Indikator Manual Grade A/B/Reject
-            <Stack direction={{ xs: 'column', sm: 'row' }} flexWrap="wrap" gap={2}>
+            <Stack direction={{ xs: 'column', sm: 'row' }} sx={{ flexWrap: 'wrap', gap: 2 }}>
               <QualityIndicator
                 color="#289d67"
                 icon={AssessmentRoundedIcon}
@@ -711,13 +699,11 @@ export function QCResults({ batch, onBackToInput, onViewRecap, initialOpenCertif
       <Card elevation={2} sx={{ borderRadius: 3 }}>
         <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
           <Stack
-            alignItems={{ xs: 'flex-start', sm: 'center' }}
             direction={{ xs: 'column', sm: 'row' }}
-            justifyContent="space-between"
             spacing={1}
-            sx={{ mb: 2 }}
+            sx={{alignItems: { xs: 'flex-start', sm: 'center' }, justifyContent: 'space-between',  mb: 2 }}
           >
-            <Stack alignItems="center" direction="row" spacing={1}>
+            <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
               <TrendingUpRoundedIcon color="primary" />
               <Typography fontWeight={700} variant="h6">
                 Proyeksi Nilai Ekonomi (Smart Pricing)
@@ -827,7 +813,7 @@ export function QCResults({ batch, onBackToInput, onViewRecap, initialOpenCertif
       />
 
       {/* Tombol Aksi Navigasi */}
-      <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" spacing={1.5}>
+      <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} sx={{ justifyContent: 'space-between' }}>
         <Button
           fullWidth
           onClick={onBackToInput}
@@ -870,7 +856,7 @@ export function QCResults({ batch, onBackToInput, onViewRecap, initialOpenCertif
       open={isCertModalOpen}
     >
       <DialogTitle sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', pb: 1 }}>
-        <Stack alignItems="center" direction="row" spacing={1}>
+        <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
           <VerifiedRoundedIcon sx={{ color: '#036e45' }} />
           <Typography fontWeight={700} variant="h6">
             Pratinjau Sertifikat Uji Mutu Digital

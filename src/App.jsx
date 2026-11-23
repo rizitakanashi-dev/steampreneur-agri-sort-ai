@@ -82,7 +82,7 @@ function MetricCard({ detail, icon: Icon, label, value, color }) {
   return (
     <Card sx={{ height: '100%' }}>
       <CardContent sx={{ p: { xs: 2, sm: 2.5 } }}>
-        <Stack direction="row" justifyContent="space-between" spacing={2}>
+        <Stack direction="row" spacing={2} sx={{ justifyContent: 'space-between' }}>
           <Box>
             <Typography color="text.secondary" sx={{ mb: 1 }} variant="body2">{label}</Typography>
             <Typography sx={{ fontSize: { xs: 25, sm: 30 }, fontWeight: 800, letterSpacing: '-0.03em' }} variant="h4">{value}</Typography>
@@ -178,7 +178,7 @@ function DashboardPreview({ onNavigate, batches = [], onSelectBatch }) {
     <>
       <Card sx={{ background: 'linear-gradient(135deg, #036e45 0%, #0b8a5a 100%)', color: 'common.white', mb: 2.5, overflow: 'hidden', position: 'relative' }}>
         <CardContent sx={{ p: { xs: 2.5, sm: 3.5 }, position: 'relative', zIndex: 1 }}>
-          <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" spacing={2}>
+          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ justifyContent: 'space-between' }}>
             <Box sx={{ maxWidth: { xs: '100%', sm: 560 } }}>
               <Chip icon={<CheckCircleRoundedIcon />} label="Sistem siap digunakan" size="small" sx={{ bgcolor: 'rgba(255,255,255,.16)', color: 'common.white', mb: 2, '& .MuiChip-icon': { color: '#b8e7d5' } }} />
               <Typography sx={{ fontSize: { xs: 26, sm: 34 }, fontWeight: 800, letterSpacing: '-0.035em', lineHeight: 1.1 }} variant="h4">
@@ -192,7 +192,7 @@ function DashboardPreview({ onNavigate, batches = [], onSelectBatch }) {
               </Button>
             </Box>
             <Box sx={{ alignItems: 'center', bgcolor: 'rgba(255,255,255,.1)', border: '1px solid rgba(255,255,255,.16)', borderRadius: 3, display: 'flex', justifyContent: 'center', minHeight: 150, minWidth: { sm: 190 }, p: 2 }}>
-              <Stack alignItems="center" spacing={1}>
+              <Stack spacing={1} sx={{ alignItems: 'center' }}>
                 <GrassRoundedIcon sx={{ fontSize: 48, color: '#b8e7d5' }} />
                 <Typography sx={{ color: 'rgba(255,255,255,.8)' }} variant="caption">Precision Agriculture</Typography>
               </Stack>
@@ -210,7 +210,7 @@ function DashboardPreview({ onNavigate, batches = [], onSelectBatch }) {
           <Card sx={{ height: '100%' }}>
             <CardContent sx={{ p: { xs: 2, sm: 2.5 } }}>
               <Box sx={{ mb: 2 }}>
-                <Stack alignItems="center" direction="row" spacing={1.5} flexWrap="wrap">
+                <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
                   <Typography fontWeight={700} variant="h6">
                     Harga acuan pasar
                   </Typography>
@@ -248,12 +248,10 @@ function DashboardPreview({ onNavigate, batches = [], onSelectBatch }) {
                   const priceToShow = livePrice || REFERENCE_PRICES_PER_KG[commodity]
                   return (
                     <Stack
-                      alignItems="center"
                       direction="row"
-                      justifyContent="space-between"
                       key={commodity}
                       spacing={2}
-                      sx={{
+                      sx={{alignItems: 'center', justifyContent: 'space-between', 
                         width: '100%',
                         borderBottom: '1px solid',
                         borderColor: 'divider',
@@ -280,7 +278,7 @@ function DashboardPreview({ onNavigate, batches = [], onSelectBatch }) {
               {lastBatch ? (
                 <Stack spacing={1.5}>
                   <Box sx={{ mb: 2 }}>
-                    <Stack alignItems="center" direction="row" spacing={1.5} flexWrap="wrap">
+                    <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
                       <Typography fontWeight={700} variant="h6">
                         Batch Panen Terakhir
                       </Typography>
@@ -301,11 +299,9 @@ function DashboardPreview({ onNavigate, batches = [], onSelectBatch }) {
 
                   <Stack spacing={0} sx={{ width: '100%', mb: 2 }}>
                     <Stack
-                      alignItems="center"
                       direction="row"
-                      justifyContent="space-between"
                       spacing={2}
-                      sx={{ width: '100%', borderBottom: '1px solid', borderColor: 'divider', py: 1.5 }}
+                      sx={{alignItems: 'center', justifyContent: 'space-between',  width: '100%', borderBottom: '1px solid', borderColor: 'divider', py: 1.5 }}
                     >
                       <Typography color="text.secondary" fontWeight={600} variant="body2" sx={{ flexGrow: 1 }}>
                         Komoditas
@@ -315,11 +311,9 @@ function DashboardPreview({ onNavigate, batches = [], onSelectBatch }) {
                       </Typography>
                     </Stack>
                     <Stack
-                      alignItems="center"
                       direction="row"
-                      justifyContent="space-between"
                       spacing={2}
-                      sx={{ width: '100%', borderBottom: '1px solid', borderColor: 'divider', py: 1.5 }}
+                      sx={{alignItems: 'center', justifyContent: 'space-between',  width: '100%', borderBottom: '1px solid', borderColor: 'divider', py: 1.5 }}
                     >
                       <Typography color="text.secondary" fontWeight={600} variant="body2" sx={{ flexGrow: 1 }}>
                         Berat Total
@@ -329,11 +323,9 @@ function DashboardPreview({ onNavigate, batches = [], onSelectBatch }) {
                       </Typography>
                     </Stack>
                     <Stack
-                      alignItems="center"
                       direction="row"
-                      justifyContent="space-between"
                       spacing={2}
-                      sx={{ width: '100%', borderBottom: '1px solid', borderColor: 'divider', py: 1.5 }}
+                      sx={{alignItems: 'center', justifyContent: 'space-between',  width: '100%', borderBottom: '1px solid', borderColor: 'divider', py: 1.5 }}
                     >
                       <Typography color="text.secondary" fontWeight={600} variant="body2" sx={{ flexGrow: 1 }}>
                         Estimasi Nilai
@@ -343,11 +335,9 @@ function DashboardPreview({ onNavigate, batches = [], onSelectBatch }) {
                       </Typography>
                     </Stack>
                     <Stack
-                      alignItems="center"
                       direction="row"
-                      justifyContent="space-between"
                       spacing={2}
-                      sx={{ width: '100%', py: 1.5 }}
+                      sx={{alignItems: 'center', justifyContent: 'space-between',  width: '100%', py: 1.5 }}
                     >
                       <Typography color="text.secondary" fontWeight={600} variant="body2" sx={{ flexGrow: 1 }}>
                         Tanggal
@@ -418,7 +408,7 @@ function FoundationPage({
   if (activePage === 'scanner') {
     return (
       <Stack spacing={2.5}>
-        <Stack direction="row" justifyContent="flex-end">
+        <Stack direction="row" sx={{ justifyContent: 'flex-end' }}>
           <Button
             size="small"
             variant="text"
@@ -461,7 +451,7 @@ function FoundationPage({
     <Card>
       <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
         <Stack spacing={2}>
-          <Stack alignItems="center" direction="row" justifyContent="space-between"><Typography variant="h6">{page.title}</Typography><Chip color="warning" label="Segera hadir" size="small" /></Stack>
+          <Stack direction="row" sx={{ alignItems: 'center', justifyContent: 'space-between' }}><Typography variant="h6">{page.title}</Typography><Chip color="warning" label="Segera hadir" size="small" /></Stack>
           <Typography color="text.secondary" variant="body2">{page.description} Komponen lengkap halaman ini akan dikerjakan pada langkah implementasi berikutnya.</Typography>
           <Alert severity="info">Kerangka navigasi aktif. Belum ada kalkulasi bisnis atau integrasi AI.</Alert>
         </Stack>

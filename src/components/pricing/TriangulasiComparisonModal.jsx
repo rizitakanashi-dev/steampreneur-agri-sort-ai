@@ -47,7 +47,7 @@ export function TriangulasiComparisonModal({
       fullWidth
     >
       <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <Stack direction="row" spacing={1.5} alignItems="center">
+        <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center' }}>
           <BalanceRoundedIcon color="primary" />
           <Box>
             <Typography variant="h6" fontWeight={800}>
@@ -105,7 +105,7 @@ export function TriangulasiComparisonModal({
                     }}
                   >
                     <TableCell sx={{ fontWeight: 600 }}>
-                      <Stack direction="row" spacing={1} alignItems="center">
+                      <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
                         <Typography variant="body2" fontWeight={700}>
                           {row.commodity_name}
                         </Typography>

@@ -43,8 +43,7 @@ export function Hero({ onOpenApp }) {
         {/* ZONE 1: Top Centered Editorial Headline + Pill CTA Pair */}
         <Stack
           spacing={2.5}
-          alignItems="center"
-          sx={{
+          sx={{alignItems: 'center', 
             textAlign: 'center',
             maxWidth: 560,
             mx: 'auto',

@@ -140,7 +140,7 @@ export function Navbar({ onOpenApp }) {
             </Stack>
 
             {/* Right Text Link + Filled Pill CTA */}
-            <Stack direction="row" spacing={2.5} alignItems="center">
+            <Stack direction="row" spacing={2.5} sx={{ alignItems: 'center' }}>
               <EditorialTextLink
                 onClick={() => onOpenApp('scanner')}
                 sx={{ display: { xs: 'none', sm: 'inline-flex' }, py: '2px' }}
@@ -179,7 +179,7 @@ export function Navbar({ onOpenApp }) {
           },
         }}
       >
-        <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
+        <Stack direction="row" sx={{justifyContent: 'space-between', alignItems: 'center',  mb: 2 }}>
           <Typography sx={{ fontFamily: AGRI_FONTS.serif, fontWeight: 400, fontSize: '1.25rem', color: AGRI_COLORS.ink }}>
             Agri-Sort AI
           </Typography>

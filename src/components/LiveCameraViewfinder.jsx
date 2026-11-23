@@ -303,7 +303,7 @@ export function LiveCameraViewfinder({ onCapture, disabled = false }) {
 
       {/* State Loading */}
       {cameraState === 'initializing' && (
-        <Stack spacing={2} alignItems="center" sx={{ color: '#fff', p: 3 }}>
+        <Stack spacing={2} sx={{alignItems: 'center',  color: '#fff', p: 3 }}>
           <CircularProgress color="inherit" size={36} />
           <Typography variant="body2">Mengaktifkan sensor kamera...</Typography>
         </Stack>
@@ -336,10 +336,8 @@ export function LiveCameraViewfinder({ onCapture, disabled = false }) {
       {cameraState === 'active' && (
         <Stack
           direction="row"
-          alignItems="center"
-          justifyContent="center"
           spacing={2}
-          sx={{
+          sx={{alignItems: 'center', justifyContent: 'center', 
             position: 'absolute',
             bottom: 16,
             left: 0,

@@ -210,13 +210,12 @@ export function LoginPage({ onLoginSuccess, onSwitchToRegister, onBackToLanding 
     >
       {/* Top Header Bar */}
       <Container maxWidth="lg" sx={{ pt: { xs: 2.5, sm: 3.5 }, px: { xs: 2.5, sm: 3 } }}>
-        <Stack direction="row" justifyContent="space-between" alignItems="center">
+        <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center' }}>
           <Stack
             direction="row"
             spacing={1.25}
-            alignItems="center"
             onClick={onBackToLanding}
-            sx={{ cursor: 'pointer' }}
+            sx={{alignItems: 'center',  cursor: 'pointer' }}
           >
             <Box
               sx={{
@@ -412,7 +411,7 @@ export function LoginPage({ onLoginSuccess, onSwitchToRegister, onBackToLanding 
                     }}
                   />
 
-                  <Stack direction="row" justifyContent="flex-end" sx={{ mt: 0.75 }}>
+                  <Stack direction="row" sx={{justifyContent: 'flex-end',  mt: 0.75 }}>
                     <Button
                       size="small"
                       onClick={handleOpenForgotModal}
@@ -453,7 +452,7 @@ export function LoginPage({ onLoginSuccess, onSwitchToRegister, onBackToLanding 
                   }}
                 >
                   {isSubmitting ? (
-                    <Stack direction="row" spacing={1} alignItems="center">
+                    <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
                       <CircularProgress size={18} color="inherit" />
                       <span>Memverifikasi Akun...</span>
                     </Stack>
@@ -510,11 +509,9 @@ export function LoginPage({ onLoginSuccess, onSwitchToRegister, onBackToLanding 
           <Stack spacing={2.25}>
             <Stack
               direction="row"
-              justifyContent="space-between"
-              alignItems="center"
-              sx={{ width: '100%' }}
+              sx={{justifyContent: 'space-between', alignItems: 'center',  width: '100%' }}
             >
-              <Stack direction="row" spacing={1} alignItems="center">
+              <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
                 {forgotStep === 1 ? (
                   <LockResetRoundedIcon sx={{ color: AGRI_COLORS.emerald }} />
                 ) : (
@@ -559,9 +556,8 @@ export function LoginPage({ onLoginSuccess, onSwitchToRegister, onBackToLanding 
 
                   <Stack
                     direction="row"
-                    justifyContent="flex-end"
                     spacing={1.5}
-                    sx={{ width: '100%', pt: 0.5 }}
+                    sx={{justifyContent: 'flex-end',  width: '100%', pt: 0.5 }}
                   >
                     <Button
                       variant="outlined"
@@ -585,7 +581,7 @@ export function LoginPage({ onLoginSuccess, onSwitchToRegister, onBackToLanding 
                       }}
                     >
                       {isSendingOtp ? (
-                        <Stack direction="row" spacing={1} alignItems="center">
+                        <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
                           <CircularProgress size={16} color="inherit" />
                           <span>Mengirim OTP...</span>
                         </Stack>
@@ -670,8 +666,8 @@ export function LoginPage({ onLoginSuccess, onSwitchToRegister, onBackToLanding 
                     }}
                   />
 
-                  <Stack direction="row" spacing={1.5} alignItems="center" sx={{ px: 0.5 }}>
-                    <Stack direction="row" spacing={0.5} alignItems="center">
+                  <Stack direction="row" spacing={1.5} sx={{alignItems: 'center',  px: 0.5 }}>
+                    <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>
                       <CheckCircleRoundedIcon
                         sx={{
                           fontSize: 15,
@@ -689,7 +685,7 @@ export function LoginPage({ onLoginSuccess, onSwitchToRegister, onBackToLanding 
                       </Typography>
                     </Stack>
 
-                    <Stack direction="row" spacing={0.5} alignItems="center">
+                    <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>
                       <CheckCircleRoundedIcon
                         sx={{
                           fontSize: 15,
@@ -745,9 +741,7 @@ export function LoginPage({ onLoginSuccess, onSwitchToRegister, onBackToLanding 
 
                   <Stack
                     direction="row"
-                    justifyContent="space-between"
-                    alignItems="center"
-                    sx={{ width: '100%', pt: 0.5 }}
+                    sx={{justifyContent: 'space-between', alignItems: 'center',  width: '100%', pt: 0.5 }}
                   >
                     <Button
                       size="small"

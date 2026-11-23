@@ -27,7 +27,7 @@ export function DashboardPreview({ onOpenApp }) {
       }}
     >
       <Container maxWidth="lg" sx={{ maxWidth: 1200, px: { xs: 2.5, sm: 3 } }}>
-        <Stack spacing={2} alignItems="center" sx={{ textAlign: 'center', maxWidth: 740, mx: 'auto', mb: 5 }}>
+        <Stack spacing={2} sx={{alignItems: 'center',  textAlign: 'center', maxWidth: 740, mx: 'auto', mb: 5 }}>
           <DisplayHeadline variant="hero">
             Lihat setiap modul bekerja secara{' '}
             <Box component="span" sx={{ fontStyle: 'italic' }}>
@@ -50,10 +50,7 @@ export function DashboardPreview({ onOpenApp }) {
 
         <Stack
           direction="row"
-          flexWrap="wrap"
-          justifyContent="center"
-          gap={1.25}
-          sx={{ mb: 5 }}
+          sx={{flexWrap: 'wrap', justifyContent: 'center', gap: 1.25,  mb: 5 }}
         >
           {PREVIEW_TABS.map((tab, idx) => {
             const Icon = tab.icon
@@ -82,7 +79,7 @@ export function DashboardPreview({ onOpenApp }) {
           })}
         </Stack>
 
-        <Grid container spacing={{ xs: 4, md: 6 }} alignItems="center">
+        <Grid container spacing={{ xs: 4, md: 6 }} sx={{ alignItems: 'center' }}>
           <Grid size={{ xs: 12, md: 6.8 }}>
             <Box
               sx={{
@@ -142,7 +139,7 @@ export function DashboardPreview({ onOpenApp }) {
                 ))}
               </Stack>
 
-              <Stack direction="row" spacing={2.5} alignItems="center" sx={{ pt: 1 }}>
+              <Stack direction="row" spacing={2.5} sx={{alignItems: 'center',  pt: 1 }}>
                 <AgriPrimaryButton onClick={() => onOpenApp(current.appTarget)}>
                   Buka {current.label}
                 </AgriPrimaryButton>

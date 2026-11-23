@@ -139,7 +139,7 @@ export function SettingsDialog({ open, onClose, onDataChanged }) {
     <>
       <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth PaperProps={{ sx: { borderRadius: 3 } }}>
         <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', pb: 1 }}>
-          <Stack direction="row" spacing={1.5} alignItems="center">
+          <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center' }}>
             <Box
               sx={{
                 bgcolor: 'primary.main',
@@ -202,7 +202,7 @@ export function SettingsDialog({ open, onClose, onDataChanged }) {
                 <Grid size={{ xs: 12, sm: 4 }}>
                   <Card elevation={0} sx={{ border: '1px solid #e2e8f0', borderRadius: 2, height: '100%' }}>
                     <CardContent sx={{ p: 2 }}>
-                      <Stack direction="row" spacing={1.5} alignItems="center" sx={{ mb: 1 }}>
+                      <Stack direction="row" spacing={1.5} sx={{alignItems: 'center',  mb: 1 }}>
                         <Avatar sx={{ bgcolor: '#036e45', width: 34, height: 34, fontSize: 13, fontWeight: 700 }}>FA</Avatar>
                         <Box>
                           <Typography variant="body2" fontWeight={800}>Faris Al Farizi</Typography>
@@ -219,7 +219,7 @@ export function SettingsDialog({ open, onClose, onDataChanged }) {
                 <Grid size={{ xs: 12, sm: 4 }}>
                   <Card elevation={0} sx={{ border: '1px solid #e2e8f0', borderRadius: 2, height: '100%' }}>
                     <CardContent sx={{ p: 2 }}>
-                      <Stack direction="row" spacing={1.5} alignItems="center" sx={{ mb: 1 }}>
+                      <Stack direction="row" spacing={1.5} sx={{alignItems: 'center',  mb: 1 }}>
                         <Avatar sx={{ bgcolor: '#0b8a5a', width: 34, height: 34, fontSize: 13, fontWeight: 700 }}>HA</Avatar>
                         <Box>
                           <Typography variant="body2" fontWeight={800}>Hieray Antovino</Typography>
@@ -236,7 +236,7 @@ export function SettingsDialog({ open, onClose, onDataChanged }) {
                 <Grid size={{ xs: 12, sm: 4 }}>
                   <Card elevation={0} sx={{ border: '1px solid #e2e8f0', borderRadius: 2, height: '100%' }}>
                     <CardContent sx={{ p: 2 }}>
-                      <Stack direction="row" spacing={1.5} alignItems="center" sx={{ mb: 1 }}>
+                      <Stack direction="row" spacing={1.5} sx={{alignItems: 'center',  mb: 1 }}>
                         <Avatar sx={{ bgcolor: '#0284c7', width: 34, height: 34, fontSize: 13, fontWeight: 700 }}>AA</Avatar>
                         <Box>
                           <Typography variant="body2" fontWeight={800}>Ahmad Afif</Typography>
@@ -258,7 +258,7 @@ export function SettingsDialog({ open, onClose, onDataChanged }) {
             <Stack spacing={2.5}>
               <Card elevation={0} sx={{ border: '1px solid #e2e8f0', borderRadius: 2 }}>
                 <CardContent sx={{ p: 2 }}>
-                  <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1.5 }}>
+                  <Stack direction="row" sx={{justifyContent: 'space-between', alignItems: 'center',  mb: 1.5 }}>
                     <Typography variant="subtitle2" fontWeight={800}>
                       FastAPI Backend Engine (Port 8000)
                     </Typography>
@@ -275,7 +275,7 @@ export function SettingsDialog({ open, onClose, onDataChanged }) {
                     </Button>
                   </Stack>
 
-                  <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }}>
+                  <Stack direction="row" spacing={1} sx={{alignItems: 'center',  mb: 1 }}>
                     <Chip
                       size="small"
                       icon={backendStatus.isOnline ? <CheckCircleRoundedIcon /> : <InfoOutlinedIcon />}

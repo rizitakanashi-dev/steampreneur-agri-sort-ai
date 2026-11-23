@@ -182,7 +182,7 @@ export function ScanCanvasOverlay({
           py: 1,
         }}
       >
-        <Stack alignItems="center" direction="row" spacing={1}>
+        <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
           <FormControlLabel
             control={
               <Switch
@@ -202,7 +202,7 @@ export function ScanCanvasOverlay({
         </Stack>
 
         {/* Badge Hitungan Kelas */}
-        <Stack direction="row" flexWrap="wrap" gap={1}>
+        <Stack direction="row" sx={{ flexWrap: 'wrap', gap: 1 }}>
           {Object.entries(summaryCounts).map(([className, count]) => {
             const theme = getClassTheme(className)
             return (

@@ -38,7 +38,7 @@ export function CertificatePreviewDialog({
       scroll="paper"
     >
       <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <Stack direction="row" spacing={1} alignItems="center">
+        <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
           <VerifiedRoundedIcon color="primary" />
           <Typography variant="h6" fontWeight={800}>
             Sertifikat Mutu QC Resmi (A4)

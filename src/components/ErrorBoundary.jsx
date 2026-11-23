@@ -32,7 +32,7 @@ export class ErrorBoundary extends React.Component {
         <Box sx={{ p: { xs: 2, sm: 4 }, maxWidth: 720, mx: 'auto', my: 4 }}>
           <Card elevation={3} sx={{ borderRadius: 3, border: '1px solid #fecaca' }}>
             <CardContent sx={{ p: { xs: 2.5, sm: 4 } }}>
-              <Stack spacing={2.5} alignItems="center" textAlign="center">
+              <Stack spacing={2.5} textAlign="center" sx={{ alignItems: 'center' }}>
                 <Box
                   sx={{
                     width: 64,
