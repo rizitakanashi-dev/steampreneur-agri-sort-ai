@@ -822,7 +822,7 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm }
                     size="small"
                     color={isMultiAngleMode ? 'success' : 'default'}
                     variant={isMultiAngleMode ? 'filled' : 'outlined'}
-                    sx={{ fontWeight: 700, fontSize: '0.72rem', height: 22 }}
+                    sx={{ fontWeight: 700, fontSize: '0.75rem', height: 22 }}
                   />
                 </Stack>
                 <Typography variant="caption" color="text.secondary">
@@ -1150,7 +1150,7 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm }
                                 variant="contained"
                                 color="inherit"
                                 onClick={() => fileInputRefFront.current?.click()}
-                                sx={{ position: 'absolute', bottom: 8, right: 8, fontSize: '0.72rem' }}
+                                sx={{ position: 'absolute', bottom: 8, right: 8, fontSize: '0.75rem' }}
                               >
                                 Ganti Foto
                               </Button>
@@ -1211,7 +1211,7 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm }
                                 variant="contained"
                                 color="inherit"
                                 onClick={() => fileInputRefBack.current?.click()}
-                                sx={{ position: 'absolute', bottom: 8, right: 8, fontSize: '0.72rem' }}
+                                sx={{ position: 'absolute', bottom: 8, right: 8, fontSize: '0.75rem' }}
                               >
                                 Ganti Foto
                               </Button>

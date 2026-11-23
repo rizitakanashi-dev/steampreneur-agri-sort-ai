@@ -124,7 +124,7 @@ export function AppShell({ activePage, activeUser, onLogout, onNavigate, onDataC
       </Box>
 
       <Box sx={{ px: 1.5, py: 1 }}>
-        <Typography color="text.secondary" sx={{ px: 1.5, pb: 1.25, fontSize: 10, fontWeight: 800, letterSpacing: '0.12em' }}>
+        <Typography color="text.secondary" sx={{ px: 1.5, pb: 1.25, fontSize: 12, fontWeight: 800, letterSpacing: '0.12em' }}>
           WORKSPACE
         </Typography>
         <List disablePadding>
@@ -153,7 +153,7 @@ export function AppShell({ activePage, activeUser, onLogout, onNavigate, onDataC
       </Box>
 
       <Box sx={{ mt: 1, px: 1.5 }}>
-        <Typography color="text.secondary" sx={{ px: 1.5, pb: 1.25, fontSize: 10, fontWeight: 800, letterSpacing: '0.12em' }}>
+        <Typography color="text.secondary" sx={{ px: 1.5, pb: 1.25, fontSize: 12, fontWeight: 800, letterSpacing: '0.12em' }}>
           SYSTEM
         </Typography>
         <List disablePadding>

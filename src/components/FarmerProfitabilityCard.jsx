@@ -300,7 +300,7 @@ export function FarmerProfitabilityCard({
                 color={isLoss ? 'error' : isProfitable ? 'success' : 'default'}
                 label={isLoss ? '⚠️ Risiko Defisit' : isProfitable ? '✅ Laba Menguntungkan' : 'Titik Impas (BEP)'}
                 size="small"
-                sx={{ fontWeight: 700, fontSize: '0.72rem', alignSelf: 'flex-start' }}
+                sx={{ fontWeight: 700, fontSize: '0.75rem', alignSelf: 'flex-start' }}
               />
             </Box>
           </Grid>

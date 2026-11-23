@@ -964,7 +964,7 @@ export function PricingDashboard() {
                     color="primary"
                     label="STEAM: Preneur"
                     size="small"
-                    sx={{ fontWeight: 700, fontSize: '0.72rem' }}
+                    sx={{ fontWeight: 700, fontSize: '0.75rem' }}
                   />
                 </Stack>
                 <Typography color="text.secondary" sx={{ mb: 2 }} variant="body2">
@@ -1165,7 +1165,7 @@ export function PricingDashboard() {
                             {row.commodity_name}
                           </Typography>
                           {isCurrentCommodity && (
-                            <Chip size="small" label="Aktif" color="success" sx={{ height: 20, fontSize: '0.65rem', fontWeight: 800 }} />
+                            <Chip size="small" label="Aktif" color="success" sx={{ height: 20, fontSize: '0.75rem', fontWeight: 800 }} />
                           )}
                         </Stack>
                       </TableCell>
@@ -1181,7 +1181,7 @@ export function PricingDashboard() {
                           size="small"
                           color={row.convergence_index_percent >= 98 ? 'success' : 'default'}
                           variant={row.convergence_index_percent >= 98 ? 'filled' : 'outlined'}
-                          sx={{ fontWeight: 700, fontSize: '0.72rem', height: 22 }}
+                          sx={{ fontWeight: 700, fontSize: '0.75rem', height: 22 }}
                         />
                       </TableCell>
                       <TableCell align="center">

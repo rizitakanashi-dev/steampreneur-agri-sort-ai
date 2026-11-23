@@ -264,7 +264,7 @@ export function PostHarvestPathologyCards({ commodity, rejectCount = 0, rejectPe
                         <Chip
                           label={item.steamPillar}
                           size="small"
-                          sx={{ fontSize: '0.68rem', height: 20, bgcolor: '#ede7f6', color: '#512da8' }}
+                          sx={{ fontSize: '0.75rem', height: 20, bgcolor: '#ede7f6', color: '#512da8' }}
                         />
                       </Grid>
                     </Grid>
@@ -367,7 +367,7 @@ export function PostHarvestPathologyCards({ commodity, rejectCount = 0, rejectPe
                           <Chip
                             label={item.steamPillar}
                             size="small"
-                            sx={{ fontSize: '0.68rem', height: 20, bgcolor: '#ede7f6', color: '#512da8' }}
+                            sx={{ fontSize: '0.75rem', height: 20, bgcolor: '#ede7f6', color: '#512da8' }}
                           />
                         </Grid>
                       </Grid>
@@ -446,7 +446,7 @@ export function PostHarvestPathologyCards({ commodity, rejectCount = 0, rejectPe
                       <Chip
                         label={item.agentType.split(' ')[0]}
                         size="small"
-                        sx={{ fontSize: '0.68rem', height: 20 }}
+                        sx={{ fontSize: '0.75rem', height: 20 }}
                       />
                     </Stack>
                     <Typography color="text.secondary" sx={{ fontStyle: 'italic', mb: 1.5 }} variant="caption">
@@ -473,7 +473,7 @@ export function PostHarvestPathologyCards({ commodity, rejectCount = 0, rejectPe
                           key={c}
                           label={c}
                           size="small"
-                          sx={{ fontSize: '0.65rem', height: 18, bgcolor: '#f5f5f5' }}
+                          sx={{ fontSize: '0.75rem', height: 18, bgcolor: '#f5f5f5' }}
                         />
                       ))}
                     </Stack>

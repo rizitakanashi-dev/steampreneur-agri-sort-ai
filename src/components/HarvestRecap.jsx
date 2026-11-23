@@ -212,13 +212,13 @@ function MobileBatchCard({ batch, onSelectBatch, onDeleteBatch, onViewDetail }) 
             <Typography color="text.secondary" variant="caption">{batch.tanggal}</Typography>
           </Box>
           {execStatus === 'ai_detected' && (
-            <Chip color="success" icon={<AutoAwesomeRoundedIcon style={{ fontSize: 13 }} />} label="AI" size="small" sx={{ height: 20, fontSize: 10, fontWeight: 700 }} />
+            <Chip color="success" icon={<AutoAwesomeRoundedIcon style={{ fontSize: 13 }} />} label="AI" size="small" sx={{ height: 20, fontSize: 12, fontWeight: 700 }} />
           )}
           {execStatus === 'needs_review' && (
-            <Chip color="warning" icon={<WarningAmberRoundedIcon style={{ fontSize: 13 }} />} label="Review" size="small" sx={{ height: 20, fontSize: 10, fontWeight: 700 }} />
+            <Chip color="warning" icon={<WarningAmberRoundedIcon style={{ fontSize: 13 }} />} label="Review" size="small" sx={{ height: 20, fontSize: 12, fontWeight: 700 }} />
           )}
           {execStatus === 'simulated' && (
-            <Chip color="info" label="Simulasi" size="small" sx={{ height: 20, fontSize: 10, fontWeight: 700 }} />
+            <Chip color="info" label="Simulasi" size="small" sx={{ height: 20, fontSize: 12, fontWeight: 700 }} />
           )}
         </Stack>
 
@@ -704,7 +704,7 @@ export function HarvestRecap({ batches = [], onSelectBatch, onDeleteBatch }) {
                             icon={<AutoAwesomeRoundedIcon style={{ fontSize: 13 }} />}
                             label="AI"
                             size="small"
-                            sx={{ height: 20, fontSize: 10, fontWeight: 700 }}
+                            sx={{ height: 20, fontSize: 12, fontWeight: 700 }}
                           />
                         </Tooltip>
                       )}
@@ -715,7 +715,7 @@ export function HarvestRecap({ batches = [], onSelectBatch, onDeleteBatch }) {
                             icon={<WarningAmberRoundedIcon style={{ fontSize: 13 }} />}
                             label="Review"
                             size="small"
-                            sx={{ height: 20, fontSize: 10, fontWeight: 700 }}
+                            sx={{ height: 20, fontSize: 12, fontWeight: 700 }}
                           />
                         </Tooltip>
                       )}
@@ -725,7 +725,7 @@ export function HarvestRecap({ batches = [], onSelectBatch, onDeleteBatch }) {
                             color="info"
                             label="Simulasi"
                             size="small"
-                            sx={{ height: 20, fontSize: 10, fontWeight: 700 }}
+                            sx={{ height: 20, fontSize: 12, fontWeight: 700 }}
                           />
                         </Tooltip>
                       )}
