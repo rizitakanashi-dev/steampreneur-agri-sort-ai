@@ -349,6 +349,7 @@ export function LiveCameraViewfinder({ onCapture, disabled = false }) {
         >
           <Tooltip title="Ganti Kamera Depan / Belakang">
             <IconButton
+              aria-label="Ganti kamera depan atau belakang"
               onClick={toggleFacingMode}
               disabled={disabled || isCapturing}
               sx={{

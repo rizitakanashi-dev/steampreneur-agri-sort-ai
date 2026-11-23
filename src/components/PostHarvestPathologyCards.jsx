@@ -413,7 +413,7 @@ export function PostHarvestPathologyCards({ commodity, rejectCount = 0, rejectPe
                 </Typography>
               </Box>
             </Stack>
-            <IconButton onClick={() => setIsCatalogOpen(false)} size="small">
+            <IconButton aria-label="Tutup katalog patologi" onClick={() => setIsCatalogOpen(false)} size="small">
               <CloseRoundedIcon />
             </IconButton>
           </Stack>

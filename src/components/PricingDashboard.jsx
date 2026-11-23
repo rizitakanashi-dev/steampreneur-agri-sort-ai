@@ -1113,7 +1113,7 @@ export function PricingDashboard() {
               </Typography>
             </Box>
           </Stack>
-          <IconButton onClick={() => setIsComparisonModalOpen(false)} size="small">
+          <IconButton aria-label="Tutup modal perbandingan harga" onClick={() => setIsComparisonModalOpen(false)} size="small">
             <CloseRoundedIcon />
           </IconButton>
         </DialogTitle>

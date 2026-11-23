@@ -1034,6 +1034,7 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm }
                           sx={{ maxHeight: 380, maxWidth: '100%', objectFit: 'contain' }}
                         />
                         <IconButton
+                          aria-label="Hapus foto sampel, pilih gambar lain"
                           onClick={handleClearImage}
                           size="small"
                           disabled={isScanning}
@@ -1296,6 +1297,7 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm }
                           sx={{ maxHeight: 380, maxWidth: '100%', objectFit: 'contain' }}
                         />
                         <IconButton
+                          aria-label="Hapus foto sampel, pilih gambar lain"
                           onClick={handleClearImage}
                           size="small"
                           sx={{
@@ -1911,7 +1913,7 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm }
               Sertifikat Mutu QC Resmi (A4)
             </Typography>
           </Stack>
-          <IconButton onClick={() => setIsCertModalOpen(false)} size="small">
+          <IconButton aria-label="Tutup pratinjau sertifikat" onClick={() => setIsCertModalOpen(false)} size="small">
             <CloseRoundedIcon />
           </IconButton>
         </DialogTitle>
