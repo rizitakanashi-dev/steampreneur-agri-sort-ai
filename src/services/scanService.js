@@ -7,6 +7,8 @@
  * melalui reverse proxy Vite (/api) dengan timeout 15 detik dan penanganan error ramah pengguna.
  */
 
+import { getAuthHeaders } from '../business/authStorage.js'
+
 export const DEFAULT_TIMEOUT_MS = 45000
 
 export class ApiError extends Error {
@@ -117,6 +119,7 @@ async function fetchWithTimeout(url, options = {}, timeoutMs = DEFAULT_TIMEOUT_M
   try {
     const response = await fetch(url, {
       ...options,
+      headers: { ...getAuthHeaders(), ...(options.headers || {}) },
       signal: controller.signal,
     })
     clearTimeout(timeoutId)

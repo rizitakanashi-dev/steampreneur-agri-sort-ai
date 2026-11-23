@@ -19,6 +19,7 @@ from PIL import Image
 try:
     from fastapi.testclient import TestClient
     from server.main import app
+    from server.utils.auth import get_current_user
     HAS_FASTAPI = True
 except ImportError:
     TestClient = None
@@ -125,9 +126,17 @@ def _mock_tomat_inference_result(confidence=0.91):
 @unittest.skipUnless(HAS_FASTAPI, "FastAPI atau TestClient tidak terpasang")
 class TestMLSafetyRemediation(unittest.TestCase):
     def setUp(self):
+        app.dependency_overrides[get_current_user] = lambda: {
+            "id": "test-user",
+            "email": "test@gmail.com",
+            "_access_token": "verified-test-token",
+        }
         self.client = TestClient(app)
         self.img_bytes = _create_test_image_bytes()
         self.img_bytes_back = _create_test_image_bytes(color=(140, 190, 80))
+
+    def tearDown(self):
+        app.dependency_overrides.pop(get_current_user, None)
 
     # Skenario 1: Terung dengan inference sukses -> 'ai_detected'
     @patch("server.routers.qc.ai_engine")

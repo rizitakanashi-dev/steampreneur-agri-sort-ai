@@ -11,6 +11,7 @@ from PIL import Image
 try:
     from fastapi.testclient import TestClient
     from server.main import app
+    from server.utils.auth import get_current_user
     HAS_FASTAPI = True
 except ImportError:
     TestClient = None
@@ -166,6 +167,11 @@ class TestMultiAngleEndpointAPI(unittest.TestCase):
     """Pengujian integrasi endpoint FastAPI POST /api/v1/qc/scan-multi."""
 
     def setUp(self):
+        app.dependency_overrides[get_current_user] = lambda: {
+            "id": "test-user",
+            "email": "test@gmail.com",
+            "_access_token": "verified-test-token",
+        }
         self.client = TestClient(app)
 
         # Siapkan 2 gambar dummy JPEG valid
@@ -178,6 +184,9 @@ class TestMultiAngleEndpointAPI(unittest.TestCase):
         buf_b = BytesIO()
         img_b.save(buf_b, format="JPEG")
         self.back_bytes = buf_b.getvalue()
+
+    def tearDown(self):
+        app.dependency_overrides.pop(get_current_user, None)
 
     def test_scan_multi_endpoint_success_mock(self):
         """Memverifikasi pemanggilan sukses endpoint /api/v1/qc/scan-multi (mode mock)."""

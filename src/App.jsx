@@ -45,7 +45,7 @@ import { PricingDashboard } from './components/PricingDashboard.jsx'
 import { LandingPage } from './pages/LandingPage.jsx'
 import { LoginPage } from './pages/LoginPage.jsx'
 import { RegisterPage } from './pages/RegisterPage.jsx'
-import { logoutActiveUser, readActiveUser } from './business/authStorage.js'
+import { logoutActiveUser, readActiveUser, restoreAuthSession, getAuthHeaders } from './business/authStorage.js'
 
 const pages = {
   overview: { title: 'Dashboard', description: 'Pantau kualitas panen dan peluang harga dalam satu tampilan.' },
@@ -452,7 +452,7 @@ function FoundationPage({
 function getInitialRoute() {
   if (typeof window !== 'undefined') {
     const rawHash = window.location.hash.replace('#', '')
-    const currentUser = readActiveUser()
+    const hasSession = Boolean(getAuthHeaders().Authorization)
     if (rawHash === 'login') {
       return { view: 'login', page: 'overview' }
     }
@@ -460,16 +460,16 @@ function getInitialRoute() {
       return { view: 'register', page: 'overview' }
     }
     if (pages[rawHash]) {
-      return { view: currentUser ? 'app' : 'login', page: rawHash }
+      return { view: hasSession ? 'app' : 'login', page: rawHash }
     }
     try {
       const params = new URLSearchParams(window.location.search)
       const pageParam = params.get('page')
       if (pages[pageParam]) {
-        return { view: currentUser ? 'app' : 'login', page: pageParam }
+        return { view: hasSession ? 'app' : 'login', page: pageParam }
       }
       if (params.get('view') === 'app') {
-        return { view: currentUser ? 'app' : 'login', page: 'overview' }
+        return { view: hasSession ? 'app' : 'login', page: 'overview' }
       }
     } catch {}
   }
@@ -478,6 +478,7 @@ function getInitialRoute() {
 
 function App() {
   const [activeUser, setActiveUser] = useState(() => readActiveUser())
+  const [sessionChecking, setSessionChecking] = useState(() => Boolean(getAuthHeaders().Authorization))
   const [currentView, setCurrentView] = useState(() => getInitialRoute().view)
   const [activePage, setActivePage] = useState(() => getInitialRoute().page)
   const [pendingPage, setPendingPage] = useState(() => getInitialRoute().page)
@@ -494,9 +495,25 @@ function App() {
   }, [])
 
   useEffect(() => {
+    if (!sessionChecking) return
+    let cancelled = false
+    restoreAuthSession().then((user) => {
+      if (cancelled) return
+      setActiveUser(user)
+      if (!user && pages[window.location.hash.replace('#', '')]) {
+        setPendingPage(window.location.hash.replace('#', ''))
+        setCurrentView('login')
+        window.location.hash = 'login'
+      }
+      setSessionChecking(false)
+    })
+    return () => { cancelled = true }
+  }, [sessionChecking])
+
+  useEffect(() => {
     const handleHash = () => {
       const hash = window.location.hash.replace('#', '')
-      const user = readActiveUser()
+      const user = getAuthHeaders().Authorization ? readActiveUser() : null
       setActiveUser(user)
       if (hash === 'login') {
         stopAllActiveCameraStreams()
@@ -529,7 +546,7 @@ function App() {
     if (pageToOpen !== 'scanner') {
       stopAllActiveCameraStreams()
     }
-    const user = readActiveUser()
+    const user = getAuthHeaders().Authorization ? readActiveUser() : null
     setActiveUser(user)
     if (!user) {
       setPendingPage(pageToOpen)
@@ -558,6 +575,9 @@ function App() {
 
   const handleLoginSuccess = (loggedInUser) => {
     setActiveUser(loggedInUser)
+    const userBatches = readBatches()
+    setBatches(userBatches)
+    setSelectedBatch(userBatches[userBatches.length - 1] || null)
     const destination = pages[pendingPage] ? pendingPage : 'overview'
     setCurrentView('app')
     setActivePage(destination)
@@ -568,6 +588,9 @@ function App() {
 
   const handleRegisterSuccess = (newUser) => {
     setActiveUser(newUser)
+    const userBatches = readBatches()
+    setBatches(userBatches)
+    setSelectedBatch(userBatches[userBatches.length - 1] || null)
     const destination = pages[pendingPage] ? pendingPage : 'overview'
     setCurrentView('app')
     setActivePage(destination)
@@ -578,8 +601,10 @@ function App() {
 
   const handleLogout = () => {
     stopAllActiveCameraStreams()
-    logoutActiveUser()
+    void logoutActiveUser()
     setActiveUser(null)
+    setBatches([])
+    setSelectedBatch(null)
     setHarvestMessage('')
     setCurrentView('landing')
     window.location.hash = ''
@@ -683,6 +708,14 @@ function App() {
     setHarvestMessage(`Batch ${savedBatch.id} berhasil disimpan ke rekap.`)
     setActivePage('results')
     window.location.hash = 'results'
+  }
+
+  if (sessionChecking) {
+    return (
+      <Box sx={{ minHeight: '100vh', display: 'grid', placeItems: 'center', bgcolor: '#f2f5f3' }}>
+        <Typography color="text.secondary">Memverifikasi sesi...</Typography>
+      </Box>
+    )
   }
 
   if (currentView === 'landing') {

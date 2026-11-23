@@ -95,6 +95,16 @@ class TestStorageService(unittest.TestCase):
         for r in filtered["records"]:
             self.assertEqual(r["commodity"], "Tomat")
 
+    def test_scan_history_is_scoped_to_authenticated_owner(self):
+        self.storage.save_scan({"scan_id": "owned-a", "commodity": "Tomat"}, user_id="user-a")
+        self.storage.save_scan({"scan_id": "owned-b", "commodity": "Tomat"}, user_id="user-b")
+
+        self.assertEqual(self.storage.get_scans(user_id="user-a")["total_count"], 1)
+        self.assertIsNone(self.storage.get_scan_by_id("owned-b", user_id="user-a"))
+        self.assertFalse(self.storage.delete_scan("owned-b", user_id="user-a"))
+        self.assertEqual(self.storage.clear_scans(user_id="user-a"), 1)
+        self.assertIsNotNone(self.storage.get_scan_by_id("owned-b", user_id="user-b"))
+
     def test_delete_scan(self):
         self.storage.save_scan({"scan_id": "to_delete", "commodity": "Tomat"})
         self.assertIsNotNone(self.storage.get_scan_by_id("to_delete"))
@@ -130,6 +140,8 @@ class TestStorageService(unittest.TestCase):
         ddl = get_supabase_ddl()
         self.assertIn("CREATE TABLE IF NOT EXISTS public.scans", ddl)
         self.assertIn("ENABLE ROW LEVEL SECURITY", ddl)
+        self.assertIn("auth.uid() = user_id", ddl)
+        self.assertNotIn("USING (true)", ddl)
         self.assertIn("idx_scans_commodity", ddl)
         self.assertIn("idx_scans_created_at", ddl)
 
@@ -184,7 +196,7 @@ class TestSupabaseStorage(unittest.TestCase):
             os.environ,
             {
                 "SUPABASE_URL": "https://example.supabase.co",
-                "SUPABASE_SERVICE_ROLE_KEY": "secret-key",
+                "SUPABASE_ANON_KEY": "anon-key",
             },
             clear=True,
         ):
@@ -217,6 +229,23 @@ class TestSupabaseStorage(unittest.TestCase):
             self.assertEqual(listed["total_count"], 1)
             self.assertEqual(listed["summary"]["total_weight_kg"], 25.5)
             self.assertEqual(listed["summary"]["total_economic_value_idr"], 300000)
+
+    def test_authenticated_supabase_write_uses_user_token_and_does_not_fallback(self):
+        captured = {}
+        def fake_urlopen(req, timeout=10.0):
+            captured["headers"] = {key.lower(): value for key, value in req.headers.items()}
+            captured["payload"] = json.loads(req.data.decode("utf-8"))
+            return _FakeHttpResponse([{"scan_id": "owned", "user_id": "user-1"}])
+
+        with patch("urllib.request.urlopen", side_effect=fake_urlopen):
+            self.supa.save_scan({"scan_id": "owned", "commodity": "Tomat"}, user_id="user-1", access_token="verified-user-token")
+        self.assertEqual(captured["headers"]["authorization"], "Bearer verified-user-token")
+        self.assertEqual(captured["payload"]["user_id"], "user-1")
+
+        with patch("urllib.request.urlopen", side_effect=urllib.error.URLError("offline")):
+            with self.assertRaises(RuntimeError):
+                self.supa.save_scan({"scan_id": "not-saved", "commodity": "Tomat"}, user_id="user-1", access_token="verified-user-token")
+        self.assertIsNone(self.fallback.get_scan_by_id("not-saved", user_id="user-1"))
 
     def test_supabase_opaque_secret_key_omits_bearer_header(self):
         supa_opaque = SupabaseScanStorage(

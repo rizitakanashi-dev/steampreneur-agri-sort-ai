@@ -71,7 +71,17 @@ python3 -m pip install --break-system-packages torch torchvision --index-url htt
 python3 -m pip install --break-system-packages -r server/requirements.txt
 ```
 
-### 3. Menjalankan Server Lokal
+### 3. Konfigurasi Supabase Auth
+
+Login, konfirmasi email/OTP, Google OAuth, reset sandi, dan sesi QC menggunakan Supabase Auth. Buat project Supabase, lalu di **Authentication → Providers**:
+
+1. Aktifkan Email dan konfirmasi email; atur template email OTP agar menampilkan `{{ .Token }}`. Tetapkan rate limits OTP yang sesuai di Auth settings (Supabase juga menegakkan rate limit provider); aktifkan CAPTCHA untuk permukaan publik bila diperlukan.
+2. Jika ingin login Google, aktifkan provider Google dan konfigurasikan OAuth Client ID/Secret serta redirect URL sesuai Supabase.
+3. Salin `.env.example` menjadi `.env`, isi `SUPABASE_URL`, `SUPABASE_ANON_KEY`, dan `VITE_GOOGLE_CLIENT_ID` bila memakai Google Sign-In.
+4. Jalankan DDL di `/api/v1/qc/schema` pada Supabase SQL Editor untuk membuat tabel scan dengan RLS per pengguna.
+5. Masukkan `SUPABASE_URL` dan `SUPABASE_ANON_KEY` yang sama ke environment backend Vercel. Karena akses tabel memakai JWT pengguna dan RLS, kunci `service_role` tidak diperlukan untuk fitur ini.
+
+### 4. Menjalankan Server Lokal
 
 **Terminal 1 — Jalankan Backend FastAPI (Port 8000):**
 ```bash
@@ -84,7 +94,7 @@ python3 -m uvicorn server.main:app --host 127.0.0.1 --port 8000 --reload
 npm run dev
 ```
 
-Buka peramban di `http://localhost:5173`.
+Buka peramban di `http://localhost:5173`. Auth tidak dapat dipakai sampai `SUPABASE_URL` dan `SUPABASE_ANON_KEY` valid dikonfigurasi.
 
 ---
 

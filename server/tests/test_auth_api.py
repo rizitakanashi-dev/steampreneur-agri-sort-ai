@@ -1,102 +1,56 @@
-"""
-Unit Tests untuk Layanan Autentikasi, Registrasi Gmail, Google OAuth Resmi & OTP Gmail
-"""
-
-from pathlib import Path
-import tempfile
 import unittest
 from unittest.mock import patch
 
-from fastapi.testclient import TestClient
-
-from server.main import app
-from server.services.auth_service import (
-    AuthService,
-    hash_password_pbkdf2,
-    verify_password_pbkdf2,
-)
+from server.routers import auth as auth_router
+from server.services.auth_service import AuthService
 
 
-class TestAuthServiceAndOtp(unittest.TestCase):
-    def setUp(self) -> None:
-        self.temp_dir = tempfile.TemporaryDirectory()
-        base = Path(self.temp_dir.name)
-        self.service = AuthService(
-            users_path=base / "users.json",
-            otp_path=base / "otps.json",
+class TestAuthApiRoutes(unittest.IsolatedAsyncioTestCase):
+    async def test_registration_returns_confirmation_required_without_authenticated_session(self):
+        payload = auth_router.RegisterRequest(
+            fullName="Petani Contoh",
+            email="petani@gmail.com",
+            password="Password123",
         )
+        with patch.object(auth_router.auth_service, "register_gmail_user", return_value={
+            "confirmation_required": True,
+            "user": {"email": "petani@gmail.com"},
+            "message": "Verifikasi email",
+        }):
+            response = await auth_router.register_user(payload)
+        self.assertEqual(response["data"]["confirmation_required"], True)
+        self.assertNotIn("access_token", response["data"])
 
-    def tearDown(self) -> None:
-        self.temp_dir.cleanup()
+    async def test_otp_verification_returns_a_supabase_session(self):
+        payload = auth_router.VerifyOtpRequest(email="petani@gmail.com", otpCode="123456", purpose="register")
+        session = {
+            "user": {"id": "user-id", "email": "petani@gmail.com"},
+            "access_token": "verified-token",
+            "refresh_token": "refresh-token",
+        }
+        with patch.object(auth_router.auth_service, "verify_otp", return_value=session):
+            response = await auth_router.verify_otp(payload)
+        self.assertEqual(response["data"]["access_token"], "verified-token")
 
-    def test_pbkdf2_password_hash_and_verify(self) -> None:
-        hashed = hash_password_pbkdf2("ContohSandi2026")
-        self.assertTrue(verify_password_pbkdf2("ContohSandi2026", hashed))
-        self.assertFalse(verify_password_pbkdf2("WrongPass123", hashed))
+    async def test_session_route_rejects_missing_bearer_token(self):
+        with self.assertRaises(Exception) as raised:
+            await auth_router.verify_session(None)
+        self.assertEqual(raised.exception.status_code, 401)
+        self.assertEqual(raised.exception.detail["code"], "AUTH_REQUIRED")
 
-    def test_register_gmail_user_and_prevent_duplicate(self) -> None:
-        user = self.service.register_gmail_user(
-            full_name="Pengguna Uji",
-            email="pengguna.uji@gmail.com",
-            password="ContohPassword123",
-        )
-        self.assertEqual(user["email"], "pengguna.uji@gmail.com")
-        self.assertEqual(user["provider"], "gmail")
+    async def test_session_route_returns_only_supabase_verified_user(self):
+        user = {"id": "verified-id", "email": "petani@gmail.com"}
+        with patch.object(auth_router.auth_service, "get_user", return_value=user) as get_user:
+            response = await auth_router.verify_session("Bearer access-token")
+        get_user.assert_called_once_with("access-token")
+        self.assertEqual(response["data"]["user"], user)
 
-        with self.assertRaises(ValueError):
-            self.service.register_gmail_user(
-                full_name="Pengguna Kedua",
-                email="PENGGUNA.UJI@gmail.com",
-                password="ContohPassword123",
-            )
 
-        # Verifikasi login berhasil dengan password benar dan gagal jika password salah
-        logged_in = self.service.login_gmail_user(
-            email="pengguna.uji@gmail.com",
-            password="ContohPassword123",
-        )
-        self.assertEqual(logged_in["email"], "pengguna.uji@gmail.com")
-
-        with self.assertRaises(ValueError):
-            self.service.login_gmail_user(
-                email="pengguna.uji@gmail.com",
-                password="WrongPassword99",
-            )
-
-    def test_google_auth_rejects_missing_official_token(self) -> None:
-        with self.assertRaises(ValueError):
-            self.service.authenticate_official_google(access_token=None, id_token=None)
-
-    @patch("server.services.auth_service.send_gmail_otp_email", return_value=(True, "MOCKED_SMTP"))
-    def test_send_verify_otp_and_reset_password(self, _mock_smtp: object) -> None:
-        self.service.register_gmail_user(
-            full_name="Petani Contoh",
-            email="petani.contoh@gmail.com",
-            password="OldPassword123",
-        )
-        otp_info = self.service.generate_and_send_otp(
-            email="petani.contoh@gmail.com",
-            purpose="reset_password",
-        )
-        self.assertEqual(otp_info["email"], "petani.contoh@gmail.com")
-        otp_code = self.service._read_otps()["petani.contoh@gmail.com"]["otp_code"]
-        self.assertEqual(len(otp_code), 6)
-
-        with self.assertRaises(ValueError):
-            self.service.verify_otp_code("petani.contoh@gmail.com", "000000", purpose="reset_password")
-
-        updated_user = self.service.reset_password_with_otp(
-            email="petani.contoh@gmail.com",
-            otp_code=otp_code,
-            new_password="NewPassword2026",
-        )
-        self.assertEqual(updated_user["email"], "petani.contoh@gmail.com")
-
-    def test_auth_router_endpoints(self) -> None:
-        client = TestClient(app)
-        # Pastikan /api/v1/auth/google menolak request tanpa token resmi Google
-        bad_google = client.post("/api/v1/auth/google", json={})
-        self.assertEqual(bad_google.status_code, 400)
+class TestNoFileBackedAuth(unittest.TestCase):
+    def test_auth_service_has_no_users_or_otp_file_store(self):
+        service = AuthService(supabase_url="https://example.supabase.co", supabase_anon_key="anon")
+        self.assertFalse(hasattr(service, "users_path"))
+        self.assertFalse(hasattr(service, "otp_path"))
 
 
 if __name__ == "__main__":
