@@ -26,6 +26,7 @@ class TestModelEvaluation(unittest.TestCase):
         (self.root / "test" / "labels").mkdir(parents=True)
         Image.new("RGB", (100, 80), (120, 130, 140)).save(self.root / "valid" / "images" / "batch.jpg")
         (self.root / "valid" / "labels" / "batch.txt").write_text("0 0.5 0.5 0.2 0.4\n2 0.25 0.25 0.1 0.1\n")
+        (self.root / "data.yaml").write_text("nc: 3\nnames: ['Grade A', 'Grade B', 'Reject']\n")
 
     def test_load_yolo_dataset_converts_labels_to_original_pixel_boxes(self):
         records = load_yolo_dataset(str(self.root), "valid")
@@ -34,6 +35,11 @@ class TestModelEvaluation(unittest.TestCase):
             {"class_id": 0, "box": [40.0, 24.0, 60.0, 56.0]},
             {"class_id": 2, "box": [20.0, 16.0, 30.0, 24.0]},
         ])
+
+    def test_load_yolo_dataset_rejects_dataset_class_order_mismatch(self):
+        (self.root / "data.yaml").write_text("nc: 3\nnames: ['Grade B', 'Grade A', 'Reject']\n")
+        with self.assertRaises(DatasetFormatError):
+            load_yolo_dataset(str(self.root), "valid")
 
     def test_load_yolo_dataset_rejects_malformed_and_out_of_range_labels(self):
         label = self.root / "valid" / "labels" / "batch.txt"
@@ -59,8 +65,11 @@ class TestModelEvaluation(unittest.TestCase):
         self.assertEqual(metrics["per_class"]["Reject"]["fn"], 1)
         self.assertEqual(metrics["per_class"]["Grade A"]["precision"], 0.5)
         self.assertEqual(metrics["per_class"]["Grade A"]["recall"], 1.0)
-        self.assertEqual(metrics["total"]["fp"], 3)
-        self.assertEqual(metrics["total"]["fn"], 2)
+        self.assertEqual(metrics["total"]["fp"], 2)
+        self.assertEqual(metrics["total"]["fn"], 1)
+        self.assertEqual(metrics["confusion_matrix"]["counts"]["Reject"]["background"], 1)
+        self.assertEqual(metrics["confusion_matrix"]["counts"]["Grade A"]["Grade A"], 1)
+        self.assertEqual(metrics["confusion_matrix"]["counts"]["background"]["Grade B"], 1)
 
     def test_calibration_selects_threshold_from_validation_only_and_respects_reject_floor(self):
         validation = {
@@ -93,6 +102,24 @@ class TestModelEvaluation(unittest.TestCase):
         second = calibrate_thresholds(valid_results, [0.25, 0.35], "macro_f1")
         self.assertEqual(first["selected_threshold"], second["selected_threshold"])
         self.assertEqual(first["selected_threshold"], 0.35)
+
+    def test_map50_is_fixed_at_iou_point_five_even_when_primary_threshold_differs(self):
+        targets = [{"image_id": "img", "class_id": 0, "box": [0, 0, 10, 10]}]
+        predictions = [{"image_id": "img", "class_id": 0, "confidence": 0.8, "box": [0, 0, 6, 10]}]
+        metrics = evaluate_predictions(targets, predictions, iou_threshold=0.7)
+        self.assertEqual(metrics["map50"], 1.0)
+        self.assertEqual(metrics["iou_threshold"], 0.7)
+
+    def test_calibration_rejects_threshold_outside_production_range(self):
+        validation = {"split": "valid", "threshold_results": {"0.01": {"macro_f1": 0.5}}}
+        with self.assertRaises(ValueError):
+            calibrate_thresholds(validation, [0.01], objective="macro_f1")
+
+    def test_calibration_rejects_pipeline_errors(self):
+        validation = {"split": "valid", "pipeline_failures": 1, "image_count": 2,
+                      "threshold_results": {"0.3": {"macro_f1": 0.5, "reject_recall": 0.5}}}
+        with self.assertRaises(ValueError):
+            calibrate_thresholds(validation, [0.3], objective="macro_f1")
 
     def test_pipeline_calls_real_scan_boundary_and_records_quality_and_status(self):
         fake_engine = Mock()
@@ -146,11 +173,26 @@ class TestModelEvaluation(unittest.TestCase):
         self.assertEqual(result["pipeline_metrics"]["total"]["fn"], 2)
         self.assertTrue(result["images"][0]["quality"]["is_blurry"])
 
+    def test_pipeline_validates_upload_format_before_production_inference(self):
+        bmp_path = self.root / "valid" / "images" / "batch.bmp"
+        Image.new("RGB", (100, 80), (120, 130, 140)).save(bmp_path)
+        bmp_bytes = bmp_path.read_bytes()
+        bmp_path.unlink()
+        (self.root / "valid" / "images" / "batch.jpg").write_bytes(bmp_bytes)
+        engine = Mock()
+        report = evaluate_scan_pipeline(
+            commodity="Terung", dataset_root=str(self.root), split="valid", confidence_threshold=0.3,
+            engine=engine, quality_analyzer=lambda _: {}, allow_candidate=True,
+        )
+        engine.predict.assert_not_called()
+        self.assertEqual(report["pipeline_failures"], 1)
+
     def test_report_serialization_contains_no_image_bytes(self):
         # Public serializer rejects non-JSON image payloads while preserving aggregate evidence.
         payload = {"images": [{"image_id": "batch.jpg", "status": "ai_detected"}], "count": 1}
         encoded = json.dumps(payload)
         self.assertNotIn("image_bytes", encoded)
+        self.assertNotIn("/home/", encoded)
 
 
 if __name__ == "__main__":

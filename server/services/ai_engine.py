@@ -91,7 +91,12 @@ class YOLOInferenceEngine:
         """Memeriksa apakah runtime ONNX atau Ultralytics tersedia."""
         return is_onnx_available() or ULTRALYTICS_AVAILABLE
 
-    def get_model(self, commodity: str = "terung", runtime: Optional[str] = None):
+    def get_model(
+        self,
+        commodity: str = "terung",
+        runtime: Optional[str] = None,
+        allow_candidate: bool = False,
+    ):
         """
         Pemuatan model secara lazy-loading singleton.
         Mendukung backend engine 'onnx' (default berkecepatan tinggi) atau 'ultralytics' (PyTorch).
@@ -114,6 +119,10 @@ class YOLOInferenceEngine:
         manifest = load_model_manifest(comm_key, os.path.join(self.base_dir, "server", "models"))
         cfg = self._config_from_manifest(comm_key, manifest)
         self.model_configs[comm_key] = cfg
+        if cfg["deployment_status"] != "validated" and not allow_candidate:
+            raise ModelContractError(
+                f"Model {comm_key} is {cfg['deployment_status']}; explicit candidate evaluation is required"
+            )
 
         # Use the declared ONNX artifact when the selected runtime is available.
         if target_runtime == "onnx" and is_onnx_available():
@@ -174,6 +183,7 @@ class YOLOInferenceEngine:
         enable_slicing: bool = True,
         disambiguate_grades: bool = True,
         runtime: Optional[str] = None,
+        allow_candidate: bool = False,
     ) -> Dict[str, Any]:
         """
         Mengeksekusi inferensi pada citra panen menggunakan Sliced SAHI & Grade Disambiguation.
@@ -198,7 +208,9 @@ class YOLOInferenceEngine:
         width, height = image.size
 
         # 2. Ambil instance model singleton (ONNX Runtime atau PyTorch)
-        model, comm_key, active_runtime = self.get_model(commodity, runtime=runtime)
+        model, comm_key, active_runtime = self.get_model(
+            commodity, runtime=runtime, allow_candidate=allow_candidate
+        )
         cfg = self.model_configs[comm_key]
 
         # 3. Jalankan inferensi AI dengan Tiled SAHI & Grade Disambiguation

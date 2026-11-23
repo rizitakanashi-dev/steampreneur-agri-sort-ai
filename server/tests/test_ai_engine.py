@@ -32,6 +32,29 @@ class TestYOLOInferenceEngine(unittest.TestCase):
         for config in self.engine.model_configs.values():
             self.assertEqual(config["expected_classes"], expected_classes)
 
+    def test_predict_blocks_candidate_models_unless_explicitly_allowed(self):
+        engine = YOLOInferenceEngine()
+        engine._models = {}
+        with patch("server.services.ai_engine.ONNXYOLOModel") as model_factory:
+            with self.assertRaises(ModelContractError):
+                engine.get_model("terung", runtime="onnx")
+            model_factory.assert_not_called()
+            self.assertNotIn("terung_onnx", engine._models)
+
+        model, commodity, runtime = engine.get_model("terung", runtime="onnx", allow_candidate=True)
+        self.assertEqual(commodity, "terung")
+        self.assertEqual(runtime, "onnx_runtime")
+        self.assertIsNotNone(model)
+
+    def test_predict_rejects_candidate_without_explicit_evaluation_access(self):
+        engine = YOLOInferenceEngine()
+        image_buffer = BytesIO()
+        Image.new("RGB", (32, 32), color="purple").save(image_buffer, format="JPEG")
+        with patch("server.services.ai_engine.ONNXYOLOModel") as model_factory:
+            with self.assertRaises(ModelContractError):
+                engine.predict(image_buffer.getvalue(), "terung", runtime="onnx")
+            model_factory.assert_not_called()
+
     def test_get_model_rejects_manifest_hash_mismatch_before_construction_or_cache(self):
         manifest = load_model_manifest("tomat", os.path.join(self.engine.base_dir, "server", "models"))
         manifest["artifacts"]["best.onnx"] = "0" * 64
@@ -45,7 +68,7 @@ class TestYOLOInferenceEngine(unittest.TestCase):
             image_buffer = BytesIO()
             image.save(image_buffer, format="JPEG")
             with self.assertRaises(ModelContractError):
-                engine.predict(image_buffer.getvalue(), "tomat", runtime="onnx")
+                engine.predict(image_buffer.getvalue(), "tomat", runtime="onnx", allow_candidate=True)
 
         model_factory.assert_not_called()
         infer.assert_not_called()
@@ -61,7 +84,7 @@ class TestYOLOInferenceEngine(unittest.TestCase):
             "server.services.ai_engine.ONNXYOLOModel"
         ) as model_factory:
             with self.assertRaises(ModelContractError):
-                engine.get_model("terung", runtime="onnx")
+                engine.get_model("terung", runtime="onnx", allow_candidate=True)
 
         model_factory.assert_not_called()
         self.assertNotIn("terung_onnx", engine._models)
@@ -79,7 +102,7 @@ class TestYOLOInferenceEngine(unittest.TestCase):
             "server.services.ai_engine.ONNXYOLOModel", return_value=fake_model
         ):
             with self.assertRaises(ModelContractError):
-                engine.get_model("cabai", runtime="onnx")
+                engine.get_model("cabai", runtime="onnx", allow_candidate=True)
 
         self.assertNotIn("cabai_onnx", engine._models)
 
@@ -124,7 +147,7 @@ class TestYOLOInferenceEngine(unittest.TestCase):
 
         # Engine get_model harus melempar RuntimeError
         with self.assertRaises(RuntimeError) as ctx:
-            self.engine.get_model("Terung")
+            self.engine.get_model("Terung", allow_candidate=True)
         self.assertIn("tidak ada runtime", str(ctx.exception).lower())
 
     def test_predict_real_model_slicing_and_contract(self):
@@ -144,6 +167,7 @@ class TestYOLOInferenceEngine(unittest.TestCase):
             confidence_threshold=0.25,
             enable_slicing=True,
             disambiguate_grades=True,
+            allow_candidate=True,
         )
 
         self.assertEqual(res["contract_version"], "1.2.0")
@@ -171,6 +195,7 @@ class TestYOLOInferenceEngine(unittest.TestCase):
             commodity="Terung",
             runtime="onnx",
             enable_slicing=False,
+            allow_candidate=True,
         )
         self.assertEqual(res["runtime_engine"], "onnx_runtime")
         self.assertLess(res["inference_time_ms"], 500.0)

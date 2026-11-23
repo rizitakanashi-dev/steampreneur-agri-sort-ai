@@ -49,7 +49,6 @@ def _metadata(dataset_root: Path, split: str, commodity: str) -> dict:
         "python_version": platform.python_version(),
         "platform": platform.platform(),
         "split": split,
-        "dataset_root": str(dataset_root.resolve()),
         "dataset_config_sha256": _sha256(config) if config.is_file() else None,
         "model_manifest_sha256": _sha256(manifest) if manifest.is_file() else None,
         "runtime_preference": getattr(ai_engine, "preferred_runtime", None),
@@ -82,14 +81,15 @@ def main(argv: list[str] | None = None) -> int:
         parser.error("--calibrate is validation-only; use --split valid")
     if not args.calibrate and args.confidence_threshold is None:
         parser.error("--confidence-threshold is required unless --calibrate is used")
-    if args.confidence_threshold is not None and not 0 <= args.confidence_threshold <= 1:
-        parser.error("--confidence-threshold must be between 0 and 1")
+    if args.confidence_threshold is not None and not 0.05 <= args.confidence_threshold <= 0.95:
+        parser.error("--confidence-threshold must be between 0.05 and 0.95")
 
     report: dict
     if args.calibrate:
         try:
             thresholds = [float(value) for value in args.thresholds.split(",") if value.strip()]
             rows = {}
+            validation_coverage = None
             for threshold in thresholds:
                 result = evaluate_scan_pipeline(
                     commodity=args.commodity,
@@ -100,13 +100,33 @@ def main(argv: list[str] | None = None) -> int:
                     allow_candidate=args.allow_candidate,
                     runtime=args.runtime,
                 )
+                if result["pipeline_failures"]:
+                    raise ValueError(
+                        f"Cannot calibrate threshold {threshold}: {result['pipeline_failures']} pipeline failures"
+                    )
                 metrics = result["pipeline_metrics"]
+                if validation_coverage is None:
+                    validation_coverage = {
+                        "image_count": result["image_count"],
+                        "scored_image_count": result["image_count"] - result["pipeline_failures"],
+                        "pipeline_failures": result["pipeline_failures"],
+                        "ground_truth_object_count": sum(
+                            item["ground_truth_count"] for item in metrics["per_class"].values()
+                        ),
+                        "unscored_ground_truth_count": result["unscored_ground_truth_count"],
+                    }
                 reject_metrics = metrics["per_class"]["Reject"]
                 rows[f"{threshold:.2f}".rstrip("0").rstrip(".")] = {
                     "macro_f1": metrics["macro_f1"],
                     "reject_recall": reject_metrics["recall"],
                     "reject_precision": reject_metrics["precision"],
                     "pipeline_failures": result["pipeline_failures"],
+                    "image_count": result["image_count"],
+                    "scored_image_count": result["image_count"] - result["pipeline_failures"],
+                    "ground_truth_object_count": sum(
+                        item["ground_truth_count"] for item in metrics["per_class"].values()
+                    ),
+                    "unscored_ground_truth_count": result["unscored_ground_truth_count"],
                 }
             calibration = calibrate_thresholds(
                 {"split": "valid", "threshold_results": rows},
@@ -118,6 +138,9 @@ def main(argv: list[str] | None = None) -> int:
                 "report_type": "exploratory_threshold_calibration",
                 "rubric_status": "unverified",
                 "commodity": args.commodity,
+                "candidate_access_enabled": bool(args.allow_candidate),
+                "slicing_enabled": not args.no_slicing,
+                "validation_coverage": validation_coverage,
                 "calibration": calibration,
                 "metadata": _metadata(args.dataset_root, "valid", args.commodity),
             }

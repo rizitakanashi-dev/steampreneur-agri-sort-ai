@@ -6,16 +6,19 @@ establish that the dataset's grade labels are semantically correct.
 
 from __future__ import annotations
 
+import ast
 import math
+import re
 from pathlib import Path
 from typing import Any, Callable
 
 from PIL import Image, ImageOps
 
 from server.services.ai_engine import ai_engine
+from server.utils.security import validate_upload_image
 
 CLASS_NAMES = {0: "Grade A", 1: "Grade B", 2: "Reject"}
-IMAGE_SUFFIXES = {".jpg", ".jpeg", ".png", ".bmp", ".webp", ".tif", ".tiff"}
+IMAGE_SUFFIXES = {".jpg", ".jpeg", ".png", ".webp"}
 
 
 class DatasetFormatError(ValueError):
@@ -182,30 +185,63 @@ def _metrics_at_iou(
     precision = micro["tp"] / (micro["tp"] + micro["fp"]) if micro["tp"] + micro["fp"] else 0.0
     recall = micro["tp"] / (micro["tp"] + micro["fn"]) if micro["tp"] + micro["fn"] else 0.0
     f1 = 2 * precision * recall / (precision + recall) if precision + recall else 0.0
-    # `total` reports dataset object/prediction counts for backwards-compatible
-    # consumers; `micro` is the additive TP/FP/FN confusion summary.
     totals = {
         "tp": micro["tp"],
-        "fp": len(predictions),
-        "fn": len(ground_truth),
-        "detection_fp": micro["fp"],
-        "matched_fp": micro["fp"],
-        "matched_fn": micro["fn"],
+        "fp": micro["fp"],
+        "fn": micro["fn"],
         "precision": precision,
         "recall": recall,
         "f1": f1,
     }
     supported = [metrics["f1"] for metrics in per_class.values() if metrics["ground_truth_count"] > 0]
     supported_ap = [metrics["ap"] for metrics in per_class.values() if metrics["ground_truth_count"] > 0]
+    confusion = _confusion_matrix(ground_truth, predictions, iou_threshold)
     return {
         "iou_threshold": iou_threshold,
         "per_class": per_class,
         "micro": {**micro, "precision": precision, "recall": recall, "f1": f1},
-        "total": {**totals, "precision": precision, "recall": recall, "f1": f1},
+        "total": totals,
+        "confusion_matrix": confusion,
         "macro_f1": sum(supported) / len(supported) if supported else 0.0,
         "map50": sum(supported_ap) / len(supported_ap) if supported_ap else 0.0,
         "matching_details": matching_details,
     }
+
+
+def _confusion_matrix(
+    ground_truth: list[dict[str, Any]], predictions: list[dict[str, Any]], iou_threshold: float
+) -> dict[str, Any]:
+    """Greedily match boxes by IoU irrespective of class to expose misclassification."""
+    image_ids = sorted({_image_id(item) for item in ground_truth} | {_image_id(item) for item in predictions})
+    matrix = {actual: {predicted: 0 for predicted in (*CLASS_NAMES.values(), "background")} for actual in (*CLASS_NAMES.values(), "background")}
+    for image_id in image_ids:
+        targets = [item for item in ground_truth if _image_id(item) == image_id]
+        detections = [item for item in predictions if _image_id(item) == image_id]
+        candidates = sorted(
+            ((_iou(target["box"], detection["box"]), target_index, prediction_index)
+             for target_index, target in enumerate(targets)
+             for prediction_index, detection in enumerate(detections)),
+            reverse=True,
+        )
+        matched_targets: set[int] = set()
+        matched_predictions: set[int] = set()
+        for overlap, target_index, prediction_index in candidates:
+            if overlap < iou_threshold:
+                break
+            if target_index in matched_targets or prediction_index in matched_predictions:
+                continue
+            target_class = CLASS_NAMES[_class_id(targets[target_index])]
+            prediction_class = CLASS_NAMES[_class_id(detections[prediction_index])]
+            matrix[target_class][prediction_class] += 1
+            matched_targets.add(target_index)
+            matched_predictions.add(prediction_index)
+        for target_index, target in enumerate(targets):
+            if target_index not in matched_targets:
+                matrix[CLASS_NAMES[_class_id(target)]]['background'] += 1
+        for prediction_index, prediction in enumerate(detections):
+            if prediction_index not in matched_predictions:
+                matrix['background'][CLASS_NAMES[_class_id(prediction)]] += 1
+    return {"labels": [*CLASS_NAMES.values(), "background"], "counts": matrix}
 
 
 def evaluate_predictions(
@@ -221,6 +257,7 @@ def evaluate_predictions(
         result = _metrics_at_iou(ground_truth, predictions, threshold)
         aps.append(result["map50"])
         threshold_aps.append({"iou_threshold": threshold, "map": result["map50"]})
+    base["map50"] = next(row["map"] for row in threshold_aps if row["iou_threshold"] == 0.5)
     base["map50_95"] = sum(aps) / len(aps)
     base["map50_95_curve"] = threshold_aps
     return base
@@ -275,12 +312,13 @@ def load_yolo_dataset(dataset_root: str, split: str) -> list[dict]:
     image_dir, label_dir = root / split / "images", root / split / "labels"
     if not image_dir.is_dir() or not label_dir.is_dir():
         raise DatasetFormatError(f"Expected image and label directories: {image_dir} and {label_dir}")
+    _validate_dataset_class_order(root / "data.yaml")
     image_paths = sorted(path for path in image_dir.iterdir() if path.is_file() and path.suffix.lower() in IMAGE_SUFFIXES)
     if not image_paths:
         raise DatasetFormatError(f"No supported images found in {image_dir}")
 
     records = []
-    for image_path in image_paths:
+    for image_index, image_path in enumerate(image_paths, start=1):
         label_path = label_dir / f"{image_path.stem}.txt"
         try:
             with Image.open(image_path) as opened:
@@ -291,13 +329,34 @@ def load_yolo_dataset(dataset_root: str, split: str) -> list[dict]:
             raise DatasetFormatError(f"Cannot decode image {image_path}: {exc}") from exc
         ground_truth = _validate_yolo_label(label_path, width, height)
         records.append({
-            "image_id": image_path.name,
+            "image_id": f"image-{image_index:05d}",
             "image_path": str(image_path),
             "width": width,
             "height": height,
             "ground_truth": ground_truth,
         })
     return records
+
+
+def _validate_dataset_class_order(config_path: Path) -> None:
+    if not config_path.is_file():
+        raise DatasetFormatError(f"Missing dataset config: {config_path}")
+    try:
+        text = config_path.read_text(encoding="utf-8")
+    except (OSError, UnicodeError) as exc:
+        raise DatasetFormatError(f"Cannot read dataset config {config_path}: {exc}") from exc
+    nc_match = re.search(r"(?m)^\s*nc\s*:\s*(\d+)\s*$", text)
+    names_match = re.search(r"(?m)^\s*names\s*:\s*(\[[^\n]*\])\s*$", text)
+    if not nc_match or not names_match:
+        raise DatasetFormatError("data.yaml must declare nc and an inline names list")
+    try:
+        names = ast.literal_eval(names_match.group(1))
+    except (SyntaxError, ValueError) as exc:
+        raise DatasetFormatError("Cannot parse data.yaml class names") from exc
+    if int(nc_match.group(1)) != len(CLASS_NAMES) or names != list(CLASS_NAMES.values()):
+        raise DatasetFormatError(
+            f"Dataset classes must be exactly {list(CLASS_NAMES.values())} in canonical order"
+        )
 
 
 def _status_for(result: dict[str, Any], quality: dict[str, Any]) -> tuple[str, str]:
@@ -333,8 +392,8 @@ def evaluate_scan_pipeline(
     runtime: str | None = None,
 ) -> dict:
     """Run the production image/quality/inference path for every dataset image."""
-    if not 0.0 <= confidence_threshold <= 1.0:
-        raise ValueError("confidence_threshold must be between 0 and 1")
+    if not 0.05 <= confidence_threshold <= 0.95:
+        raise ValueError("confidence_threshold must be between 0.05 and 0.95, matching the production scan API")
     records = load_yolo_dataset(dataset_root, split)
     if quality_analyzer is None:
         from server.utils.image_quality import analyze_image_quality
@@ -351,6 +410,13 @@ def evaluate_scan_pipeline(
         image_id = record["image_id"]
         try:
             image_bytes = Path(record["image_path"]).read_bytes()
+            image_path = Path(record["image_path"])
+            claimed_mime = {
+                ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".png": "image/png", ".webp": "image/webp"
+            }.get(image_path.suffix.lower())
+            if claimed_mime is None:
+                raise DatasetFormatError(f"Unsupported production upload format: {image_path.suffix}")
+            validate_upload_image(image_bytes, image_path.name, claimed_mime)
             raw_quality = quality_analyzer(image_bytes)
             allowed_quality_fields = {
                 "blur_score", "is_blurry", "mean_luminance", "lighting_condition",
@@ -404,7 +470,7 @@ def evaluate_scan_pipeline(
                 "status": "pipeline_error",
                 "status_reason": "inference_or_preprocessing_failed",
                 "error_type": type(exc).__name__,
-                "error": str(exc),
+                "error": "Image validation, preprocessing, or inference failed; details omitted to avoid exposing local paths.",
                 "detection_count": 0,
             })
 
@@ -435,6 +501,9 @@ def calibrate_thresholds(
     """Choose a confidence threshold using valid-split results only."""
     if validation_results.get("split") != "valid":
         raise ValueError("Threshold calibration is validation-only; split must be 'valid'")
+    failures = validation_results.get("pipeline_failures", 0)
+    if failures:
+        raise ValueError(f"Cannot calibrate with pipeline failures ({failures})")
     if not thresholds:
         raise ValueError("At least one threshold is required")
     if not 0.0 <= min_reject_recall <= 1.0:
@@ -447,8 +516,8 @@ def calibrate_thresholds(
         }
     curve = []
     for threshold in sorted(set(float(value) for value in thresholds)):
-        if not math.isfinite(threshold) or not 0 <= threshold <= 1:
-            raise ValueError(f"Invalid threshold: {threshold}")
+        if not math.isfinite(threshold) or not 0.05 <= threshold <= 0.95:
+            raise ValueError(f"Threshold {threshold} is outside the production range 0.05-0.95")
         row = rows.get(str(threshold), rows.get(f"{threshold:.2f}"))
         if row is None:
             raise ValueError(f"No validation result for threshold {threshold}")

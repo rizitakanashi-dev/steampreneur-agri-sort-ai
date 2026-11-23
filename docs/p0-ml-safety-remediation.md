@@ -6,6 +6,8 @@
 **Branch:** `feat/p0-ml-safety-remediation`  
 **Status Verdict:** **READY WITH LIMITATIONS** (Aman untuk merge staging/development; batasan agronomis dan runtime terdokumentasi ketat)
 
+> **Catatan audit 23 November 2026:** Verdict historis ini hanya merujuk pada ruang lingkup remediation P0 saat itu; bukan persetujuan model tiga-grade atau klaim validasi komersial. Semua model saat ini tetap `candidate` / `needs_data`, tanpa threshold terkalibrasi atau evaluasi held-out test. Lihat `docs/model-evaluation/current-evaluation.md` dan `docs/model-evaluation/grade-rubrics.md`.
+
 ---
 
 ## 1. Eksekutif Ringkasan
