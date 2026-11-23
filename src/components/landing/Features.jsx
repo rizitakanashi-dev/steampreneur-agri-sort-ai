@@ -25,7 +25,7 @@ export function Features({ onOpenApp }) {
         bgcolor: AGRI_COLORS.paperWhite,
       }}
     >
-      <Container maxWidth="lg" sx={{ maxWidth: '1200px !important', px: { xs: 2.5, sm: 3 } }}>
+      <Container maxWidth="lg" sx={{ maxWidth: 1200, px: { xs: 2.5, sm: 3 } }}>
         <Stack spacing="80px">
           {FEATURE_STAGES.map((stage) => (
             <Grid

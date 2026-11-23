@@ -35,7 +35,7 @@ export function Hero({ onOpenApp }) {
       <Container
         maxWidth="lg"
         sx={{
-          maxWidth: '1200px !important',
+          maxWidth: 1200,
           px: { xs: 2.5, sm: 3 },
           position: 'relative',
         }}

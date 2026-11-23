@@ -33,7 +33,7 @@ export function Footer({ onOpenApp }) {
         py: '80px',
       }}
     >
-      <Container maxWidth="lg" sx={{ maxWidth: '1200px !important', px: { xs: 2.5, sm: 3 } }}>
+      <Container maxWidth="lg" sx={{ maxWidth: 1200, px: { xs: 2.5, sm: 3 } }}>
         <Grid container spacing={4}>
           <Grid size={{ xs: 12, md: 4 }}>
             <Stack spacing={1.5}>

@@ -71,7 +71,7 @@ export function Navbar({ onOpenApp }) {
           }}
         />
 
-        <Container maxWidth="lg" sx={{ maxWidth: '1200px !important', px: { xs: 2.5, sm: 3 } }}>
+        <Container maxWidth="lg" sx={{ maxWidth: 1200, px: { xs: 2.5, sm: 3 } }}>
           <Toolbar disableGutters sx={{ justifyContent: 'space-between', minHeight: 72 }}>
             {/* Wordmark Left */}
             <Box

@@ -26,7 +26,7 @@ export function DashboardPreview({ onOpenApp }) {
         bgcolor: AGRI_COLORS.paperWhite,
       }}
     >
-      <Container maxWidth="lg" sx={{ maxWidth: '1200px !important', px: { xs: 2.5, sm: 3 } }}>
+      <Container maxWidth="lg" sx={{ maxWidth: 1200, px: { xs: 2.5, sm: 3 } }}>
         <Stack spacing={2} alignItems="center" sx={{ textAlign: 'center', maxWidth: 740, mx: 'auto', mb: 5 }}>
           <DisplayHeadline variant="hero">
             Lihat setiap modul bekerja secara{' '}

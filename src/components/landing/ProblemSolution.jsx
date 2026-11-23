@@ -17,7 +17,7 @@ export function ProblemSolution({ onOpenApp }) {
         bgcolor: AGRI_COLORS.fogSurface,
       }}
     >
-      <Container maxWidth="lg" sx={{ maxWidth: '1200px !important', px: { xs: 2.5, sm: 3 } }}>
+      <Container maxWidth="lg" sx={{ maxWidth: 1200, px: { xs: 2.5, sm: 3 } }}>
         <Stack spacing={2} sx={{ maxWidth: 740, mb: 6 }}>
           <DisplayHeadline variant="hero">
             Mengganti taksiran kasar dengan{' '}

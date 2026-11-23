@@ -17,7 +17,7 @@ export function FinalCTA({ onOpenApp }) {
         bgcolor: AGRI_COLORS.paperWhite,
       }}
     >
-      <Container maxWidth="lg" sx={{ maxWidth: '1200px !important', px: { xs: 2.5, sm: 3 } }}>
+      <Container maxWidth="lg" sx={{ maxWidth: 1200, px: { xs: 2.5, sm: 3 } }}>
         {/* Rare Single Editorial Accent Card on #FFFFFF Canvas */}
         <EditorialAccentCard sx={{ p: { xs: 4, sm: '40px' } }}>
           <Grid container spacing={{ xs: 4, md: 6 }} alignItems="center">
