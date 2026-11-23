@@ -846,18 +846,25 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm }
             <Tabs
               value={activeTab}
               onChange={(_, val) => setActiveTab(val)}
-              sx={{ borderBottom: 1, borderColor: 'divider', mb: 2.5 }}
+              variant={{ xs: 'fullWidth', sm: 'standard' }}
+              sx={{
+                borderBottom: 1,
+                borderColor: 'divider',
+                mb: 2.5,
+                // Mobile: label tab ringkas agar 2 tab muat berdampingan
+                '& .MuiTab-root': { fontSize: { xs: '0.8125rem', sm: '0.875rem' }, minWidth: { xs: 0, sm: 90 } },
+              }}
             >
               <Tab
                 icon={<VideocamRoundedIcon />}
                 iconPosition="start"
-                label="Live Kamera Langsung"
+                label={{ xs: 'Kamera', sm: 'Live Kamera Langsung' }}
                 sx={{ fontWeight: 700 }}
               />
               <Tab
                 icon={<PhotoLibraryRoundedIcon />}
                 iconPosition="start"
-                label="Unggah Berkas Citra"
+                label={{ xs: 'Unggah', sm: 'Unggah Berkas Citra' }}
                 sx={{ fontWeight: 700 }}
               />
             </Tabs>

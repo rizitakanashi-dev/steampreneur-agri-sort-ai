@@ -281,16 +281,22 @@ export function drawDetectionLabel(ctx, theme, labelText, labelPosition) {
   const textW = ctx.measureText(labelText).width
   const pillW = textW + paddingX * 2
   const pillH = textH + paddingY * 2
+  // Clamp ke dimensi kanvas aktual: posisi bisa dihitung saat dimensi kanvas
+  // belum sinkron (foto besar resize belakangan) sehingga pill terpotong tepi.
+  const canvasW = Number(ctx.canvas?.width) || 0
+  const canvasH = Number(ctx.canvas?.height) || 0
+  const drawX = canvasW > 0 ? Math.max(0, Math.min(labelPosition.x, canvasW - pillW)) : labelPosition.x
+  const drawY = canvasH > 0 ? Math.max(0, Math.min(labelPosition.y, canvasH - pillH)) : labelPosition.y
   ctx.fillStyle = theme.textBg
   if (typeof ctx.roundRect === 'function') {
     ctx.beginPath()
-    ctx.roundRect(labelPosition.x, labelPosition.y, pillW, pillH, 4)
+    ctx.roundRect(drawX, drawY, pillW, pillH, 4)
     ctx.fill()
   } else {
-    ctx.fillRect(labelPosition.x, labelPosition.y, pillW, pillH)
+    ctx.fillRect(drawX, drawY, pillW, pillH)
   }
   ctx.fillStyle = '#ffffff'
-  ctx.fillText(labelText, labelPosition.x + paddingX, labelPosition.y + textH + paddingY - 2)
+  ctx.fillText(labelText, drawX + paddingX, drawY + textH + paddingY - 2)
 }
 
 /**
