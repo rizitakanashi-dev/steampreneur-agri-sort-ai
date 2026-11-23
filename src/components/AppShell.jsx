@@ -235,9 +235,19 @@ export function AppShell({ activePage, activeUser, onLogout, onNavigate, onDataC
   )
 
   return (
-    <Box sx={{ display: 'flex', minHeight: '100vh', overflow: 'hidden' }}>
+    <Box sx={{ display: 'flex', minHeight: ['100vh', '100dvh'], overflow: 'hidden' }}>
       {!isDesktop && (
-        <AppBar color="inherit" elevation={0} position="fixed" sx={{ borderBottom: '1px solid', borderColor: 'divider' }}>
+        <AppBar
+          color="inherit"
+          elevation={0}
+          position="fixed"
+          sx={{
+            // Safe-area iPhone (mode PWA standalone): tidak tertutup notch/status bar
+            pt: 'env(safe-area-inset-top)',
+            borderBottom: '1px solid',
+            borderColor: 'divider',
+          }}
+        >
           <Toolbar sx={{ minHeight: 64 }}>
             <IconButton aria-label="Buka navigasi" edge="start" onClick={() => setMobileOpen(true)} sx={{ mr: 1 }}>
               <MenuRoundedIcon />
@@ -282,8 +292,17 @@ export function AppShell({ activePage, activeUser, onLogout, onNavigate, onDataC
         {drawerContent}
       </Drawer>
 
-      <Box component="main" sx={{ flexGrow: 1, minWidth: 0, width: '100%' }}>
-        {!isDesktop && <Toolbar sx={{ minHeight: 64 }} />}
+      <Box
+        component="main"
+        sx={{
+          flexGrow: 1,
+          minWidth: 0,
+          width: '100%',
+          // Safe-area bawah: aksi penting tidak tertutup gesture bar iPhone
+          pb: 'env(safe-area-inset-bottom)',
+        }}
+      >
+        {!isDesktop && <Toolbar sx={{ minHeight: 'calc(64px + env(safe-area-inset-top))' }} />}
         {children}
       </Box>
 

@@ -727,7 +727,7 @@ function App() {
 
   if (sessionChecking) {
     return (
-      <Box sx={{ minHeight: '100vh', display: 'grid', placeItems: 'center', bgcolor: '#f2f5f3' }}>
+      <Box sx={{ minHeight: ['100vh', '100dvh'], display: 'grid', placeItems: 'center', bgcolor: '#f2f5f3' }}>
         <Typography color="text.secondary">Memverifikasi sesi...</Typography>
       </Box>
     )

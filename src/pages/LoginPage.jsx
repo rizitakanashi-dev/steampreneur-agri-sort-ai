@@ -199,7 +199,7 @@ export function LoginPage({ onLoginSuccess, onSwitchToRegister, onBackToLanding 
   return (
     <Box
       sx={{
-        minHeight: '100vh',
+        minHeight: ['100vh', '100dvh'],
         bgcolor: AGRI_COLORS.mistSurface,
         color: AGRI_COLORS.ink,
         display: 'flex',
