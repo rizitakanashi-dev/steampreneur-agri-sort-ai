@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Box } from '@mui/material'
+import { Box, Chip, Stack } from '@mui/material'
 import { PieChart } from '@mui/x-charts/PieChart'
 
 /**
@@ -35,6 +35,8 @@ export function ResponsiveDonutChart({ data, height = 220, maxOuterRadius = 95, 
   const outerRadius = Math.min(maxOuterRadius, Math.floor(safeWidth / 2) - 6)
   const innerRadius = Math.round(outerRadius * 0.58)
 
+  const total = data.reduce((sum, d) => sum + (Number(d.value) || 0), 0)
+
   return (
     <Box
       ref={containerRef}
@@ -59,9 +61,29 @@ export function ResponsiveDonutChart({ data, height = 220, maxOuterRadius = 95, 
               cornerRadius: 4,
             },
           ]}
-          slotProps={{ legend: { hidden: safeWidth < 260 } }}
+          // Legend bawaan disembunyikan: diganti chip kustom di bawah agar
+          // selalu terbaca (nama + persentase) dan tidak meluber di layar sempit
+          slotProps={{ legend: { hidden: true } }}
           width={safeWidth}
         />
+      )}
+      {total > 0 && (
+        <Stack direction="row" flexWrap="wrap" gap={0.75} justifyContent="center" sx={{ mt: 1 }}>
+          {data.map((d) => (
+            <Chip
+              key={d.id ?? d.label}
+              label={`${d.label} ${Math.round(((Number(d.value) || 0) / total) * 100)}%`}
+              size="small"
+              sx={{
+                bgcolor: `${d.color}18`,
+                borderColor: d.color,
+                color: d.color,
+                fontWeight: 700,
+              }}
+              variant="outlined"
+            />
+          ))}
+        </Stack>
       )}
     </Box>
   )

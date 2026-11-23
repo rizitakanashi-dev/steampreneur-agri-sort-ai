@@ -13,7 +13,7 @@ export function FinalCTA({ onOpenApp }) {
     <Box
       component="section"
       sx={{
-        py: '80px',
+        py: { xs: '48px', md: '80px' },
         bgcolor: AGRI_COLORS.paperWhite,
       }}
     >
@@ -70,7 +70,7 @@ export function FinalCTA({ onOpenApp }) {
                   Siap digunakan di smartphone &amp; laptop.
                 </DisplayHeadline>
 
-                <Stack direction="row" spacing={1.5} sx={{ flexWrap: 'wrap' }}>
+                <Stack direction="row" spacing={1.5} sx={{ flexWrap: 'wrap' }} useFlexGap>
                   <AgriPrimaryButton onClick={() => onOpenApp('scanner')}>
                     Mulai Scan QC
                   </AgriPrimaryButton>

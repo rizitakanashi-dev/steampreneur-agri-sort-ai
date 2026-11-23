@@ -24,7 +24,7 @@ export function Commodities() {
       id="komoditas"
       component="section"
       sx={{
-        py: '80px',
+        py: { xs: '48px', md: '80px' },
         bgcolor: AGRI_COLORS.fogSurface,
       }}
     >

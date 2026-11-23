@@ -149,7 +149,9 @@ export function Navbar({ onOpenApp }) {
               </EditorialTextLink>
               <HeaderActionButton
                 onClick={() => onOpenApp('overview')}
-                sx={{ display: { xs: 'none', sm: 'inline-flex' } }}
+                // Di HP/tablet tombol cukup ada di dalam drawer (anti dobel);
+                // di desktop hamburger tidak ada, jadi CTA navbar yang tampil
+                sx={{ display: { xs: 'none', md: 'inline-flex' } }}
               >
                 Buka Aplikasi
               </HeaderActionButton>
@@ -176,10 +178,12 @@ export function Navbar({ onOpenApp }) {
             bgcolor: AGRI_COLORS.paperWhite,
             color: AGRI_COLORS.ink,
             p: 2.5,
+            display: 'flex',
+            flexDirection: 'column',
           },
         }}
       >
-        <Stack direction="row" sx={{justifyContent: 'space-between', alignItems: 'center',  mb: 2 }}>
+        <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center' }}>
           <Typography sx={{ fontFamily: AGRI_FONTS.serif, fontWeight: 400, fontSize: '1.25rem', color: AGRI_COLORS.ink }}>
             Agri-Sort AI
           </Typography>
@@ -187,14 +191,14 @@ export function Navbar({ onOpenApp }) {
             <CloseRoundedIcon />
           </IconButton>
         </Stack>
-        <List>
+        <List sx={{ pt: 1 }}>
           {NAV_LINKS.map((link) => (
             <ListItem key={link.href} disablePadding>
               <ListItemButton
                 component="a"
                 href={link.href}
                 onClick={(e) => handleNavClick(e, link.href)}
-                sx={{ borderRadius: AGRI_RADII.images }}
+                sx={{ borderRadius: AGRI_RADII.images, py: 1.25 }}
               >
                 <ListItemText
                   primary={link.label}
@@ -204,7 +208,8 @@ export function Navbar({ onOpenApp }) {
             </ListItem>
           ))}
         </List>
-        <Box sx={{ mt: 2 }}>
+        {/* CTA dipin di dasar drawer: tidak melayang di tengah ruang kosong */}
+        <Box sx={{ mt: 'auto', pt: 2, pb: 0.5, borderTop: '1px solid rgba(23, 25, 28, 0.08)' }}>
           <AgriPrimaryButton fullWidth onClick={() => { setMobileOpen(false); onOpenApp('overview') }}>
             Buka Aplikasi
           </AgriPrimaryButton>

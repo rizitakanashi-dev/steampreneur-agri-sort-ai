@@ -92,7 +92,7 @@ export function FarmerProfitabilityCard({
           sx={{alignItems: { xs: 'flex-start', md: 'center' }, justifyContent: 'space-between',  mb: 2.5 }}
         >
           <Box sx={{ flexGrow: 1 }}>
-            <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
+            <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center', flexWrap: 'wrap' }} useFlexGap>
               <Box
                 sx={{
                   alignItems: 'center',

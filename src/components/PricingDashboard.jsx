@@ -290,7 +290,7 @@ export function PricingDashboard() {
               </Typography>
             </Box>
 
-            <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap', gap: 1 }}>
+            <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap', gap: 1 }} useFlexGap>
               <Button
                 size="small"
                 variant={activeSource === 'bapanas' ? 'contained' : 'outlined'}
@@ -378,7 +378,7 @@ export function PricingDashboard() {
       {isTriangulasiActive ? (
         <Alert
           action={
-            <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap', gap: 0.5 }}>
+            <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap', gap: 0.5 }} useFlexGap>
               <Button
                 color="inherit"
                 disabled={isSyncing}

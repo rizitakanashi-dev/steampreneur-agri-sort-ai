@@ -69,7 +69,7 @@ export function PostHarvestPathologyCards({ commodity, rejectCount = 0, rejectPe
           sx={{alignItems: { xs: 'flex-start', md: 'center' }, justifyContent: 'space-between',  mb: 2 }}
         >
           <Box sx={{ flexGrow: 1 }}>
-            <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
+            <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center', flexWrap: 'wrap' }} useFlexGap>
               <Box
                 sx={{
                   alignItems: 'center',

@@ -582,7 +582,7 @@ export function HarvestRecap({ batches = [], onSelectBatch, onDeleteBatch }) {
             {filterActive && ' (tersaring)'}
           </Typography>
           {filterActive && (
-            <Stack direction="row" spacing={0.5} sx={{ flexWrap: 'wrap' }}>
+            <Stack direction="row" spacing={0.5} sx={{ flexWrap: 'wrap' }} useFlexGap>
               {filter.search && (
                 <Chip
                   label={`Cari: "${filter.search}"`}

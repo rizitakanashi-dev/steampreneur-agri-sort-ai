@@ -210,7 +210,7 @@ function DashboardPreview({ onNavigate, batches = [], onSelectBatch }) {
           <Card sx={{ height: '100%' }}>
             <CardContent sx={{ p: { xs: 2, sm: 2.5 } }}>
               <Box sx={{ mb: 2 }}>
-                <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
+                <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center', flexWrap: 'wrap' }} useFlexGap>
                   <Typography fontWeight={700} variant="h6">
                     Harga acuan pasar
                   </Typography>
@@ -278,7 +278,7 @@ function DashboardPreview({ onNavigate, batches = [], onSelectBatch }) {
               {lastBatch ? (
                 <Stack spacing={1.5}>
                   <Box sx={{ mb: 2 }}>
-                    <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
+                    <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center', flexWrap: 'wrap' }} useFlexGap>
                       <Typography fontWeight={700} variant="h6">
                         Batch Panen Terakhir
                       </Typography>

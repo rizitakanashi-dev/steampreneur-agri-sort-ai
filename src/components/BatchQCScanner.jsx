@@ -856,24 +856,28 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm }
               }}
             >
               <Tab
+                value={0}
                 icon={<VideocamRoundedIcon />}
                 iconPosition="start"
                 label="Kamera"
                 sx={{ fontWeight: 700, display: { xs: 'flex', sm: 'none' } }}
               />
               <Tab
+                value={0}
                 icon={<VideocamRoundedIcon />}
                 iconPosition="start"
                 label="Live Kamera Langsung"
                 sx={{ fontWeight: 700, display: { xs: 'none', sm: 'flex' } }}
               />
               <Tab
+                value={1}
                 icon={<PhotoLibraryRoundedIcon />}
                 iconPosition="start"
                 label="Unggah"
                 sx={{ fontWeight: 700, display: { xs: 'flex', sm: 'none' } }}
               />
               <Tab
+                value={1}
                 icon={<PhotoLibraryRoundedIcon />}
                 iconPosition="start"
                 label="Unggah Berkas Citra"
@@ -1399,7 +1403,7 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm }
                     <CheckCircleRoundedIcon color="success" sx={{ fontSize: 32 }} />
                   )}
                   <Box>
-                    <Stack direction="row" spacing={1} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
+                    <Stack direction="row" spacing={1} sx={{ alignItems: 'center', flexWrap: 'wrap' }} useFlexGap>
                       <Typography
                         variant="subtitle1"
                         fontWeight={800}
@@ -1508,7 +1512,7 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm }
                   </Box>
                 </Stack>
 
-                <Stack direction="row" spacing={1.25} sx={{ flexWrap: 'wrap' }}>
+                <Stack direction="row" spacing={1.25} sx={{ flexWrap: 'wrap' }} useFlexGap>
                   <Button
                     variant="outlined"
                     color="inherit"

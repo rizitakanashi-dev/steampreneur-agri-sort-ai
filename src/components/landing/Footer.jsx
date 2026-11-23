@@ -30,7 +30,7 @@ export function Footer({ onOpenApp }) {
         bgcolor: AGRI_COLORS.paperWhite,
         color: AGRI_COLORS.ink,
         borderTop: `1px solid ${AGRI_COLORS.hairline}`,
-        py: '80px',
+        py: { xs: '48px', md: '80px' },
       }}
     >
       <Container maxWidth="lg" sx={{ maxWidth: 1200, px: { xs: 2.5, sm: 3 } }}>

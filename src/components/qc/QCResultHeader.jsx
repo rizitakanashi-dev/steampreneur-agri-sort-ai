@@ -32,7 +32,7 @@ export function QCResultHeader({ batch, commodity, executionStatus, isMultiAngle
          sx={{ alignItems: { xs: 'flex-start', md: 'center' }, justifyContent: 'space-between' }}>
           <Box sx={{ flexGrow: 1 }}>
             {/* Baris Judul + Chip AI lurus di samping kanannya persis */}
-            <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
+            <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center', flexWrap: 'wrap' }} useFlexGap>
               <Box sx={{ color: '#036e45', display: 'flex', alignItems: 'center' }}>
                 {executionStatus === 'ai_detected' ? (
                   <AutoAwesomeRoundedIcon sx={{ fontSize: 30 }} />
