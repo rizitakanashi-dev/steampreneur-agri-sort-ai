@@ -40,6 +40,8 @@ import VerifiedRoundedIcon from '@mui/icons-material/VerifiedRounded'
 import WarningAmberRoundedIcon from '@mui/icons-material/WarningAmberRounded'
 import { PieChart } from '@mui/x-charts/PieChart'
 
+import { ResponsiveDonutChart } from './ResponsiveDonutChart.jsx'
+
 import { ScanCanvasOverlay } from './ScanCanvasOverlay.jsx'
 import { QCPrintCertificate } from './QCPrintCertificate.jsx'
 import { PostHarvestPathologyCards } from './PostHarvestPathologyCards.jsx'
@@ -672,21 +674,7 @@ export function QCResults({ batch, onBackToInput, onViewRecap, initialOpenCertif
                       <Inventory2RoundedIcon color="primary" />
                     </Stack>
                     {pieChartData.length > 0 ? (
-                      <Box sx={{ alignItems: 'center', display: 'flex', justifyContent: 'center', my: 1 }}>
-                        <PieChart
-                          height={200}
-                          series={[
-                            {
-                              data: pieChartData,
-                              innerRadius: 50,
-                              outerRadius: 85,
-                              paddingAngle: 3,
-                              cornerRadius: 4,
-                            },
-                          ]}
-                          width={280}
-                        />
-                      </Box>
+                      <ResponsiveDonutChart data={pieChartData} height={200} maxOuterRadius={85} sx={{ my: 1 }} />
                     ) : (
                       <Alert severity="info">Tidak ada data proporsi untuk ditampilkan.</Alert>
                     )}
@@ -775,28 +763,7 @@ export function QCResults({ batch, onBackToInput, onViewRecap, initialOpenCertif
                 </Stack>
 
                 {pieChartData.length > 0 ? (
-                  <Box
-                    sx={{
-                      alignItems: 'center',
-                      display: 'flex',
-                      justifyContent: 'center',
-                      my: 1,
-                    }}
-                  >
-                    <PieChart
-                      height={220}
-                      series={[
-                        {
-                          data: pieChartData,
-                          innerRadius: 55,
-                          outerRadius: 95,
-                          paddingAngle: 3,
-                          cornerRadius: 4,
-                        },
-                      ]}
-                      width={290}
-                    />
-                  </Box>
+                    <ResponsiveDonutChart data={pieChartData} height={220} maxOuterRadius={95} sx={{ my: 1 }} />
                 ) : (
                   <Alert severity="info" sx={{ my: 2 }}>
                     Tidak ada data proporsi untuk ditampilkan.
