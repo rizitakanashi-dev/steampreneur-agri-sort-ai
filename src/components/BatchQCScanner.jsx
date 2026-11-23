@@ -858,14 +858,26 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm }
               <Tab
                 icon={<VideocamRoundedIcon />}
                 iconPosition="start"
-                label={{ xs: 'Kamera', sm: 'Live Kamera Langsung' }}
-                sx={{ fontWeight: 700 }}
+                label="Kamera"
+                sx={{ fontWeight: 700, display: { xs: 'flex', sm: 'none' } }}
+              />
+              <Tab
+                icon={<VideocamRoundedIcon />}
+                iconPosition="start"
+                label="Live Kamera Langsung"
+                sx={{ fontWeight: 700, display: { xs: 'none', sm: 'flex' } }}
               />
               <Tab
                 icon={<PhotoLibraryRoundedIcon />}
                 iconPosition="start"
-                label={{ xs: 'Unggah', sm: 'Unggah Berkas Citra' }}
-                sx={{ fontWeight: 700 }}
+                label="Unggah"
+                sx={{ fontWeight: 700, display: { xs: 'flex', sm: 'none' } }}
+              />
+              <Tab
+                icon={<PhotoLibraryRoundedIcon />}
+                iconPosition="start"
+                label="Unggah Berkas Citra"
+                sx={{ fontWeight: 700, display: { xs: 'none', sm: 'flex' } }}
               />
             </Tabs>
 

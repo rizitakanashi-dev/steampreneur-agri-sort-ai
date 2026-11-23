@@ -36,7 +36,17 @@ export function ResponsiveDonutChart({ data, height = 220, maxOuterRadius = 95, 
   const innerRadius = Math.round(outerRadius * 0.58)
 
   return (
-    <Box ref={containerRef} sx={{ width: '100%', ...sx }}>
+    <Box
+      ref={containerRef}
+      sx={{
+        width: '100%',
+        maxWidth: '100%',
+        // Kunci ukuran: chart tidak boleh mendorong halaman meluber ke samping
+        overflow: 'hidden',
+        '& svg': { maxWidth: '100%' },
+        ...sx,
+      }}
+    >
       {width > 0 && (
         <PieChart
           height={height}
