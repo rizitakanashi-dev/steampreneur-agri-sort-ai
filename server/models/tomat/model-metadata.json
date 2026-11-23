@@ -7,38 +7,39 @@
     "framework": "Ultralytics",
     "framework_version": "8.4.211",
     "input_size": 640,
-    "files": {
-      "pytorch": "best.pt",
-      "onnx": "best.onnx",
-      "dataset_config": "data.yaml"
-    }
+    "release_evidence": {
+      "onnx_export_date": "2026-11-12T03:22:47.514363+00:00",
+      "onnx_description": "Ultralytics YOLO11n model trained on /kaggle/working/tomato-thesis-e4-1/data.yaml",
+      "onnx_input": {"name": "images", "shape": [1, 3, 640, 640], "type": "tensor(float)"},
+      "onnx_output": {"name": "output0", "shape": [1, 7, 8400], "type": "tensor(float)"}
+    },
+    "files": {"pytorch": "best.pt", "onnx": "best.onnx", "dataset_config": "data.yaml"}
+  },
+  "artifacts": {
+    "best.onnx": "6f10f34cf7022919012363f4497a42d0b9a642da947893067419e7292e6f7be2",
+    "best.pt": "a1021b12b44d77ff30a5b797e9ff878e9d6316ff592f99fb7f6568409a3a49c3"
   },
   "dataset": {
-    "name": "Tomato Thesis E4",
-    "source": "Roboflow",
-    "workspace": "rizi-takanashi",
-    "project": "tomato-thesis-e4-89vr8",
-    "project_version": 1,
-    "classes": {
-      "0": "Grade A",
-      "1": "Grade B",
-      "2": "Reject"
-    }
+    "name": "tomato-freshness.v1-tomat.yolov11",
+    "source": "Roboflow export; external source only, not copied into repository",
+    "source_path": "/home/Rizi/dataset/tomato-freshness.v1-tomat.yolov11",
+    "data_config_sha256": "58dc0fb3fa811bb0d95627344d9061f91f73ecb8922f1ae61d15c4f9d908f0ab",
+    "readme_sha256": "fa3b99b2cb121d4347533dabf5fbf62e47b1e111be69c34c4115cc924236af69",
+    "annotation_tree_sha256": "796b0c37b8c54b5dd0d5ecc782699b354c6f9222b89aa1cbf0586ad8754bb722",
+    "config_provenance": {"workspace": "rizi-takanashi", "project": "tomato-freshness-nrfhb", "project_version": 1},
+    "classes": {"0": "Grade A", "1": "Grade B", "2": "Reject"},
+    "annotation_counts": {
+      "label_files": {"train": 2100, "valid": 425, "test": 280},
+      "instances": {"train": 2418, "valid": 445, "test": 305},
+      "class_instances": {"0": 1028, "1": 666, "2": 1474}
+    },
+    "semantics_status": "needs_data",
+    "semantics_note": "The external export's project differs from the previously recorded tomato-thesis-e4 project, and no independently verified grading rubric is available."
   },
   "grading": {
-    "system": "3-class",
-    "mapping": {
-      "Grade A": "Grade A",
-      "Grade B": "Grade B",
-      "Reject": "Reject"
-    }
+    "mapping_status": "candidate",
+    "mapping": {"0": "Grade A", "1": "Grade B", "2": "Reject"}
   },
-  "inference": {
-    "default_confidence_threshold": 0.35,
-    "recommended_input_size": 640
-  },
-  "deployment": {
-    "status": "integrated",
-    "recommended_backend": "Python + FastAPI + ONNX Runtime"
-  }
+  "inference": {"default_confidence_threshold": 0.35, "recommended_input_size": 640},
+  "deployment": {"status": "candidate", "recommended_backend": "Python + FastAPI + ONNX Runtime"}
 }
