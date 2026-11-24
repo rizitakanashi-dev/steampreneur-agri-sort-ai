@@ -5,9 +5,9 @@
   --font-agri-sans: 'Inter', 'Plus Jakarta Sans', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
 
-html {
-  scroll-behavior: smooth;
-}
+/* scroll-behavior CSS sengaja TIDAK dipasang: smooth harus dikontrol JS
+   (Navbar smoothScrollTo) — CSS smooth membuat setiap scrollTo() dari loop
+   animasi rAF dikejar animasi browser lagi, sehingga scroll jadi rayap/lambat. */
 
 ::selection {
   background: rgba(3, 110, 69, 0.16);
