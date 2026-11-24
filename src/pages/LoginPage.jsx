@@ -241,6 +241,8 @@ export function LoginPage({ onLoginSuccess, onSwitchToRegister, onBackToLanding 
                 letterSpacing: '-0.02em',
                 color: AGRI_COLORS.ink,
                 whiteSpace: 'nowrap',
+                // HP: navbar ramping — cukup logo (tulisan muncul di layar lebar)
+                display: { xs: 'none', sm: 'block' },
               }}
             >
               Agri-Sort AI
