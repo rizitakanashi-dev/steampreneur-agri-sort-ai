@@ -277,7 +277,7 @@ export function AppShell({ activePage, activeUser, onLogout, onNavigate, onDataC
             <IconButton aria-label="Buka pengaturan" onClick={() => setSettingsOpen(true)} size="small" sx={{ mr: 1 }}>
               <SettingsRoundedIcon fontSize="small" />
             </IconButton>
-            <Avatar sx={{ bgcolor: 'primary.dark', fontSize: 12, height: 30, width: 30 }}>AS</Avatar>
+            <Avatar sx={{ bgcolor: 'primary.dark', fontSize: 12, height: 30, width: 30 }}>{userInitials}</Avatar>
           </Toolbar>
         </AppBar>
       )}
