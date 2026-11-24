@@ -2,6 +2,8 @@
 ## Agri-Sort AI: Sistem Quality Control & Smart Pricing Hortikultura
 ### Berdasarkan Kondisi Model Aktual, Dataset, Pipeline Inferensi, dan Kesiapan Integrasi
 
+> **Snapshot historis per 9 November 2026.** Bagian analisis di bawah ini merekam klaim dan keadaan audit pada tanggal tersebut. Klaim kesiapan model Terung, mapping yang dinilai defensible secara komersial, dan rekomendasi pilot tidak lagi menjadi status proyek saat ini. Audit tiga-grade 23 November 2026 menetapkan semua komoditas `candidate` / `needs_data`, tanpa rubrik komersial tervalidasi, threshold hasil kalibrasi, atau evaluasi held-out yang mendukung deployment grading. Baca `docs/model-evaluation/current-evaluation.md` untuk status terkini; jangan gunakan verdict historis di bawah sebagai persetujuan.
+
 > **Status Audit:** SELESAI (COMPLETED)  
 > **Tanggal Audit:** 9 November 2026  
 > **Auditor Independen:** Senior Machine Learning Engineer, Computer Vision Engineer & Independent ML Auditor  
@@ -18,12 +20,12 @@ Audit independen ini dilakukan secara menyeluruh terhadap seluruh komponen Machi
 ### Ringkasan Status Kesiapan Komoditas & Pipeline (Summary Verdicts)
 | Komponen Evaluasi | Status Kesiapan | Status Verifikasi | Ringkasan Kondisi Aktual |
 |---|---|---|---|
-| **Model Terung (Eggplant)** | `READY WITH LIMITATIONS` | `VERIFIED` | Model deteksi objek YOLO11n 4-kelas (`Extra Class`, `Class I`, `Class II`, `Reject`) telah dilatih dan terintegrasi. Terdapat defisit diskriminasi antara `Class II` dan `Reject` (ambiguitas ~19%), serta bias pelatihan *single-object* yang dimitigasi di level inferensi menggunakan Sliced Aided Hyper Inference (SAHI). |
+| **Model Terung (Eggplant; verdict historis)** | `READY WITH LIMITATIONS` (superseded) | `VERIFIED` (snapshot 9 Nov 2026) | Snapshot lama; status sekarang `candidate` / `needs_data`. Rubrik belum diverifikasi dan ada anotasi train non-box. Lihat evaluasi 23 Nov 2026. |
 | **Model Tomat (Tomato)** | `NEEDS IMPROVEMENT` | `VERIFIED` | Model deteksi objek YOLO11n 2-kelas (`fresh-tomato`, `rotten-tomato`). **Bukan model quality grading 3-tingkat**, melainkan model biner kesegaran vs kebusukan (*freshness/decay detector*). Belum mampu mendeteksi cacat kosmetik ringan untuk memisahkan Grade A dan Grade B. Ditemukan kebocoran spesimen (*specimen leakage*) lintas split sebanyak 175 kejadian pada dataset asal. |
 | **Dataset Cabai Rawit Hijau** | `NOT READY` | `NOT AVAILABLE` | **Tidak ditemukan model, bobot, maupun dataset citra cabai** dalam repositori maupun penyimpanan lokal. Kesiapan data berada pada status nol; saat ini sistem sepenuhnya bergantung pada fallback kalkulasi harga manual tanpa computer vision. |
 | **ML Inference Pipeline** | `READY WITH LIMITATIONS` | `VERIFIED` | Pipeline inferensi backend telah mengimplementasikan Singleton Loader, ONNX Runtime CPU Engine, Sliced Inference (SAHI), kalibrasi ambiguitas mutu, inspeksi multi-sudut (*multi-angle dual-shot*), dan audit kualitas citra (CLAHE & blur/exposure gate). Namun, dependensi `opencv-python-headless` belum dicantumkan di `requirements.txt`. |
 | **Fullstack Integration** | `READY WITH LIMITATIONS` | `VERIFIED` | Kontrak respons JSON terstandardisasi pada endpoint `POST /api/v1/qc/scan` dan `POST /api/v1/qc/scan-multi`. Frontend kanvas overlay mendukung visualisasi multi-kelas. Sebanyak 102 unit test JavaScript lolos (100%). |
-| **Production Readiness** | `NEEDS IMPROVEMENT` | `PARTIALLY VERIFIED` | Sistem siap untuk uji coba lapangan terbatas (MVP) pada komoditas Terung dengan supervisi *human-in-the-loop*. Belum layak untuk rilis produksi mandiri penuh (*unattended production*) pada Tomat (ketiadaan Grade B) dan Cabai Rawit Hijau (ketiadaan model). |
+| **Production Readiness (verdict historis)** | `NEEDS IMPROVEMENT` (superseded) | `PARTIALLY VERIFIED` (snapshot 9 Nov 2026) | Rekomendasi uji lapangan Terung yang tercatat dalam snapshot lama tidak lagi berlaku. Status audit 23 Nov 2026 tidak menyetujui model mana pun untuk pilot grading komersial; semua tetap `candidate` / `needs_data`. |
 
 ---
 
@@ -214,7 +216,7 @@ Audit memeriksa apakah klasifikasi mutu didukung oleh dokumen visual grading res
 | Reject             | Reject              | Busuk lunak, lubang ulat/hama, busuk phytophthora.   |
 +--------------------+---------------------+-------------------------------------------------------+
 ```
-- **Kelayakan Pemetaan:** **VALID & DAPAT DIPERTANGGUNGJAWABKAN SECARA KOMERSIAL.** Penggabungan `Extra Class` dan `Class I` ke dalam `Grade A` mencerminkan praktik pasar modern/ekspor, sementara `Class II` dialokasikan untuk pasar tradisional/industri olahan (`Grade B`), dan `Reject` untuk afkir.
+- **Klaim pada audit historis 9 November 2026:** mapping ini dinilai valid pada saat itu. Klaim tersebut belum memiliki dukungan rubrik agronomis independen dalam audit tiga-grade 23 November 2026 dan tidak boleh dianggap sebagai kriteria grading komersial yang disahkan.
 
 #### B. Komoditas Tomat (2 Kelas ke 3 Grade)
 ```
@@ -410,7 +412,7 @@ Pipeline inferensi diimplementasikan di `server/services/ai_engine.py`, `server/
 
 ### 11.2. Audit Layer Disambiguasi Heuristik (Class II vs Reject)
 - **Implementasi:** `server/services/tiled_inference.py` baris 72-138.
-- **Logika:** Jika deteksi Reject bersaing ketat dengan Class II dengan selisih confidence $< 0.20$ dan skor Reject belum mencapai derajat kepastian tinggi ($< 0.55$), objek dialokasikan ulang ke Class II sesuai toleransi mutu komersial UNECE FFV-05 (Catatan: SNI 01-3162-1992 adalah Tomat, bukan Terung; SNI Terung: NOT VERIFIED).
+- **Logika pada implementasi historis:** Jika deteksi Reject bersaing ketat dengan Class II dengan selisih confidence $< 0.20$ dan skor Reject $< 0.55$, objek dialokasikan ulang ke Class II. Heuristik ini belum dibuktikan sebagai toleransi komersial oleh rubrik independen dan bukan kriteria grade yang disahkan; SNI Terung belum diverifikasi.
 - **Evaluasi Auditor:** Solusi rekayasa perangkat lunak ini efektif menurunkan tingkat *false reject* pada fase MVP, tetapi tetap merupakan *band-aid solution*. Solusi permanen tetap membutuhkan retraining dengan loss function terbobot (*focal loss / class-weighted cross-entropy*).
 
 ### 11.3. Audit Endpoint Multi-Angle Dual-Shot (`POST /api/v1/qc/scan-multi`)
@@ -605,12 +607,12 @@ Berdasarkan investigasi empiris, verifikasi artefak model aktual, pengujian kode
 
 | Bidang Penilaian | Keputusan Final (*Verdict*) | Rangkuman Pertimbangan Auditor |
 |---|:---:|---|
-| **Kesiapan Model Terung** | `READY WITH LIMITATIONS` | Model 4-kelas terverifikasi aktif dengan mAP@50 = 80,17%. Struktur kelas kompatibel dengan Grade A, B, Reject. Keterbatasan pada ambiguitas Class II vs Reject dan bias citra tunggal telah dimitigasi secara temporer melalui algoritma SAHI dan layer heuristik. Siap digunakan dengan supervisi peninjauan pengguna (*human-in-the-loop*). |
-| **Kesiapan Model Tomat** | `NEEDS IMPROVEMENT` | Model biner kesegaran (Fresh vs Rotten) dengan mAP@50 = 97,12% (terindikasi terinflasi oleh 175 kebocoran spesimen). Tidak memenuhi kualifikasi mutu komersial karena ketiadaan kelas Grade B. Membutuhkan pengumpulan dataset 3-tier dan retraining sebelum layak digunakan untuk smart pricing penuh. |
-| **Kesiapan Dataset Cabai** | `NOT READY` | Nol berkas citra, nol anotasi, dan nol model bobot. Fitur saat ini berjalan murni di atas kalkulasi manual fallback. Pekerjaan ML pada komoditas ini berstatus belum dimulai (*uninitiated*). |
-| **Kesiapan Pipeline Inferensi** | `READY WITH LIMITATIONS` | Arsitektur inferensi berstandar tinggi: Singleton Engine, dual runtime (ONNX CPU & PyTorch), Sliced SAHI, multi-angle dual-shot inspection, dan audit kualitas citra CLAHE berjalan dengan sangat baik. Perbaikan minor hanya diperlukan pada pencatatan dependensi OpenCV. |
-| **Kesiapan Integrasi Fullstack** | `READY WITH LIMITATIONS` | Kontrak API seragam, format bounding box ternormalisasi, dan antarmuka visual overlay kanvas berfungsi mulus. Seluruh 102 unit test JavaScript lolos tanpa kegagalan. |
-| **Kesiapan Produksi Keseluruhan**| `NEEDS IMPROVEMENT` | Sistem Agri-Sort AI **layak untuk uji coba lapangan (Pilot / Beta Testing) terbatas pada komoditas Terung**. Sistem **belum layak untuk peluncuran produksi penuh tanpa pengawasan (*unattended commercial production*)** sebelum model Tomat 3-tier dilatih ulang dan dataset Cabai Rawit Hijau diwujudkan. |
+| **Kesiapan Model Terung (verdict historis)** | `READY WITH LIMITATIONS` (9 Nov 2026; superseded) | Klaim ini tidak berlaku sebagai kesiapan saat ini. Audit 23 Nov 2026 menetapkan `candidate` / `needs_data`; rubrik belum diverifikasi dan evaluator menemukan anotasi non-box pada train. Lihat status terkini di `docs/model-evaluation/current-evaluation.md`. |
+| **Kesiapan Model Tomat (verdict historis)** | `NEEDS IMPROVEMENT` (9 Nov 2026; superseded) | Snapshot lama mengukur model biner berbeda dan tidak menjadi bukti untuk model tiga-grade saat ini. Status terkini `candidate` / `needs_data`; label komersial belum diverifikasi. |
+| **Kesiapan Dataset Cabai (verdict historis)** | `NOT READY` (9 Nov 2026; superseded) | Snapshot lama mendahului dataset eksternal yang kini ditemukan. Audit 23 Nov 2026 menemukan dataset lokal, tetapi format anotasinya bukan bounding box YOLO dan semantiknya belum diverifikasi; status tetap `candidate` / `needs_data`. |
+| **Kesiapan Pipeline Inferensi (verdict historis)** | `READY WITH LIMITATIONS` (snapshot 9 Nov 2026) | Penilaian teknis ini tidak memvalidasi model atau grading. Lihat hasil tes dan batasan runtime/data terbaru di `docs/model-evaluation/current-evaluation.md`. |
+| **Kesiapan Integrasi Fullstack (verdict historis)** | `READY WITH LIMITATIONS` (snapshot 9 Nov 2026) | Hasil tes dan kondisi integrasi tersebut adalah snapshot historis, bukan validasi model grading. |
+| **Kesiapan Produksi Keseluruhan (verdict historis)**| `NEEDS IMPROVEMENT` (9 Nov 2026; superseded) | Rekomendasi pilot Terung di sini sudah tidak berlaku. Audit tiga-grade 23 Nov 2026 tidak menyetujui model mana pun untuk pilot grading komersial; seluruhnya tetap candidate/needs_data hingga data dan rubrik lolos gate independen. |
 
 ---
 *Laporan audit ini disusun secara independen, objektif, dan berbasis bukti empiris repositori oleh Senior ML Engineer & Independent ML Auditor Agri-Sort AI.*

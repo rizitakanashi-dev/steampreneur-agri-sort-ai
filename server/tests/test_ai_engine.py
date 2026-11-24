@@ -10,6 +10,7 @@ from io import BytesIO
 from PIL import Image
 
 from server.services.ai_engine import YOLOInferenceEngine, ai_engine
+from server.services.model_registry import CANONICAL_CLASSES, ModelContractError, load_model_manifest
 
 
 class TestYOLOInferenceEngine(unittest.TestCase):
@@ -24,44 +25,86 @@ class TestYOLOInferenceEngine(unittest.TestCase):
         self.assertIs(self.engine, another_engine)
         self.assertIs(self.engine, ai_engine)
 
-    def test_model_configs_integrity(self):
-        """Memverifikasi integritas konfigurasi path dan kelas model Terung dan Tomat."""
-        configs = self.engine.model_configs
+    def test_model_configs_use_exact_canonical_class_order(self):
+        """Semua komoditas yang didukung memakai tepat tiga kelas kanonis."""
+        expected_classes = list(CANONICAL_CLASSES.values())
+        self.assertEqual(set(self.engine.model_configs), {"terung", "tomat", "cabai"})
+        for config in self.engine.model_configs.values():
+            self.assertEqual(config["expected_classes"], expected_classes)
 
-        # Verifikasi konfigurasi Terung
-        self.assertIn("terung", configs)
-        terung_cfg = configs["terung"]
-        self.assertEqual(terung_cfg["name"], "Agri-Sort Eggplant Quality Detection")
-        self.assertIn(terung_cfg["version"], ["1.0.0", "2.0.0"])
-        self.assertTrue(
-            terung_cfg["expected_classes"] == ["Grade A", "Grade B", "Reject"]
-            or terung_cfg["expected_classes"] == ["Class I", "Class II", "Extra Class", "Reject"]
-        )
-        self.assertTrue(
-            os.path.exists(terung_cfg["path"]),
-            f"Berkas model Terung best.pt tidak ditemukan di: {terung_cfg['path']}",
-        )
+    def test_predict_blocks_candidate_models_unless_explicitly_allowed(self):
+        engine = YOLOInferenceEngine()
+        engine._models = {}
+        with patch("server.services.ai_engine.ONNXYOLOModel") as model_factory:
+            with self.assertRaises(ModelContractError):
+                engine.get_model("terung", runtime="onnx")
+            model_factory.assert_not_called()
+            self.assertNotIn("terung_onnx", engine._models)
 
-        # Verifikasi konfigurasi Tomat
-        self.assertIn("tomat", configs)
-        tomat_cfg = configs["tomat"]
-        self.assertTrue(
-            tomat_cfg["expected_classes"] == ["Grade A", "Grade B", "Reject"]
-            or tomat_cfg["expected_classes"] == ["fresh-tomato", "rotten-tomato"]
-        )
-        self.assertTrue(
-            os.path.exists(tomat_cfg["path"]),
-            f"Berkas model Tomat best.pt tidak ditemukan di: {tomat_cfg['path']}",
-        )
+        model, commodity, runtime = engine.get_model("terung", runtime="onnx", allow_candidate=True)
+        self.assertEqual(commodity, "terung")
+        self.assertEqual(runtime, "onnx_runtime")
+        self.assertIsNotNone(model)
 
-        # Verifikasi konfigurasi Cabai
-        self.assertIn("cabai", configs)
-        cabai_cfg = configs["cabai"]
-        self.assertEqual(cabai_cfg["expected_classes"], ["Grade A", "Grade B", "Reject"])
-        self.assertTrue(
-            os.path.exists(cabai_cfg["path"]),
-            f"Berkas model Cabai best.pt tidak ditemukan di: {cabai_cfg['path']}",
-        )
+    def test_predict_rejects_candidate_without_explicit_evaluation_access(self):
+        engine = YOLOInferenceEngine()
+        image_buffer = BytesIO()
+        Image.new("RGB", (32, 32), color="purple").save(image_buffer, format="JPEG")
+        with patch("server.services.ai_engine.ONNXYOLOModel") as model_factory:
+            with self.assertRaises(ModelContractError):
+                engine.predict(image_buffer.getvalue(), "terung", runtime="onnx")
+            model_factory.assert_not_called()
+
+    def test_get_model_rejects_manifest_hash_mismatch_before_construction_or_cache(self):
+        manifest = load_model_manifest("tomat", os.path.join(self.engine.base_dir, "server", "models"))
+        manifest["artifacts"]["best.onnx"] = "0" * 64
+        engine = YOLOInferenceEngine()
+        engine._models = {}
+
+        with patch("server.services.ai_engine.load_model_manifest", return_value=manifest), patch(
+            "server.services.ai_engine.ONNXYOLOModel"
+        ) as model_factory, patch("server.services.ai_engine.run_sliced_yolo_inference") as infer:
+            image = Image.new("RGB", (8, 8))
+            image_buffer = BytesIO()
+            image.save(image_buffer, format="JPEG")
+            with self.assertRaises(ModelContractError):
+                engine.predict(image_buffer.getvalue(), "tomat", runtime="onnx", allow_candidate=True)
+
+        model_factory.assert_not_called()
+        infer.assert_not_called()
+        self.assertNotIn("tomat_onnx", engine._models)
+
+    def test_get_model_rejects_noncanonical_manifest_classes_before_inference(self):
+        manifest = load_model_manifest("terung", os.path.join(self.engine.base_dir, "server", "models"))
+        manifest["dataset"]["classes"] = {"0": "Grade B", "1": "Grade A", "2": "Reject"}
+        engine = YOLOInferenceEngine()
+        engine._models = {}
+
+        with patch("server.services.ai_engine.load_model_manifest", return_value=manifest), patch(
+            "server.services.ai_engine.ONNXYOLOModel"
+        ) as model_factory:
+            with self.assertRaises(ModelContractError):
+                engine.get_model("terung", runtime="onnx", allow_candidate=True)
+
+        model_factory.assert_not_called()
+        self.assertNotIn("terung_onnx", engine._models)
+
+    def test_get_model_rejects_mismatched_embedded_classes_before_cache(self):
+        manifest = load_model_manifest("cabai", os.path.join(self.engine.base_dir, "server", "models"))
+        fake_model = MagicMock()
+        fake_model.session.get_modelmeta.return_value.custom_metadata_map = {
+            "names": "{0: 'Grade B', 1: 'Grade A', 2: 'Reject'}"
+        }
+        engine = YOLOInferenceEngine()
+        engine._models = {}
+
+        with patch("server.services.ai_engine.load_model_manifest", return_value=manifest), patch(
+            "server.services.ai_engine.ONNXYOLOModel", return_value=fake_model
+        ):
+            with self.assertRaises(ModelContractError):
+                engine.get_model("cabai", runtime="onnx", allow_candidate=True)
+
+        self.assertNotIn("cabai_onnx", engine._models)
 
     def test_class_slug_normalization(self):
         """Memverifikasi pemetaan nama kelas asli model Terung dan Tomat ke format slug frontend."""
@@ -104,7 +147,7 @@ class TestYOLOInferenceEngine(unittest.TestCase):
 
         # Engine get_model harus melempar RuntimeError
         with self.assertRaises(RuntimeError) as ctx:
-            self.engine.get_model("Terung")
+            self.engine.get_model("Terung", allow_candidate=True)
         self.assertIn("tidak ada runtime", str(ctx.exception).lower())
 
     def test_predict_real_model_slicing_and_contract(self):
@@ -124,10 +167,13 @@ class TestYOLOInferenceEngine(unittest.TestCase):
             confidence_threshold=0.25,
             enable_slicing=True,
             disambiguate_grades=True,
+            allow_candidate=True,
         )
 
         self.assertEqual(res["contract_version"], "1.2.0")
         self.assertEqual(res["model_name"], "Agri-Sort Eggplant Quality Detection")
+        self.assertEqual(res["model_deployment_status"], "candidate")
+        self.assertEqual(res["model_semantics_status"], "needs_data")
         self.assertIn("runtime_engine", res)
         self.assertIn("slicing_applied", res["detection_summary"])
         self.assertIn("dense_box_suppressed", res["detection_summary"])
@@ -149,6 +195,7 @@ class TestYOLOInferenceEngine(unittest.TestCase):
             commodity="Terung",
             runtime="onnx",
             enable_slicing=False,
+            allow_candidate=True,
         )
         self.assertEqual(res["runtime_engine"], "onnx_runtime")
         self.assertLess(res["inference_time_ms"], 500.0)

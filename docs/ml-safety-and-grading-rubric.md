@@ -8,6 +8,8 @@
 > **Metode Pemeriksaan:** Static Code Analysis, Empirical Contract Tracing, Dataset Integrity Profiling, and Cross-System Safety Audit (Read-Only)  
 > **Lokasi Repositori:** `/home/Rizi/agri-sort-ai` (Commit `b37a9c8`, Branch `main`)  
 > **Tujuan Utama:** Mengamankan keluaran sistem agar tidak menghasilkan grading yang menyesatkan (*anti-misleading quality control*), memvalidasi pemetaan kelas komersial, dan menetapkan fondasi rubrik mutu sebelum tahap penyiapan dataset dan pelatihan ulang (*retraining*).
+>
+> **Status historis, diperbarui 23 November 2026:** Label `FINAL & TERVERIFIKASI` dan klaim kompatibilitas/kelayakan di bawah adalah snapshot audit 9 November 2026. Audit tiga-grade terbaru menetapkan semua komoditas `candidate` / `needs_data`; rubrik komersial independen belum tersedia dan data Terung/Cabai memiliki anotasi non-box. Definisi visual dan pemetaan di bawah bukan standar grading yang disahkan. Jangan gunakan klaim historis untuk pilot atau keputusan grading produksi. Status terkini: `docs/model-evaluation/current-evaluation.md` dan `docs/model-evaluation/grade-rubrics.md`.
 
 ---
 

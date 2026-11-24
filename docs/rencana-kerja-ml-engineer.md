@@ -6,6 +6,8 @@
 > **Dataset Sumber:** Roboflow `eggplant-quality-grades-hgdr1-oooww/1` (CC BY 4.0)  
 > **Framework & Versi:** Ultralytics YOLO 8.4.204 (YOLO11n, Google Colab NVIDIA Tesla T4)  
 > **Tanggal Pembaruan:** 8 November 2026  
+>
+> **Status historis, diperbarui 23 November 2026:** Bagian model aktif, label `[VERIFIED]`, metrik, dan rekomendasi di bawah menggambarkan keadaan yang terdokumentasi pada 8 November 2026, bukan status grading saat ini. Audit terbaru menandai semua model `candidate` / `needs_data`; belum ada rubrik independen, threshold validation yang dibekukan, atau evaluasi held-out yang mendukung klaim akurasi/pilot komersial. Lihat `docs/model-evaluation/current-evaluation.md`.
 
 ---
 

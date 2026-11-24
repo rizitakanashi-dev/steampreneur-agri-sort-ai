@@ -18,6 +18,12 @@ from typing import Any, Dict, List, Optional
 from PIL import Image, ImageOps
 
 from server.services.onnx_engine import ONNXYOLOModel, is_onnx_available
+from server.services.model_registry import (
+    CANONICAL_CLASSES,
+    ModelContractError,
+    load_model_manifest,
+    validate_model_artifact,
+)
 from server.services.tiled_inference import run_sliced_yolo_inference
 
 logger = logging.getLogger("agrisort.ai_engine")
@@ -53,80 +59,44 @@ class YOLOInferenceEngine:
 
         self.preferred_runtime = os.environ.get("AGRISORT_RUNTIME", "onnx").strip().lower()
 
-        # Deteksi konfigurasi kelas terung dari server/models/terung/data.yaml
-        terung_primary_pt = os.path.join(self.base_dir, "server", "models", "terung", "best.pt")
-        terung_fallback_pt = os.path.join(self.base_dir, "models-20261107T170211Z-1-001", "models", "terung", "best.pt")
-        terung_pt_path = terung_primary_pt if os.path.exists(terung_primary_pt) else terung_fallback_pt
+        models_dir = os.path.join(self.base_dir, "server", "models")
+        self.model_configs = {}
+        for commodity in ("terung", "tomat", "cabai"):
+            manifest = load_model_manifest(commodity, models_dir)
+            self.model_configs[commodity] = self._config_from_manifest(commodity, manifest)
 
-        terung_yaml = os.path.join(self.base_dir, "server", "models", "terung", "data.yaml")
-        terung_classes = self._load_yaml_classes(terung_yaml, ["Grade A", "Grade B", "Reject"])
-        terung_version = "2.0.0"
-
-        # Deteksi konfigurasi model tomat dari server/models/tomat/data.yaml
-        tomat_primary_pt = os.path.join(self.base_dir, "server", "models", "tomat", "best.pt")
-        tomat_fallback_pt = os.path.join(self.base_dir, "model-export", "weights", "best.pt")
-        tomat_pt_path = tomat_primary_pt if os.path.exists(tomat_primary_pt) else tomat_fallback_pt
-
-        tomat_primary_onnx = os.path.join(self.base_dir, "server", "models", "tomat", "best.onnx")
-        tomat_fallback_onnx = os.path.join(self.base_dir, "model-export", "weights", "best.onnx")
-        tomat_onnx_path = tomat_primary_onnx if os.path.exists(tomat_primary_onnx) else tomat_fallback_onnx
-
-        tomat_yaml = os.path.join(self.base_dir, "server", "models", "tomat", "data.yaml")
-        tomat_classes = self._load_yaml_classes(
-            tomat_yaml,
-            ["Grade A", "Grade B", "Reject"] if os.path.exists(tomat_primary_pt) else ["fresh-tomato", "rotten-tomato"],
-        )
-        tomat_version = "2.0.0" if tomat_classes == ["Grade A", "Grade B", "Reject"] else "1.0.0"
-
-        # Deteksi konfigurasi model cabai dari server/models/cabai/data.yaml
-        cabai_primary_pt = os.path.join(self.base_dir, "server", "models", "cabai", "best.pt")
-        cabai_pt_path = cabai_primary_pt if os.path.exists(cabai_primary_pt) else None
-        cabai_yaml = os.path.join(self.base_dir, "server", "models", "cabai", "data.yaml")
-        cabai_classes = self._load_yaml_classes(cabai_yaml, ["Grade A", "Grade B", "Reject"])
-
-        self.model_configs = {
-            "terung": {
-                "name": "Agri-Sort Eggplant Quality Detection",
-                "version": terung_version,
-                "path": terung_pt_path,
-                "onnx_path": os.path.join(self.base_dir, "server", "models", "terung", "best.onnx"),
-                "expected_classes": terung_classes,
-            },
-            "tomat": {
-                "name": "Agri-Sort Tomato Quality Detection",
-                "version": tomat_version,
-                "path": tomat_pt_path,
-                "onnx_path": tomat_onnx_path,
-                "expected_classes": tomat_classes,
-            },
-            "cabai": {
-                "name": "Agri-Sort Chili Quality Detection",
-                "version": "2.0.0",
-                "path": cabai_pt_path,
-                "onnx_path": os.path.join(self.base_dir, "server", "models", "cabai", "best.onnx"),
-                "expected_classes": cabai_classes,
-            },
+    def _config_from_manifest(self, commodity: str, manifest: dict) -> dict:
+        """Build runtime config only from a validated commodity manifest."""
+        classes = [manifest["dataset"]["classes"][str(class_id)] for class_id in range(3)]
+        if classes != list(CANONICAL_CLASSES.values()):
+            raise ModelContractError(
+                f"Manifest class order for {commodity} must be exactly Grade A, Grade B, Reject"
+            )
+        model_dir = os.path.join(self.base_dir, "server", "models", commodity)
+        pytorch_filename = manifest["model"]["files"]["pytorch"]
+        onnx_filename = manifest["model"]["files"]["onnx"]
+        if os.path.basename(pytorch_filename) != pytorch_filename or os.path.basename(onnx_filename) != onnx_filename:
+            raise ModelContractError(f"Manifest artifact paths for {commodity} must be filenames, not paths")
+        return {
+            "name": manifest["model"]["name"],
+            "version": manifest["model"]["version"],
+            "path": os.path.join(model_dir, pytorch_filename),
+            "onnx_path": os.path.join(model_dir, onnx_filename),
+            "expected_classes": classes,
+            "manifest": manifest,
+            "deployment_status": manifest["deployment"]["status"],
         }
-
-    @staticmethod
-    def _load_yaml_classes(yaml_path: str, default_classes: List[str]) -> List[str]:
-        """Membaca daftar nama kelas dari berkas data.yaml jika tersedia."""
-        if os.path.exists(yaml_path):
-            try:
-                import yaml
-                with open(yaml_path, "r", encoding="utf-8") as yf:
-                    ydata = yaml.safe_load(yf)
-                    if ydata and "names" in ydata and isinstance(ydata["names"], list):
-                        return ydata["names"]
-            except Exception:
-                pass
-        return default_classes
 
     def is_available(self) -> bool:
         """Memeriksa apakah runtime ONNX atau Ultralytics tersedia."""
         return is_onnx_available() or ULTRALYTICS_AVAILABLE
 
-    def get_model(self, commodity: str = "terung", runtime: Optional[str] = None):
+    def get_model(
+        self,
+        commodity: str = "terung",
+        runtime: Optional[str] = None,
+        allow_candidate: bool = False,
+    ):
         """
         Pemuatan model secara lazy-loading singleton.
         Mendukung backend engine 'onnx' (default berkecepatan tinggi) atau 'ultralytics' (PyTorch).
@@ -144,50 +114,65 @@ class YOLOInferenceEngine:
         target_runtime = (runtime or self.preferred_runtime).strip().lower()
         cfg = self.model_configs.get(comm_key)
         if not cfg:
-            raise FileNotFoundError(f"Konfigurasi model untuk komoditas '{comm_key}' tidak ditemukan.")
+            raise ModelContractError(f"Konfigurasi model untuk komoditas '{comm_key}' tidak ditemukan.")
 
-        # 1. Coba muat ONNX Runtime jika diminta dan berkas ONNX tersedia
+        manifest = load_model_manifest(comm_key, os.path.join(self.base_dir, "server", "models"))
+        cfg = self._config_from_manifest(comm_key, manifest)
+        self.model_configs[comm_key] = cfg
+        if cfg["deployment_status"] != "validated" and not allow_candidate:
+            raise ModelContractError(
+                f"Model {comm_key} is {cfg['deployment_status']}; explicit candidate evaluation is required"
+            )
+
+        # Use the declared ONNX artifact when the selected runtime is available.
         if target_runtime == "onnx" and is_onnx_available():
             cache_key = f"{comm_key}_onnx"
+            onnx_path = cfg["onnx_path"]
+            validate_model_artifact(manifest, onnx_path)
             if cache_key in self._models:
-                return self._models[cache_key], comm_key, "onnx_runtime"
+                model = self._models[cache_key]
+                session_metadata = model.session.get_modelmeta().custom_metadata_map
+                validate_model_artifact(manifest, onnx_path, session_metadata)
+                return model, comm_key, "onnx_runtime"
 
-            onnx_path = cfg.get("onnx_path", "")
-            if not os.path.exists(onnx_path) and comm_key == "terung":
-                alt_onnx = os.path.join(self.base_dir, "models-20261107T170211Z-1-001", "models", "terung", "best.onnx")
-                if os.path.exists(alt_onnx):
-                    onnx_path = alt_onnx
+            logger.info("Memuat engine ONNX Runtime CPU untuk %s dari: %s", comm_key, onnx_path)
+            model = ONNXYOLOModel(
+                model_path=onnx_path,
+                names={index: name for index, name in enumerate(cfg["expected_classes"])},
+            )
+            session_metadata = model.session.get_modelmeta().custom_metadata_map
+            validate_model_artifact(manifest, onnx_path, session_metadata)
+            self._models[cache_key] = model
+            return model, comm_key, "onnx_runtime"
 
-            if os.path.exists(onnx_path):
-                logger.info("Memuat engine ONNX Runtime CPU untuk %s dari: %s", comm_key, onnx_path)
-                class_dict = {i: name for i, name in enumerate(cfg["expected_classes"])}
-                self._models[cache_key] = ONNXYOLOModel(model_path=onnx_path, names=class_dict)
-                return self._models[cache_key], comm_key, "onnx_runtime"
-            else:
-                logger.warning("Berkas ONNX %s tidak ditemukan di %s. Mencoba fallback ke PyTorch.", comm_key, onnx_path)
-
-        # 2. Fallback ke Ultralytics PyTorch (.pt)
+        # Use only the manifest-declared PyTorch artifact when ONNX is unavailable
+        # or PyTorch was explicitly selected; never search unrelated legacy weights.
+        if target_runtime not in ("onnx", "ultralytics", "pytorch"):
+            raise ModelContractError(f"Runtime '{target_runtime}' is not supported")
         if not ULTRALYTICS_AVAILABLE:
             raise RuntimeError(
                 "Tidak ada runtime yang tersedia. Harap pasang 'onnxruntime' atau 'ultralytics'."
             )
 
         cache_key = f"{comm_key}_pt"
-        if cache_key not in self._models:
-            model_path = cfg["path"]
-            if not os.path.exists(model_path) and comm_key == "terung":
-                alt_path = os.path.join(self.base_dir, "server", "models", "terung", "best.pt")
-                if os.path.exists(alt_path):
-                    model_path = alt_path
-
-            if not os.path.exists(model_path):
-                raise FileNotFoundError(
-                    f"Berkas model PyTorch untuk komoditas '{comm_key}' tidak ditemukan di lokasi: {model_path}"
-                )
+        model_path = cfg["path"]
+        validate_model_artifact(manifest, model_path)
+        model = self._models.get(cache_key)
+        if model is None:
             logger.info("Memuat bobot model YOLO11 PyTorch %s dari: %s", comm_key, model_path)
-            self._models[cache_key] = YOLO(model_path)
+            model = YOLO(model_path)
 
-        return self._models[cache_key], comm_key, "ultralytics_pytorch"
+        raw_names = getattr(model, "names", None)
+        if isinstance(raw_names, dict):
+            normalized_names = {str(key): value for key, value in raw_names.items()}
+        elif isinstance(raw_names, (list, tuple)):
+            normalized_names = {str(index): name for index, name in enumerate(raw_names)}
+        else:
+            raise ModelContractError("PyTorch model is missing embedded class names")
+        if [normalized_names.get(str(index)) for index in range(3)] != cfg["expected_classes"] or len(normalized_names) != 3:
+            raise ModelContractError("PyTorch embedded class order does not match the manifest")
+        self._models[cache_key] = model
+        return model, comm_key, "ultralytics_pytorch"
 
     def predict(
         self,
@@ -198,6 +183,7 @@ class YOLOInferenceEngine:
         enable_slicing: bool = True,
         disambiguate_grades: bool = True,
         runtime: Optional[str] = None,
+        allow_candidate: bool = False,
     ) -> Dict[str, Any]:
         """
         Mengeksekusi inferensi pada citra panen menggunakan Sliced SAHI & Grade Disambiguation.
@@ -222,7 +208,9 @@ class YOLOInferenceEngine:
         width, height = image.size
 
         # 2. Ambil instance model singleton (ONNX Runtime atau PyTorch)
-        model, comm_key, active_runtime = self.get_model(commodity, runtime=runtime)
+        model, comm_key, active_runtime = self.get_model(
+            commodity, runtime=runtime, allow_candidate=allow_candidate
+        )
         cfg = self.model_configs[comm_key]
 
         # 3. Jalankan inferensi AI dengan Tiled SAHI & Grade Disambiguation
@@ -274,6 +262,8 @@ class YOLOInferenceEngine:
             "contract_version": "1.2.0",
             "model_name": cfg["name"],
             "model_version": cfg["version"],
+            "model_deployment_status": cfg["deployment_status"],
+            "model_semantics_status": cfg["manifest"]["dataset"].get("semantics_status"),
             "runtime_engine": active_runtime,
             "commodity": cfg["expected_classes"],
             "inference_time_ms": elapsed_ms,
