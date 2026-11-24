@@ -399,6 +399,7 @@ function FoundationPage({
   onBatchSaved,
   onDeleteBatch,
   openCertModal = false,
+  immersive = false,
 }) {
   const [showManualForm, setShowManualForm] = useState(false)
   const page = pages[activePage]
@@ -428,6 +429,7 @@ function FoundationPage({
           <BatchQCScanner
             onBatchSaved={onBatchSaved}
             onViewResults={(batch) => onSelectBatch(batch)}
+            immersive={immersive}
           />
         )}
       </Stack>
@@ -787,7 +789,14 @@ function App() {
       onDataChanged={handleDataChanged}
       immersive={scannerImmersiveActive}
     >
-      <Container maxWidth="lg" sx={{ px: { xs: 1.5, sm: 2, md: 3 }, py: { xs: 2.5, sm: 3.5, md: 4.5 } }}>
+      <Container
+        maxWidth="lg"
+        sx={
+          scannerImmersiveActive
+            ? { px: 0, py: 0 }
+            : { px: { xs: 1.5, sm: 2, md: 3 }, py: { xs: 2.5, sm: 3.5, md: 4.5 } }
+        }
+      >
         {scannerImmersiveActive ? (
           <Stack
             direction="row"
@@ -815,6 +824,7 @@ function App() {
           <Suspense fallback={<PageLoadingFallback />}>
             <FoundationPage
               activePage={activePage}
+              immersive={scannerImmersiveActive}
               batches={batches}
               onBackToInput={handleBackToInput}
               onHarvestConfirm={handleHarvestConfirm}

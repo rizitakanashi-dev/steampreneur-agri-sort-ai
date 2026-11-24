@@ -54,7 +54,7 @@ import { COMMODITIES, formatRupiah } from './scanner/constants.js'
 import { SaveToRecapDialog } from './scanner/SaveToRecapDialog.jsx'
 import { CertificatePreviewDialog } from './scanner/CertificatePreviewDialog.jsx'
 
-export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm }) {
+export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, immersive = false }) {
   const [selectedCommodity, setSelectedCommodity] = useState('Terung')
   const [activeTab, setActiveTab] = useState(0) // 0: Live Camera, 1: Upload File
   const [confidenceThreshold, setConfidenceThreshold] = useState(0.35)
@@ -647,10 +647,117 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm }
       (firstBox.x2 - firstBox.x1) * (firstBox.y2 - firstBox.y1) > 0.5 * imgDims.width * imgDims.height
   )
 
+  // Panel sensitivitas diekstrak agar dipakai bersama layout dashboard & immersive
+  const sensitivityControls = (
+    <Box sx={{ p: 1.5, bgcolor: '#f8fafc', borderRadius: 2, border: '1px dashed #cbd5e1' }}>
+      <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center' }}>
+        <Typography variant="caption" fontWeight={700} color="text.secondary">
+          Confidence Threshold (Batas Keyakinan Deteksi): {confidenceThreshold.toFixed(2)}
+        </Typography>
+        <Chip
+          size="small"
+          label={
+            isEggplant
+              ? 'Rekomendasi Terung: 0.20'
+              : isChili
+              ? 'Rekomendasi Cabai: 0.35'
+              : isTomato
+              ? 'Rekomendasi Tomat: 0.35'
+              : 'Komoditas Belum Didukung AI'
+          }
+          color={isEggplant || isTomato || isChili ? 'info' : 'default'}
+          variant="outlined"
+        />
+      </Stack>
+      <Slider
+        value={confidenceThreshold}
+        min={0.05}
+        max={0.80}
+        step={0.05}
+        onChange={(_, val) => setConfidenceThreshold(val)}
+        valueLabelDisplay="auto"
+        valueLabelFormat={(v) => `${Math.round(v * 100)}%`}
+        sx={{ mt: 1 }}
+      />
+      <Typography variant="caption" color="text.secondary">
+        Nilai lebih rendah (0.15 - 0.25) mendeteksi lebih banyak buah terung yang saling bertumpuk di keranjang.
+      </Typography>
+    </Box>
+  )
+
   return (
-    <Stack spacing={3}>
-      {/* 1. KARTU SELEKSI KOMODITAS UTAMA (PROMINENT DI ATAS) */}
-      <Card elevation={2} sx={{ borderRadius: 3, border: '1px solid', borderColor: 'divider' }}>
+    <Stack spacing={immersive ? 2 : 3} sx={immersive ? { minHeight: '100dvh', px: 1.5, pt: 1, pb: 3 } : undefined}>
+      {/* 1a. MODE IMMERSIVE (issue #30): komoditas + mode sebagai baris ringkas */}
+      {immersive ? (
+        <Box>
+          <Stack direction="row" sx={{ alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
+            <Typography variant="subtitle2" fontWeight={800} color="text.secondary">
+              Komoditas &amp; Mode Inspeksi
+            </Typography>
+            <Tooltip title="Atur sensitivitas threshold keyakinan model AI">
+              <Chip
+                clickable
+                onClick={() => setShowSensitivitySetting((prev) => !prev)}
+                label={`Sensitivitas ${Math.round(confidenceThreshold * 100)}%`}
+                size="small"
+                color="primary"
+                variant="outlined"
+                sx={{ fontWeight: 700 }}
+              />
+            </Tooltip>
+          </Stack>
+          {showSensitivitySetting && <Box sx={{ mb: 1.5 }}>{sensitivityControls}</Box>}
+          <Stack direction="row" spacing={1} useFlexGap sx={{ mb: 1, flexWrap: 'wrap' }}>
+            {COMMODITIES.map((c) => (
+              <Chip
+                key={c.id}
+                label={`${c.emoji} ${c.name}`}
+                onClick={() => handleSelectCommodity(c.id)}
+                color={selectedCommodity === c.id ? 'primary' : 'default'}
+                variant={selectedCommodity === c.id ? 'filled' : 'outlined'}
+                sx={{ fontWeight: 700 }}
+              />
+            ))}
+          </Stack>
+          <Stack direction="row" spacing={1} useFlexGap sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
+            <Chip
+              label="1 Sisi (Cepat)"
+              onClick={() => {
+                if (isMultiAngleMode) {
+                  setIsMultiAngleMode(false)
+                  handleClearImage()
+                }
+              }}
+              color={isMultiAngleMode ? 'default' : 'primary'}
+              variant={isMultiAngleMode ? 'outlined' : 'filled'}
+              size="small"
+              sx={{ fontWeight: 700 }}
+            />
+            <Chip
+              label="2 Sisi (Goyang Nampan)"
+              onClick={() => {
+                if (!isMultiAngleMode) {
+                  setIsMultiAngleMode(true)
+                  handleClearImage()
+                }
+              }}
+              color={isMultiAngleMode ? 'success' : 'default'}
+              variant={isMultiAngleMode ? 'filled' : 'outlined'}
+              size="small"
+              sx={{ fontWeight: 700 }}
+            />
+            <Chip
+              label={isMultiAngleMode ? '🛡️ Anti-Bias Oklusi' : 'Cepat'}
+              size="small"
+              color={isMultiAngleMode ? 'success' : 'default'}
+              variant={isMultiAngleMode ? 'filled' : 'outlined'}
+              sx={{ fontWeight: 700 }}
+            />
+          </Stack>
+        </Box>
+      ) : (
+        /* 1. KARTU SELEKSI KOMODITAS UTAMA (PROMINENT DI ATAS) */
+        <Card elevation={2} sx={{ borderRadius: 3, border: '1px solid', borderColor: 'divider' }}>
         <CardContent sx={{ p: { xs: 2, sm: 2.5 } }}>
           <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} sx={{justifyContent: 'space-between', alignItems: { sm: 'center' },  mb: 2 }}>
             <Box>
@@ -674,43 +781,8 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm }
             </Tooltip>
           </Stack>
 
-          {/* Opsi Sensitivitas Slider */}
-          {showSensitivitySetting && (
-            <Box sx={{ mb: 2.5, p: 2, bgcolor: '#f8fafc', borderRadius: 2, border: '1px dashed #cbd5e1' }}>
-              <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center' }}>
-                <Typography variant="caption" fontWeight={700} color="text.secondary">
-                  Confidence Threshold (Batas Keyakinan Deteksi): {confidenceThreshold.toFixed(2)}
-                </Typography>
-                <Chip
-                  size="small"
-                  label={
-                    isEggplant
-                      ? 'Rekomendasi Terung: 0.20'
-                      : isChili
-                      ? 'Rekomendasi Cabai: 0.35'
-                      : isTomato
-                      ? 'Rekomendasi Tomat: 0.35'
-                      : 'Komoditas Belum Didukung AI'
-                  }
-                  color={isEggplant || isTomato || isChili ? 'info' : 'default'}
-                  variant="outlined"
-                />
-              </Stack>
-              <Slider
-                value={confidenceThreshold}
-                min={0.05}
-                max={0.80}
-                step={0.05}
-                onChange={(_, val) => setConfidenceThreshold(val)}
-                valueLabelDisplay="auto"
-                valueLabelFormat={(v) => `${Math.round(v * 100)}%`}
-                sx={{ mt: 1 }}
-              />
-              <Typography variant="caption" color="text.secondary">
-                Nilai lebih rendah (0.15 - 0.25) mendeteksi lebih banyak buah terung yang saling bertumpuk di keranjang.
-              </Typography>
-            </Box>
-          )}
+          {/* Opsi Sensitivitas Slider (dipakai bersama layout dashboard & immersive) */}
+          {showSensitivitySetting && <Box sx={{ mb: 2.5 }}>{sensitivityControls}</Box>}
 
           {/* Tombol Pilihan Komoditas */}
           <Grid container spacing={1.5}>
@@ -800,6 +872,7 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm }
           </Box>
         </CardContent>
       </Card>
+      )}
 
       {/* 2. TAMPILAN SCANNER (JIKA BELUM ADA HASIL SCAN) */}
       {!scanResult && (
@@ -809,10 +882,10 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm }
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
           sx={{
-            borderRadius: 3,
+            borderRadius: immersive ? 0 : 3,
             position: 'relative',
-            border: isDragging ? '2px dashed #047857' : '1px solid transparent',
-            bgcolor: isDragging ? 'rgba(4, 120, 87, 0.04)' : 'inherit',
+            border: isDragging ? '2px dashed #047857' : immersive ? 'none' : '1px solid transparent',
+            bgcolor: isDragging ? 'rgba(4, 120, 87, 0.04)' : immersive ? 'transparent' : 'inherit',
             transition: 'all 0.2s',
           }}
         >
@@ -842,7 +915,7 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm }
             </Box>
           )}
 
-          <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
+          <CardContent sx={{ p: immersive ? 0 : { xs: 2, sm: 3 } }}>
             <Tabs
               value={activeTab}
               onChange={(_, val) => setActiveTab(val)}
