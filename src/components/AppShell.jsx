@@ -40,7 +40,7 @@ const navigationItems = [
   { id: 'pricing', label: 'Harga Pasar', icon: PriceCheckRoundedIcon },
 ]
 
-export function AppShell({ activePage, activeUser, onLogout, onNavigate, onDataChanged, onBackToLanding, children }) {
+export function AppShell({ activePage, activeUser, onLogout, onNavigate, onDataChanged, onBackToLanding, children, immersive = false }) {
   const theme = useTheme()
   const isDesktop = useMediaQuery(theme.breakpoints.up('md'))
   const [mobileOpen, setMobileOpen] = useState(false)
@@ -236,7 +236,10 @@ export function AppShell({ activePage, activeUser, onLogout, onNavigate, onDataC
 
   return (
     <Box sx={{ display: 'flex', minHeight: ['100vh', '100dvh'], overflow: 'hidden' }}>
-      {!isDesktop && (
+      {/* Mode immersive (issue #30): di mobile, chrome dashboard disembunyikan
+          agar kamera scanner mendapat layar penuh; keluar lewat tombol exit
+          di header khusus halaman scanner */}
+      {!isDesktop && !immersive && (
         <AppBar
           color="inherit"
           elevation={0}
@@ -311,7 +314,7 @@ export function AppShell({ activePage, activeUser, onLogout, onNavigate, onDataC
           pb: 'env(safe-area-inset-bottom)',
         }}
       >
-        {!isDesktop && <Toolbar sx={{ minHeight: 'calc(64px + env(safe-area-inset-top))' }} />}
+        {!isDesktop && !immersive && <Toolbar sx={{ minHeight: 'calc(64px + env(safe-area-inset-top))' }} />}
         {children}
       </Box>
 
