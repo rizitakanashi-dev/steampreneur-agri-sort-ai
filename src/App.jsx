@@ -642,6 +642,9 @@ function App() {
     window.location.hash = pageId
     setHarvestMessage('')
     setOpenCertModal(false)
+    // Reset scroll ke atas: viewport tidak boleh tertinggal di posisi
+    // halaman lama, agar konten halaman baru langsung terlihat saat loncat
+    window.scrollTo({ top: 0, behavior: 'auto' })
   }
 
   const handleBackToInput = () => {
@@ -649,6 +652,7 @@ function App() {
     setOpenCertModal(false)
     setActivePage('scanner')
     window.location.hash = 'scanner'
+    window.scrollTo({ top: 0, behavior: 'auto' })
   }
 
   const handleViewRecap = () => {
@@ -657,6 +661,7 @@ function App() {
     setOpenCertModal(false)
     setActivePage('results-list')
     window.location.hash = 'results-list'
+    window.scrollTo({ top: 0, behavior: 'auto' })
   }
 
   const handleSelectBatch = (batch, options = {}) => {

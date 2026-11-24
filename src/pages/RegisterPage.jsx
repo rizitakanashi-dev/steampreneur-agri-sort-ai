@@ -96,7 +96,9 @@ export function RegisterPage({ onRegisterSuccess, onSwitchToLogin, onBackToLandi
         text: 'signup_with',
         shape: 'pill',
         logo_alignment: 'left',
-        width: 400,
+        // Adaptif: tidak melebihi lebar kontainer (dulu tetap 400px → meluber
+        // di layar sempit & halaman bisa digeser ke samping)
+        width: Math.min(400, googleButtonContainerRef.current?.clientWidth || 400),
         locale: 'id',
       })
       setGoogleSdkReady(true)
@@ -238,6 +240,9 @@ export function RegisterPage({ onRegisterSuccess, onSwitchToLogin, onBackToLandi
                 fontSize: '1.35rem',
                 letterSpacing: '-0.02em',
                 color: AGRI_COLORS.ink,
+                whiteSpace: 'nowrap',
+                // HP: navbar ramping — cukup logo (tulisan muncul di layar lebar)
+                display: { xs: 'none', sm: 'block' },
               }}
             >
               Agri-Sort AI
@@ -247,6 +252,7 @@ export function RegisterPage({ onRegisterSuccess, onSwitchToLogin, onBackToLandi
           <Button
             startIcon={<ArrowBackRoundedIcon fontSize="small" />}
             onClick={onBackToLanding}
+            // HP: label pendek "Beranda" agar navbar muat lega satu baris
             sx={{
               color: AGRI_COLORS.ink,
               textTransform: 'none',
@@ -256,9 +262,11 @@ export function RegisterPage({ onRegisterSuccess, onSwitchToLogin, onBackToLandi
               border: `1px solid ${AGRI_COLORS.hairline}`,
               bgcolor: AGRI_COLORS.paperWhite,
               '&:hover': { bgcolor: AGRI_COLORS.blushMint },
+              '& .MuiButton-startIcon': { mr: { xs: 0.25, sm: 0.75 } },
             }}
           >
-            Kembali ke Beranda
+            <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>Kembali ke Beranda</Box>
+            <Box component="span" sx={{ display: { xs: 'inline', sm: 'none' } }}>Beranda</Box>
           </Button>
         </Stack>
       </Container>
@@ -320,6 +328,10 @@ export function RegisterPage({ onRegisterSuccess, onSwitchToLogin, onBackToLandi
                       display: 'flex',
                       justifyContent: 'center',
                       width: '100%',
+                      // Pengaman ganda: elemen internal Google punya lebar inline;
+                      // dipaksa maksimum selebar kontainer agar tak pernah meluber
+                      '& > div, & > div > div': { width: '100% !important', maxWidth: 400 },
+                      '& iframe': { width: '100% !important', maxWidth: 400 },
                     }}
                   />
                   {!googleSdkReady && (
