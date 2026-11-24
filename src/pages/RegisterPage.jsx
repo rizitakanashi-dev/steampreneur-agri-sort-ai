@@ -329,9 +329,10 @@ export function RegisterPage({ onRegisterSuccess, onSwitchToLogin, onBackToLandi
                       justifyContent: 'center',
                       width: '100%',
                       // Pengaman ganda: elemen internal Google punya lebar inline;
-                      // dipaksa maksimum selebar kontainer agar tak pernah meluber
-                      '& > div, & > div > div': { width: '100% !important', maxWidth: 400 },
-                      '& iframe': { width: '100% !important', maxWidth: 400 },
+                      // dibatasi maksimum selebar kontainer (max-width, bukan width,
+                      // agar isi internal tidak terpotong)
+                      '& > div, & > div > div': { maxWidth: '100% !important' },
+                      '& iframe': { maxWidth: '100% !important' },
                     }}
                   />
                   {!googleSdkReady && (
