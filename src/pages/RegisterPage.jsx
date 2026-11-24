@@ -240,6 +240,7 @@ export function RegisterPage({ onRegisterSuccess, onSwitchToLogin, onBackToLandi
                 fontSize: '1.35rem',
                 letterSpacing: '-0.02em',
                 color: AGRI_COLORS.ink,
+                whiteSpace: 'nowrap',
               }}
             >
               Agri-Sort AI
