@@ -17,6 +17,7 @@ import {
   TextField,
   Tooltip,
   Typography,
+  useMediaQuery,
 } from '@mui/material'
 import AutoAwesomeRoundedIcon from '@mui/icons-material/AutoAwesomeRounded'
 import CameraAltRoundedIcon from '@mui/icons-material/CameraAltRounded'
@@ -56,7 +57,8 @@ import { COMMODITIES, formatRupiah } from './scanner/constants.js'
 import { SaveToRecapDialog } from './scanner/SaveToRecapDialog.jsx'
 import { CertificatePreviewDialog } from './scanner/CertificatePreviewDialog.jsx'
 
-export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, immersive = false }) {
+export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, immersive = false, onEnterImmersive }) {
+  const isMobileViewport = useMediaQuery('(max-width: 599.95px)')
   const [selectedCommodity, setSelectedCommodity] = useState('Terung')
   const [activeTab, setActiveTab] = useState(0) // 0: Live Camera, 1: Upload File
   const [confidenceThreshold, setConfidenceThreshold] = useState(0.35)
@@ -73,6 +75,9 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
   const [autoDetectMode, setAutoDetectMode] = useState(false)
   // Panel overlay immersive: toggle tips akurasi di atas kamera
   const [showImmersiveTips, setShowImmersiveTips] = useState(false)
+  // Tinggi panel overlay (diukur) — dipakai agar konten tab Unggah tak tertutup panel
+  const overlayPanelRef = useRef(null)
+  const [overlayPanelHeight, setOverlayPanelHeight] = useState(0)
   const [multiStep, setMultiStep] = useState(1) // 1: Foto Sisi 1 (Depan), 2: Foto Sisi 2 (Belakang / Goyang Nampan)
   const [imageFileFront, setImageFileFront] = useState(null)
   const [imagePreviewFront, setImagePreviewFront] = useState(null)
@@ -110,6 +115,14 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
       setResultSheetOpen(false)
     }
   }, [immersive, scanResult])
+
+  // Ukur tinggi panel overlay saat isinya berubah (sensitivitas/tips di-toggle)
+  useEffect(() => {
+    if (!immersive) return undefined
+    const el = overlayPanelRef.current
+    if (!el) return undefined
+    setOverlayPanelHeight(el.offsetHeight)
+  }, [immersive, showSensitivitySetting, showImmersiveTips, autoDetectMode, isMultiAngleMode])
 
   // Pastikan kamera langsung mati saat unmount (misal pindah ke Dashboard atau menu lain)
   useEffect(() => {
@@ -774,9 +787,30 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
           : undefined
       }
     >
+      {/* Banner masuk mode kamera — khusus HP di tampilan scanner biasa (Opsi A,
+          menggantikan FAB yang menimpa kontrol kamera internal) */}
+      {!immersive && isMobileViewport && onEnterImmersive && (
+        <Button
+          fullWidth
+          variant="contained"
+          color="primary"
+          startIcon={<CameraAltRoundedIcon />}
+          onClick={onEnterImmersive}
+          sx={{
+            borderRadius: 2.5,
+            py: 1.25,
+            fontWeight: 800,
+            boxShadow: '0 6px 18px rgba(3, 110, 69, 0.35)',
+          }}
+        >
+          Buka Mode Kamera Layar Penuh
+        </Button>
+      )}
+
       {/* 1a. MODE IMMERSIVE: panel kontrol MENGAPUNG di atas kamera (khas aplikasi kamera HP) */}
       {immersive ? (
         <Box
+          ref={overlayPanelRef}
           sx={{
             position: 'fixed',
             top: 'calc(56px + env(safe-area-inset-top))',
@@ -792,9 +826,9 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
             '& .MuiChip-outlined': { color: '#e2e8f0', borderColor: 'rgba(255, 255, 255, 0.3)' },
           }}
         >
-          <Stack direction="row" sx={{ alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
+          <Stack direction="row" sx={{ alignItems: 'center', justifyContent: 'space-between', mb: 0.75 }}>
             <Typography variant="subtitle2" fontWeight={800} sx={{ color: '#cbd5e1' }}>
-              Komoditas &amp; Mode Inspeksi
+              Komoditas &amp; Mode
             </Typography>
             <Stack direction="row" spacing={0.75} sx={{ alignItems: 'center' }}>
               <Tooltip title="Atur sensitivitas threshold keyakinan model AI">
@@ -821,12 +855,13 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
               </Tooltip>
             </Stack>
           </Stack>
-          {showSensitivitySetting && <Box sx={{ mb: 1.5 }}>{sensitivityControls}</Box>}
-          {showImmersiveTips && <Box sx={{ mb: 1.5 }}>{tipsAlert}</Box>}
-          <Stack direction="row" spacing={1} useFlexGap sx={{ mb: 1, flexWrap: 'wrap' }}>
+          {showSensitivitySetting && <Box sx={{ mb: 1 }}>{sensitivityControls}</Box>}
+          {showImmersiveTips && <Box sx={{ mb: 1 }}>{tipsAlert}</Box>}
+          <Stack direction="row" spacing={0.75} useFlexGap sx={{ mb: 0.75, flexWrap: 'wrap' }}>
             {COMMODITIES.map((c) => (
               <Chip
                 key={c.id}
+                size="small"
                 label={`${c.emoji} ${c.name}`}
                 onClick={() => handleSelectCommodity(c.id)}
                 color={selectedCommodity === c.id ? 'primary' : 'default'}
@@ -835,58 +870,57 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
               />
             ))}
           </Stack>
-          <Stack direction="row" spacing={1} useFlexGap sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
-            <Chip
-              label="1 Sisi (Cepat)"
-              onClick={() => {
-                if (isMultiAngleMode || autoDetectMode) {
-                  setIsMultiAngleMode(false)
-                  setAutoDetectMode(false)
-                  handleClearImage()
-                }
-              }}
-              color={isMultiAngleMode || autoDetectMode ? 'default' : 'primary'}
-              variant={isMultiAngleMode || autoDetectMode ? 'outlined' : 'filled'}
-              size="small"
-              sx={{ fontWeight: 700 }}
-            />
-            <Chip
-              label="2 Sisi (Goyang Nampan)"
-              onClick={() => {
-                if (!isMultiAngleMode || autoDetectMode) {
-                  setIsMultiAngleMode(true)
-                  setAutoDetectMode(false)
-                  handleClearImage()
-                }
-              }}
-              color={isMultiAngleMode && !autoDetectMode ? 'success' : 'default'}
-              variant={isMultiAngleMode && !autoDetectMode ? 'filled' : 'outlined'}
-              size="small"
-              sx={{ fontWeight: 700 }}
-            />
-            <Chip
-              label="⚡ Auto-Detect"
-              onClick={() => {
-                if (!autoDetectMode) {
-                  setAutoDetectMode(true)
-                  if (isMultiAngleMode) {
+          <Stack direction="row" spacing={0.75} useFlexGap sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
+            <Tooltip title="Cepat — 1 foto tampak atas keranjang">
+              <Chip
+                size="small"
+                label="1 Sisi"
+                onClick={() => {
+                  if (isMultiAngleMode || autoDetectMode) {
                     setIsMultiAngleMode(false)
+                    setAutoDetectMode(false)
                     handleClearImage()
                   }
-                }
-              }}
-              color={autoDetectMode ? 'warning' : 'default'}
-              variant={autoDetectMode ? 'filled' : 'outlined'}
-              size="small"
-              sx={{ fontWeight: 700 }}
-            />
-            <Chip
-              label={isMultiAngleMode ? '🛡️ Anti-Bias Oklusi' : autoDetectMode ? 'Scan otomatis ±3 detik stabil' : 'Cepat'}
-              size="small"
-              color={isMultiAngleMode ? 'success' : autoDetectMode ? 'warning' : 'default'}
-              variant="outlined"
-              sx={{ fontWeight: 700 }}
-            />
+                }}
+                color={isMultiAngleMode || autoDetectMode ? 'default' : 'primary'}
+                variant={isMultiAngleMode || autoDetectMode ? 'outlined' : 'filled'}
+                sx={{ fontWeight: 700 }}
+              />
+            </Tooltip>
+            <Tooltip title="2 foto: depan & belakang (anti oklusi / goyang nampan)">
+              <Chip
+                size="small"
+                label="2 Sisi"
+                onClick={() => {
+                  if (!isMultiAngleMode || autoDetectMode) {
+                    setIsMultiAngleMode(true)
+                    setAutoDetectMode(false)
+                    handleClearImage()
+                  }
+                }}
+                color={isMultiAngleMode && !autoDetectMode ? 'success' : 'default'}
+                variant={isMultiAngleMode && !autoDetectMode ? 'filled' : 'outlined'}
+                sx={{ fontWeight: 700 }}
+              />
+            </Tooltip>
+            <Tooltip title="Scan otomatis saat nampan diam ±3 detik">
+              <Chip
+                size="small"
+                label="⚡ Auto"
+                onClick={() => {
+                  if (!autoDetectMode) {
+                    setAutoDetectMode(true)
+                    if (isMultiAngleMode) {
+                      setIsMultiAngleMode(false)
+                      handleClearImage()
+                    }
+                  }
+                }}
+                color={autoDetectMode ? 'warning' : 'default'}
+                variant={autoDetectMode ? 'filled' : 'outlined'}
+                sx={{ fontWeight: 700 }}
+              />
+            </Tooltip>
           </Stack>
         </Box>
       ) : (
@@ -1286,7 +1320,20 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
 
             {/* TAB 1: UPLOAD FILE */}
             {activeTab === 1 && (
-              <Box sx={immersive ? { flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 } : undefined}>
+              <Box
+                sx={
+                  immersive
+                    ? {
+                        flex: 1,
+                        display: 'flex',
+                        flexDirection: 'column',
+                        minHeight: 0,
+                        // Turunkan konten di bawah panel overlay agar dropzone tidak tertutup
+                        pt: overlayPanelHeight ? overlayPanelHeight + 16 : 12,
+                      }
+                    : undefined
+                }
+              >
                 {isMultiAngleMode ? (
                   <Box>
                     <input
