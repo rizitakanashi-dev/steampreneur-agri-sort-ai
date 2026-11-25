@@ -22,6 +22,7 @@ import AutoAwesomeRoundedIcon from '@mui/icons-material/AutoAwesomeRounded'
 import CameraAltRoundedIcon from '@mui/icons-material/CameraAltRounded'
 import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded'
 import CloudUploadRoundedIcon from '@mui/icons-material/CloudUploadRounded'
+import CloseRoundedIcon from '@mui/icons-material/CloseRounded'
 import DeleteOutlineRoundedIcon from '@mui/icons-material/DeleteOutlineRounded'
 import FlipCameraIosRoundedIcon from '@mui/icons-material/FlipCameraIosRounded'
 import HistoryRoundedIcon from '@mui/icons-material/HistoryRounded'
@@ -50,6 +51,7 @@ import { REFERENCE_PRICES_PER_KG } from '../business/priceReference.js'
 import { calculateHarvest, calculateHarvestValue } from '../business/harvestCalculation.js'
 import { getTodayDateString } from '../business/harvestValidation.js'
 import { isSceneStationary } from '../utils/imageSimilarity.js'
+import { compressImageFile } from '../utils/imageCompress.js'
 import { COMMODITIES, formatRupiah } from './scanner/constants.js'
 import { SaveToRecapDialog } from './scanner/SaveToRecapDialog.jsx'
 import { CertificatePreviewDialog } from './scanner/CertificatePreviewDialog.jsx'
@@ -98,10 +100,14 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
   const viewfinderRef = useRef(null)
   const resultSectionRef = useRef(null)
 
-  // Setelah scan selesai di mode immersive, gulir otomatis ke hasil
+  // Setelah scan selesai di mode immersive, hasil muncul sebagai bottom sheet
+  // (Paket 3: lembar hasil di atas kamera — native, kamera tetap hidup di belakang)
+  const [resultSheetOpen, setResultSheetOpen] = useState(false)
   useEffect(() => {
-    if (immersive && scanResult && resultSectionRef.current) {
-      resultSectionRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    if (immersive && scanResult) {
+      setResultSheetOpen(true)
+    } else if (!scanResult) {
+      setResultSheetOpen(false)
     }
   }, [immersive, scanResult])
 
@@ -134,14 +140,18 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
 
   // Handle capture dari Live Camera
   const handleLiveCameraCapture = async (file, previewUrl, fingerprint) => {
+    if (!file) return
+    // Paket 2 "Unggah Cerdas": kompres foto kamera sebelum dipakai/ dikirim
+    // (fallback aman ke berkas asli bila kompresi gagal)
+    const compressed = await compressImageFile(file)
     if (!isMultiAngleMode) {
-      setImageFile(file)
+      setImageFile(compressed)
       setImagePreview(previewUrl)
       setScanError('')
-      await triggerInference(file, previewUrl, selectedCommodity, confidenceThreshold)
+      await triggerInference(compressed, previewUrl, selectedCommodity, confidenceThreshold)
     } else {
       if (multiStep === 1) {
-        setImageFileFront(file)
+        setImageFileFront(compressed)
         setImagePreviewFront(previewUrl)
         setCameraFingerprintFront(fingerprint)
         setScanError('')
@@ -156,12 +166,12 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
           )
           return
         }
-        setImageFileBack(file)
+        setImageFileBack(compressed)
         setImagePreviewBack(previewUrl)
         setScanError('')
         await triggerMultiInference(
           imageFileFront,
-          file,
+          compressed,
           imagePreviewFront,
           previewUrl,
           selectedCommodity,
@@ -172,7 +182,7 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
   }
 
   // Handle pemrosesan berkas untuk sisi spesifik (Multi-Angle)
-  const handleProcessFileForSide = (file, side = 'front') => {
+  const handleProcessFileForSide = async (file, side = 'front') => {
     if (!file) return
 
     const allowedTypes = ['image/jpeg', 'image/png', 'image/webp']
@@ -186,11 +196,14 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
       return
     }
 
+    // Paket 2: kompres sebelum dipakai (fallback aman ke berkas asli)
+    const compressed = await compressImageFile(file)
+
     // Pengecekan instan anti-kecurangan berkas kembar antara Sisi 1 dan Sisi 2
     if (side === 'back' && imageFileFront) {
       if (
-        imageFileFront.size === file.size &&
-        (imageFileFront.name === file.name || imageFileFront.lastModified === file.lastModified)
+        imageFileFront.size === compressed.size &&
+        (imageFileFront.name === compressed.name || imageFileFront.lastModified === compressed.lastModified)
       ) {
         setScanError(
           'Peringatan Anti-Kecurangan: Foto Sisi 2 terdeteksi identik dengan Sisi 1 (file kembar). Harap pilih foto berbeda setelah nampan digoyang!'
@@ -200,8 +213,8 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
       }
     } else if (side === 'front' && imageFileBack) {
       if (
-        imageFileBack.size === file.size &&
-        (imageFileBack.name === file.name || imageFileBack.lastModified === file.lastModified)
+        imageFileBack.size === compressed.size &&
+        (imageFileBack.name === compressed.name || imageFileBack.lastModified === compressed.lastModified)
       ) {
         setScanError(
           'Peringatan Anti-Kecurangan: Foto Sisi 1 terdeteksi identik dengan Sisi 2 (file kembar). Harap pilih foto berbeda setelah nampan digoyang!'
@@ -216,7 +229,7 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
     const reader = new FileReader()
     reader.onload = (event) => {
       const dataUrl = event.target?.result
-      if (side === 'back' && (imagePreviewFront === dataUrl || (imageFileFront && imageFileFront.size === file.size && imageFileFront.name === file.name))) {
+      if (side === 'back' && (imagePreviewFront === dataUrl || (imageFileFront && imageFileFront.size === compressed.size && imageFileFront.name === compressed.name))) {
         setScanError(
           'Peringatan Anti-Kecurangan: Foto Sisi 2 terdeteksi identik dengan Sisi 1 (file kembar). Harap pilih foto berbeda setelah nampan digoyang!'
         )
@@ -225,7 +238,7 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
         if (fileInputRefBack.current) fileInputRefBack.current.value = ''
         return
       }
-      if (side === 'front' && (imagePreviewBack === dataUrl || (imageFileBack && imageFileBack.size === file.size && imageFileBack.name === file.name))) {
+      if (side === 'front' && (imagePreviewBack === dataUrl || (imageFileBack && imageFileBack.size === compressed.size && imageFileBack.name === compressed.name))) {
         setScanError(
           'Peringatan Anti-Kecurangan: Foto Sisi 1 terdeteksi identik dengan Sisi 2 (file kembar). Harap pilih foto berbeda setelah nampan digoyang!'
         )
@@ -236,10 +249,10 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
       }
 
       if (side === 'front') {
-        setImageFileFront(file)
+        setImageFileFront(compressed)
         setImagePreviewFront(dataUrl)
       } else {
-        setImageFileBack(file)
+        setImageFileBack(compressed)
         setImagePreviewBack(dataUrl)
       }
     }
@@ -247,7 +260,7 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
   }
 
   // Handle pemrosesan berkas citra (baik via file dialog maupun drag and drop)
-  const handleProcessFile = (file) => {
+  const handleProcessFile = async (file) => {
     if (!file) return
 
     const allowedTypes = ['image/jpeg', 'image/png', 'image/webp']
@@ -261,7 +274,10 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
       return
     }
 
-    setImageFile(file)
+    // Paket 2: kompres sebelum dipakai (fallback aman ke berkas asli)
+    const compressed = await compressImageFile(file)
+
+    setImageFile(compressed)
     setScanError('')
     setScanResult(null)
     setActiveTab(1) // Beralih otomatis ke tab Pratinjau Berkas
@@ -270,7 +286,7 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
       const dataUrl = event.target?.result
       setImagePreview(dataUrl)
     }
-    reader.readAsDataURL(file)
+    reader.readAsDataURL(compressed)
   }
 
   // Handle pilih berkas gambar via input file
@@ -666,10 +682,19 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
     imagePreviewFront || imagePreview || scanResult?.imagePreviewFront || scanResult?.imagePreview
 
   // Panel sensitivitas diekstrak agar dipakai bersama layout dashboard & immersive
+  // (di immersive memakai gaya kaca gelap senada panel overlay)
   const sensitivityControls = (
-    <Box sx={{ p: 1.5, bgcolor: '#f8fafc', borderRadius: 2, border: '1px dashed #cbd5e1' }}>
+    <Box
+      sx={{
+        p: 1.5,
+        bgcolor: immersive ? 'rgba(15, 23, 42, 0.55)' : '#f8fafc',
+        borderRadius: 2,
+        border: immersive ? '1px solid rgba(255, 255, 255, 0.15)' : '1px dashed #cbd5e1',
+        color: immersive ? '#e2e8f0' : undefined,
+      }}
+    >
       <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center' }}>
-        <Typography variant="caption" fontWeight={700} color="text.secondary">
+        <Typography variant="caption" fontWeight={700} sx={{ color: immersive ? '#cbd5e1' : 'text.secondary' }}>
           Confidence Threshold (Batas Keyakinan Deteksi): {confidenceThreshold.toFixed(2)}
         </Typography>
         <Chip
@@ -685,6 +710,7 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
           }
           color={isEggplant || isTomato || isChili ? 'info' : 'default'}
           variant="outlined"
+          sx={immersive ? { color: '#e2e8f0', borderColor: 'rgba(255, 255, 255, 0.3)' } : undefined}
         />
       </Stack>
       <Slider
@@ -697,7 +723,7 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
         valueLabelFormat={(v) => `${Math.round(v * 100)}%`}
         sx={{ mt: 1 }}
       />
-      <Typography variant="caption" color="text.secondary">
+      <Typography variant="caption" sx={{ display: 'block', color: immersive ? '#cbd5e1' : 'text.secondary' }}>
         Nilai lebih rendah (0.15 - 0.25) mendeteksi lebih banyak buah terung yang saling bertumpuk di keranjang.
       </Typography>
     </Box>
@@ -1260,7 +1286,7 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
 
             {/* TAB 1: UPLOAD FILE */}
             {activeTab === 1 && (
-              <Box>
+              <Box sx={immersive ? { flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 } : undefined}>
                 {isMultiAngleMode ? (
                   <Box>
                     <input
@@ -1515,17 +1541,28 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
                           bgcolor: isDragging ? 'rgba(3, 110, 69, 0.08)' : '#f8fafc',
                           '&:hover': { bgcolor: '#f1f5f9', borderColor: 'primary.main' },
                           transition: 'all 0.2s',
+                          // Immersive: dropzone mengisi sisa layar (sejajar kamera)
+                          ...(immersive
+                            ? {
+                                flex: 1,
+                                display: 'flex',
+                                flexDirection: 'column',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                minHeight: 280,
+                              }
+                            : {}),
                         }}
                       >
                         <CloudUploadRoundedIcon sx={{ fontSize: 56, color: 'primary.main', mb: 1.5 }} />
                         <Typography variant="subtitle1" fontWeight={700}>
-                          Klik untuk Pilih Foto atau Tarik &amp; Lepaskan (Drag &amp; Drop) ke Sini
+                          Ketuk untuk Pilih Foto dari Galeri HP
                         </Typography>
                         <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
                           Ambil foto tampak atas (top-down) keranjang {selectedCommodity} &bull; JPG, PNG, atau WebP (maks. 10 MB)
                         </Typography>
                         <Button variant="outlined" sx={{ mt: 2, borderRadius: 2 }} startIcon={<CloudUploadRoundedIcon />}>
-                          Pilih Berkas dari Komputer
+                          Pilih Berkas / Galeri
                         </Button>
                       </Box>
                     )}
@@ -1537,9 +1574,50 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
         </Card>
       )}
 
-      {/* 3. HASIL SCAN INSTAN LANGSUNG MUNCUL DI SINI! */}
+      {/* 3. HASIL SCAN INSTAN — di immersive: bottom sheet di atas kamera;
+          di desktop: section alur biasa */}
       {scanResult && (
-        <Stack ref={resultSectionRef} spacing={3} sx={immersive ? { px: 1.5 } : undefined}>
+        <Stack
+          ref={resultSectionRef}
+          spacing={3}
+          sx={
+            immersive
+              ? {
+                  position: 'fixed',
+                  left: 0,
+                  right: 0,
+                  bottom: 'calc(106px + env(safe-area-inset-bottom))',
+                  maxHeight: 'calc(100dvh - 180px - env(safe-area-inset-bottom))',
+                  overflowY: 'auto',
+                  zIndex: 1200,
+                  p: 2,
+                  bgcolor: 'rgba(15, 23, 42, 0.94)',
+                  backdropFilter: 'blur(10px)',
+                  borderRadius: '16px 16px 0 0',
+                  border: '1px solid rgba(255, 255, 255, 0.12)',
+                  borderBottom: 'none',
+                  display: resultSheetOpen ? 'flex' : 'none',
+                  boxShadow: '0 -8px 32px rgba(0, 0, 0, 0.45)',
+                }
+              : undefined
+          }
+        >
+          {immersive && (
+            <Stack direction="row" sx={{ alignItems: 'center', justifyContent: 'space-between' }}>
+              <Typography variant="subtitle2" fontWeight={800} sx={{ color: '#e2e8f0' }}>
+                Hasil Pemindaian
+              </Typography>
+              <IconButton
+                aria-label="Tutup lembar hasil"
+                edge="end"
+                size="small"
+                onClick={() => setResultSheetOpen(false)}
+                sx={{ color: '#94a3b8' }}
+              >
+                <CloseRoundedIcon />
+              </IconButton>
+            </Stack>
+          )}
           {saveSuccessMsg && (
             <Alert severity="success" onClose={() => setSaveSuccessMsg('')}>
               {saveSuccessMsg}
@@ -2071,7 +2149,10 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
           <Button
             aria-label="Periksa hasil pemindaian terkini"
             disabled={!scanResult}
-            onClick={() => resultSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+            onClick={() => {
+              if (immersive) setResultSheetOpen(true)
+              else resultSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+            }}
             sx={{
               display: 'flex',
               flexDirection: 'column',
@@ -2132,6 +2213,9 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
               color: '#fff',
               bgcolor: 'rgba(255, 255, 255, 0.10)',
               '&:hover': { bgcolor: 'rgba(255, 255, 255, 0.2)' },
+              // Gaya disabled pakai kondisi langsung — lebih tahan banting lintas browser
+              // daripada hanya mengandalkan selector &.Mui-disabled
+              ...(activeTab !== 0 || isScanning ? { color: '#64748b', bgcolor: 'rgba(255, 255, 255, 0.05)' } : {}),
               '&.Mui-disabled': { color: '#64748b' },
             }}
           >
@@ -2151,6 +2235,11 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
               color: '#fff',
               boxShadow: '0 8px 24px rgba(3, 110, 69, 0.45)',
               '&:hover': { bgcolor: '#065f46' },
+              // Gaya disabled kondisional langsung (bug: di beberapa perangkat
+              // selector &.Mui-disabled kalah sehingga shutter tetap hijau di tab Unggah)
+              ...((activeTab !== 0 || isScanning)
+                ? { bgcolor: '#1e293b', color: '#475569', boxShadow: 'none' }
+                : {}),
               '&.Mui-disabled': { bgcolor: '#1e293b', color: '#475569' },
               border: '3px solid rgba(255, 255, 255, 0.35)',
             }}
@@ -2158,20 +2247,38 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
             {isScanning ? <CircularProgress size={30} sx={{ color: '#fff' }} /> : <CameraAltRoundedIcon sx={{ fontSize: 30 }} />}
           </IconButton>
 
-          {/* Kanan: Galeri / kembali ke kamera */}
-          <IconButton
+          {/* Kanan: Unggah berkas / kembali ke kamera */}
+          <Button
             aria-label={activeTab === 0 ? 'Buka galeri untuk unggah berkas' : 'Kembali ke kamera langsung'}
             onClick={() => setActiveTab(activeTab === 0 ? 1 : 0)}
             sx={{
-              width: 44,
-              height: 44,
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              minWidth: 64,
+              px: 0.5,
+              py: 0.5,
+              borderRadius: 2,
               color: '#fff',
-              bgcolor: 'rgba(255, 255, 255, 0.10)',
-              '&:hover': { bgcolor: 'rgba(255, 255, 255, 0.2)' },
             }}
           >
-            {activeTab === 0 ? <PhotoLibraryRoundedIcon /> : <CameraAltRoundedIcon />}
-          </IconButton>
+            <Box
+              sx={{
+                width: 44,
+                height: 44,
+                borderRadius: '50%',
+                bgcolor: 'rgba(255, 255, 255, 0.10)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              {activeTab === 0 ? <PhotoLibraryRoundedIcon /> : <CameraAltRoundedIcon />}
+            </Box>
+            <Typography component="span" sx={{ fontSize: '0.6875rem', fontWeight: 700, mt: 0.25 }}>
+              {activeTab === 0 ? 'Unggah' : 'Kamera'}
+            </Typography>
+          </Button>
         </Box>
       )}
     </Stack>
