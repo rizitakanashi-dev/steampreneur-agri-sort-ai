@@ -666,10 +666,19 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
     imagePreviewFront || imagePreview || scanResult?.imagePreviewFront || scanResult?.imagePreview
 
   // Panel sensitivitas diekstrak agar dipakai bersama layout dashboard & immersive
+  // (di immersive memakai gaya kaca gelap senada panel overlay)
   const sensitivityControls = (
-    <Box sx={{ p: 1.5, bgcolor: '#f8fafc', borderRadius: 2, border: '1px dashed #cbd5e1' }}>
+    <Box
+      sx={{
+        p: 1.5,
+        bgcolor: immersive ? 'rgba(15, 23, 42, 0.55)' : '#f8fafc',
+        borderRadius: 2,
+        border: immersive ? '1px solid rgba(255, 255, 255, 0.15)' : '1px dashed #cbd5e1',
+        color: immersive ? '#e2e8f0' : undefined,
+      }}
+    >
       <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center' }}>
-        <Typography variant="caption" fontWeight={700} color="text.secondary">
+        <Typography variant="caption" fontWeight={700} sx={{ color: immersive ? '#cbd5e1' : 'text.secondary' }}>
           Confidence Threshold (Batas Keyakinan Deteksi): {confidenceThreshold.toFixed(2)}
         </Typography>
         <Chip
@@ -685,6 +694,7 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
           }
           color={isEggplant || isTomato || isChili ? 'info' : 'default'}
           variant="outlined"
+          sx={immersive ? { color: '#e2e8f0', borderColor: 'rgba(255, 255, 255, 0.3)' } : undefined}
         />
       </Stack>
       <Slider
@@ -697,7 +707,7 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
         valueLabelFormat={(v) => `${Math.round(v * 100)}%`}
         sx={{ mt: 1 }}
       />
-      <Typography variant="caption" color="text.secondary">
+      <Typography variant="caption" sx={{ display: 'block', color: immersive ? '#cbd5e1' : 'text.secondary' }}>
         Nilai lebih rendah (0.15 - 0.25) mendeteksi lebih banyak buah terung yang saling bertumpuk di keranjang.
       </Typography>
     </Box>
@@ -1260,7 +1270,7 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
 
             {/* TAB 1: UPLOAD FILE */}
             {activeTab === 1 && (
-              <Box>
+              <Box sx={immersive ? { flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 } : undefined}>
                 {isMultiAngleMode ? (
                   <Box>
                     <input
@@ -1515,17 +1525,28 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
                           bgcolor: isDragging ? 'rgba(3, 110, 69, 0.08)' : '#f8fafc',
                           '&:hover': { bgcolor: '#f1f5f9', borderColor: 'primary.main' },
                           transition: 'all 0.2s',
+                          // Immersive: dropzone mengisi sisa layar (sejajar kamera)
+                          ...(immersive
+                            ? {
+                                flex: 1,
+                                display: 'flex',
+                                flexDirection: 'column',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                minHeight: 280,
+                              }
+                            : {}),
                         }}
                       >
                         <CloudUploadRoundedIcon sx={{ fontSize: 56, color: 'primary.main', mb: 1.5 }} />
                         <Typography variant="subtitle1" fontWeight={700}>
-                          Klik untuk Pilih Foto atau Tarik &amp; Lepaskan (Drag &amp; Drop) ke Sini
+                          Ketuk untuk Pilih Foto dari Galeri HP
                         </Typography>
                         <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
                           Ambil foto tampak atas (top-down) keranjang {selectedCommodity} &bull; JPG, PNG, atau WebP (maks. 10 MB)
                         </Typography>
                         <Button variant="outlined" sx={{ mt: 2, borderRadius: 2 }} startIcon={<CloudUploadRoundedIcon />}>
-                          Pilih Berkas dari Komputer
+                          Pilih Berkas / Galeri
                         </Button>
                       </Box>
                     )}
@@ -2132,6 +2153,9 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
               color: '#fff',
               bgcolor: 'rgba(255, 255, 255, 0.10)',
               '&:hover': { bgcolor: 'rgba(255, 255, 255, 0.2)' },
+              // Gaya disabled pakai kondisi langsung — lebih tahan banting lintas browser
+              // daripada hanya mengandalkan selector &.Mui-disabled
+              ...(activeTab !== 0 || isScanning ? { color: '#64748b', bgcolor: 'rgba(255, 255, 255, 0.05)' } : {}),
               '&.Mui-disabled': { color: '#64748b' },
             }}
           >
@@ -2151,6 +2175,11 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
               color: '#fff',
               boxShadow: '0 8px 24px rgba(3, 110, 69, 0.45)',
               '&:hover': { bgcolor: '#065f46' },
+              // Gaya disabled kondisional langsung (bug: di beberapa perangkat
+              // selector &.Mui-disabled kalah sehingga shutter tetap hijau di tab Unggah)
+              ...((activeTab !== 0 || isScanning)
+                ? { bgcolor: '#1e293b', color: '#475569', boxShadow: 'none' }
+                : {}),
               '&.Mui-disabled': { bgcolor: '#1e293b', color: '#475569' },
               border: '3px solid rgba(255, 255, 255, 0.35)',
             }}
@@ -2158,20 +2187,38 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
             {isScanning ? <CircularProgress size={30} sx={{ color: '#fff' }} /> : <CameraAltRoundedIcon sx={{ fontSize: 30 }} />}
           </IconButton>
 
-          {/* Kanan: Galeri / kembali ke kamera */}
-          <IconButton
+          {/* Kanan: Unggah berkas / kembali ke kamera */}
+          <Button
             aria-label={activeTab === 0 ? 'Buka galeri untuk unggah berkas' : 'Kembali ke kamera langsung'}
             onClick={() => setActiveTab(activeTab === 0 ? 1 : 0)}
             sx={{
-              width: 44,
-              height: 44,
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              minWidth: 64,
+              px: 0.5,
+              py: 0.5,
+              borderRadius: 2,
               color: '#fff',
-              bgcolor: 'rgba(255, 255, 255, 0.10)',
-              '&:hover': { bgcolor: 'rgba(255, 255, 255, 0.2)' },
             }}
           >
-            {activeTab === 0 ? <PhotoLibraryRoundedIcon /> : <CameraAltRoundedIcon />}
-          </IconButton>
+            <Box
+              sx={{
+                width: 44,
+                height: 44,
+                borderRadius: '50%',
+                bgcolor: 'rgba(255, 255, 255, 0.10)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              {activeTab === 0 ? <PhotoLibraryRoundedIcon /> : <CameraAltRoundedIcon />}
+            </Box>
+            <Typography component="span" sx={{ fontSize: '0.6875rem', fontWeight: 700, mt: 0.25 }}>
+              {activeTab === 0 ? 'Unggah' : 'Kamera'}
+            </Typography>
+          </Button>
         </Box>
       )}
     </Stack>

@@ -1,5 +1,5 @@
 import { Suspense, lazy, useEffect, useRef, useState } from 'react'
-import { useMediaQuery } from '@mui/material'
+import { Fab, useMediaQuery } from '@mui/material'
 import {
   Alert,
   Box,
@@ -842,6 +842,27 @@ function App() {
             />
           </Suspense>
         </ErrorBoundary>
+
+        {/* Opsi A (keputusan UX): setelah keluar dari mode kamera via ✕,
+            sediakan jalan balik 1 ketuk khusus HP — tombol mengambang */}
+        {activePage === 'scanner' && currentView === 'app' && isMobileViewport && !scannerImmersiveActive && (
+          <Fab
+            variant="extended"
+            color="primary"
+            aria-label="Kembali ke mode kamera layar penuh"
+            onClick={() => setScannerImmersive(true)}
+            sx={{
+              position: 'fixed',
+              bottom: 'calc(16px + env(safe-area-inset-bottom))',
+              right: 16,
+              zIndex: 1100,
+              fontWeight: 800,
+            }}
+          >
+            <CameraAltRoundedIcon sx={{ mr: 1 }} />
+            Mode Kamera
+          </Fab>
+        )}
       </Container>
     </AppShell>
   )
