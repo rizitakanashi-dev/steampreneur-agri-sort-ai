@@ -519,6 +519,19 @@ function App() {
     currentView === 'app' && activePage === 'scanner' && isMobileViewport && scannerImmersive
   const page = pages[activePage] || pages.overview
 
+  // Mode kamera HP = layar terkunci (khas kamera native): halaman tidak bisa di-geser,
+  // header ✕ tetap di tempat, panel chip tidak pernah menimpanya
+  useEffect(() => {
+    if (scannerImmersiveActive) {
+      const previous = document.body.style.overflow
+      document.body.style.overflow = 'hidden'
+      return () => {
+        document.body.style.overflow = previous
+      }
+    }
+    return undefined
+  }, [scannerImmersiveActive])
+
   useEffect(() => {
     const storedBatches = readBatches()
     setBatches(storedBatches)

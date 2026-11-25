@@ -817,7 +817,7 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
             left: 8,
             right: 8,
             zIndex: 1250,
-            p: 1.25,
+            p: 1,
             borderRadius: 2.5,
             bgcolor: 'rgba(15, 23, 42, 0.62)',
             backdropFilter: 'blur(8px)',
@@ -826,8 +826,8 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
             '& .MuiChip-outlined': { color: '#e2e8f0', borderColor: 'rgba(255, 255, 255, 0.3)' },
           }}
         >
-          <Stack direction="row" sx={{ alignItems: 'center', justifyContent: 'space-between', mb: 0.75 }}>
-            <Typography variant="subtitle2" fontWeight={800} sx={{ color: '#cbd5e1' }}>
+          <Stack direction="row" sx={{ alignItems: 'center', justifyContent: 'space-between', mb: 0.5 }}>
+            <Typography variant="caption" fontWeight={800} sx={{ color: '#cbd5e1' }}>
               Komoditas &amp; Mode
             </Typography>
             <Stack direction="row" spacing={0.75} sx={{ alignItems: 'center' }}>
@@ -857,7 +857,19 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
           </Stack>
           {showSensitivitySetting && <Box sx={{ mb: 1 }}>{sensitivityControls}</Box>}
           {showImmersiveTips && <Box sx={{ mb: 1 }}>{tipsAlert}</Box>}
-          <Stack direction="row" spacing={0.75} useFlexGap sx={{ mb: 0.75, flexWrap: 'wrap' }}>
+          {/* Satu baris geser-samping (khas aplikasi kamera native) — panel tetap ramping
+              walau komoditas bertambah */}
+          <Stack
+            direction="row"
+            spacing={0.75}
+            useFlexGap
+            sx={{
+              mb: 0.5,
+              overflowX: 'auto',
+              scrollbarWidth: 'none',
+              '&::-webkit-scrollbar': { display: 'none' },
+            }}
+          >
             {COMMODITIES.map((c) => (
               <Chip
                 key={c.id}
@@ -866,11 +878,21 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
                 onClick={() => handleSelectCommodity(c.id)}
                 color={selectedCommodity === c.id ? 'primary' : 'default'}
                 variant={selectedCommodity === c.id ? 'filled' : 'outlined'}
-                sx={{ fontWeight: 700 }}
+                sx={{ fontWeight: 700, flexShrink: 0 }}
               />
             ))}
           </Stack>
-          <Stack direction="row" spacing={0.75} useFlexGap sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
+          <Stack
+            direction="row"
+            spacing={0.75}
+            useFlexGap
+            sx={{
+              alignItems: 'center',
+              overflowX: 'auto',
+              scrollbarWidth: 'none',
+              '&::-webkit-scrollbar': { display: 'none' },
+            }}
+          >
             <Tooltip title="Cepat — 1 foto tampak atas keranjang">
               <Chip
                 size="small"
@@ -884,7 +906,7 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
                 }}
                 color={isMultiAngleMode || autoDetectMode ? 'default' : 'primary'}
                 variant={isMultiAngleMode || autoDetectMode ? 'outlined' : 'filled'}
-                sx={{ fontWeight: 700 }}
+                sx={{ fontWeight: 700, flexShrink: 0 }}
               />
             </Tooltip>
             <Tooltip title="2 foto: depan & belakang (anti oklusi / goyang nampan)">
@@ -900,7 +922,7 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
                 }}
                 color={isMultiAngleMode && !autoDetectMode ? 'success' : 'default'}
                 variant={isMultiAngleMode && !autoDetectMode ? 'filled' : 'outlined'}
-                sx={{ fontWeight: 700 }}
+                sx={{ fontWeight: 700, flexShrink: 0 }}
               />
             </Tooltip>
             <Tooltip title="Scan otomatis saat nampan diam ±3 detik">
@@ -918,7 +940,7 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
                 }}
                 color={autoDetectMode ? 'warning' : 'default'}
                 variant={autoDetectMode ? 'filled' : 'outlined'}
-                sx={{ fontWeight: 700 }}
+                sx={{ fontWeight: 700, flexShrink: 0 }}
               />
             </Tooltip>
           </Stack>
@@ -1060,7 +1082,7 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
             // agar viewfinder full-bleed KHAS KAMERA HP — tanpa bergantung rantai flex
             display: immersive ? 'flex' : undefined,
             flexDirection: immersive ? 'column' : undefined,
-            height: immersive ? 'calc(100dvh - 160px - env(safe-area-inset-bottom))' : undefined,
+            height: immersive ? 'calc(100dvh - 170px - env(safe-area-inset-bottom))' : undefined,
             flex: immersive ? '1 0 auto' : undefined,
           }}
         >
@@ -1330,6 +1352,9 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
                         minHeight: 0,
                         // Turunkan konten di bawah panel overlay agar dropzone tidak tertutup
                         pt: overlayPanelHeight ? overlayPanelHeight + 16 : 12,
+                        // Multi-sudut (2 kartu) bisa melebihi tinggi kartu kamera yang terkunci —
+                        // gulir di dalam area unggah, bukan menggeser halaman
+                        overflowY: 'auto',
                       }
                     : undefined
                 }
