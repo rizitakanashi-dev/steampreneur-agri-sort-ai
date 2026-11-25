@@ -12,11 +12,13 @@ import {
 import CameraAltRoundedIcon from '@mui/icons-material/CameraAltRounded'
 import FlashOnRoundedIcon from '@mui/icons-material/FlashOnRounded'
 import FlashOffRoundedIcon from '@mui/icons-material/FlashOffRounded'
+import LightModeRoundedIcon from '@mui/icons-material/LightModeRounded'
+import BlurOnRoundedIcon from '@mui/icons-material/BlurOnRounded'
 import FlipCameraIosRoundedIcon from '@mui/icons-material/FlipCameraIosRounded'
 import VideocamOffRoundedIcon from '@mui/icons-material/VideocamOffRounded'
 import RefreshRoundedIcon from '@mui/icons-material/RefreshRounded'
 
-import { extractGreyscaleThumbnail } from '../utils/imageSimilarity.js'
+import { extractGreyscaleThumbnail, isSceneStationary } from '../utils/imageSimilarity.js'
 
 // Registry modul untuk melacak seluruh active MediaStream agar tidak ada hardware track kamera yang tertinggal
 const activeStreams = new Set()
@@ -44,7 +46,7 @@ export function stopAllActiveCameraStreams() {
  * Komponen Live Camera Viewfinder untuk Agri-Sort AI
  * Mengakses webcam desktop atau kamera HP langsung dengan capture snapshot instan.
  */
-export const LiveCameraViewfinder = forwardRef(function LiveCameraViewfinder({ onCapture, disabled = false, variant = 'default' }, ref) {
+export const LiveCameraViewfinder = forwardRef(function LiveCameraViewfinder({ onCapture, disabled = false, variant = 'default', autoDetect = false }, ref) {
   const isImmersive = variant === 'immersive'
   const videoRef = useRef(null)
   const streamRef = useRef(null)
@@ -55,6 +57,8 @@ export const LiveCameraViewfinder = forwardRef(function LiveCameraViewfinder({ o
   // Torch (lampu kilat) — dideteksi via track capabilities
   const [torchSupported, setTorchSupported] = useState(false)
   const [torchOn, setTorchOn] = useState(false)
+  // Issue #30 fase 5: kualitas citra real-time + auto-detect saat scene stabil
+  const [qualityStatus, setQualityStatus] = useState(null) // null | 'dark' | 'blur'
 
   const isMountedRef = useRef(true)
   const sessionRef = useRef(0)
@@ -246,6 +250,78 @@ export const LiveCameraViewfinder = forwardRef(function LiveCameraViewfinder({ o
     }
   }
 
+  /** Toggle Auto-Detect bila dipanggil dari luar (tidak wajib) */
+  // (state auto-detect dikendalikan parent via prop `autoDetect`)
+
+  // Issue #30 fase 5: sampler kualitas citra + auto-detect (immersive saja).
+  // Sampling 1.25x/detik pada kanvas 64x48 — sangat ringan.
+  useEffect(() => {
+    if (!isImmersive || cameraState !== 'active') return undefined
+    const qualityStatusRef = { current: null }
+    const lastThumbRef = { current: null }
+    const stableCountRef = { current: 0 }
+    const cooldownUntilRef = { current: 0 }
+    const samplerCanvas = document.createElement('canvas')
+
+    const tick = () => {
+      const video = videoRef.current
+      if (!video || video.readyState < 2 || isCapturing || disabled) return
+      try {
+        samplerCanvas.width = 64
+        samplerCanvas.height = 48
+        const ctx = samplerCanvas.getContext('2d', { willReadFrequently: true })
+        ctx.drawImage(video, 0, 0, 64, 48)
+        const px = ctx.getImageData(0, 0, 64, 48).data
+        let sum = 0
+        let gradSum = 0
+        let count = 0
+        for (let y = 0; y < 48; y++) {
+          for (let x = 0; x < 64; x++) {
+            const i = (y * 64 + x) * 4
+            const g = px[i] * 0.299 + px[i + 1] * 0.587 + px[i + 2] * 0.114
+            sum += g
+            count += 1
+            if (x < 63) {
+              const j = (y * 64 + x + 1) * 4
+              const g2 = px[j] * 0.299 + px[j + 1] * 0.587 + px[j + 2] * 0.114
+              gradSum += Math.abs(g - g2)
+            }
+          }
+        }
+        const brightness = sum / Math.max(1, count)
+        const blurScore = gradSum / Math.max(1, count - 48)
+        const nextStatus = brightness < 55 ? 'dark' : blurScore < 5 ? 'blur' : 'ok'
+        if (nextStatus !== qualityStatusRef.current) {
+          qualityStatusRef.current = nextStatus
+          setQualityStatus(nextStatus === 'ok' ? null : nextStatus)
+        }
+
+        // Auto-Detect: kapture otomatis saat scene stabil >= 3 sampel
+        // (~2.4 detik tenang), tidak blur/gelap, dan melewati cooldown 5 detik
+        if (autoDetect && nextStatus === 'ok' && Date.now() > cooldownUntilRef.current) {
+          const thumb = extractGreyscaleThumbnail(samplerCanvas, 16)
+          const last = lastThumbRef.current
+          if (last && isSceneStationary(thumb, last)) {
+            stableCountRef.current += 1
+          } else {
+            stableCountRef.current = 0
+          }
+          lastThumbRef.current = thumb
+          if (stableCountRef.current >= 3) {
+            stableCountRef.current = 0
+            cooldownUntilRef.current = Date.now() + 5000
+            handleCapturePhoto()
+          }
+        }
+      } catch (err) {
+        console.warn('Gagal sampling kualitas citra kamera:', err)
+      }
+    }
+
+    const id = window.setInterval(tick, 800)
+    return () => window.clearInterval(id)
+  }, [isImmersive, cameraState, autoDetect, isCapturing, disabled])
+
   const handleCapturePhoto = () => {
     if (!videoRef.current || cameraState !== 'active' || isCapturing || disabled) return
     setIsCapturing(true)
@@ -317,6 +393,32 @@ export const LiveCameraViewfinder = forwardRef(function LiveCameraViewfinder({ o
         >
           {torchOn ? <FlashOnRoundedIcon /> : <FlashOffRoundedIcon />}
         </IconButton>
+      )}
+
+      {/* Indikator kualitas citra real-time (issue #30): blur / cahaya rendah */}
+      {isImmersive && cameraState === 'active' && qualityStatus && (
+        <Box
+          sx={{
+            position: 'absolute',
+            top: 12,
+            left: 12,
+            zIndex: 15,
+            px: 1.25,
+            py: 0.5,
+            borderRadius: 2,
+            bgcolor: 'rgba(15, 23, 42, 0.78)',
+            color: '#fbbf24',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 0.75,
+            border: '1px solid rgba(251, 191, 36, 0.4)',
+          }}
+        >
+          {qualityStatus === 'dark' ? <LightModeRoundedIcon sx={{ fontSize: 17 }} /> : <BlurOnRoundedIcon sx={{ fontSize: 17 }} />}
+          <Typography sx={{ fontSize: '0.75rem', fontWeight: 700, color: '#fbbf24' }}>
+            {qualityStatus === 'dark' ? 'Cahaya rendah — tambah penerangan' : 'Citra blur — tahan kamera lebih stabil'}
+          </Typography>
+        </Box>
       )}
 
       <video

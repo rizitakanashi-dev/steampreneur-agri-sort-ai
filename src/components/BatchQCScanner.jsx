@@ -67,6 +67,8 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
 
   // State Multi-Sudut (Anti-Kecurangan / Occlusion-Free)
   const [isMultiAngleMode, setIsMultiAngleMode] = useState(false)
+  // Issue #30 fase 5: Auto-Detect — scan otomatis saat nampan diam (immersive)
+  const [autoDetectMode, setAutoDetectMode] = useState(false)
   const [multiStep, setMultiStep] = useState(1) // 1: Foto Sisi 1 (Depan), 2: Foto Sisi 2 (Belakang / Goyang Nampan)
   const [imageFileFront, setImageFileFront] = useState(null)
   const [imagePreviewFront, setImagePreviewFront] = useState(null)
@@ -744,34 +746,52 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
             <Chip
               label="1 Sisi (Cepat)"
               onClick={() => {
-                if (isMultiAngleMode) {
+                if (isMultiAngleMode || autoDetectMode) {
                   setIsMultiAngleMode(false)
+                  setAutoDetectMode(false)
                   handleClearImage()
                 }
               }}
-              color={isMultiAngleMode ? 'default' : 'primary'}
-              variant={isMultiAngleMode ? 'outlined' : 'filled'}
+              color={isMultiAngleMode || autoDetectMode ? 'default' : 'primary'}
+              variant={isMultiAngleMode || autoDetectMode ? 'outlined' : 'filled'}
               size="small"
               sx={{ fontWeight: 700 }}
             />
             <Chip
               label="2 Sisi (Goyang Nampan)"
               onClick={() => {
-                if (!isMultiAngleMode) {
+                if (!isMultiAngleMode || autoDetectMode) {
                   setIsMultiAngleMode(true)
+                  setAutoDetectMode(false)
                   handleClearImage()
                 }
               }}
-              color={isMultiAngleMode ? 'success' : 'default'}
-              variant={isMultiAngleMode ? 'filled' : 'outlined'}
+              color={isMultiAngleMode && !autoDetectMode ? 'success' : 'default'}
+              variant={isMultiAngleMode && !autoDetectMode ? 'filled' : 'outlined'}
               size="small"
               sx={{ fontWeight: 700 }}
             />
             <Chip
-              label={isMultiAngleMode ? '🛡️ Anti-Bias Oklusi' : 'Cepat'}
+              label="⚡ Auto-Detect"
+              onClick={() => {
+                if (!autoDetectMode) {
+                  setAutoDetectMode(true)
+                  if (isMultiAngleMode) {
+                    setIsMultiAngleMode(false)
+                    handleClearImage()
+                  }
+                }
+              }}
+              color={autoDetectMode ? 'warning' : 'default'}
+              variant={autoDetectMode ? 'filled' : 'outlined'}
               size="small"
-              color={isMultiAngleMode ? 'success' : 'default'}
-              variant={isMultiAngleMode ? 'filled' : 'outlined'}
+              sx={{ fontWeight: 700 }}
+            />
+            <Chip
+              label={isMultiAngleMode ? '🛡️ Anti-Bias Oklusi' : autoDetectMode ? 'Scan otomatis ±3 detik stabil' : 'Cepat'}
+              size="small"
+              color={isMultiAngleMode ? 'success' : autoDetectMode ? 'warning' : 'default'}
+              variant="outlined"
               sx={{ fontWeight: 700 }}
             />
           </Stack>
@@ -1083,6 +1103,7 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
                       onCapture={handleLiveCameraCapture}
                       disabled={isScanning}
                       variant={immersive ? 'immersive' : 'default'}
+                      autoDetect={false}
                     />
 
                     {isScanning && (
@@ -1152,6 +1173,7 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
                         onCapture={handleLiveCameraCapture}
                         disabled={isScanning}
                         variant={immersive ? 'immersive' : 'default'}
+                        autoDetect={immersive && autoDetectMode && !isMultiAngleMode}
                       />
                     )}
 
