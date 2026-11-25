@@ -86,7 +86,22 @@ Backend memakai provider Auth yang dipilih secara eksplisit per startup: Supabas
 
 `APP_ENV` menerima `development`, `preview`, `staging`, atau `production`; `AUTH_MODE` menerima `local` atau `supabase`. Tanpa keduanya, backend gagal tertutup dan endpoint Auth tidak dialihkan ke provider lain. Token Local Auth lama tidak diterima dalam mode Supabase; inventory akun Local Auth deployment belum dipastikan, jadi lakukan rekonsiliasi akun dan minta pengguna login/daftar ulang melalui jalur yang disetujui sebelum rollout.
 
-### 4. Menjalankan Server Lokal
+### 4. Backend Environment (Vercel)
+
+Untuk deployment di Vercel (Production dan Preview), seluruh variabel lingkungan berikut wajib dipasang pada dashboard Vercel (**Settings → Environment Variables**) atau melalui Vercel CLI (`vercel env add`):
+
+| Variabel | Lingkungan | Tipe | Keterangan |
+|---|---|---|---|
+| `APP_ENV` | Production: `production`<br>Preview: `preview` | Secret / Config | Wajib cocok persis dengan `VERCEL_ENV` (`production` di deploy production, `preview` di Preview). Backend menolak inisialisasi saat cold start bila tidak cocok. |
+| `AUTH_MODE` | Production, Preview: `supabase` | Secret / Config | Mode autentikasi di serverless. `AUTH_MODE=local` ditolak keras di luar local development. |
+| `SUPABASE_URL` | Production, Preview | Secret | URL HTTPS project Supabase (`https://<project-ref>.supabase.co`). |
+| `SUPABASE_ANON_KEY` | Production, Preview | Secret | Public/Anon API key dari Supabase. **Bukan** `service_role` key (backend memvalidasi dan menolak service-role key di variabel ini). |
+| `SUPABASE_SERVICE_ROLE_KEY` | Production, Preview | Secret | Kunci `service_role` dari Supabase (**Project Settings → API**). Server-only untuk workflow ekspor & penghapusan akun mandiri; jangan pernah kirim ke frontend. |
+| `EXPORT_HMAC_KEY` | Production, Preview | Secret | Kunci HMAC SHA-256 untuk memverifikasi integritas snapshot ekspor data (minimal 32 byte, di-generate via `openssl rand -hex 32`). |
+| `SUPABASE_EXPORT_BUCKET` | Production, Preview | Secret / Config | Bucket Supabase Storage untuk menampung arsip ekspor data akun (default: `account-exports`). |
+| `VITE_GOOGLE_CLIENT_ID` | Production, Preview | Config | Google OAuth 2.0 Client ID resmi untuk Google Sign-In. |
+
+### 5. Menjalankan Server Lokal
 
 **Terminal 1 — Jalankan Backend FastAPI (Port 8000):**
 ```bash
