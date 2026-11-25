@@ -1,4 +1,5 @@
 import { Suspense, lazy, useEffect, useRef, useState } from 'react'
+import { useMediaQuery } from '@mui/material'
 import {
   Alert,
   Box,
@@ -30,6 +31,7 @@ import RefreshRoundedIcon from '@mui/icons-material/RefreshRounded'
 import TrendingUpRoundedIcon from '@mui/icons-material/TrendingUpRounded'
 import VerifiedRoundedIcon from '@mui/icons-material/VerifiedRounded'
 import VisibilityRoundedIcon from '@mui/icons-material/VisibilityRounded'
+import CloseRoundedIcon from '@mui/icons-material/CloseRounded'
 import { calculateHarvest, calculateHarvestValue } from './business/harvestCalculation.js'
 import { deleteBatch, readBatches, saveBatch } from './business/harvestStorage.js'
 import { COMMODITY_OPTIONS, PRICE_REFERENCE_SOURCE, REFERENCE_PRICES_PER_KG } from './business/priceReference.js'
@@ -400,6 +402,7 @@ function FoundationPage({
   onDeleteBatch,
   canSyncPrices = false,
   openCertModal = false,
+  immersive = false,
 }) {
   const [showManualForm, setShowManualForm] = useState(false)
   const page = pages[activePage]
@@ -429,6 +432,7 @@ function FoundationPage({
           <BatchQCScanner
             onBatchSaved={onBatchSaved}
             onViewResults={(batch) => onSelectBatch(batch)}
+            immersive={immersive}
           />
         )}
       </Stack>
@@ -505,6 +509,12 @@ function App() {
   const [selectedBatch, setSelectedBatch] = useState(null)
   const [openCertModal, setOpenCertModal] = useState(false)
   const [harvestMessage, setHarvestMessage] = useState('')
+  // Issue #30: layar kamera terdedikasi di mobile (<=600px). Masuk scanner =
+  // masuk mode immersive; keluar lewat tombol exit di header khusus scanner.
+  const isMobileViewport = useMediaQuery('(max-width: 599.95px)')
+  const [scannerImmersive, setScannerImmersive] = useState(true)
+  const scannerImmersiveActive =
+    currentView === 'app' && activePage === 'scanner' && isMobileViewport && scannerImmersive
   const page = pages[activePage] || pages.overview
 
   useEffect(() => {
@@ -607,6 +617,7 @@ function App() {
     setCurrentView('app')
     setActivePage(pageToOpen)
     window.location.hash = pageToOpen === 'admin' ? 'admin/overview' : pageToOpen
+    if (pageToOpen === 'scanner') setScannerImmersive(true)
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
@@ -633,6 +644,7 @@ function App() {
     setCurrentView('app')
     setActivePage(destination)
     window.location.hash = destination === 'admin' ? 'admin/overview' : destination
+    if (destination === 'scanner') setScannerImmersive(true)
     setHarvestMessage(`Selamat datang kembali, ${loggedInUser.fullName} (${loggedInUser.email})!`)
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
@@ -648,6 +660,7 @@ function App() {
     setCurrentView('app')
     setActivePage(destination)
     window.location.hash = destination === 'admin' ? 'admin/overview' : destination
+    if (destination === 'scanner') setScannerImmersive(true)
     setHarvestMessage(`Selamat datang, ${newUser.fullName} (${newUser.email})! Akun Anda berhasil terdaftar.`)
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
@@ -694,6 +707,9 @@ function App() {
     window.location.hash = pageId
     setHarvestMessage('')
     setOpenCertModal(false)
+    // Reset scroll ke atas: viewport tidak boleh tertinggal di posisi
+    // halaman lama, agar konten halaman baru langsung terlihat saat loncat
+    window.scrollTo({ top: 0, behavior: 'auto' })
   }
 
   const handleBackToInput = () => {
@@ -701,6 +717,7 @@ function App() {
     setOpenCertModal(false)
     setActivePage('scanner')
     window.location.hash = 'scanner'
+    window.scrollTo({ top: 0, behavior: 'auto' })
   }
 
   const handleViewRecap = () => {
@@ -709,6 +726,7 @@ function App() {
     setOpenCertModal(false)
     setActivePage('results-list')
     window.location.hash = 'results-list'
+    window.scrollTo({ top: 0, behavior: 'auto' })
   }
 
   const handleSelectBatch = (batch, options = {}) => {
@@ -838,14 +856,44 @@ function App() {
       onNavigate={handleNavigate}
       onBackToLanding={handleBackToLanding}
       onDataChanged={handleDataChanged}
+      immersive={scannerImmersiveActive}
     >
-      <Container maxWidth="lg" sx={{ px: { xs: 1.5, sm: 2, md: 3 }, py: { xs: 2.5, sm: 3.5, md: 4.5 } }}>
-        <PageHeader eyebrow="Agri-Sort AI / Precision Agriculture" title={page.title} description={page.description} />
+      <Container
+        maxWidth="lg"
+        sx={
+          scannerImmersiveActive
+            ? { px: 0, py: 0 }
+            : { px: { xs: 1.5, sm: 2, md: 3 }, py: { xs: 2.5, sm: 3.5, md: 4.5 } }
+        }
+      >
+        {scannerImmersiveActive ? (
+          <Stack
+            direction="row"
+            alignItems="center"
+            justifyContent="space-between"
+            sx={{ pt: 'calc(10px + env(safe-area-inset-top))', pr: 0.5 }}
+          >
+            <Typography variant="subtitle1" fontWeight={800} color="text.primary">
+              {page.title}
+            </Typography>
+            <IconButton
+              aria-label="Keluar layar pemindaian khusus"
+              edge="end"
+              onClick={() => setScannerImmersive(false)}
+              size="small"
+            >
+              <CloseRoundedIcon />
+            </IconButton>
+          </Stack>
+        ) : (
+          <PageHeader eyebrow="Agri-Sort AI / Precision Agriculture" title={page.title} description={page.description} />
+        )}
         {harvestMessage && <Alert onClose={() => setHarvestMessage('')} severity="success" sx={{ mb: 2 }}>{harvestMessage}</Alert>}
         <ErrorBoundary key={activePage} onReset={() => setActivePage('overview')}>
           <Suspense fallback={<PageLoadingFallback />}>
             <FoundationPage
               activePage={activePage}
+              immersive={scannerImmersiveActive}
               batches={batches}
               canSyncPrices={platformAdminAccess}
               onBackToInput={handleBackToInput}
