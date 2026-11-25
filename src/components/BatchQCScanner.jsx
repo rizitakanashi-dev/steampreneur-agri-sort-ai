@@ -54,7 +54,7 @@ import { COMMODITIES, formatRupiah } from './scanner/constants.js'
 import { SaveToRecapDialog } from './scanner/SaveToRecapDialog.jsx'
 import { CertificatePreviewDialog } from './scanner/CertificatePreviewDialog.jsx'
 
-export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm }) {
+export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, immersive = false }) {
   const [selectedCommodity, setSelectedCommodity] = useState('Terung')
   const [activeTab, setActiveTab] = useState(0) // 0: Live Camera, 1: Upload File
   const [confidenceThreshold, setConfidenceThreshold] = useState(0.35)
@@ -67,6 +67,10 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm }
 
   // State Multi-Sudut (Anti-Kecurangan / Occlusion-Free)
   const [isMultiAngleMode, setIsMultiAngleMode] = useState(false)
+  // Issue #30 fase 5: Auto-Detect — scan otomatis saat nampan diam (immersive)
+  const [autoDetectMode, setAutoDetectMode] = useState(false)
+  // Panel overlay immersive: toggle tips akurasi di atas kamera
+  const [showImmersiveTips, setShowImmersiveTips] = useState(false)
   const [multiStep, setMultiStep] = useState(1) // 1: Foto Sisi 1 (Depan), 2: Foto Sisi 2 (Belakang / Goyang Nampan)
   const [imageFileFront, setImageFileFront] = useState(null)
   const [imagePreviewFront, setImagePreviewFront] = useState(null)
@@ -90,6 +94,16 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm }
   const fileInputRef = useRef(null)
   const fileInputRefFront = useRef(null)
   const fileInputRefBack = useRef(null)
+  // Issue #30 fase 3: kontrol kamera eksternal + referensi section hasil
+  const viewfinderRef = useRef(null)
+  const resultSectionRef = useRef(null)
+
+  // Setelah scan selesai di mode immersive, gulir otomatis ke hasil
+  useEffect(() => {
+    if (immersive && scanResult && resultSectionRef.current) {
+      resultSectionRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }
+  }, [immersive, scanResult])
 
   // Pastikan kamera langsung mati saat unmount (misal pindah ke Dashboard atau menu lain)
   useEffect(() => {
@@ -647,10 +661,211 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm }
       (firstBox.x2 - firstBox.x1) * (firstBox.y2 - firstBox.y1) > 0.5 * imgDims.width * imgDims.height
   )
 
+  // Thumbnail bottom bar: pakai foto terakhir yang tersedia
+  const barThumbSrc =
+    imagePreviewFront || imagePreview || scanResult?.imagePreviewFront || scanResult?.imagePreview
+
+  // Panel sensitivitas diekstrak agar dipakai bersama layout dashboard & immersive
+  const sensitivityControls = (
+    <Box sx={{ p: 1.5, bgcolor: '#f8fafc', borderRadius: 2, border: '1px dashed #cbd5e1' }}>
+      <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center' }}>
+        <Typography variant="caption" fontWeight={700} color="text.secondary">
+          Confidence Threshold (Batas Keyakinan Deteksi): {confidenceThreshold.toFixed(2)}
+        </Typography>
+        <Chip
+          size="small"
+          label={
+            isEggplant
+              ? 'Rekomendasi Terung: 0.20'
+              : isChili
+              ? 'Rekomendasi Cabai: 0.35'
+              : isTomato
+              ? 'Rekomendasi Tomat: 0.35'
+              : 'Komoditas Belum Didukung AI'
+          }
+          color={isEggplant || isTomato || isChili ? 'info' : 'default'}
+          variant="outlined"
+        />
+      </Stack>
+      <Slider
+        value={confidenceThreshold}
+        min={0.05}
+        max={0.80}
+        step={0.05}
+        onChange={(_, val) => setConfidenceThreshold(val)}
+        valueLabelDisplay="auto"
+        valueLabelFormat={(v) => `${Math.round(v * 100)}%`}
+        sx={{ mt: 1 }}
+      />
+      <Typography variant="caption" color="text.secondary">
+        Nilai lebih rendah (0.15 - 0.25) mendeteksi lebih banyak buah terung yang saling bertumpuk di keranjang.
+      </Typography>
+    </Box>
+  )
+
+  // Banner panduan pengambilan sampel (dipakai bersama layout dashboard & overlay immersive)
+  const tipsAlert = (
+    <Alert
+      severity="info"
+      icon={<InfoOutlinedIcon />}
+      sx={{
+        mb: immersive ? 0 : 2.5,
+        py: immersive ? 0.75 : undefined,
+        borderRadius: 2,
+        bgcolor: '#f0fdf4',
+        borderColor: '#bbf7d0',
+        color: '#166534',
+      }}
+    >
+      <Typography variant="body2" fontWeight={700}>
+        Tips Akurasi AI ({selectedCommodity}):
+      </Typography>
+      <Typography variant="caption" sx={{ display: 'block', mt: 0.25, color: '#15803d' }}>
+        {isEggplant
+          ? 'Model mendeteksi mutu buah per butir. Untuk akurasi optimal, ambil 2–5 buah sampel dari keranjang dan letakkan berjajar di atas nampan/alas datar (hindari tumpukan padat pasar berlapis).'
+          : isChili
+          ? 'Model mendeteksi mutu cabai per butir (Grade A, Grade B, Reject). Letakkan cabai berjajar rapi di atas nampan dengan pencahayaan memadai.'
+          : isTomato
+          ? 'Model mendeteksi mutu tomat per butir (Grade A, Grade B, Reject). Arahkan kamera tegak lurus (top-down view) dengan pencahayaan memadai agar setiap buah terdeteksi jelas.'
+          : 'Komoditas ini belum didukung model Computer Vision resmi. Silakan lakukan pemeriksaan fisik secara manual.'}
+      </Typography>
+    </Alert>
+  )
+
   return (
-    <Stack spacing={3}>
-      {/* 1. KARTU SELEKSI KOMODITAS UTAMA (PROMINENT DI ATAS) */}
-      <Card elevation={2} sx={{ borderRadius: 3, border: '1px solid', borderColor: 'divider' }}>
+    <Stack
+      spacing={immersive ? 2 : 3}
+      sx={
+        immersive
+          ? {
+              // Tanpa minHeight 100dvh: tinggi dikendalikan kartu kamera eksplisit
+              // (rantai persentase flex tidak reliable — root minHeight membuat
+              // height:100% anak-anaknya jatuh ke auto)
+              px: 0,
+              pt: 0,
+              pb: 'calc(114px + env(safe-area-inset-bottom))',
+            }
+          : undefined
+      }
+    >
+      {/* 1a. MODE IMMERSIVE: panel kontrol MENGAPUNG di atas kamera (khas aplikasi kamera HP) */}
+      {immersive ? (
+        <Box
+          sx={{
+            position: 'fixed',
+            top: 'calc(56px + env(safe-area-inset-top))',
+            left: 8,
+            right: 8,
+            zIndex: 1250,
+            p: 1.25,
+            borderRadius: 2.5,
+            bgcolor: 'rgba(15, 23, 42, 0.62)',
+            backdropFilter: 'blur(8px)',
+            border: '1px solid rgba(255, 255, 255, 0.12)',
+            color: '#e2e8f0',
+            '& .MuiChip-outlined': { color: '#e2e8f0', borderColor: 'rgba(255, 255, 255, 0.3)' },
+          }}
+        >
+          <Stack direction="row" sx={{ alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
+            <Typography variant="subtitle2" fontWeight={800} sx={{ color: '#cbd5e1' }}>
+              Komoditas &amp; Mode Inspeksi
+            </Typography>
+            <Stack direction="row" spacing={0.75} sx={{ alignItems: 'center' }}>
+              <Tooltip title="Atur sensitivitas threshold keyakinan model AI">
+                <Chip
+                  clickable
+                  onClick={() => setShowSensitivitySetting((prev) => !prev)}
+                  label={`Sensitivitas ${Math.round(confidenceThreshold * 100)}%`}
+                  size="small"
+                  color="primary"
+                  variant="outlined"
+                  sx={{ fontWeight: 700 }}
+                />
+              </Tooltip>
+              <Tooltip title="Tips akurasi pemindaian">
+                <Chip
+                  clickable
+                  icon={<InfoOutlinedIcon />}
+                  onClick={() => setShowImmersiveTips((prev) => !prev)}
+                  label="Tips"
+                  size="small"
+                  variant="outlined"
+                  sx={{ fontWeight: 700 }}
+                />
+              </Tooltip>
+            </Stack>
+          </Stack>
+          {showSensitivitySetting && <Box sx={{ mb: 1.5 }}>{sensitivityControls}</Box>}
+          {showImmersiveTips && <Box sx={{ mb: 1.5 }}>{tipsAlert}</Box>}
+          <Stack direction="row" spacing={1} useFlexGap sx={{ mb: 1, flexWrap: 'wrap' }}>
+            {COMMODITIES.map((c) => (
+              <Chip
+                key={c.id}
+                label={`${c.emoji} ${c.name}`}
+                onClick={() => handleSelectCommodity(c.id)}
+                color={selectedCommodity === c.id ? 'primary' : 'default'}
+                variant={selectedCommodity === c.id ? 'filled' : 'outlined'}
+                sx={{ fontWeight: 700 }}
+              />
+            ))}
+          </Stack>
+          <Stack direction="row" spacing={1} useFlexGap sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
+            <Chip
+              label="1 Sisi (Cepat)"
+              onClick={() => {
+                if (isMultiAngleMode || autoDetectMode) {
+                  setIsMultiAngleMode(false)
+                  setAutoDetectMode(false)
+                  handleClearImage()
+                }
+              }}
+              color={isMultiAngleMode || autoDetectMode ? 'default' : 'primary'}
+              variant={isMultiAngleMode || autoDetectMode ? 'outlined' : 'filled'}
+              size="small"
+              sx={{ fontWeight: 700 }}
+            />
+            <Chip
+              label="2 Sisi (Goyang Nampan)"
+              onClick={() => {
+                if (!isMultiAngleMode || autoDetectMode) {
+                  setIsMultiAngleMode(true)
+                  setAutoDetectMode(false)
+                  handleClearImage()
+                }
+              }}
+              color={isMultiAngleMode && !autoDetectMode ? 'success' : 'default'}
+              variant={isMultiAngleMode && !autoDetectMode ? 'filled' : 'outlined'}
+              size="small"
+              sx={{ fontWeight: 700 }}
+            />
+            <Chip
+              label="⚡ Auto-Detect"
+              onClick={() => {
+                if (!autoDetectMode) {
+                  setAutoDetectMode(true)
+                  if (isMultiAngleMode) {
+                    setIsMultiAngleMode(false)
+                    handleClearImage()
+                  }
+                }
+              }}
+              color={autoDetectMode ? 'warning' : 'default'}
+              variant={autoDetectMode ? 'filled' : 'outlined'}
+              size="small"
+              sx={{ fontWeight: 700 }}
+            />
+            <Chip
+              label={isMultiAngleMode ? '🛡️ Anti-Bias Oklusi' : autoDetectMode ? 'Scan otomatis ±3 detik stabil' : 'Cepat'}
+              size="small"
+              color={isMultiAngleMode ? 'success' : autoDetectMode ? 'warning' : 'default'}
+              variant="outlined"
+              sx={{ fontWeight: 700 }}
+            />
+          </Stack>
+        </Box>
+      ) : (
+        /* 1. KARTU SELEKSI KOMODITAS UTAMA (PROMINENT DI ATAS) */
+        <Card elevation={2} sx={{ borderRadius: 3, border: '1px solid', borderColor: 'divider' }}>
         <CardContent sx={{ p: { xs: 2, sm: 2.5 } }}>
           <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} sx={{justifyContent: 'space-between', alignItems: { sm: 'center' },  mb: 2 }}>
             <Box>
@@ -674,43 +889,8 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm }
             </Tooltip>
           </Stack>
 
-          {/* Opsi Sensitivitas Slider */}
-          {showSensitivitySetting && (
-            <Box sx={{ mb: 2.5, p: 2, bgcolor: '#f8fafc', borderRadius: 2, border: '1px dashed #cbd5e1' }}>
-              <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center' }}>
-                <Typography variant="caption" fontWeight={700} color="text.secondary">
-                  Confidence Threshold (Batas Keyakinan Deteksi): {confidenceThreshold.toFixed(2)}
-                </Typography>
-                <Chip
-                  size="small"
-                  label={
-                    isEggplant
-                      ? 'Rekomendasi Terung: 0.20'
-                      : isChili
-                      ? 'Rekomendasi Cabai: 0.35'
-                      : isTomato
-                      ? 'Rekomendasi Tomat: 0.35'
-                      : 'Komoditas Belum Didukung AI'
-                  }
-                  color={isEggplant || isTomato || isChili ? 'info' : 'default'}
-                  variant="outlined"
-                />
-              </Stack>
-              <Slider
-                value={confidenceThreshold}
-                min={0.05}
-                max={0.80}
-                step={0.05}
-                onChange={(_, val) => setConfidenceThreshold(val)}
-                valueLabelDisplay="auto"
-                valueLabelFormat={(v) => `${Math.round(v * 100)}%`}
-                sx={{ mt: 1 }}
-              />
-              <Typography variant="caption" color="text.secondary">
-                Nilai lebih rendah (0.15 - 0.25) mendeteksi lebih banyak buah terung yang saling bertumpuk di keranjang.
-              </Typography>
-            </Box>
-          )}
+          {/* Opsi Sensitivitas Slider (dipakai bersama layout dashboard & immersive) */}
+          {showSensitivitySetting && <Box sx={{ mb: 2.5 }}>{sensitivityControls}</Box>}
 
           {/* Tombol Pilihan Komoditas */}
           <Grid container spacing={1.5}>
@@ -800,20 +980,28 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm }
           </Box>
         </CardContent>
       </Card>
+      )}
 
-      {/* 2. TAMPILAN SCANNER (JIKA BELUM ADA HASIL SCAN) */}
-      {!scanResult && (
+      {/* 2. TAMPILAN SCANNER — di immersive kamera TETAP HIDUP setelah scan
+          (hasil tampil di bawah + auto-scroll), sesuai kriteria issue #30 */}
+      {(!scanResult || immersive) && (
         <Card
-          elevation={2}
+          elevation={immersive ? 0 : 2}
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
           sx={{
-            borderRadius: 3,
+            borderRadius: immersive ? 0 : 3,
             position: 'relative',
-            border: isDragging ? '2px dashed #047857' : '1px solid transparent',
-            bgcolor: isDragging ? 'rgba(4, 120, 87, 0.04)' : 'inherit',
+            border: isDragging ? '2px dashed #047857' : immersive ? 'none' : '1px solid transparent',
+            bgcolor: isDragging ? 'rgba(4, 120, 87, 0.04)' : immersive ? 'transparent' : 'inherit',
             transition: 'all 0.2s',
+            // Immersive: tinggi kamera eksplisit (100dvh - header 56 - bottom bar 104)
+            // agar viewfinder full-bleed KHAS KAMERA HP — tanpa bergantung rantai flex
+            display: immersive ? 'flex' : undefined,
+            flexDirection: immersive ? 'column' : undefined,
+            height: immersive ? 'calc(100dvh - 160px - env(safe-area-inset-bottom))' : undefined,
+            flex: immersive ? '1 0 auto' : undefined,
           }}
         >
           {isDragging && (
@@ -842,17 +1030,29 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm }
             </Box>
           )}
 
-          <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
+          <CardContent
+            sx={{
+              p: immersive ? 0 : { xs: 2, sm: 3 },
+              ...(immersive ? { flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 } : {}),
+            }}
+          >
+            {/* Di immersive tab disembunyikan — bottom bar Galeri sudah menggantikan toggle */}
             <Tabs
               value={activeTab}
               onChange={(_, val) => setActiveTab(val)}
-              variant={{ xs: 'fullWidth', sm: 'standard' }}
+              variant="standard"
               sx={{
                 borderBottom: 1,
                 borderColor: 'divider',
                 mb: 2.5,
-                // Mobile: label tab ringkas agar 2 tab muat berdampingan
+                display: immersive ? 'none' : 'block',
+                // Mobile: label tab ringkas + kedua tab berbagi lebar penuh
+                // (sebelumnya: variant object {{xs,sm}} tidak valid — MUI diam-diam memakai 'standard')
                 '& .MuiTab-root': { fontSize: { xs: '0.8125rem', sm: '0.875rem' }, minWidth: { xs: 0, sm: 90 } },
+                '@media (max-width: 599.95px)': {
+                  '& .MuiTabs-flexContainer': { width: '100%' },
+                  '& .MuiTab-root': { flex: 1 },
+                },
               }}
             >
               <Tab
@@ -891,32 +1091,15 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm }
               </Alert>
             )}
 
-            {/* Banner Panduan Pengambilan Sampel untuk Petani/Penilai */}
-            <Alert
-              severity="info"
-              icon={<InfoOutlinedIcon />}
-              sx={{ mb: 2.5, borderRadius: 2, bgcolor: '#f0fdf4', borderColor: '#bbf7d0', color: '#166534' }}
-            >
-              <Typography variant="body2" fontWeight={700}>
-                Tips Akurasi AI ({selectedCommodity}):
-              </Typography>
-              <Typography variant="caption" sx={{ display: 'block', mt: 0.25, color: '#15803d' }}>
-                {isEggplant
-                  ? 'Model mendeteksi mutu buah per butir. Untuk akurasi optimal, ambil 2–5 buah sampel dari keranjang dan letakkan berjajar di atas nampan/alas datar (hindari tumpukan padat pasar berlapis).'
-                  : isChili
-                  ? 'Model mendeteksi mutu cabai per butir (Grade A, Grade B, Reject). Letakkan cabai berjajar rapi di atas nampan dengan pencahayaan memadai.'
-                  : isTomato
-                  ? 'Model mendeteksi mutu tomat per butir (Grade A, Grade B, Reject). Arahkan kamera tegak lurus (top-down view) dengan pencahayaan memadai agar setiap buah terdeteksi jelas.'
-                  : 'Komoditas ini belum didukung model Computer Vision resmi. Silakan lakukan pemeriksaan fisik secara manual.'}
-              </Typography>
-            </Alert>
+            {/* Banner panduan pengambilan sampel — di immersive pindah ke panel overlay (chip Tips) */}
+            {!immersive && tipsAlert}
 
             {/* TAB 0: LIVE CAMERA */}
             {activeTab === 0 && (
-              <Box>
+              <Box sx={immersive ? { flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 } : undefined}>
                 {/* 1. KONDISI MODE MULTI-SUDUT AKTIF */}
                 {isMultiAngleMode ? (
-                  <Box>
+                  <Box sx={immersive ? { flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 } : undefined}>
                     {/* Stepper Indikator 2 Langkah */}
                     <Box sx={{ mb: 2.5, p: 2, bgcolor: '#f0fdf4', borderRadius: 2, border: '1px solid #bbf7d0' }}>
                       <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} sx={{ justifyContent: 'space-between', alignItems: { sm: 'center' } }}>
@@ -983,9 +1166,12 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm }
                     )}
 
                     <LiveCameraViewfinder
+                      ref={viewfinderRef}
                       key={`viewfinder-step-${multiStep}`}
                       onCapture={handleLiveCameraCapture}
                       disabled={isScanning}
+                      variant={immersive ? 'immersive' : 'default'}
+                      autoDetect={false}
                     />
 
                     {isScanning && (
@@ -999,7 +1185,7 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm }
                   </Box>
                 ) : (
                   /* 2. KONDISI MODE SUDUT TUNGGAL */
-                  <Box>
+                  <Box sx={immersive ? { flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 } : undefined}>
                     {imagePreview ? (
                       <Box sx={{ position: 'relative', borderRadius: 2, overflow: 'hidden', bgcolor: '#0f172a', textAlign: 'center' }}>
                         <Box
@@ -1051,8 +1237,11 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm }
                       </Box>
                     ) : (
                       <LiveCameraViewfinder
+                        ref={viewfinderRef}
                         onCapture={handleLiveCameraCapture}
                         disabled={isScanning}
+                        variant={immersive ? 'immersive' : 'default'}
+                        autoDetect={immersive && autoDetectMode && !isMultiAngleMode}
                       />
                     )}
 
@@ -1350,7 +1539,7 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm }
 
       {/* 3. HASIL SCAN INSTAN LANGSUNG MUNCUL DI SINI! */}
       {scanResult && (
-        <Stack spacing={3}>
+        <Stack ref={resultSectionRef} spacing={3} sx={immersive ? { px: 1.5 } : undefined}>
           {saveSuccessMsg && (
             <Alert severity="success" onClose={() => setSaveSuccessMsg('')}>
               {saveSuccessMsg}
@@ -1855,6 +2044,136 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm }
         selectedCommodity={selectedCommodity}
         statusDetails={statusDetails}
       />
+
+      {/* 4. BOTTOM ACTION BAR IMMERSIVE (issue #30): thumbnail hasil kiri,
+          shutter thumb-friendly tengah, galeri kanan — fixed di dasar layar */}
+      {immersive && (
+        <Box
+          sx={{
+            position: 'fixed',
+            bottom: 0,
+            left: 0,
+            right: 0,
+            zIndex: 1100,
+            px: 2.5,
+            pt: 1.5,
+            pb: 'calc(14px + env(safe-area-inset-bottom))',
+            bgcolor: 'rgba(15, 23, 42, 0.94)',
+            backdropFilter: 'blur(10px)',
+            borderTop: '1px solid rgba(255, 255, 255, 0.08)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: { xs: 1.25, sm: 2 },
+          }}
+        >
+          {/* Kiri: Periksa Hasil (aktif setelah ada hasil scan) */}
+          <Button
+            aria-label="Periksa hasil pemindaian terkini"
+            disabled={!scanResult}
+            onClick={() => resultSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+            sx={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              minWidth: 64,
+              px: 0.5,
+              py: 0.5,
+              borderRadius: 2,
+              color: '#fff',
+              opacity: scanResult ? 1 : 0.45,
+              '& .caption-label': { fontSize: '0.6875rem', fontWeight: 700, mt: 0.25 },
+              '&.Mui-disabled': { color: '#94a3b8' },
+            }}
+          >
+            {barThumbSrc ? (
+              <Box
+                component="img"
+                src={barThumbSrc}
+                alt="Thumbnail hasil terakhir"
+                sx={{
+                  width: 40,
+                  height: 40,
+                  objectFit: 'cover',
+                  borderRadius: 1.5,
+                  border: '1px solid rgba(255, 255, 255, 0.25)',
+                  bgcolor: '#1e293b',
+                }}
+              />
+            ) : (
+              <Box
+                sx={{
+                  width: 40,
+                  height: 40,
+                  borderRadius: 1.5,
+                  border: '1px dashed rgba(255, 255, 255, 0.25)',
+                  bgcolor: '#1e293b',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <CameraAltRoundedIcon sx={{ fontSize: 20, color: '#475569' }} />
+              </Box>
+            )}
+            <Typography className="caption-label" component="span">
+              Hasil
+            </Typography>
+          </Button>
+
+          {/* Flip kamera */}
+          <IconButton
+            aria-label="Ganti kamera depan atau belakang"
+            onClick={() => viewfinderRef.current?.flip()}
+            disabled={activeTab !== 0 || isScanning}
+            sx={{
+              width: 44,
+              height: 44,
+              color: '#fff',
+              bgcolor: 'rgba(255, 255, 255, 0.10)',
+              '&:hover': { bgcolor: 'rgba(255, 255, 255, 0.2)' },
+              '&.Mui-disabled': { color: '#64748b' },
+            }}
+          >
+            <FlipCameraIosRoundedIcon />
+          </IconButton>
+
+          {/* Shutter utama ~72px, thumb-friendly */}
+          <IconButton
+            aria-label="Ambil foto dan scan mutu"
+            disabled={activeTab !== 0 || isScanning}
+            onClick={() => viewfinderRef.current?.capture()}
+            sx={{
+              width: 72,
+              height: 72,
+              borderRadius: '50%',
+              bgcolor: '#047857',
+              color: '#fff',
+              boxShadow: '0 8px 24px rgba(3, 110, 69, 0.45)',
+              '&:hover': { bgcolor: '#065f46' },
+              '&.Mui-disabled': { bgcolor: '#1e293b', color: '#475569' },
+              border: '3px solid rgba(255, 255, 255, 0.35)',
+            }}
+          >
+            {isScanning ? <CircularProgress size={30} sx={{ color: '#fff' }} /> : <CameraAltRoundedIcon sx={{ fontSize: 30 }} />}
+          </IconButton>
+
+          {/* Kanan: Galeri / kembali ke kamera */}
+          <IconButton
+            aria-label={activeTab === 0 ? 'Buka galeri untuk unggah berkas' : 'Kembali ke kamera langsung'}
+            onClick={() => setActiveTab(activeTab === 0 ? 1 : 0)}
+            sx={{
+              width: 44,
+              height: 44,
+              color: '#fff',
+              bgcolor: 'rgba(255, 255, 255, 0.10)',
+              '&:hover': { bgcolor: 'rgba(255, 255, 255, 0.2)' },
+            }}
+          >
+            {activeTab === 0 ? <PhotoLibraryRoundedIcon /> : <CameraAltRoundedIcon />}
+          </IconButton>
+        </Box>
+      )}
     </Stack>
   )
 }
