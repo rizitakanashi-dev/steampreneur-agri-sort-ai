@@ -22,6 +22,7 @@ import AutoAwesomeRoundedIcon from '@mui/icons-material/AutoAwesomeRounded'
 import CameraAltRoundedIcon from '@mui/icons-material/CameraAltRounded'
 import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded'
 import CloudUploadRoundedIcon from '@mui/icons-material/CloudUploadRounded'
+import CloseRoundedIcon from '@mui/icons-material/CloseRounded'
 import DeleteOutlineRoundedIcon from '@mui/icons-material/DeleteOutlineRounded'
 import FlipCameraIosRoundedIcon from '@mui/icons-material/FlipCameraIosRounded'
 import HistoryRoundedIcon from '@mui/icons-material/HistoryRounded'
@@ -99,10 +100,14 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
   const viewfinderRef = useRef(null)
   const resultSectionRef = useRef(null)
 
-  // Setelah scan selesai di mode immersive, gulir otomatis ke hasil
+  // Setelah scan selesai di mode immersive, hasil muncul sebagai bottom sheet
+  // (Paket 3: lembar hasil di atas kamera — native, kamera tetap hidup di belakang)
+  const [resultSheetOpen, setResultSheetOpen] = useState(false)
   useEffect(() => {
-    if (immersive && scanResult && resultSectionRef.current) {
-      resultSectionRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    if (immersive && scanResult) {
+      setResultSheetOpen(true)
+    } else if (!scanResult) {
+      setResultSheetOpen(false)
     }
   }, [immersive, scanResult])
 
@@ -1569,9 +1574,50 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
         </Card>
       )}
 
-      {/* 3. HASIL SCAN INSTAN LANGSUNG MUNCUL DI SINI! */}
+      {/* 3. HASIL SCAN INSTAN — di immersive: bottom sheet di atas kamera;
+          di desktop: section alur biasa */}
       {scanResult && (
-        <Stack ref={resultSectionRef} spacing={3} sx={immersive ? { px: 1.5 } : undefined}>
+        <Stack
+          ref={resultSectionRef}
+          spacing={3}
+          sx={
+            immersive
+              ? {
+                  position: 'fixed',
+                  left: 0,
+                  right: 0,
+                  bottom: 'calc(106px + env(safe-area-inset-bottom))',
+                  maxHeight: 'calc(100dvh - 180px - env(safe-area-inset-bottom))',
+                  overflowY: 'auto',
+                  zIndex: 1200,
+                  p: 2,
+                  bgcolor: 'rgba(15, 23, 42, 0.94)',
+                  backdropFilter: 'blur(10px)',
+                  borderRadius: '16px 16px 0 0',
+                  border: '1px solid rgba(255, 255, 255, 0.12)',
+                  borderBottom: 'none',
+                  display: resultSheetOpen ? 'flex' : 'none',
+                  boxShadow: '0 -8px 32px rgba(0, 0, 0, 0.45)',
+                }
+              : undefined
+          }
+        >
+          {immersive && (
+            <Stack direction="row" sx={{ alignItems: 'center', justifyContent: 'space-between' }}>
+              <Typography variant="subtitle2" fontWeight={800} sx={{ color: '#e2e8f0' }}>
+                Hasil Pemindaian
+              </Typography>
+              <IconButton
+                aria-label="Tutup lembar hasil"
+                edge="end"
+                size="small"
+                onClick={() => setResultSheetOpen(false)}
+                sx={{ color: '#94a3b8' }}
+              >
+                <CloseRoundedIcon />
+              </IconButton>
+            </Stack>
+          )}
           {saveSuccessMsg && (
             <Alert severity="success" onClose={() => setSaveSuccessMsg('')}>
               {saveSuccessMsg}
@@ -2103,7 +2149,10 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
           <Button
             aria-label="Periksa hasil pemindaian terkini"
             disabled={!scanResult}
-            onClick={() => resultSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+            onClick={() => {
+              if (immersive) setResultSheetOpen(true)
+              else resultSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+            }}
             sx={{
               display: 'flex',
               flexDirection: 'column',
