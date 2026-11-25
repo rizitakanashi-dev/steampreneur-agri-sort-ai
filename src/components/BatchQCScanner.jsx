@@ -929,6 +929,12 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
             border: isDragging ? '2px dashed #047857' : immersive ? 'none' : '1px solid transparent',
             bgcolor: isDragging ? 'rgba(4, 120, 87, 0.04)' : immersive ? 'transparent' : 'inherit',
             transition: 'all 0.2s',
+            // Immersive: kartu mengisi sisa tinggi layar agar viewfinder full-bleed
+            // (rantai flex: Card → CardContent → Box tab → viewfinder)
+            flex: immersive ? 1 : undefined,
+            display: immersive ? 'flex' : undefined,
+            flexDirection: immersive ? 'column' : undefined,
+            minHeight: immersive ? 0 : undefined,
           }}
         >
           {isDragging && (
@@ -957,7 +963,12 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
             </Box>
           )}
 
-          <CardContent sx={{ p: immersive ? 0 : { xs: 2, sm: 3 } }}>
+          <CardContent
+            sx={{
+              p: immersive ? 0 : { xs: 2, sm: 3 },
+              ...(immersive ? { flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 } : {}),
+            }}
+          >
             {/* Di immersive tab disembunyikan — bottom bar Galeri sudah menggantikan toggle */}
             <Tabs
               value={activeTab}
@@ -1042,10 +1053,10 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
 
             {/* TAB 0: LIVE CAMERA */}
             {activeTab === 0 && (
-              <Box>
+              <Box sx={immersive ? { flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 } : undefined}>
                 {/* 1. KONDISI MODE MULTI-SUDUT AKTIF */}
                 {isMultiAngleMode ? (
-                  <Box>
+                  <Box sx={immersive ? { flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 } : undefined}>
                     {/* Stepper Indikator 2 Langkah */}
                     <Box sx={{ mb: 2.5, p: 2, bgcolor: '#f0fdf4', borderRadius: 2, border: '1px solid #bbf7d0' }}>
                       <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} sx={{ justifyContent: 'space-between', alignItems: { sm: 'center' } }}>
@@ -1131,7 +1142,7 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
                   </Box>
                 ) : (
                   /* 2. KONDISI MODE SUDUT TUNGGAL */
-                  <Box>
+                  <Box sx={immersive ? { flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 } : undefined}>
                     {imagePreview ? (
                       <Box sx={{ position: 'relative', borderRadius: 2, overflow: 'hidden', bgcolor: '#0f172a', textAlign: 'center' }}>
                         <Box

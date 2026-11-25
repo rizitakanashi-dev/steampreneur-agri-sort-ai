@@ -367,7 +367,8 @@ export const LiveCameraViewfinder = forwardRef(function LiveCameraViewfinder({ o
         overflow: 'hidden',
         bgcolor: '#0f172a',
         position: 'relative',
-        minHeight: isImmersive ? 200 : { xs: 260, sm: 360 },
+        minHeight: isImmersive ? 220 : { xs: 260, sm: 360 },
+        flex: isImmersive ? 1 : undefined,
         display: 'flex',
         flexDirection: 'column',
         justifyContent: 'center',
@@ -428,11 +429,12 @@ export const LiveCameraViewfinder = forwardRef(function LiveCameraViewfinder({ o
         muted
         style={{
           width: '100%',
-          // Immersive: viewfinder besar (±68% layar) — seluruh frame sensor
-          // tetap tampil (contain), tidak dipotong preview
-          height: isImmersive ? 'min(68dvh, 640px)' : 'auto',
+          // Immersive: full-bleed khas kamera HP — video mengisi seluruh area
+          // viewfinder edge-to-edge (cover, tanpa pita gelap); foto yang disimpan
+          // tetap frame sensor penuh via videoWidth×videoHeight
+          height: isImmersive ? '100%' : 'auto',
           maxHeight: isImmersive ? 'none' : 460,
-          objectFit: 'contain',
+          objectFit: isImmersive ? 'cover' : 'contain',
           display: cameraState === 'active' ? 'block' : 'none',
         }}
       />
