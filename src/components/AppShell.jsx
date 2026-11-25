@@ -28,6 +28,7 @@ import PriceCheckRoundedIcon from '@mui/icons-material/PriceCheckRounded'
 import QrCodeScannerRoundedIcon from '@mui/icons-material/QrCodeScannerRounded'
 import SettingsRoundedIcon from '@mui/icons-material/SettingsRounded'
 import TableChartRoundedIcon from '@mui/icons-material/TableChartRounded'
+import AdminPanelSettingsRoundedIcon from '@mui/icons-material/AdminPanelSettingsRounded'
 import { SettingsDialog } from './SettingsDialog.jsx'
 
 const drawerWidth = 248
@@ -40,7 +41,7 @@ const navigationItems = [
   { id: 'pricing', label: 'Harga Pasar', icon: PriceCheckRoundedIcon },
 ]
 
-export function AppShell({ activePage, activeUser, onLogout, onNavigate, onDataChanged, onBackToLanding, children, immersive = false }) {
+export function AppShell({ activePage, activeUser, showAdministration = false, onLogout, onNavigate, onDataChanged, onBackToLanding, children, immersive = false }) {
   const theme = useTheme()
   const isDesktop = useMediaQuery(theme.breakpoints.up('md'))
   const [mobileOpen, setMobileOpen] = useState(false)
@@ -151,6 +152,15 @@ export function AppShell({ activePage, activeUser, onLogout, onNavigate, onDataC
           ))}
         </List>
       </Box>
+
+      {showAdministration && <Box sx={{ px: 1.5, pt: 0.5 }}>
+        <List disablePadding>
+          <ListItemButton onClick={() => handleNavigate('admin')} sx={{ borderRadius: 1.75, minHeight: 44, px: 1.5, '&:hover': { bgcolor: 'rgba(1, 110, 68, 0.08)' } }}>
+            <ListItemIcon sx={{ color: 'text.secondary', minWidth: 36 }}><AdminPanelSettingsRoundedIcon fontSize="small" /></ListItemIcon>
+            <ListItemText primary="Administration" slotProps={{ primary: { sx: { fontSize: 13, fontWeight: 600 } } }} />
+          </ListItemButton>
+        </List>
+      </Box>}
 
       <Box sx={{ mt: 1, px: 1.5 }}>
         <Typography color="text.secondary" sx={{ px: 1.5, pb: 1.25, fontSize: 12, fontWeight: 800, letterSpacing: '0.12em' }}>

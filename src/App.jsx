@@ -41,6 +41,7 @@ import { stopAllActiveCameraStreams } from './components/LiveCameraViewfinder.js
 import { ErrorBoundary } from './components/ErrorBoundary.jsx'
 import { PageHeader } from './components/PageHeader.jsx'
 import { logoutActiveUser, readActiveUser, restoreAuthSession, getAuthHeaders } from './business/authStorage.js'
+import { createAdminApi, loadAdminContext } from './services/adminApi.js'
 
 /*
  * Code splitting per halaman: komponen berat (scanner AI, chart, sertifikat)
@@ -55,6 +56,7 @@ const HarvestForm = lazy(() => import('./components/HarvestForm.jsx').then((m) =
 const HarvestRecap = lazy(() => import('./components/HarvestRecap.jsx').then((m) => ({ default: m.HarvestRecap })))
 const QCResults = lazy(() => import('./components/QCResults.jsx').then((m) => ({ default: m.QCResults })))
 const PricingDashboard = lazy(() => import('./components/PricingDashboard.jsx').then((m) => ({ default: m.PricingDashboard })))
+const AdminDashboardGate = lazy(() => import('./pages/AdminDashboard.jsx').then((m) => ({ default: m.AdminDashboardGate })))
 
 function PageLoadingFallback() {
   return (
@@ -398,6 +400,7 @@ function FoundationPage({
   onSelectBatch,
   onBatchSaved,
   onDeleteBatch,
+  canSyncPrices = false,
   openCertModal = false,
   immersive = false,
   onEnterImmersive,
@@ -452,7 +455,7 @@ function FoundationPage({
   if (activePage === 'results-list') {
     return <HarvestRecap batches={batches} onSelectBatch={onSelectBatch} onDeleteBatch={onDeleteBatch} />
   }
-  if (activePage === 'pricing') return <PricingDashboard />
+  if (activePage === 'pricing') return <PricingDashboard canSyncPrices={canSyncPrices} />
   return (
     <Card>
       <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
@@ -470,6 +473,9 @@ function getInitialRoute() {
   if (typeof window !== 'undefined') {
     const rawHash = window.location.hash.replace('#', '')
     const hasSession = Boolean(getAuthHeaders().Authorization)
+    if (rawHash === 'admin' || rawHash.startsWith('admin/')) {
+      return { view: hasSession ? 'app' : 'login', page: 'admin' }
+    }
     if (rawHash === 'login') {
       return { view: 'login', page: 'overview' }
     }
@@ -495,6 +501,8 @@ function getInitialRoute() {
 
 function App() {
   const [activeUser, setActiveUser] = useState(() => readActiveUser())
+  const [adminAccess, setAdminAccess] = useState(false)
+  const [platformAdminAccess, setPlatformAdminAccess] = useState(false)
   const [sessionChecking, setSessionChecking] = useState(() => Boolean(getAuthHeaders().Authorization))
   const [currentView, setCurrentView] = useState(() => getInitialRoute().view)
   const [activePage, setActivePage] = useState(() => getInitialRoute().page)
@@ -534,6 +542,27 @@ function App() {
   }, [sessionChecking])
 
   useEffect(() => {
+    if (sessionChecking || !activeUser) {
+      setAdminAccess(false)
+      setPlatformAdminAccess(false)
+      return undefined
+    }
+    let cancelled = false
+    loadAdminContext(createAdminApi()).then((context) => {
+      if (!cancelled) {
+        setAdminAccess(context.mode === 'super_admin' || context.mode === 'organization_admin')
+        setPlatformAdminAccess(context.mode === 'super_admin')
+      }
+    }).catch(() => {
+      if (!cancelled) {
+        setAdminAccess(false)
+        setPlatformAdminAccess(false)
+      }
+    })
+    return () => { cancelled = true }
+  }, [activeUser, sessionChecking])
+
+  useEffect(() => {
     const handleHash = () => {
       const hash = window.location.hash.replace('#', '')
       const user = getAuthHeaders().Authorization ? readActiveUser() : null
@@ -544,6 +573,15 @@ function App() {
       } else if (hash === 'register' || hash.includes('access_token=')) {
         stopAllActiveCameraStreams()
         setCurrentView('register')
+      } else if (hash === 'admin' || hash.startsWith('admin/')) {
+        stopAllActiveCameraStreams()
+        if (!user) {
+          setPendingPage('admin')
+          setCurrentView('login')
+        } else {
+          setCurrentView('app')
+          setActivePage('admin')
+        }
       } else if (pages[hash]) {
         if (hash !== 'scanner') {
           stopAllActiveCameraStreams()
@@ -565,7 +603,7 @@ function App() {
   }, [])
 
   const handleOpenApp = (targetPage = 'overview') => {
-    const pageToOpen = pages[targetPage] ? targetPage : 'overview'
+    const pageToOpen = targetPage === 'admin' || pages[targetPage] ? targetPage : 'overview'
     if (pageToOpen !== 'scanner') {
       stopAllActiveCameraStreams()
     }
@@ -580,7 +618,7 @@ function App() {
     }
     setCurrentView('app')
     setActivePage(pageToOpen)
-    window.location.hash = pageToOpen
+    window.location.hash = pageToOpen === 'admin' ? 'admin/overview' : pageToOpen
     if (pageToOpen === 'scanner') setScannerImmersive(true)
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
@@ -598,28 +636,32 @@ function App() {
   }
 
   const handleLoginSuccess = (loggedInUser) => {
+    setAdminAccess(false)
+    setPlatformAdminAccess(false)
     setActiveUser(loggedInUser)
     const userBatches = readBatches()
     setBatches(userBatches)
     setSelectedBatch(userBatches[userBatches.length - 1] || null)
-    const destination = pages[pendingPage] ? pendingPage : 'overview'
+    const destination = pendingPage === 'admin' || pages[pendingPage] ? pendingPage : 'overview'
     setCurrentView('app')
     setActivePage(destination)
-    window.location.hash = destination
+    window.location.hash = destination === 'admin' ? 'admin/overview' : destination
     if (destination === 'scanner') setScannerImmersive(true)
     setHarvestMessage(`Selamat datang kembali, ${loggedInUser.fullName} (${loggedInUser.email})!`)
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
   const handleRegisterSuccess = (newUser) => {
+    setAdminAccess(false)
+    setPlatformAdminAccess(false)
     setActiveUser(newUser)
     const userBatches = readBatches()
     setBatches(userBatches)
     setSelectedBatch(userBatches[userBatches.length - 1] || null)
-    const destination = pages[pendingPage] ? pendingPage : 'overview'
+    const destination = pendingPage === 'admin' || pages[pendingPage] ? pendingPage : 'overview'
     setCurrentView('app')
     setActivePage(destination)
-    window.location.hash = destination
+    window.location.hash = destination === 'admin' ? 'admin/overview' : destination
     if (destination === 'scanner') setScannerImmersive(true)
     setHarvestMessage(`Selamat datang, ${newUser.fullName} (${newUser.email})! Akun Anda berhasil terdaftar.`)
     window.scrollTo({ top: 0, behavior: 'smooth' })
@@ -627,6 +669,8 @@ function App() {
 
   const handleLogout = () => {
     stopAllActiveCameraStreams()
+    setAdminAccess(false)
+    setPlatformAdminAccess(false)
     void logoutActiveUser()
     setActiveUser(null)
     setBatches([])
@@ -645,6 +689,14 @@ function App() {
   }
 
   const handleNavigate = (pageId) => {
+    if (pageId === 'admin') {
+      stopAllActiveCameraStreams()
+      setCurrentView('app')
+      setActivePage('admin')
+      window.location.hash = 'admin/overview'
+      setHarvestMessage('')
+      return
+    }
     if (pageId === 'landing') {
       handleBackToLanding()
       return
@@ -781,10 +833,27 @@ function App() {
     )
   }
 
+  if (activePage === 'admin') {
+    return (
+      <Suspense fallback={<PageLoadingFallback />}>
+        <AdminDashboardGate
+          onAccessChange={setAdminAccess}
+          onBack={() => handleOpenApp('overview')}
+          onUnauthorized={() => {
+            handleLogout()
+            window.location.hash = 'login'
+            setCurrentView('login')
+          }}
+        />
+      </Suspense>
+    )
+  }
+
   return (
     <AppShell
       activePage={activePage}
       activeUser={activeUser}
+      showAdministration={adminAccess}
       onLogout={handleLogout}
       onNavigate={handleNavigate}
       onBackToLanding={handleBackToLanding}
@@ -829,6 +898,7 @@ function App() {
               immersive={scannerImmersiveActive}
               onEnterImmersive={() => setScannerImmersive(true)}
               batches={batches}
+              canSyncPrices={platformAdminAccess}
               onBackToInput={handleBackToInput}
               onHarvestConfirm={handleHarvestConfirm}
               onNavigate={handleNavigate}

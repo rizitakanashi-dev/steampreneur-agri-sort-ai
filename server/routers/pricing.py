@@ -5,7 +5,7 @@ Dokumen Acuan: docs/rencana-kerja-fullstack.md (Task FS-BE-04)
 """
 
 from typing import Any, Dict
-from fastapi import APIRouter, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from server.services.bapanas_service import bapanas_service
 from server.services.sp2kp_service import sp2kp_service
@@ -13,6 +13,7 @@ from server.services.pricing_service import (
     get_commodity_pricing,
     list_supported_commodities,
 )
+from server.utils.authorization import require_permission
 
 router = APIRouter(prefix="/api/v1/pricing", tags=["Pricing & Market Reference"])
 
@@ -50,7 +51,7 @@ async def get_bapanas_commodity(commodity: str) -> Dict[str, Any]:
 
 
 @router.post("/bapanas/sync")
-async def sync_bapanas() -> Dict[str, Any]:
+async def sync_bapanas(_: Any = Depends(require_permission("pricing.sync"))) -> Dict[str, Any]:
     """
     Memicu pembaruan sinkronisasi feed BAPANAS secara instan.
     """
@@ -101,7 +102,7 @@ async def get_sp2kp_commodity(commodity: str) -> Dict[str, Any]:
 
 
 @router.post("/sp2kp/sync")
-async def sync_sp2kp() -> Dict[str, Any]:
+async def sync_sp2kp(_: Any = Depends(require_permission("pricing.sync"))) -> Dict[str, Any]:
     """
     Memicu pembaruan sinkronisasi feed SP2KP Kemendag RI secara instan.
     """

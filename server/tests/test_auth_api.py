@@ -2,10 +2,18 @@ import unittest
 from unittest.mock import patch
 
 from server.routers import auth as auth_router
+from server.config.auth_config import AuthConfig, AuthProviderUnavailableError
 from server.services.auth_service import AuthService
 
 
 class TestAuthApiRoutes(unittest.IsolatedAsyncioTestCase):
+    async def test_provider_unavailable_is_reported_as_service_unavailable(self):
+        with self.assertRaises(Exception) as raised:
+            auth_router._raise_auth_error(AuthProviderUnavailableError("private upstream detail"), "LOGIN_AUTH_ERROR")
+        self.assertEqual(raised.exception.status_code, 503)
+        self.assertEqual(raised.exception.detail["code"], "AUTH_PROVIDER_UNAVAILABLE")
+        self.assertNotIn("private upstream detail", str(raised.exception.detail))
+
     async def test_registration_returns_confirmation_required_without_authenticated_session(self):
         payload = auth_router.RegisterRequest(
             fullName="Petani Contoh",
@@ -48,7 +56,7 @@ class TestAuthApiRoutes(unittest.IsolatedAsyncioTestCase):
 
 class TestNoFileBackedAuth(unittest.TestCase):
     def test_auth_service_has_no_users_or_otp_file_store(self):
-        service = AuthService(supabase_url="https://example.supabase.co", supabase_anon_key="anon")
+        service = AuthService(config=AuthConfig(app_env="development", auth_mode="supabase", supabase_url="https://example.supabase.co", supabase_anon_key="anon"))
         self.assertFalse(hasattr(service, "users_path"))
         self.assertFalse(hasattr(service, "otp_path"))
 

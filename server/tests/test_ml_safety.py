@@ -12,6 +12,8 @@ Memverifikasi kepatuhan terhadap P0 ML Safety & Grading Rubric Validation:
 """
 
 from io import BytesIO
+from pathlib import Path
+import tempfile
 import unittest
 from unittest.mock import patch
 from PIL import Image
@@ -20,6 +22,7 @@ try:
     from fastapi.testclient import TestClient
     from server.main import app
     from server.utils.auth import get_current_user
+    from server.tests.storage_isolation import isolated_scan_storage
     HAS_FASTAPI = True
 except ImportError:
     TestClient = None
@@ -126,6 +129,10 @@ def _mock_tomat_inference_result(confidence=0.91):
 @unittest.skipUnless(HAS_FASTAPI, "FastAPI atau TestClient tidak terpasang")
 class TestMLSafetyRemediation(unittest.TestCase):
     def setUp(self):
+        self.storage_dir = tempfile.TemporaryDirectory(prefix="agri-sort-qc-test-")
+        test_storage = isolated_scan_storage(Path(self.storage_dir.name))
+        self.storage_patcher = patch("server.routers.qc.storage_service", test_storage)
+        self.storage_patcher.start()
         app.dependency_overrides[get_current_user] = lambda: {
             "id": "test-user",
             "email": "test@gmail.com",
@@ -137,6 +144,8 @@ class TestMLSafetyRemediation(unittest.TestCase):
 
     def tearDown(self):
         app.dependency_overrides.pop(get_current_user, None)
+        self.storage_patcher.stop()
+        self.storage_dir.cleanup()
 
     # Skenario 1: Terung dengan inference sukses -> 'ai_detected'
     @patch("server.routers.qc.ai_engine")
