@@ -737,7 +737,14 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
       spacing={immersive ? 2 : 3}
       sx={
         immersive
-          ? { minHeight: '100dvh', px: 0, pt: 0, pb: 'calc(128px + env(safe-area-inset-bottom))' }
+          ? {
+              // Tanpa minHeight 100dvh: tinggi dikendalikan kartu kamera eksplisit
+              // (rantai persentase flex tidak reliable — root minHeight membuat
+              // height:100% anak-anaknya jatuh ke auto)
+              px: 0,
+              pt: 0,
+              pb: 'calc(114px + env(safe-area-inset-bottom))',
+            }
           : undefined
       }
     >
@@ -989,12 +996,12 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
             border: isDragging ? '2px dashed #047857' : immersive ? 'none' : '1px solid transparent',
             bgcolor: isDragging ? 'rgba(4, 120, 87, 0.04)' : immersive ? 'transparent' : 'inherit',
             transition: 'all 0.2s',
-            // Immersive: kartu mengisi sisa tinggi layar agar viewfinder full-bleed
-            // (rantai flex: Card → CardContent → Box tab → viewfinder)
-            flex: immersive ? '1 0 auto' : undefined,
+            // Immersive: tinggi kamera eksplisit (100dvh - header 56 - bottom bar 104)
+            // agar viewfinder full-bleed KHAS KAMERA HP — tanpa bergantung rantai flex
             display: immersive ? 'flex' : undefined,
             flexDirection: immersive ? 'column' : undefined,
-            minHeight: immersive ? 'calc(100dvh - 190px - env(safe-area-inset-bottom))' : undefined,
+            height: immersive ? 'calc(100dvh - 160px - env(safe-area-inset-bottom))' : undefined,
+            flex: immersive ? '1 0 auto' : undefined,
           }}
         >
           {isDragging && (
