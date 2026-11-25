@@ -78,7 +78,7 @@ All line numbers refer to `supabase/migrations/20261124000100_org_rbac.sql`.
 | Item | Status | Why it matters |
 |---|---|---|
 | Live `scans.user_id` FK action | **UNKNOWN** | Determines whether deleting an account deletes scan history. `storage_service.get_supabase_ddl()` only adds `RESTRICT` for a newly created FK; `test_migration_safety.py` asserts an existing `CASCADE` is preserved. No live `D`/`L` result exists. |
-| Whether this migration was ever applied to any environment | **UNKNOWN** | Decides draft revision versus forward migration (section 9.1). Needs `K.1`/`K.2`. |
+| Whether this migration was ever applied to any environment | **UNKNOWN** | Historical detail only: D7 now uses the immutable base plus forward migration path (section 9.1), independent of this answer. |
 | `postgres` privilege to create a trigger on `auth.users` | **UNKNOWN** | The migration fails at line 105 if `TRIGGER` is not held. |
 | Actual `session_user` in the Supabase SQL Editor | **UNKNOWN** | Bootstrap allowlist may not match the execution context. |
 | Default privileges granting `service_role` on new `public` tables | **UNKNOWN** | Supabase commonly grants `ALL` to API roles; `REVOKE` only covers `anon`/`authenticated`. |
@@ -535,16 +535,17 @@ Conclusion: the workflow is independent of the FK action, so the RBAC migration 
 
 ## 9. Migration implementation plan
 
-### 9.1 Revise the draft or add a forward migration?
+### 9.1 Base migration and forward migration (D7 resolved)
 
-| Condition | Path |
+The historical question was whether to revise the base before a first apply or add a forward migration after an apply. D7 is resolved by doing both safely: `20261124000100_org_rbac.sql` remains immutable, and `20261124000200_org_rbac_retention.sql` is the forward path for fresh and already-applied environments. No production migration history is assumed; staging must still verify which path applies.
+
+| Environment | Path |
 |---|---|
-| Migration never applied anywhere (expected; history **UNKNOWN**) | revise `20261124000100_org_rbac.sql` before its first apply |
-| Applied in any environment | add a new forward migration; never edit an applied migration |
+| Fresh database | apply the base migration, then the forward retention migration |
+| Base already applied | apply only the forward retention migration |
+| Unknown or partially reconciled | stop; reconcile before applying either migration |
 
-Confirm with `K.1` and `K.2` before choosing. Until then, implementation is blocked on D7.
-
-### 9.2 Required DDL changes (design only, not executed)
+### 9.2 Required DDL changes (implemented locally; not executed remotely)
 
 ```sql
 -- 1. Audit retention: remove the blocking FK, keep the column.
@@ -563,7 +564,7 @@ ALTER TABLE public.platform_roles
 --    public.scans DDL is deliberately not changed.
 ```
 
-Constraint names are PostgreSQL defaults and must be confirmed with query `D` first. On the forward-migration path use `DROP CONSTRAINT IF EXISTS`; on the draft-revision path the names are created in the same transaction, so plain `DROP` is acceptable.
+Constraint names are PostgreSQL defaults and must be confirmed with query `D` first. The forward migration uses `DROP CONSTRAINT IF EXISTS` for these pre-existing constraints; it is otherwise single-shot and fails closed rather than masking a partially reconciled schema.
 
 Optional, decision-dependent: `BEFORE TRUNCATE` audit trigger (D5); deletion preflight function instead of the runbook query (D6).
 
@@ -591,7 +592,7 @@ Recommendation: one maintenance window; measure on staging; consider splitting t
 - The draft remains intentionally single-shot: the guard aborts if any target table exists.
 - A failed apply rolls back completely (DDL is transactional), so retry after fixing the cause is safe.
 - Do not add blanket `IF NOT EXISTS`: it would mask a partially reconciled schema.
-- On the forward-migration path, guard each `ALTER` with an existence check and keep the same fail-closed behavior.
+- The forward migration uses existence checks only for constraints whose names predate it. It does not add blanket `IF NOT EXISTS`, so a partially reconciled schema still fails closed.
 
 ### 9.6 Rollback and PITR
 
@@ -613,12 +614,12 @@ Recommendation: one maintenance window; measure on staging; consider splitting t
 
 ### 9.8 D1 workflow objects and rollout
 
-No change is made to `public.scans`: same columns, RLS policies, grants, and FK action. The workflow adds application/DB objects in a future migration (placement per D7):
+No change is made to `public.scans`: same columns, RLS policies, grants, and FK action. The workflow objects are implemented in `20261124000200_org_rbac_retention.sql`:
 
 | Object | Purpose | Key design constraints |
 |---|---|---|
 | `account_exports` | Export job and verification record | `id`, `user_id` (UUID, no FK so metadata can outlive the account), `state`, `scan_count`, `sha256`, `storage_path`, `created_at`, `expires_at`, `downloaded_at`, `failure_reason`; RLS owner-only SELECT; writes only by the export service |
-| `rbac_delete_account(uuid, uuid, boolean)` | Atomic audit + scan delete + Auth delete | `SECURITY DEFINER`, pinned `search_path`, revoked from `PUBLIC`/`anon`/`authenticated`, execute granted only to `service_role` (verify default grants); no autonomous transaction |
+| `rbac_delete_account(uuid, uuid, boolean, text)` | Atomic audit + scan delete + Auth delete, with an optional waiver reason code | `SECURITY DEFINER`, pinned `search_path`, revoked from `PUBLIC`/`anon`/`authenticated`, execute granted only to `service_role` (verify default grants); no autonomous transaction |
 | Storage bucket policy | Export artifact access | Private bucket; signed URL only; object key contains `export_id`, never an email or name |
 
 Dependency: the audit FK removal (section 9.2) must be applied before the deletion function is used. Otherwise the `account.deleted` insert succeeds but the subsequent Auth delete is blocked by the audit `RESTRICT` FK, and the transaction rolls back. The export-record table must not carry a cascading FK to `auth.users`, or the verification record disappears at the moment it is needed.
