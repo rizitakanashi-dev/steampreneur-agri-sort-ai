@@ -18,6 +18,7 @@ from server.services.account_service import (
     LocalExportRepository,
     SupabaseExportRepository,
     build_export_artifact,
+    build_scan_snapshot,
     verify_manifest_signature,
 )
 
@@ -76,13 +77,21 @@ class FakeAuth:
 
 
 class FakeRepo:
-    def __init__(self):
+    def __init__(self, scan_storage=None):
         self.records = {}
         self.events = []
         self.deleted = None
         self.recent = 0
         self.active = 0
         self.failed = False
+        self.scan_storage = scan_storage
+        self.snapshot_calls = 0
+
+    def load_scan_snapshot(self, user_id, access_token):
+        self.snapshot_calls += 1
+        page = self.scan_storage.get_scans(limit=1000, offset=0, user_id=user_id,
+                                           access_token=access_token)
+        return build_scan_snapshot(user_id, page.get('records') or [])
 
     def count_recent(self, user_id, since):
         return self.recent
@@ -97,11 +106,14 @@ class FakeRepo:
                       created_at, expires_at):
         export_id = str(uuid.uuid4())
         signed = {**manifest, 'export_id': export_id}
+        snapshot = signed.get('snapshot') or {}
         record = ExportRecord(
             id=export_id, user_id=user_id, state='ready', scan_count=scan_count,
             sha256=sha256, manifest=signed, storage_path='memory',
             created_at=created_at.isoformat(), expires_at=expires_at.isoformat(),
-            ready_at=created_at.isoformat(), attempt_count=1)
+            ready_at=created_at.isoformat(), attempt_count=1,
+            snapshot_schema_version=snapshot.get('schema_version'),
+            snapshot_sha256=snapshot.get('sha256'))
         self.records[export_id] = record
         self.events.append('account.export_created')
         return record, f'/api/v1/account/exports/{export_id}/download'
@@ -128,6 +140,13 @@ class FakeRepo:
 
     def delete_account(self, user_id, export_id, allow_without_export,
                        waiver_reason_code, access_token):
+        if not allow_without_export:
+            record = self.get_export(export_id, user_id)
+            snapshot = self.load_scan_snapshot(user_id, access_token)
+            if (not record or record.scan_count != snapshot['scan_count']
+                    or record.snapshot_sha256 != snapshot['snapshot_sha256']):
+                raise AccountWorkflowError('EXPORT_STALE',
+                                           'Export does not match the current exact scan snapshot.', 409)
         self.deleted = {'user_id': user_id, 'export_id': export_id,
                         'allow_without_export': allow_without_export,
                         'reason_code': waiver_reason_code}
@@ -149,13 +168,20 @@ class AccountExportIntegrityTests(unittest.TestCase):
         self.assertTrue(verify_manifest_signature(manifest, KEY))
         with zipfile.ZipFile(io.BytesIO(artifact)) as archive:
             self.assertEqual(sorted(archive.namelist()),
-                             ['README.txt', 'manifest.json', 'scans.csv', 'scans.json'])
+                             ['README.txt', 'manifest.json', 'scans.csv', 'scans.json',
+                              'snapshot.json'])
             stored = json.loads(archive.read('manifest.json'))
             self.assertTrue(verify_manifest_signature(stored, KEY))
-            self.assertEqual(len(stored['files']), 3)
+            self.assertEqual(len(stored['files']), 4)
             for item in stored['files']:
                 content = archive.read(item['path'])
                 self.assertEqual(__import__('hashlib').sha256(content).hexdigest(), item['sha256'])
+            snapshot_bytes = archive.read('snapshot.json')
+            self.assertEqual(__import__('hashlib').sha256(snapshot_bytes).hexdigest(),
+                             stored['snapshot']['sha256'])
+            snapshot = json.loads(snapshot_bytes)
+            self.assertEqual(snapshot['owner_id'], USER)
+            self.assertEqual(snapshot['scan_count'], 2)
             rows = json.loads(archive.read('scans.json'))
             self.assertEqual([r['scan_id'] for r in rows], ['s1', 's2'])
             self.assertIn('scan_id,user_id,commodity,grade,recommendation_note',
@@ -176,7 +202,7 @@ class AccountExportIntegrityTests(unittest.TestCase):
 class AccountWorkflowTests(unittest.TestCase):
     def setUp(self):
         self.storage = FakeScanStorage([_row('s1'), _row('s2')])
-        self.repo = FakeRepo()
+        self.repo = FakeRepo(self.storage)
         self.workflow = AccountWorkflow(self.repo, self.storage, signing_key=KEY)
 
     def test_create_export_reads_only_owner_scope_and_verifies_manifest(self):
@@ -186,6 +212,7 @@ class AccountWorkflowTests(unittest.TestCase):
         self.assertTrue(self.storage.calls)
         self.assertTrue(all(call['user_id'] == USER for call in self.storage.calls))
         self.assertTrue(all(call['access_token'] == 'token' for call in self.storage.calls))
+        self.assertEqual(self.repo.snapshot_calls, 1)
         stored = self.repo.records[result['export_id']]
         self.assertTrue(verify_manifest_signature(stored.manifest, KEY))
 
@@ -210,11 +237,18 @@ class AccountWorkflowTests(unittest.TestCase):
 
     def _downloaded_record(self, scan_count=2, user_id=USER):
         export_id = str(uuid.uuid4())
+        rows = ([_row(f's{i}', user_id=user_id) for i in range(scan_count)]
+                if user_id != USER else self.storage.rows[:scan_count])
+        artifact, manifest, digest, count = build_export_artifact(
+            user_id, rows, KEY, snapshot_sha256=build_scan_snapshot(user_id, rows)['snapshot_sha256'])
+        snapshot = manifest['snapshot']
         record = ExportRecord(
-            id=export_id, user_id=user_id, state='downloaded', scan_count=scan_count,
-            sha256='a' * 64, manifest={'schema_version': 'scan-export-v1'},
+            id=export_id, user_id=user_id, state='downloaded', scan_count=count,
+            sha256=digest, manifest={**manifest, 'export_id': export_id},
             downloaded_at=datetime.now(UTC).isoformat(),
-            expires_at=(datetime.now(UTC) + timedelta(hours=1)).isoformat())
+            expires_at=(datetime.now(UTC) + timedelta(hours=1)).isoformat(),
+            snapshot_schema_version=snapshot['schema_version'],
+            snapshot_sha256=snapshot['sha256'])
         self.repo.records[export_id] = record
         return export_id
 
@@ -394,6 +428,36 @@ class SupabaseRepositoryTests(unittest.TestCase):
                             c['path'].startswith('/storage/v1/object/account-exports/')
                             for c in calls))
 
+    def test_snapshot_rpc_is_owner_only_and_rejects_cross_owner_rows(self):
+        repo, calls = self._repo()
+        snapshot = build_scan_snapshot(USER, [_row('s1')])
+        requests = []
+
+        def request(method, path, **kwargs):
+            requests.append((method, path, kwargs.get('body')))
+            return snapshot
+
+        repo._request = request
+        loaded = repo.load_scan_snapshot(USER, 'owner-token')
+        self.assertEqual(loaded['scan_count'], 1)
+        self.assertEqual(loaded['snapshot_sha256'], snapshot['snapshot_sha256'])
+        self.assertEqual(requests,
+                         [('POST', '/rest/v1/rpc/rbac_api_scan_snapshot', {})])
+        tampered = {**snapshot, 'scans': [{**snapshot['scans'][0], 'user_id': OTHER}]}
+        repo._request = lambda *args, **kwargs: tampered
+        with self.assertRaises(AccountWorkflowError) as caught:
+            repo.load_scan_snapshot(USER, 'owner-token')
+        self.assertEqual(caught.exception.code, 'EXPORT_OWNER_MISMATCH')
+        canonical = json.loads(snapshot['snapshot_json'])
+        canonical['scans'][0]['commodity'] = 'Changed'
+        text = json.dumps(canonical, sort_keys=True, separators=(',', ':'))
+        digest = __import__('hashlib').sha256(text.encode('utf-8')).hexdigest()
+        mismatched = {**snapshot, 'snapshot_json': text, 'snapshot_sha256': digest}
+        repo._request = lambda *args, **kwargs: mismatched
+        with self.assertRaises(AccountWorkflowError) as caught:
+            repo.load_scan_snapshot(USER, 'owner-token')
+        self.assertEqual(caught.exception.code, 'EXPORT_SNAPSHOT_INVALID')
+
     def test_delete_forwards_exact_waiver_fields(self):
         repo, calls = self._repo()
         result = repo.delete_account(USER, None, True, 'export_failed', 'token')
@@ -464,6 +528,18 @@ class LocalRepositoryTests(unittest.TestCase):
         with self.assertRaises(AccountWorkflowError) as caught:
             self.workflow.download(OTHER, created['export_id'])
         self.assertEqual(caught.exception.code, 'EXPORT_NOT_FOUND')
+
+    def test_local_deletion_rejects_changed_scan_with_same_count(self):
+        created = self.workflow.create_export(USER, 'token')
+        self.workflow.mark_downloaded(USER, created['export_id'], 'token')
+        self.storage.rows[0]['commodity'] = 'Changed'
+        with self.assertRaises(AccountWorkflowError) as caught:
+            self.workflow.delete_account(
+                USER, 'token', confirmation='DELETE MY ACCOUNT',
+                acknowledge_irreversible=True, export_id=created['export_id'],
+                allow_without_export=False, waiver_phrase=None, reason_code=None)
+        self.assertEqual(caught.exception.code, 'EXPORT_STALE')
+        self.assertEqual(len(self.storage.rows), 2)
 
     def test_local_download_rejects_tampered_storage_path(self):
         created = self.workflow.create_export(USER, 'token')

@@ -1,10 +1,10 @@
 # RBAC Migration Design Revision — Retain Audit History Across Account Deletion
 
-**Status:** IMPLEMENTED LOCALLY; NOT APPLIED TO ANY REMOTE DATABASE. No production SQL was executed and no production database was contacted.
-**Date:** 2026-11-24
+**Status:** IMPLEMENTED LOCALLY — AUTOMATED TESTS PASSED; NOT VERIFIED LIVE ON SUPABASE OR STAGING; NOT PRODUCTION-READY. No production SQL was executed and no production database was contacted.
+**Date:** 2026-11-24 (snapshot-integrity addendum added during PR #34 remediation)
 **Worktree:** feature worktree
-**Branch / HEAD:** `feat/phase0-phase1-org-rbac` / `83163756eb10e5e4c6528c45cc16aefad5b54ef6`
-**Source under review:** `supabase/migrations/20261124000100_org_rbac.sql` — 587 lines, sha256 prefix `73cb9cbcf5ca349e`
+**Branch / HEAD:** `feat/phase0-phase1-org-rbac` / `8359704b4669bd5c83334c5e68a4c9b8fa823f3c` (working-tree changes remain uncommitted)
+**Source under review:** `supabase/migrations/20261124000100_org_rbac.sql` — 587 lines; forward-only additions in `20261124000200_org_rbac_retention.sql` and `20261124000300_org_rbac_scan_snapshot.sql`
 **Operator decision:** ACCOUNT DELETION POLICY = RETAIN. An account must remain deletable even when it has historical audit events; the historical audit records must remain intact.
 **D1 decision (2026-11-24):** OPTION D — EXPORT BEFORE DELETION. Offer an export of the user's private scans, verify it, then delete the account and its scans; no ownership transfer; no ownerless scans; audit rows remain independent and retained.
 
@@ -12,9 +12,11 @@
 
 ## 1. Executive summary and verdict
 
-### Verdict: `DESIGN COMPLETE — NOT IMPLEMENTATION-READY`
+### Verdict: `IMPLEMENTED LOCALLY — AUTOMATED TESTS PASSED — LIVE/STAGING VERIFICATION AND PRODUCTION PROVISIONING OUTSTANDING`
 
-The current draft cannot satisfy the RETAIN policy. Three schema facts and one workflow gap block it:
+Section 12 records the PR #34 snapshot-integrity remediation and supersedes the count-only statements in sections 8.3 and 8.4. The original design analysis below is retained as history; it is not evidence of remote deployment.
+
+The original draft could not satisfy the RETAIN policy. Three schema facts and one workflow gap blocked it:
 
 1. `audit_events.actor_user_id` has `ON DELETE RESTRICT` against `auth.users` (line 61), so deleting a user who has ever produced an audit row fails.
 2. `platform_roles.user_id` also has `ON DELETE RESTRICT` (line 54), so deleting a Super Admin fails even if the audit FK were removed.
@@ -118,11 +120,11 @@ Two paths exist. The **supported self-service path** is owned by the application
 
 1. **Preflight.** Confirm the requester is authenticated as the target user (`auth.uid() = target`), count their scans under owner-only RLS, and run the readiness query in section 6.4. Block with a clear reason if the user is the last active Super Admin or the sole active admin of any organization; those responsibilities must be transferred first (D2, D3).
 2. **Request export.** The user requests an export. The server creates an export job and an export record in the proposed `account_exports` table (section 9.8).
-3. **Generate and verify.** The export worker reads scans with a **user-scoped** database session, so RLS `auth.uid() = user_id` is enforced, and builds the artifact described in section 8.3. The worker computes a SHA-256 for every file, writes the manifest, and records `scan_count` and `checksum` on the export record.
-4. **Deliver.** The user receives a short-lived signed download link and downloads the artifact. The UI shows the scan count, file checksums, and a clear statement that the export is the user's only copy.
+3. **Generate and verify.** The export worker calls `rbac_api_scan_snapshot()` with the user's bearer; the wrapper derives `auth.uid()` and accepts no owner argument, so the caller cannot select another owner. The database function returns the canonical owner-scoped snapshot, its digest, and exact `snapshot_json`; the worker writes that text as `snapshot.json`, builds the artifact described in section 8.3, and signs the manifest snapshot metadata. The artifact code verifies the returned text hashes to the returned digest and that its rows/owner/count/schema match the response.
+4. **Deliver.** The user receives a short-lived signed download link and downloads the artifact. The UI shows the scan count, snapshot SHA-256, artifact checksum, and a clear statement that the export is the user's only copy.
 5. **Attest and confirm.** The user attests that the download succeeded, re-authenticates (password or fresh magic link), and types a confirmation phrase. If the export failed, the user must explicitly choose **Retry** or **Continue without export**; the latter requires a typed waiver phrase and writes `account.deletion_without_export`.
-6. **Atomic database deletion.** The server calls `rbac_delete_account(target_user_id, export_id, allow_without_export)` (design in section 8.4). In one transaction the function verifies the export record, writes the `account.deleted` audit row, explicitly deletes the user's scan rows, and deletes the Auth user. Cascades remove the profile, memberships, and platform role.
-7. **Post-commit cleanup.** Object-storage artifacts belonging to the user are deleted asynchronously (or queued), notification email is sent, and the export record is marked consumed. Cleanup failure never restores or partially deletes account data.
+6. **Atomic database deletion.** The server calls `rbac_delete_account(target_user_id, export_id, allow_without_export)` (design in section 8.4). In one transaction the function takes the per-owner lock, recomputes the exact snapshot, verifies the stored schema/digest against the signed manifest, writes the `account.deleted` audit row, explicitly deletes the user's scan rows, deletes the Auth user, and marks the export consumed. Cascades remove the profile, memberships, and platform role.
+7. **Post-commit cleanup.** Object-storage artifacts belonging to the user are deleted asynchronously (or queued), and notification email is sent. Cleanup failure never restores or partially deletes account data. The export record is already consumed in the deletion transaction, not afterward.
 8. **Post-check.** Confirm zero rows remain in `scans`, `user_profiles`, `organization_memberships`, and `platform_roles` for the UUID; audit rows are present and unchanged apart from the new events; organizations still exist.
 
 ### 4.2 Operator break-glass path
@@ -400,20 +402,20 @@ A ZIP named `agri-sort-scan-export-<export_id>.zip` containing:
 
 | File | Contents |
 |---|---|
-| `manifest.json` | `export_id`, `schema_version = "scan-export-v1"`, `created_at`, `user_id`, `scan_count`, `files[]` with relative path, byte size, and SHA-256, plus an HMAC-SHA256 `signature` over the canonical manifest |
-| `scans.json` | JSON array; one object per `public.scans` row owned by the user; all columns present at export time; timestamps in ISO 8601 UTC |
+| `manifest.json` | `export_id`, `schema_version = "scan-export-v1"`, `created_at`, `user_id`, `scan_count`, `snapshot` (`algorithm`, `schema_version`, `owner_id`, `scan_count`, `sha256`), `files[]` with relative path, byte size, and SHA-256, plus an HMAC-SHA256 `signature` over the canonical manifest |
+| `snapshot.json` | The exact canonical snapshot text returned by `public.rbac_scan_snapshot()`; its byte SHA-256 equals `manifest.snapshot.sha256`. This is the binding representation, not a re-serialization. |
+| `scans.json` | Convenience JSON array; one object per `public.scans` row owned by the user; all columns present at export time; timestamps in ISO 8601 UTC |
 | `scans.csv` | The same rows and columns, UTF-8, one header row, RFC 4180 quoting |
-| `attachments/` | Only if a scan row references an object in storage; each object is included and listed in the manifest. A missing referenced object fails the export instead of producing an incomplete artifact. |
-| `README.txt` | Schema version, row count, checksums, and support contact; no secrets |
+| `README.txt` | Schema version, row count, snapshot SHA-256, instructions to verify `snapshot.json`, and support contact; no secrets |
 
-The export is complete or it is not published. A partial ZIP is never marked ready.
+The export is complete or it is not published. A partial ZIP is never marked ready. Attachment folders are not implemented because `public.scans` has no attachment/child table; adding one would require a separate owner-scoped export contract.
 
 #### Authorization
 
 | Rule | Design |
 |---|---|
 | Requester identity | Derived from the verified JWT; never accepted from a request body or query parameter |
-| Read path | User-scoped database session so RLS `auth.uid() = user_id` is enforced; the export worker never reads scan contents with `service_role` |
+| Read path | The user's bearer calls the no-argument `rbac_api_scan_snapshot()` wrapper; it derives `auth.uid()` and the database function selects only rows for that owner. The internal `rbac_scan_snapshot(uuid)` is revoked from `authenticated` and `anon` and granted only to `service_role`. The API path cannot pass or select another owner. |
 | Export record | Owner-only SELECT; writes only through the export service |
 | Download | Signed URL bound to `export_id` and the requesting user; expiry and single-account scope enforced server-side |
 | Administrators | Organization Admin and Super Admin have no export endpoint and no download path; audit access never includes scan contents |
@@ -421,10 +423,10 @@ The export is complete or it is not published. A partial ZIP is never marked rea
 
 #### Integrity
 
-- SHA-256 per file and `scan_count` in the manifest; the server stores the same values on the export record.
-- HMAC-SHA256 over the manifest with a server key held outside the database (Vault or equivalent); a modified manifest fails verification.
-- The download page shows row count and checksums so the user can verify the artifact.
-- Deletion verifies the stored export record against the artifact metadata before it deletes anything.
+- PostgreSQL computes one SHA-256 over deterministic JSONB containing `schema_version`, `owner_id`, `scan_count`, and every exported scan row. Timestamps are forced to UTC with fixed microsecond formatting; rows are ordered by UUID `id`. Python never recomputes this database digest from a different JSON representation.
+- The manifest signs the snapshot schema version, owner, count, and SHA-256, and the `files[]` hashes. HMAC-SHA256 uses a server key held outside the database; a modified manifest fails verification. `export_id` is excluded from the signed payload and added after signing.
+- `snapshot.json` carries the exact canonical bytes whose digest appears in the signed manifest, so a user can verify the archive without guessing JSON formatting.
+- Deletion does not trust a Python count. Under the same per-owner transaction lock used by every scan mutation, it recomputes the database snapshot and requires the stored `snapshot_schema_version`, owner, exact row count, and `snapshot_sha256` to equal the new snapshot, and requires the signed manifest metadata to equal the stored columns. Any add, change, delete, replacement, or same-count substitution changes the digest and fails.
 - Audit events `account.export_created` and `account.export_failed` record `export_id`, `scan_count`, and checksum, never scan contents.
 
 #### Expiration
@@ -449,8 +451,8 @@ The 15-minute and 24-hour values are design proposals; the final values are **UN
 #### Deletion confirmation
 
 - Re-authentication no older than 10 minutes.
-- Display of scan count, export checksum, and the irreversible warning.
-- Checkbox: "I have downloaded and verified my export" (or the explicit waiver path).
+- Display of scan count, snapshot SHA-256, export checksum, and the irreversible warning.
+- Checkbox: "I have downloaded and verified my export" (or the explicit waiver path). This is a **user attestation only**. It records intent; it is not technical proof that the user saved the files. The system can prove a signed URL was issued and the owner marked the export downloaded, not that a browser completed a durable save.
 - Typed phrase: `DELETE MY ACCOUNT`.
 - CSRF protection, rate limiting, and a server-side check that the session still belongs to the target.
 
@@ -459,9 +461,10 @@ The 15-minute and 24-hour values are design proposals; the final values are **UN
 The database phase must be all-or-nothing. A proposed `SECURITY DEFINER` function:
 
 ```sql
--- Design only; not created by this task.
-rbac_delete_account(target_user_id uuid, export_id uuid, allow_without_export boolean)
-RETURNS void
+-- Implemented locally in 20261124000300_org_rbac_scan_snapshot.sql
+rbac_delete_account(target_user_id uuid, export_id uuid, allow_without_export boolean,
+                    waiver_reason_code text DEFAULT NULL)
+RETURNS jsonb
 ```
 
 Properties:
@@ -469,14 +472,15 @@ Properties:
 | Step | Action | Why this order |
 |---|---|---|
 | 1 | Verify target exists and the caller is authorized (`service_role` only; revoked from `PUBLIC`, `anon`, `authenticated`) | prevents a user from deleting another account |
-| 2 | Lock the target with `pg_advisory_xact_lock(hashtext(target_user_id::text))` | serializes concurrent deletion attempts |
-| 3 | Verify the export record: same user, state `ready`/`downloaded`, unexpired, checksum present; or `allow_without_export` with a recorded waiver | no deletion without the export decision |
-| 4 | Insert `account.deleted` audit row with actor = target, `export_id`, `scan_count`, `export_verified` | audit is inside the transaction; failure aborts everything |
-| 5 | `DELETE FROM public.scans WHERE user_id = target_user_id;` | deterministic regardless of the live FK action; satisfies `RESTRICT`, prevents `SET NULL` orphans |
-| 6 | `DELETE FROM auth.users WHERE id = target_user_id;` | cascades profile, memberships, platform role; last-admin triggers still apply |
-| 7 | Assert one Auth row was deleted; otherwise raise | prevents a silent no-op |
+| 2 | Lock the target with `pg_advisory_xact_lock(hashtextextended('agri_sort_scan_owner:' || target_user_id::text, 0))` | uses the same per-owner lock as every scan INSERT/UPDATE/DELETE and owner transfer |
+| 3 | Recompute the exact database snapshot and require stored schema version `scan-export-v1`, matching owner, count, and SHA-256; require state `downloaded`, `downloaded_at`, and an unexpired record; verify the signed manifest snapshot metadata agrees with the columns | no deletion on count-only, stale, replaced, tampered, or expired evidence |
+| 4 | For a waiver, require either zero scans or a `failed` export; reject a live scan set with no failed export | prevents a silent bypass of export-before-deletion |
+| 5 | Insert `account.deleted` audit row with actor = target, `export_id`, `scan_count`, `export_verified` | audit is inside the transaction; failure aborts everything |
+| 6 | `DELETE FROM public.scans WHERE user_id = target_user_id;` | deterministic regardless of the live FK action; satisfies `RESTRICT`, prevents `SET NULL` orphans |
+| 7 | `DELETE FROM auth.users WHERE id = target_user_id;` | cascades profile, memberships, platform role; last-admin triggers still apply |
+| 8 | Assert one Auth row was deleted and no scan remains; otherwise raise; consume the export record | prevents a silent no-op or partial deletion |
 
-All steps run in the caller's transaction; the function never commits on its own. If step 6 is blocked by the last-Super-Admin or last-org-admin trigger, the transaction rolls back the scan delete and the audit insert, leaving the account and scans intact. If the audit insert fails, nothing is deleted.
+All steps run in the caller's transaction; the function never commits on its own. Every INSERT, UPDATE, and DELETE on `public.scans` takes the same owner lock in its trigger; UPDATE owner transfers take the old and new owner locks in lexicographic UUID order, preventing lock-order deadlocks. TRUNCATE is rejected. If step 7 is blocked by the last-Super-Admin or last-org-admin trigger, the transaction rolls back the scan delete and the audit insert, leaving the account and scans intact. If the audit insert fails, nothing is deleted.
 
 The alternative, calling the Auth Admin API first and writing audit afterwards, is rejected for the supported path: it can delete the account while the audit write fails, producing an inconsistent trail. The operator break-glass path may use the Auth API only with a recorded override.
 
@@ -703,7 +707,11 @@ Rollback: disabling the workflow or dropping the new objects does not affect the
 - [ ] Bootstrap succeeds on a fresh database without any manual profile UPDATE, exactly once.
 - [ ] No API role can execute bootstrap or write audit directly.
 - [ ] `public.scans` schema, policies, grants, and FK action are unchanged by this migration.
-- [ ] An export is offered before every supported deletion, and an artifact verifies by count and SHA-256.
+- [x] Locally tested: an export is offered before every supported deletion, and `snapshot.json` verifies against the signed snapshot SHA-256.
+- [x] Locally tested: deletion rejects an add, change, delete, same-count replacement, tampered fingerprint, and expired export.
+- [x] Locally tested: scan mutations and deletion serialize on one owner lock; owner transfer locks both owners deterministically.
+- [x] Locally tested: concurrent last-org-admin and last-super-admin removals serialize; exactly one successor remains.
+- [ ] Not verified live: Supabase PostgREST RPC grants, RLS behavior, extension/search-path availability, and real multi-connection behavior.
 - [ ] A failed export pauses deletion; only an explicit typed waiver allows continuation.
 - [ ] Deletion is atomic: audit insert, scan delete, and Auth delete succeed or all roll back.
 - [ ] No scan ownership is transferred and no ownerless scan remains after any deletion path.
@@ -713,7 +721,74 @@ Rollback: disabling the workflow or dropping the new objects does not affect the
 
 ---
 
-## 12. Remaining operator decisions and blockers
+## 12. Snapshot-integrity remediation (PR #34 review)
+
+### 12.1 Status language (do not collapse these categories)
+
+| Category | Status | Evidence |
+|---|---|---|
+| Implemented locally | **YES** | New forward-only migration, account workflow, canonical snapshot file, and tests exist in this worktree. Nothing was committed, pushed, or applied to a remote database. |
+| Automated tests passed locally | **YES** | Disposable PostgreSQL 18 cluster, backend unit tests, frontend tests, build, and compile checks were run locally; exact commands and counts are reported with the task evidence. |
+| Verified live on Supabase | **NO** | No Supabase project, PostgREST endpoint, service-role key, storage bucket, or production data was accessed. |
+| Verified on staging | **NO** | The migration has not been applied to a staging copy, and staging RLS/PostgREST/Auth behavior has not been exercised. |
+| Production-ready | **NO** | HMAC key custody, export bucket/SSE, URL lifetimes, rate limits, live schema/attachment inventory, monitoring, and rollback rehearsal remain open. |
+
+---
+
+### 12.2 Exact snapshot contract
+
+- `public.rbac_scan_snapshot(target_user_id)` builds one canonical JSONB object with `schema_version = 'scan-export-v1'`, `owner_id`, `scan_count`, and an ordered array of every exported scan row. All 19 scan columns are included.
+- Rows are ordered by UUID `id`. Timestamps are rendered with `to_char(... AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"')`, so the digest does not depend on the database session time zone.
+- PostgreSQL computes `sha256(convert_to(payload::text, 'UTF8'))` and returns both the digest and the exact canonical text as `snapshot_json`. Python verifies the text hashes to the returned digest but never recomputes the database digest from a different representation.
+- The signed manifest includes `snapshot.algorithm = 'sha256'`, `snapshot.schema_version`, `snapshot.owner_id`, `snapshot.scan_count`, and `snapshot.sha256`. The export record stores `snapshot_schema_version` and `snapshot_sha256` in dedicated columns.
+- `snapshot.json` in the ZIP is the exact canonical text. Its SHA-256 equals the signed manifest value, so a recipient can verify the archive without guessing JSON formatting. `scans.json` and `scans.csv` are convenience copies.
+- The local JSON fallback uses a Python canonical snapshot with the same fields. Local and database digests are never compared across representations.
+
+### 12.3 Database-level mutation/deletion coordination
+
+- A `BEFORE INSERT OR UPDATE OR DELETE` row trigger on `public.scans` takes `pg_advisory_xact_lock(hashtextextended('agri_sort_scan_owner:' || owner::text, 0))` for every owner touched.
+- An UPDATE that transfers ownership locks both the old and new owner. The two locks are always taken in lexicographic UUID order, so opposing transfers cannot deadlock.
+- A `BEFORE TRUNCATE` statement trigger rejects bulk removal, which would otherwise bypass row triggers.
+- `public.rbac_delete_account` takes the same owner lock before recomputing the exact snapshot. Verification and deletion therefore share one serialized critical section; no scan INSERT, UPDATE, DELETE, or owner transfer can occur between them.
+- The function deletes scans explicitly, asserts no rows remain, deletes exactly one Auth user, asserts the count, and only then consumes the export record. Audit, scan deletion, Auth deletion, and export consumption are one transaction and roll back together.
+- This is database coordination, not Python-only or deletion-only locking. PostgREST writers, direct SQL writers, and the account workflow all pass through the same trigger/function boundary.
+
+### 12.4 Rejection conditions (fail closed)
+
+Deletion rejects when any of the following is true:
+
+| Condition | Rejected because |
+|---|---|
+| Export state is not `downloaded` or `downloaded_at` is null | A ready link is not evidence the owner attested download. |
+| Export is expired | Stale evidence must be regenerated. |
+| Snapshot schema version is missing or not `scan-export-v1` | The fingerprint context is not the agreed schema. |
+| Stored `snapshot_sha256` or manifest snapshot hash is malformed or they disagree | The signed metadata was tampered with or partially written. |
+| Manifest owner, count, or schema differs from the export record | The manifest is not bound to this export context. |
+| Current database count differs from the export count | A row was added or removed. |
+| Current database digest differs from the export digest | A row changed, a row was replaced, or a same-count substitution occurred. |
+| A waiver is requested while scans exist and no `failed` export exists | Waiver is only for no scans or a genuinely failed export. |
+| Target Auth user is missing or the caller is not service role | The operation is not a valid supported deletion. |
+| `TRUNCATE public.scans` is attempted | Bulk mutation would bypass owner coordination. |
+
+A failure leaves the account, scans, export state, and audit unchanged. No ownership transfer, no ownerless scans, and no automatic organization assignment occur.
+
+### 12.5 What `downloaded` proves
+
+`downloaded` is the owner's explicit attestation recorded by `rbac_mark_export_downloaded(export_id)`. It proves the owner called the attestation endpoint for a ready, unexpired export. It does **not** prove that a browser completed a durable save, that the ZIP was opened, or that the files still exist on the user's device. Technical evidence is limited to the signed artifact, its checksums, the signed URL issuance, and the attestation timestamp. Documentation and UI text must not claim otherwise.
+
+### 12.6 Preserved security decisions
+
+Private scan ownership, owner-only RLS, no organization/shared scan access, no `scans.organization_id`, no automatic organization assignment, no ownership migration or transfer, export-before-deletion, waiver only for no scans or failed export, append-only audit, D2/D3/D4/D7 decisions, and fail-closed authorization are unchanged. Organization Admin and Super Admin still have no path to another user's scan contents or export.
+
+### 12.7 Test evidence and limits
+
+Local automated coverage includes snapshot determinism, time-zone independence, self-verifying digest, owner-only snapshot RPC, exact add/change/delete/replacement rejection, fingerprint tampering, expiry, waiver rules, TRUNCATE rejection, owner transfer scope, two-connection lock serialization, reverse lock-wait rechecks for INSERT/UPDATE/DELETE/same-count replacement, one-statement export snapshot consistency, insert during verified deletion, and last-org-admin/last-super-admin races. The tests use a disposable local PostgreSQL cluster and `psql` sessions; they are not a Supabase staging test. Production readiness remains **NO-GO** until the live/staging gates in section 12.1 are closed.
+
+The reverse lock-wait tests reproduce the critical ordering: transaction A holds the owner advisory lock and performs an uncommitted scan mutation; transaction B starts the deletion RPC and blocks with `wait_event = Lock:advisory`; A commits; B acquires the lock and must reject the stale export. This works because `public.rbac_delete_account` is explicitly `VOLATILE`; in READ COMMITTED, the snapshot assignment inside it runs as a fresh SPI statement after the lock wait. A `STABLE` deletion function would reuse the outer RPC snapshot and could accept the stale export, so the test suite asserts the volatility contract. Export creation uses one `rbac_api_scan_snapshot` RPC whose JSONB rows, canonical text, count, and SHA-256 are internally consistent; no second scan read is combined with it.
+
+---
+
+## 13. Remaining operator decisions and blockers
 
 | ID | Decision | Recommendation | Blocks implementation? |
 |---|---|---|---|
@@ -722,8 +797,6 @@ Rollback: disabling the workflow or dropping the new objects does not affect the
 | D1b | Deletion mechanism: transactional `rbac_delete_account` vs Auth Admin API | transactional function for the supported path; Auth API only as audited break-glass | No (design), **Yes** before production |
 | D1c | Auth-schema cascade behavior and `rbac_audit` EXECUTE for the deletion role | verify on staging; grant narrowly; fail closed | No (design), **Yes** before production |
 | D1d | Scan child tables and stored attachments included in export/deletion | inspect live schema; include attachments or fail; delete children explicitly if needed | No (design), **Yes** before production |
-
-Current local implementation: deletion requires a fresh password proof through the selected Auth provider. A fresh magic-link path and a deletion flow for Google-only accounts without a password are **not implemented** and remain a production blocker. The backend never treats an existing session as sufficient re-authentication.
 | D2 | `platform_roles` cleanup: `CASCADE` vs manual `RESTRICT` removal | `CASCADE` + last-admin trigger | **Yes** |
 | D3 | Add last-org-admin trigger | yes; it is the only database-level transfer enforcement | **Yes** |
 | D4 | Bootstrap recovery after loss of the only Super Admin | strict one-time plus a separate approved break-glass runbook | **Yes** |
@@ -733,6 +806,8 @@ Current local implementation: deletion requires a fresh password proof through t
 | D8 | Audit retention period and legal basis | document before production use | No (governance) |
 | D9 | `service_role` default grants on new tables | verify with `H`; revoke if not needed | No |
 
+Current local implementation: deletion requires a fresh password proof through the selected Auth provider. A fresh magic-link path and a deletion flow for Google-only accounts without a password are **not implemented** and remain a production blocker. The backend never treats an existing session as sufficient re-authentication.
+
 ### Readiness statement
 
-D1 is decided and no longer blocks the design. **D2, D3, and D4 are resolved** by the local forward migration: guarded cascade cleanup, last-organization-admin protections, strict one-time bootstrap, and operator-only recovery. **D7 is resolved** by keeping the base migration immutable and adding `20261124000200_org_rbac_retention.sql` as the forward upgrade path for fresh and already-migrated environments. The account export/deletion workflow is implemented locally with tests. D1a-D1d remain infrastructure/verification details that must be closed before production. No SQL in this document has been executed against a remote database.
+D1 is decided and no longer blocks the design. **D2, D3, and D4 are resolved** by the local forward migration: guarded cascade cleanup, last-organization-admin protections, strict one-time bootstrap, and operator-only recovery. **D7 is resolved** by keeping the base migration immutable and adding `20261124000200_org_rbac_retention.sql` as the forward upgrade path for fresh and already-migrated environments. The account export/deletion workflow is implemented locally with tests. D1a-D1d remain infrastructure/verification details that must be closed before production. No SQL in this document has been executed against a remote database. **Current verdict: automated local evidence only; live Supabase, staging, and production provisioning are unverified; production readiness is NO-GO.**

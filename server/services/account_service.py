@@ -17,6 +17,7 @@ import io
 import json
 import os
 from pathlib import Path
+import re
 import threading
 from typing import Any, Dict, Iterable, List, Optional, Protocol, Tuple
 import urllib.error
@@ -65,6 +66,8 @@ class ExportRecord:
     ready_at: Optional[str] = None
     downloaded_at: Optional[str] = None
     consumed_at: Optional[str] = None
+    snapshot_schema_version: Optional[str] = None
+    snapshot_sha256: Optional[str] = None
 
     def public(self, download_url: Optional[str] = None) -> Dict[str, Any]:
         return {
@@ -72,6 +75,8 @@ class ExportRecord:
             'state': self.state,
             'scan_count': self.scan_count,
             'sha256': self.sha256,
+            'snapshot_schema_version': self.snapshot_schema_version,
+            'snapshot_sha256': self.snapshot_sha256,
             'created_at': self.created_at,
             'expires_at': self.expires_at,
             'downloaded_at': self.downloaded_at,
@@ -87,6 +92,7 @@ class DownloadArtifact:
 
 
 class ExportRepository(Protocol):
+    def load_scan_snapshot(self, user_id: str, access_token: str) -> Dict[str, Any]: ...
     def count_recent(self, user_id: str, since: datetime) -> int: ...
     def count_active(self, user_id: str) -> int: ...
     def has_failed_export(self, user_id: str) -> bool: ...
@@ -156,16 +162,59 @@ def _csv_value(value: Any) -> str:
     return str(_json_safe(value))
 
 
+def build_scan_snapshot(user_id: str, rows: Iterable[Dict[str, Any]]) -> Dict[str, Any]:
+    '''Build a deterministic local snapshot for the local repository.
+
+    Supabase uses public.rbac_scan_snapshot() instead; its digest is computed
+    only inside PostgreSQL so Python and JSONB never compare different
+    canonicalisations. This helper is for the local JSON fallback and tests.
+    '''
+    records = [_json_safe(row) for row in rows]
+    for row in records:
+        if row.get('user_id') != user_id:
+            raise AccountWorkflowError('EXPORT_OWNER_MISMATCH',
+                                       'Export input contains a scan owned by another user.', 403)
+    records.sort(key=lambda row: (str(row.get('id') or ''), str(row.get('scan_id') or '')))
+    payload = {
+        'schema_version': EXPORT_SCHEMA_VERSION,
+        'owner_id': user_id,
+        'scan_count': len(records),
+        'scans': records,
+    }
+    canonical = _canonical_json(payload)
+    return {**payload, 'snapshot_sha256': _sha256_bytes(canonical),
+            'snapshot_json': canonical.decode('utf-8')}
+
+
 def build_export_artifact(user_id: str, rows: Iterable[Dict[str, Any]],
                           signing_key: bytes,
-                          created_at: Optional[datetime] = None) -> Tuple[bytes, Dict[str, Any], str, int]:
-    '''Build ZIP bytes, manifest, artifact SHA-256 and scan count.'''
+                          created_at: Optional[datetime] = None,
+                          snapshot_sha256: Optional[str] = None,
+                          snapshot_text: Optional[str] = None) -> Tuple[bytes, Dict[str, Any], str, int]:
+    '''Build ZIP bytes, manifest, artifact SHA-256 and scan count.
+
+    When snapshot_sha256 is supplied it must be the digest returned by the
+    database snapshot function together with these exact rows. Local callers
+    omit it and get a deterministic Python digest from build_scan_snapshot().
+    '''
     if not signing_key:
         raise AccountWorkflowError('EXPORT_SIGNING_UNAVAILABLE', 'Export signing is not configured.', 503)
     records = [_json_safe(row) for row in rows]
     for row in records:
         if row.get('user_id') != user_id:
             raise AccountWorkflowError('EXPORT_OWNER_MISMATCH', 'Export input contains a scan owned by another user.', 403)
+    if snapshot_sha256 is None:
+        local_snapshot = build_scan_snapshot(user_id, records)
+        snapshot_sha256 = local_snapshot['snapshot_sha256']
+        snapshot_text = local_snapshot['snapshot_json']
+    if not isinstance(snapshot_sha256, str) or not re.fullmatch(r'[0-9a-f]{64}', snapshot_sha256):
+        raise AccountWorkflowError('EXPORT_SNAPSHOT_INVALID',
+                                   'Export snapshot fingerprint is invalid.', 500)
+    if snapshot_text is None:
+        snapshot_text = build_scan_snapshot(user_id, records)['snapshot_json']
+    if not isinstance(snapshot_text, str) or _sha256_bytes(snapshot_text.encode('utf-8')) != snapshot_sha256:
+        raise AccountWorkflowError('EXPORT_SNAPSHOT_INVALID',
+                                   'Export snapshot bytes do not match the fingerprint.', 500)
     created = created_at or _now()
     created_text = _iso(created)
     scans_json = (json.dumps(records, ensure_ascii=False, indent=2, sort_keys=True) + '\n').encode('utf-8')
@@ -188,13 +237,16 @@ def build_export_artifact(user_id: str, rows: Iterable[Dict[str, Any]],
         f'Schema: {EXPORT_SCHEMA_VERSION}\n'
         f'User: {user_id}\n'
         f'Scans: {len(records)}\n'
-        f'Created: {created_text}\n\n'
+        f'Created: {created_text}\n'
+        f'Snapshot SHA-256: {snapshot_sha256}\n\n'
+        'snapshot.json is the exact canonical snapshot whose SHA-256 is signed in manifest.json.\n'
         'This archive is the only copy of these private scans after account deletion.\n'
         'Verify every file against manifest.json before relying on this archive.\n'
     ).encode('utf-8')
     files: List[Tuple[str, bytes]] = [
         ('scans.json', scans_json),
         ('scans.csv', scans_csv),
+        ('snapshot.json', snapshot_text.encode('utf-8')),
         ('README.txt', readme),
     ]
     manifest: Dict[str, Any] = {
@@ -202,6 +254,13 @@ def build_export_artifact(user_id: str, rows: Iterable[Dict[str, Any]],
         'created_at': created_text,
         'user_id': user_id,
         'scan_count': len(records),
+        'snapshot': {
+            'algorithm': 'sha256',
+            'schema_version': EXPORT_SCHEMA_VERSION,
+            'owner_id': user_id,
+            'scan_count': len(records),
+            'sha256': snapshot_sha256,
+        },
         'files': [{'path': path, 'bytes': len(content), 'sha256': _sha256_bytes(content)}
                   for path, content in files],
     }
@@ -230,6 +289,37 @@ def verify_manifest_signature(manifest: Dict[str, Any], signing_key: bytes) -> b
     return hmac.compare_digest(signature, expected)
 
 
+def validate_manifest_snapshot(manifest: Dict[str, Any], signing_key: bytes,
+                               user_id: str, scan_count: int) -> Dict[str, Any]:
+    '''Verify the signed manifest and return its exact snapshot metadata.'''
+    if not verify_manifest_signature(manifest, signing_key):
+        raise AccountWorkflowError('EXPORT_MANIFEST_INVALID',
+                                   'Export manifest signature is invalid.', 409)
+    snapshot = manifest.get('snapshot')
+    if not isinstance(snapshot, dict):
+        raise AccountWorkflowError('EXPORT_SNAPSHOT_INVALID',
+                                   'Export manifest has no snapshot integrity data.', 409)
+    if snapshot.get('algorithm') != 'sha256':
+        raise AccountWorkflowError('EXPORT_SNAPSHOT_INVALID',
+                                   'Export snapshot algorithm is not supported.', 409)
+    if snapshot.get('schema_version') != EXPORT_SCHEMA_VERSION:
+        raise AccountWorkflowError('EXPORT_SNAPSHOT_INVALID',
+                                   'Export snapshot schema is not supported.', 409)
+    if snapshot.get('owner_id') != user_id or manifest.get('user_id') != user_id:
+        raise AccountWorkflowError('EXPORT_OWNER_MISMATCH',
+                                   'Export manifest belongs to another user.', 403)
+    if (not isinstance(snapshot.get('scan_count'), int)
+            or snapshot.get('scan_count') != scan_count
+            or manifest.get('scan_count') != scan_count):
+        raise AccountWorkflowError('EXPORT_SNAPSHOT_INVALID',
+                                   'Export snapshot count is inconsistent.', 409)
+    digest = snapshot.get('sha256')
+    if not isinstance(digest, str) or not re.fullmatch(r'[0-9a-f]{64}', digest):
+        raise AccountWorkflowError('EXPORT_SNAPSHOT_INVALID',
+                                   'Export snapshot fingerprint is invalid.', 409)
+    return snapshot
+
+
 def _row_to_record(row: Dict[str, Any]) -> ExportRecord:
     manifest = row.get('manifest') or {}
     if isinstance(manifest, str):
@@ -255,6 +345,10 @@ def _row_to_record(row: Dict[str, Any]) -> ExportRecord:
         ready_at=iso_field('ready_at'),
         downloaded_at=iso_field('downloaded_at'),
         consumed_at=iso_field('consumed_at'),
+        snapshot_schema_version=(row.get('snapshot_schema_version')
+                                 or (manifest.get('snapshot') or {}).get('schema_version')),
+        snapshot_sha256=(row.get('snapshot_sha256')
+                         or (manifest.get('snapshot') or {}).get('sha256')),
     )
 
 
@@ -317,11 +411,16 @@ class LocalExportRepository:
             return any(row.get('user_id') == user_id and row.get('state') == 'failed'
                        for row in self._read_index())
 
+    def load_scan_snapshot(self, user_id: str, access_token: str) -> Dict[str, Any]:
+        with self._lock:
+            return build_scan_snapshot(user_id, self._all_scans(user_id, access_token))
+
     def create_export(self, user_id: str, scan_count: int, sha256: str,
                       manifest: Dict[str, Any], artifact: bytes,
                       created_at: datetime, expires_at: datetime) -> Tuple[ExportRecord, str]:
         export_id = str(uuid.uuid4())
         manifest = {**manifest, 'export_id': export_id}
+        snapshot = manifest.get('snapshot') or {}
         storage_path = f'artifacts/{export_id}.zip'
         with self._lock:
             rows = self._read_index()
@@ -346,6 +445,8 @@ class LocalExportRepository:
                 'attempt_count': 1, 'created_at': _iso(created_at),
                 'expires_at': _iso(expires_at), 'ready_at': _iso(created_at),
                 'downloaded_at': None, 'consumed_at': None,
+                'snapshot_schema_version': snapshot.get('schema_version'),
+                'snapshot_sha256': snapshot.get('sha256'),
             }
             rows = self._read_index()
             rows.append(row)
@@ -449,8 +550,9 @@ class LocalExportRepository:
                        allow_without_export: bool, waiver_reason_code: Optional[str],
                        access_token: str) -> Dict[str, Any]:
         with self._lock:
-            rows = self._all_scans(user_id, access_token)
-            scan_count = len(rows)
+            snapshot = self.load_scan_snapshot(user_id, access_token)
+            rows = snapshot['scans']
+            scan_count = int(snapshot['scan_count'])
             if not allow_without_export:
                 export = self.get_export(export_id or '', user_id)
                 if not export:
@@ -460,8 +562,13 @@ class LocalExportRepository:
                 expires = _parse_iso(export.expires_at)
                 if not expires or expires <= _now():
                     raise AccountWorkflowError('EXPORT_EXPIRED', 'Export has expired.', 409)
-                if export.scan_count != scan_count:
-                    raise AccountWorkflowError('EXPORT_STALE', 'Export does not match the current scan set.', 409)
+                if (export.scan_count != scan_count
+                        or export.snapshot_sha256 != snapshot['snapshot_sha256']):
+                    raise AccountWorkflowError('EXPORT_STALE',
+                                               'Export does not match the current exact scan snapshot.', 409)
+            elif scan_count > 0 and not self.has_failed_export(user_id):
+                raise AccountWorkflowError('WAIVER_NOT_ALLOWED',
+                                           'Export cannot be skipped while scans exist and no export has failed.', 409)
             deleted = self.scan_storage.clear_scans(user_id=user_id, access_token=access_token)
             if deleted != scan_count:
                 raise AccountWorkflowError('SCAN_DELETE_INCOMPLETE', 'Not all scans were deleted.', 503)
@@ -578,11 +685,50 @@ class SupabaseExportRepository:
             return str(signed)
         return f'{self.base_url}/storage/v1{str(signed)}'
 
+    def load_scan_snapshot(self, user_id: str, access_token: str) -> Dict[str, Any]:
+        if not access_token:
+            raise AccountWorkflowError('EXPORT_SNAPSHOT_UNAVAILABLE',
+                                       'A verified owner session is required for export.', 401)
+        result = self._request('POST', '/rest/v1/rpc/rbac_api_scan_snapshot',
+                               body={}, access_token=access_token)
+        if not isinstance(result, dict):
+            raise AccountWorkflowError('EXPORT_SNAPSHOT_UNAVAILABLE',
+                                       'The scan snapshot service returned invalid data.', 502)
+        scans = result.get('scans')
+        digest = result.get('snapshot_sha256')
+        snapshot_text = result.get('snapshot_json')
+        if (result.get('schema_version') != EXPORT_SCHEMA_VERSION
+                or result.get('owner_id') != user_id or not isinstance(scans, list)
+                or result.get('scan_count') != len(scans)
+                or not isinstance(digest, str) or not re.fullmatch(r'[0-9a-f]{64}', digest)
+                or not isinstance(snapshot_text, str)
+                or _sha256_bytes(snapshot_text.encode('utf-8')) != digest):
+            raise AccountWorkflowError('EXPORT_SNAPSHOT_INVALID',
+                                       'The scan snapshot is not bound to this owner.', 502)
+        for row in scans:
+            if not isinstance(row, dict) or row.get('user_id') != user_id:
+                raise AccountWorkflowError('EXPORT_OWNER_MISMATCH',
+                                           'Export input contains a scan owned by another user.', 403)
+        try:
+            canonical = json.loads(snapshot_text)
+        except json.JSONDecodeError as exc:
+            raise AccountWorkflowError('EXPORT_SNAPSHOT_INVALID',
+                                       'The scan snapshot text is invalid.', 502) from exc
+        if (not isinstance(canonical, dict)
+                or canonical.get('schema_version') != EXPORT_SCHEMA_VERSION
+                or canonical.get('owner_id') != user_id
+                or canonical.get('scan_count') != len(scans)
+                or canonical.get('scans') != scans):
+            raise AccountWorkflowError('EXPORT_SNAPSHOT_INVALID',
+                                       'The scan snapshot text does not match its rows.', 502)
+        return result
+
     def create_export(self, user_id: str, scan_count: int, sha256: str,
                       manifest: Dict[str, Any], artifact: bytes,
                       created_at: datetime, expires_at: datetime) -> Tuple[ExportRecord, str]:
         export_id = str(uuid.uuid4())
         storage_path = f'{user_id}/{export_id}.zip'
+        snapshot = manifest.get('snapshot') or {}
         encoded = urllib.parse.quote(storage_path, safe='/')
         manifest = {**manifest, 'export_id': export_id}
         stale_query = ('/rest/v1/account_exports?user_id=eq.'
@@ -597,6 +743,8 @@ class SupabaseExportRepository:
             'storage_path': storage_path, 'attempt_count': 1,
             'created_at': _iso(created_at), 'expires_at': _iso(expires_at),
             'ready_at': _iso(created_at),
+            'snapshot_schema_version': snapshot.get('schema_version'),
+            'snapshot_sha256': snapshot.get('sha256'),
         }
         try:
             result = self._request('POST', '/rest/v1/account_exports?select=*', body=[row])
@@ -708,26 +856,6 @@ class AccountWorkflow:
             raise AccountWorkflowError('REAUTH_FAILED',
                                        'Password confirmation failed.', 401)
 
-    def _load_all_scans(self, user_id: str, access_token: str) -> List[Dict[str, Any]]:
-        rows: List[Dict[str, Any]] = []
-        offset = 0
-        while True:
-            page = self.scan_storage.get_scans(limit=200, offset=offset, user_id=user_id,
-                                                access_token=access_token)
-            records = page.get('records') or []
-            for row in records:
-                if row.get('user_id') != user_id:
-                    raise AccountWorkflowError('EXPORT_OWNER_MISMATCH',
-                                               'Export input contains a scan owned by another user.', 403)
-            if offset + len(records) > MAX_EXPORT_SCANS:
-                raise AccountWorkflowError('EXPORT_TOO_LARGE', 'Too many scans for one export.', 413)
-            rows.extend(records)
-            total = int(page.get('total_count') or 0)
-            offset += len(records)
-            if not records or offset >= total:
-                break
-        return rows
-
     def _scan_count(self, user_id: str, access_token: str) -> int:
         page = self.scan_storage.get_scans(limit=1, offset=0, user_id=user_id,
                                             access_token=access_token)
@@ -743,19 +871,32 @@ class AccountWorkflow:
                                        'Too many export attempts; retry later.', 429)
         if self.repository.count_active(user_id) >= 1:
             raise AccountWorkflowError('EXPORT_IN_PROGRESS', 'An active export already exists.', 409)
-        rows = self._load_all_scans(user_id, access_token)
+        snapshot = self.repository.load_scan_snapshot(user_id, access_token)
+        rows = snapshot.get('scans') if isinstance(snapshot, dict) else None
+        snapshot_sha256 = snapshot.get('snapshot_sha256') if isinstance(snapshot, dict) else None
+        if (not isinstance(rows, list)
+                or snapshot.get('schema_version') != EXPORT_SCHEMA_VERSION
+                or snapshot.get('owner_id') != user_id
+                or snapshot.get('scan_count') != len(rows)):
+            raise AccountWorkflowError('EXPORT_SNAPSHOT_INVALID',
+                                       'Export snapshot is not bound to this owner.', 502)
+        if len(rows) > MAX_EXPORT_SCANS:
+            raise AccountWorkflowError('EXPORT_TOO_LARGE', 'Too many scans for one export.', 413)
         last_error: Optional[Exception] = None
         for _ in range(MAX_EXPORT_ATTEMPTS):
             try:
                 artifact, manifest, sha256, scan_count = build_export_artifact(
-                    user_id, rows, self.signing_key, created_at=now)
+                    user_id, rows, self.signing_key, created_at=now,
+                    snapshot_sha256=snapshot_sha256,
+                    snapshot_text=snapshot.get('snapshot_json'))
                 record, url = self.repository.create_export(
                     user_id, scan_count, sha256, manifest, artifact,
                     now, now + timedelta(hours=EXPORT_TTL_HOURS))
                 check_manifest = {**record.manifest, 'export_id': record.id}
-                if not verify_manifest_signature(check_manifest, self.signing_key):
-                    raise AccountWorkflowError('EXPORT_SIGNATURE_INVALID',
-                                               'Export signature verification failed.', 500)
+                validate_manifest_snapshot(check_manifest, self.signing_key, user_id, scan_count)
+                if record.snapshot_sha256 != snapshot_sha256:
+                    raise AccountWorkflowError('EXPORT_SNAPSHOT_INVALID',
+                                               'Stored export snapshot does not match the database snapshot.', 500)
                 return record.public(download_url=url)
             except AccountWorkflowError as exc:
                 last_error = exc
@@ -818,10 +959,13 @@ class AccountWorkflow:
             expires = _parse_iso(record.expires_at)
             if not expires or expires <= _now():
                 raise AccountWorkflowError('EXPORT_EXPIRED', 'Export has expired.', 409)
-            current_count = self._scan_count(user_id, access_token)
-            if record.scan_count != current_count:
-                raise AccountWorkflowError('EXPORT_STALE',
-                                           'Export does not match the current scan set.', 409)
+            snapshot_meta = validate_manifest_snapshot(
+                {**record.manifest, 'export_id': record.id}, self.signing_key,
+                user_id, record.scan_count)
+            if (record.snapshot_schema_version != snapshot_meta['schema_version']
+                    or record.snapshot_sha256 != snapshot_meta['sha256']):
+                raise AccountWorkflowError('EXPORT_SNAPSHOT_INVALID',
+                                           'Stored export snapshot metadata is inconsistent.', 409)
         return self.repository.delete_account(user_id, export_id,
                                                allow_without_export,
                                                reason_code, access_token)
