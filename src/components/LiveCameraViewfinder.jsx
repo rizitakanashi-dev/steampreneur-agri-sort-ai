@@ -383,7 +383,7 @@ export const LiveCameraViewfinder = forwardRef(function LiveCameraViewfinder({ o
           onClick={toggleTorch}
           sx={{
             position: 'absolute',
-            top: 12,
+            bottom: 14,
             right: 12,
             zIndex: 15,
             width: 40,
@@ -402,7 +402,7 @@ export const LiveCameraViewfinder = forwardRef(function LiveCameraViewfinder({ o
         <Box
           sx={{
             position: 'absolute',
-            top: 12,
+            bottom: 14,
             left: 12,
             zIndex: 15,
             px: 1.25,

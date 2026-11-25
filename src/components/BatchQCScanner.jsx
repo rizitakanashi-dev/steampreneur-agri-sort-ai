@@ -69,6 +69,8 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
   const [isMultiAngleMode, setIsMultiAngleMode] = useState(false)
   // Issue #30 fase 5: Auto-Detect — scan otomatis saat nampan diam (immersive)
   const [autoDetectMode, setAutoDetectMode] = useState(false)
+  // Panel overlay immersive: toggle tips akurasi di atas kamera
+  const [showImmersiveTips, setShowImmersiveTips] = useState(false)
   const [multiStep, setMultiStep] = useState(1) // 1: Foto Sisi 1 (Depan), 2: Foto Sisi 2 (Belakang / Goyang Nampan)
   const [imageFileFront, setImageFileFront] = useState(null)
   const [imagePreviewFront, setImagePreviewFront] = useState(null)
@@ -701,35 +703,93 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
     </Box>
   )
 
+  // Banner panduan pengambilan sampel (dipakai bersama layout dashboard & overlay immersive)
+  const tipsAlert = (
+    <Alert
+      severity="info"
+      icon={<InfoOutlinedIcon />}
+      sx={{
+        mb: immersive ? 0 : 2.5,
+        py: immersive ? 0.75 : undefined,
+        borderRadius: 2,
+        bgcolor: '#f0fdf4',
+        borderColor: '#bbf7d0',
+        color: '#166534',
+      }}
+    >
+      <Typography variant="body2" fontWeight={700}>
+        Tips Akurasi AI ({selectedCommodity}):
+      </Typography>
+      <Typography variant="caption" sx={{ display: 'block', mt: 0.25, color: '#15803d' }}>
+        {isEggplant
+          ? 'Model mendeteksi mutu buah per butir. Untuk akurasi optimal, ambil 2–5 buah sampel dari keranjang dan letakkan berjajar di atas nampan/alas datar (hindari tumpukan padat pasar berlapis).'
+          : isChili
+          ? 'Model mendeteksi mutu cabai per butir (Grade A, Grade B, Reject). Letakkan cabai berjajar rapi di atas nampan dengan pencahayaan memadai.'
+          : isTomato
+          ? 'Model mendeteksi mutu tomat per butir (Grade A, Grade B, Reject). Arahkan kamera tegak lurus (top-down view) dengan pencahayaan memadai agar setiap buah terdeteksi jelas.'
+          : 'Komoditas ini belum didukung model Computer Vision resmi. Silakan lakukan pemeriksaan fisik secara manual.'}
+      </Typography>
+    </Alert>
+  )
+
   return (
     <Stack
       spacing={immersive ? 2 : 3}
       sx={
         immersive
-          ? { minHeight: '100dvh', px: 1.5, pt: 1, pb: 'calc(120px + env(safe-area-inset-bottom))' }
+          ? { minHeight: '100dvh', px: 0, pt: 0, pb: 'calc(128px + env(safe-area-inset-bottom))' }
           : undefined
       }
     >
-      {/* 1a. MODE IMMERSIVE (issue #30): komoditas + mode sebagai baris ringkas */}
+      {/* 1a. MODE IMMERSIVE: panel kontrol MENGAPUNG di atas kamera (khas aplikasi kamera HP) */}
       {immersive ? (
-        <Box>
+        <Box
+          sx={{
+            position: 'fixed',
+            top: 'calc(56px + env(safe-area-inset-top))',
+            left: 8,
+            right: 8,
+            zIndex: 1250,
+            p: 1.25,
+            borderRadius: 2.5,
+            bgcolor: 'rgba(15, 23, 42, 0.62)',
+            backdropFilter: 'blur(8px)',
+            border: '1px solid rgba(255, 255, 255, 0.12)',
+            color: '#e2e8f0',
+            '& .MuiChip-outlined': { color: '#e2e8f0', borderColor: 'rgba(255, 255, 255, 0.3)' },
+          }}
+        >
           <Stack direction="row" sx={{ alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
-            <Typography variant="subtitle2" fontWeight={800} color="text.secondary">
+            <Typography variant="subtitle2" fontWeight={800} sx={{ color: '#cbd5e1' }}>
               Komoditas &amp; Mode Inspeksi
             </Typography>
-            <Tooltip title="Atur sensitivitas threshold keyakinan model AI">
-              <Chip
-                clickable
-                onClick={() => setShowSensitivitySetting((prev) => !prev)}
-                label={`Sensitivitas ${Math.round(confidenceThreshold * 100)}%`}
-                size="small"
-                color="primary"
-                variant="outlined"
-                sx={{ fontWeight: 700 }}
-              />
-            </Tooltip>
+            <Stack direction="row" spacing={0.75} sx={{ alignItems: 'center' }}>
+              <Tooltip title="Atur sensitivitas threshold keyakinan model AI">
+                <Chip
+                  clickable
+                  onClick={() => setShowSensitivitySetting((prev) => !prev)}
+                  label={`Sensitivitas ${Math.round(confidenceThreshold * 100)}%`}
+                  size="small"
+                  color="primary"
+                  variant="outlined"
+                  sx={{ fontWeight: 700 }}
+                />
+              </Tooltip>
+              <Tooltip title="Tips akurasi pemindaian">
+                <Chip
+                  clickable
+                  icon={<InfoOutlinedIcon />}
+                  onClick={() => setShowImmersiveTips((prev) => !prev)}
+                  label="Tips"
+                  size="small"
+                  variant="outlined"
+                  sx={{ fontWeight: 700 }}
+                />
+              </Tooltip>
+            </Stack>
           </Stack>
           {showSensitivitySetting && <Box sx={{ mb: 1.5 }}>{sensitivityControls}</Box>}
+          {showImmersiveTips && <Box sx={{ mb: 1.5 }}>{tipsAlert}</Box>}
           <Stack direction="row" spacing={1} useFlexGap sx={{ mb: 1, flexWrap: 'wrap' }}>
             {COMMODITIES.map((c) => (
               <Chip
@@ -931,10 +991,10 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
             transition: 'all 0.2s',
             // Immersive: kartu mengisi sisa tinggi layar agar viewfinder full-bleed
             // (rantai flex: Card → CardContent → Box tab → viewfinder)
-            flex: immersive ? 1 : undefined,
+            flex: immersive ? '1 0 auto' : undefined,
             display: immersive ? 'flex' : undefined,
             flexDirection: immersive ? 'column' : undefined,
-            minHeight: immersive ? 0 : undefined,
+            minHeight: immersive ? 'calc(100dvh - 190px - env(safe-area-inset-bottom))' : undefined,
           }}
         >
           {isDragging && (
@@ -1024,32 +1084,8 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
               </Alert>
             )}
 
-            {/* Banner Panduan Pengambilan Sampel untuk Petani/Penilai */}
-            <Alert
-              severity="info"
-              icon={<InfoOutlinedIcon />}
-              sx={{
-                mb: immersive ? 1.5 : 2.5,
-                py: immersive ? 0.75 : undefined,
-                borderRadius: 2,
-                bgcolor: '#f0fdf4',
-                borderColor: '#bbf7d0',
-                color: '#166534',
-              }}
-            >
-              <Typography variant="body2" fontWeight={700}>
-                Tips Akurasi AI ({selectedCommodity}):
-              </Typography>
-              <Typography variant="caption" sx={{ display: 'block', mt: 0.25, color: '#15803d' }}>
-                {isEggplant
-                  ? 'Model mendeteksi mutu buah per butir. Untuk akurasi optimal, ambil 2–5 buah sampel dari keranjang dan letakkan berjajar di atas nampan/alas datar (hindari tumpukan padat pasar berlapis).'
-                  : isChili
-                  ? 'Model mendeteksi mutu cabai per butir (Grade A, Grade B, Reject). Letakkan cabai berjajar rapi di atas nampan dengan pencahayaan memadai.'
-                  : isTomato
-                  ? 'Model mendeteksi mutu tomat per butir (Grade A, Grade B, Reject). Arahkan kamera tegak lurus (top-down view) dengan pencahayaan memadai agar setiap buah terdeteksi jelas.'
-                  : 'Komoditas ini belum didukung model Computer Vision resmi. Silakan lakukan pemeriksaan fisik secara manual.'}
-              </Typography>
-            </Alert>
+            {/* Banner panduan pengambilan sampel — di immersive pindah ke panel overlay (chip Tips) */}
+            {!immersive && tipsAlert}
 
             {/* TAB 0: LIVE CAMERA */}
             {activeTab === 0 && (
@@ -1496,7 +1532,7 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
 
       {/* 3. HASIL SCAN INSTAN LANGSUNG MUNCUL DI SINI! */}
       {scanResult && (
-        <Stack ref={resultSectionRef} spacing={3}>
+        <Stack ref={resultSectionRef} spacing={3} sx={immersive ? { px: 1.5 } : undefined}>
           {saveSuccessMsg && (
             <Alert severity="success" onClose={() => setSaveSuccessMsg('')}>
               {saveSuccessMsg}
