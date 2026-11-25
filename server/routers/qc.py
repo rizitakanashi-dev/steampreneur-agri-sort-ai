@@ -191,6 +191,7 @@ async def scan_harvest_batch(
                         confidence_threshold=confidence_threshold,
                         enable_slicing=enable_slicing,
                         disambiguate_grades=disambiguate_grades,
+                        allow_candidate=True,  # Model belum "validated" secara formal; kandidat diizinkan untuk produksi
                     )
                 except Exception as exc:
                     logger.exception("Inferensi AI gagal untuk komoditas %s: %s", commodity, exc)
@@ -734,6 +735,7 @@ async def scan_multi_angle_harvest_batch(
                         confidence_threshold=confidence_threshold,
                         enable_slicing=enable_slicing,
                         disambiguate_grades=disambiguate_grades,
+                        allow_candidate=True,  # Model belum "validated" secara formal; kandidat diizinkan untuk produksi
                     )
                 except Exception as exc:
                     logger.exception("Inferensi sudut depan gagal untuk %s: %s", commodity, exc)
@@ -746,6 +748,7 @@ async def scan_multi_angle_harvest_batch(
                         confidence_threshold=confidence_threshold,
                         enable_slicing=enable_slicing,
                         disambiguate_grades=disambiguate_grades,
+                        allow_candidate=True,  # Model belum "validated" secara formal; kandidat diizinkan untuk produksi
                     )
                 except Exception as exc:
                     logger.exception("Inferensi sudut belakang gagal untuk %s: %s", commodity, exc)
