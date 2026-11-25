@@ -75,7 +75,7 @@ function normalizeToBapanasKey(name) {
   return norm
 }
 
-export function PricingDashboard() {
+export function PricingDashboard({ canSyncPrices = false }) {
   const theme = useTheme()
   const isCompactLayout = useMediaQuery(theme.breakpoints.down('sm'))
   const [commodity, setCommodity] = useState(COMMODITY_OPTIONS[0])
@@ -379,7 +379,7 @@ export function PricingDashboard() {
         <Alert
           action={
             <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap', gap: 0.5 }} useFlexGap>
-              <Button
+              {canSyncPrices && <Button
                 color="inherit"
                 disabled={isSyncing}
                 onClick={handleSyncPrices}
@@ -388,7 +388,7 @@ export function PricingDashboard() {
                 sx={{ whiteSpace: 'nowrap', textTransform: 'none', fontWeight: 700 }}
               >
                 {isSyncing ? 'Sinkronisasi...' : 'Sinkronkan'}
-              </Button>
+              </Button>}
               <Button
                 color="inherit"
                 size="small"
@@ -420,8 +420,7 @@ export function PricingDashboard() {
         </Alert>
       ) : isFeedActive ? (
         <Alert
-          action={
-            <Button
+          action={canSyncPrices ? <Button
               color="inherit"
               disabled={isSyncing}
               onClick={handleSyncPrices}
@@ -429,8 +428,7 @@ export function PricingDashboard() {
               startIcon={isSyncing ? <CircularProgress color="inherit" size={16} /> : <SyncRoundedIcon />}
             >
               {isSyncing ? 'Sinkronisasi...' : 'Sinkronkan'}
-            </Button>
-          }
+            </Button> : null}
           icon={<VerifiedRoundedIcon />}
           severity="success"
           sx={{ borderRadius: 2 }}
@@ -449,8 +447,7 @@ export function PricingDashboard() {
         </Alert>
       ) : (
         <Alert
-          action={
-            <Button
+          action={canSyncPrices ? <Button
               color="inherit"
               disabled={isSyncing}
               onClick={handleSyncPrices}
@@ -458,8 +455,7 @@ export function PricingDashboard() {
               startIcon={isSyncing ? <CircularProgress color="inherit" size={16} /> : <SyncRoundedIcon />}
             >
               Hubungkan Sumber
-            </Button>
-          }
+            </Button> : null}
           icon={<InfoOutlinedIcon />}
           severity="info"
           sx={{ borderRadius: 2 }}

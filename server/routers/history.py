@@ -9,7 +9,8 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import PlainTextResponse
 
 from server.services.storage_service import get_supabase_ddl, storage_service
-from server.utils.auth import get_current_user
+from server.utils.authorization import get_authorized_current_user, get_authenticated_context, require_permission
+from server.services.authorization_service import AuthorizationError
 
 router = APIRouter(prefix="/api/v1/qc", tags=["Quality Control History"])
 
@@ -19,7 +20,7 @@ async def get_scan_history(
     limit: int = Query(50, ge=1, le=200, description="Jumlah data per halaman"),
     offset: int = Query(0, ge=0, description="Indeks offset data"),
     commodity: Optional[str] = Query(None, description="Filter berdasarkan nama komoditas"),
-    current_user: Dict[str, Any] = Depends(get_current_user),
+    current_user: Dict[str, Any] = Depends(get_authorized_current_user("scans.read")),
 ) -> Dict[str, Any]:
     """
     Mengambil riwayat hasil pemindaian kualitas panen dengan filter dan paginasi.
@@ -34,12 +35,14 @@ async def get_scan_history(
 
 @router.post("/history", status_code=status.HTTP_201_CREATED)
 async def create_scan_history_record(
-    payload: Dict[str, Any], current_user: Dict[str, Any] = Depends(get_current_user)
+    payload: Dict[str, Any], current_user: Dict[str, Any] = Depends(get_authorized_current_user("scans.create"))
 ) -> Dict[str, Any]:
     """
     Menyimpan hasil scan baru ke lapisan persistensi (Task FS-BE-05).
     Dapat dipanggil oleh klien untuk menyimpan sesi pemindaian.
     """
+    if "user_id" in payload:
+        raise HTTPException(status_code=400, detail={"code": "OWNER_ID_NOT_ACCEPTED", "message": "user_id tidak dapat ditentukan oleh klien."})
     if not payload:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -60,9 +63,15 @@ async def create_scan_history_record(
 
 @router.get("/history/{scan_id}")
 async def get_scan_history_by_id(
-    scan_id: str, current_user: Dict[str, Any] = Depends(get_current_user)
+    scan_id: str, current_user: Dict[str, Any] = Depends(get_authenticated_context)
 ) -> Dict[str, Any]:
     """Mencari satu catatan pemindaian spesifik berdasarkan scan_id."""
+    try:
+        current_user["_authorization_service"].require_resource_access(current_user["_principal"], "scan", scan_id, "scans.read")
+    except AuthorizationError as exc:
+        if exc.status_code == 404:
+            raise HTTPException(status_code=404, detail={"code": "SCAN_RECORD_NOT_FOUND", "message": "Catatan pemindaian tidak ditemukan."}) from exc
+        raise HTTPException(status_code=403, detail={"code": "FORBIDDEN", "message": str(exc)}) from exc
     record = storage_service.get_scan_by_id(scan_id, user_id=current_user["id"], access_token=current_user["_access_token"])
     if not record:
         raise HTTPException(
@@ -82,9 +91,15 @@ async def get_scan_history_by_id(
 
 @router.delete("/history/{scan_id}")
 async def delete_scan_history_record(
-    scan_id: str, current_user: Dict[str, Any] = Depends(get_current_user)
+    scan_id: str, current_user: Dict[str, Any] = Depends(get_authenticated_context)
 ) -> Dict[str, Any]:
     """Menghapus satu catatan pemindaian berdasarkan scan_id."""
+    try:
+        current_user["_authorization_service"].require_resource_access(current_user["_principal"], "scan", scan_id, "scans.delete")
+    except AuthorizationError as exc:
+        if exc.status_code == 404:
+            raise HTTPException(status_code=404, detail={"code": "SCAN_RECORD_NOT_FOUND", "message": "Catatan pemindaian tidak ditemukan."}) from exc
+        raise HTTPException(status_code=403, detail={"code": "FORBIDDEN", "message": str(exc)}) from exc
     deleted = storage_service.delete_scan(scan_id, user_id=current_user["id"], access_token=current_user["_access_token"])
     if not deleted:
         raise HTTPException(
@@ -103,7 +118,7 @@ async def delete_scan_history_record(
 
 
 @router.delete("/history")
-async def clear_all_scan_history(current_user: Dict[str, Any] = Depends(get_current_user)) -> Dict[str, Any]:
+async def clear_all_scan_history(current_user: Dict[str, Any] = Depends(get_authorized_current_user("scans.delete"))) -> Dict[str, Any]:
     """Mengosongkan seluruh riwayat pemindaian."""
     deleted_count = storage_service.clear_scans(user_id=current_user["id"], access_token=current_user["_access_token"])
     return {
@@ -114,7 +129,7 @@ async def clear_all_scan_history(current_user: Dict[str, Any] = Depends(get_curr
 
 
 @router.get("/schema", response_class=PlainTextResponse)
-async def get_database_migration_schema() -> str:
+async def get_database_migration_schema(_: Any = Depends(require_permission("organizations.read"))) -> str:
     """
     Mengunduh skema DDL PostgreSQL / Supabase lengkap dengan RLS
     untuk migrasi ke database cloud produksi (Sprint 3 / P2).

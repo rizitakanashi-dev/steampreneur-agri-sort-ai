@@ -5,6 +5,7 @@ from typing import Any, Dict, Optional
 from fastapi import APIRouter, Header, HTTPException, status
 from pydantic import BaseModel, Field
 
+from server.config.auth_config import AuthProviderUnavailableError
 from server.services.auth_service import auth_service
 
 router = APIRouter(prefix="/api/v1/auth", tags=["Authentication"])
@@ -43,14 +44,16 @@ class ResetPasswordRequest(BaseModel):
 
 
 def _raise_auth_error(exc: Exception, code: str, default_status: int = 400) -> None:
-    if isinstance(exc, RuntimeError):
+    if isinstance(exc, (AuthProviderUnavailableError, RuntimeError)):
         code = "AUTH_PROVIDER_UNAVAILABLE"
         status_code = status.HTTP_503_SERVICE_UNAVAILABLE
+        message = "Layanan autentikasi tidak tersedia."
     else:
         status_code = default_status
+        message = str(exc)
     raise HTTPException(
         status_code=status_code,
-        detail={"code": code, "message": str(exc)},
+        detail={"code": code, "message": message},
     ) from exc
 
 

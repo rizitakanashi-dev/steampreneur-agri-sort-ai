@@ -12,6 +12,7 @@ import uuid
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 from fastapi.responses import JSONResponse
 
+from server.utils.authorization import get_authorized_current_user
 from server.utils.auth import get_current_user
 from server.services.ai_engine import ai_engine
 from server.services.mock_engine import predict_harvest_image_mock
@@ -56,7 +57,7 @@ async def scan_harvest_batch(
     mode: str = Form("production", description="Mode eksekusi: 'production' atau 'mock'"),
     enable_slicing: bool = Form(True, description="Aktifkan Tiled Inference (SAHI) untuk objek bertumpuk"),
     disambiguate_grades: bool = Form(True, description="Aktifkan kalibrasi diskriminasi mutu Class II vs Reject"),
-    current_user: dict = Depends(get_current_user),
+    current_user: dict = Depends(get_authorized_current_user("scans.create")),
 ):
     """
     Endpoint pemindaian kualitas panen (POST /api/v1/qc/scan).
@@ -543,7 +544,7 @@ async def scan_multi_angle_harvest_batch(
     enable_slicing: bool = Form(True, description="Aktifkan Tiled Inference (SAHI) untuk objek bertumpuk"),
     disambiguate_grades: bool = Form(True, description="Aktifkan kalibrasi diskriminasi mutu Class II vs Reject"),
     auto_clahe: bool = Form(True, description="Aktifkan adaptif CLAHE otomatis jika citra remang-remang"),
-    current_user: dict = Depends(get_current_user),
+    current_user: dict = Depends(get_authorized_current_user("scans.create")),
 ):
     """
     Endpoint pemindaian kualitas panen Multi-Angle / Multi-Shot (POST /api/v1/qc/scan-multi).

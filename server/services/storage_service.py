@@ -58,13 +58,14 @@ def get_supabase_ddl() -> str:
     Menghasilkan skema DDL PostgreSQL / Supabase lengkap dengan Row Level Security (RLS)
     dan indeks performa untuk integrasi cloud jangka panjang (Sprint 3 / P2).
     """
-    return """-- Skema Database Agri-Sort AI (PostgreSQL / Supabase)
--- Tanggal: 5 November 2026
--- Tanggung Jawab: Fullstack Developer
+    return """-- Scans schema and owner-only RLS policy migration.
+-- This is a reviewed local/manual DDL artifact, not an automatic startup migration.
+-- It preserves existing constraints and records, and aborts on unknown policies.
+BEGIN;
 
 CREATE TABLE IF NOT EXISTS public.scans (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+    user_id UUID REFERENCES auth.users(id) ON DELETE RESTRICT,
     scan_id VARCHAR(64) NOT NULL,
     commodity VARCHAR(100) NOT NULL,
     ai_supported BOOLEAN NOT NULL DEFAULT true,
@@ -84,42 +85,177 @@ CREATE TABLE IF NOT EXISTS public.scans (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now())
 );
 
--- Migrate existing installations; legacy rows remain unowned and are hidden by RLS.
-ALTER TABLE public.scans ADD COLUMN IF NOT EXISTS user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE;
-ALTER TABLE public.scans DROP CONSTRAINT IF EXISTS scans_scan_id_key;
+-- Add only the ownership column when absent. Never reassign legacy rows.
+ALTER TABLE public.scans ADD COLUMN IF NOT EXISTS user_id UUID;
 
--- Indeks untuk pencarian dan filter cepat
-CREATE INDEX IF NOT EXISTS idx_scans_commodity ON public.scans (commodity);
-CREATE INDEX IF NOT EXISTS idx_scans_created_at ON public.scans (created_at DESC);
-CREATE INDEX IF NOT EXISTS idx_scans_scan_id ON public.scans (scan_id);
-CREATE INDEX IF NOT EXISTS idx_scans_user_created_at ON public.scans (user_id, created_at DESC);
-CREATE UNIQUE INDEX IF NOT EXISTS idx_scans_user_scan_id ON public.scans (user_id, scan_id);
+DO $$
+DECLARE expected_column record;
+DECLARE fk_count integer;
+DECLARE user_id_attnum smallint;
+BEGIN
+    FOR expected_column IN SELECT * FROM (VALUES
+        ('id','uuid'), ('user_id','uuid'), ('scan_id','character varying'), ('commodity','character varying'),
+        ('ai_supported','boolean'), ('actual_weight_kg','numeric'), ('total_objects','integer'),
+        ('fresh_count','integer'), ('rotten_count','integer'), ('fresh_ratio_percent','numeric'),
+        ('rotten_ratio_percent','numeric'), ('reference_price_per_kg','integer'),
+        ('estimated_economic_value','bigint'), ('potential_loss_value','bigint'),
+        ('recommendation_note','text'), ('is_simulated','boolean'), ('model_version','character varying'),
+        ('created_at','timestamp with time zone'), ('updated_at','timestamp with time zone')
+    ) AS columns(column_name, type_name)
+    LOOP
+        IF NOT EXISTS (
+            SELECT 1 FROM pg_attribute a
+            WHERE a.attrelid='public.scans'::regclass AND a.attname=expected_column.column_name
+              AND a.atttypid=to_regtype(expected_column.type_name) AND NOT a.attisdropped
+        ) THEN
+            RAISE EXCEPTION 'scans migration stopped: public.scans.% must exist with type %', expected_column.column_name, expected_column.type_name;
+        END IF;
+    END LOOP;
+    IF EXISTS (
+        SELECT 1 FROM pg_attribute a
+        WHERE a.attrelid='public.scans'::regclass AND a.attname IN
+            ('id','scan_id','commodity','ai_supported','total_objects','fresh_count','rotten_count',
+             'fresh_ratio_percent','rotten_ratio_percent','reference_price_per_kg','is_simulated','created_at','updated_at')
+          AND NOT a.attnotnull AND NOT a.attisdropped
+    ) OR NOT EXISTS (
+        SELECT 1 FROM pg_constraint c
+        WHERE c.conrelid='public.scans'::regclass AND c.contype='p'
+          AND c.conkey=ARRAY[(SELECT attnum FROM pg_attribute WHERE attrelid='public.scans'::regclass AND attname='id' AND NOT attisdropped)]::smallint[]
+    ) THEN
+        RAISE EXCEPTION 'scans migration stopped: required NOT NULL columns or id primary key are incompatible';
+    END IF;
+    SELECT attnum INTO user_id_attnum FROM pg_attribute
+    WHERE attrelid='public.scans'::regclass AND attname='user_id' AND NOT attisdropped;
+    SELECT count(*) INTO fk_count FROM pg_constraint c
+    WHERE c.conrelid = 'public.scans'::regclass AND c.contype = 'f'
+      AND user_id_attnum = ANY(c.conkey);
+    IF fk_count > 0 AND NOT EXISTS (
+        SELECT 1 FROM pg_constraint c
+        WHERE c.conrelid = 'public.scans'::regclass AND c.contype = 'f'
+          AND c.conkey = ARRAY[user_id_attnum]::smallint[]
+          AND c.confrelid = 'auth.users'::regclass
+          AND c.confkey = ARRAY[(SELECT attnum FROM pg_attribute WHERE attrelid='auth.users'::regclass AND attname='id' AND NOT attisdropped)]::smallint[]
+    ) THEN
+        RAISE EXCEPTION 'scans migration stopped: existing user_id foreign key does not reference auth.users(id); inspect before reconciliation';
+    END IF;
+    IF fk_count = 0 THEN
+        IF EXISTS (SELECT 1 FROM pg_constraint WHERE conrelid='public.scans'::regclass AND conname='scans_user_id_fkey') THEN
+            RAISE EXCEPTION 'scans migration stopped: constraint name scans_user_id_fkey is already used; inspect before reconciliation';
+        END IF;
+        ALTER TABLE public.scans ADD CONSTRAINT scans_user_id_fkey
+            FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE RESTRICT;
+    END IF;
+END;
+$$;
 
--- Aktifkan Row Level Security (RLS); requests must be authenticated and owned by the current user.
+-- Validate same-name indexes rather than trusting IF NOT EXISTS object names.
+-- Existing constraints/indexes are preserved; incompatible names stop this transaction.
+DO $$
+DECLARE expected record;
+DECLARE index_oid oid;
+DECLARE actual_columns text[];
+DECLARE actual_unique boolean;
+DECLARE actual_valid boolean;
+DECLARE actual_ready boolean;
+DECLARE actual_predicate text;
+DECLARE actual_method text;
+DECLARE actual_keys text[];
+DECLARE actual_options integer[];
+BEGIN
+    FOR expected IN SELECT * FROM (VALUES
+        ('idx_scans_commodity', ARRAY['commodity']::text[], ARRAY['commodity']::text[], ARRAY[0]::integer[], false),
+        ('idx_scans_created_at', ARRAY['created_at']::text[], ARRAY['created_at DESC']::text[], ARRAY[1]::integer[], false),
+        ('idx_scans_scan_id', ARRAY['scan_id']::text[], ARRAY['scan_id']::text[], ARRAY[0]::integer[], false),
+        ('idx_scans_user_created_at', ARRAY['user_id','created_at']::text[], ARRAY['user_id','created_at DESC']::text[], ARRAY[0,1]::integer[], false),
+        ('idx_scans_user_scan_id', ARRAY['user_id','scan_id']::text[], ARRAY['user_id','scan_id']::text[], ARRAY[0,0]::integer[], true)
+    ) AS expected(index_name, index_keys, create_keys, sort_options, is_unique)
+    LOOP
+        SELECT c.oid INTO index_oid FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
+        WHERE n.nspname='public' AND c.relname=expected.index_name AND c.relkind='i';
+        IF index_oid IS NULL THEN
+            EXECUTE format('CREATE %s INDEX %I ON public.scans (%s)',
+                CASE WHEN expected.is_unique THEN 'UNIQUE' ELSE '' END,
+                expected.index_name, array_to_string(expected.create_keys, ', '));
+        ELSE
+            SELECT i.indisunique, i.indisvalid, i.indisready, pg_get_expr(i.indpred, i.indrelid), am.amname,
+                   ARRAY(SELECT pg_get_indexdef(i.indexrelid, position, true)
+                         FROM generate_series(1, i.indnkeyatts) AS position ORDER BY position),
+                   ARRAY(SELECT (i.indoption[position - 1] & 1)::integer
+                         FROM generate_series(1, i.indnkeyatts) AS position ORDER BY position)
+              INTO actual_unique, actual_valid, actual_ready, actual_predicate, actual_method, actual_keys, actual_options
+            FROM pg_index i JOIN pg_class table_class ON table_class.oid=i.indrelid
+            JOIN pg_am am ON am.oid=(SELECT relam FROM pg_class WHERE oid=i.indexrelid)
+            WHERE i.indexrelid=index_oid AND table_class.oid='public.scans'::regclass;
+            IF NOT FOUND OR actual_unique IS DISTINCT FROM expected.is_unique
+               OR NOT actual_valid OR NOT actual_ready OR actual_predicate IS NOT NULL
+               OR actual_method <> 'btree' OR actual_keys IS DISTINCT FROM expected.index_keys
+               OR actual_options IS DISTINCT FROM expected.sort_options THEN
+                RAISE EXCEPTION 'scans migration stopped: index public.% has an incompatible definition (keys %, unique %, predicate %, method %)', expected.index_name, actual_keys, actual_unique, actual_predicate, actual_method;
+            END IF;
+            IF (SELECT indnatts <> indnkeyatts FROM pg_index WHERE indexrelid=index_oid) THEN
+                RAISE EXCEPTION 'scans migration stopped: index public.% has unexpected included columns', expected.index_name;
+            END IF;
+        END IF;
+        index_oid := NULL;
+    END LOOP;
+END;
+$$;
+
 ALTER TABLE public.scans ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "Akses publik baca riwayat scan" ON public.scans;
-DROP POLICY IF EXISTS "Akses publik simpan riwayat scan" ON public.scans;
-DROP POLICY IF EXISTS "Users read own scan history" ON public.scans;
-DROP POLICY IF EXISTS "Users insert own scan history" ON public.scans;
-DROP POLICY IF EXISTS "Users update own scan history" ON public.scans;
-DROP POLICY IF EXISTS "Users delete own scan history" ON public.scans;
 
-CREATE POLICY "Users read own scan history"
-    ON public.scans FOR SELECT TO authenticated
-    USING (auth.uid() = user_id);
+DO $$
+DECLARE p record;
+BEGIN
+    FOR p IN SELECT policyname, roles, cmd, qual, with_check FROM pg_policies
+             WHERE schemaname='public' AND tablename='scans'
+    LOOP
+        IF p.policyname = 'Akses publik baca riwayat scan' THEN
+            IF p.cmd <> 'SELECT' OR p.qual <> 'true' OR p.with_check IS NOT NULL OR p.roles <> ARRAY['public']::name[] THEN
+                RAISE EXCEPTION 'scans migration stopped: legacy read policy has an unexpected definition';
+            END IF;
+            EXECUTE 'DROP POLICY "Akses publik baca riwayat scan" ON public.scans';
+        ELSIF p.policyname = 'Akses publik simpan riwayat scan' THEN
+            IF p.cmd <> 'INSERT' OR p.with_check <> 'true' OR p.qual IS NOT NULL OR p.roles <> ARRAY['public']::name[] THEN
+                RAISE EXCEPTION 'scans migration stopped: legacy insert policy has an unexpected definition';
+            END IF;
+            EXECUTE 'DROP POLICY "Akses publik simpan riwayat scan" ON public.scans';
+        ELSIF p.policyname = 'Users read own scan history' THEN
+            IF p.cmd <> 'SELECT' OR p.qual <> '(auth.uid() = user_id)' OR p.with_check IS NOT NULL OR p.roles <> ARRAY['authenticated']::name[] THEN
+                RAISE EXCEPTION 'scans migration stopped: owner SELECT policy has an unexpected definition';
+            END IF;
+        ELSIF p.policyname = 'Users insert own scan history' THEN
+            IF p.cmd <> 'INSERT' OR p.qual IS NOT NULL OR p.with_check <> '(auth.uid() = user_id)' OR p.roles <> ARRAY['authenticated']::name[] THEN
+                RAISE EXCEPTION 'scans migration stopped: owner INSERT policy has an unexpected definition';
+            END IF;
+        ELSIF p.policyname = 'Users update own scan history' THEN
+            IF p.cmd <> 'UPDATE' OR p.qual <> '(auth.uid() = user_id)' OR p.with_check <> '(auth.uid() = user_id)' OR p.roles <> ARRAY['authenticated']::name[] THEN
+                RAISE EXCEPTION 'scans migration stopped: owner UPDATE policy has an unexpected definition';
+            END IF;
+        ELSIF p.policyname = 'Users delete own scan history' THEN
+            IF p.cmd <> 'DELETE' OR p.qual <> '(auth.uid() = user_id)' OR p.with_check IS NOT NULL OR p.roles <> ARRAY['authenticated']::name[] THEN
+                RAISE EXCEPTION 'scans migration stopped: owner DELETE policy has an unexpected definition';
+            END IF;
+        ELSE
+            RAISE EXCEPTION 'scans migration stopped: unrecognized existing scans policy "%"; inspect before reconciliation', p.policyname;
+        END IF;
+    END LOOP;
 
-CREATE POLICY "Users insert own scan history"
-    ON public.scans FOR INSERT TO authenticated
-    WITH CHECK (auth.uid() = user_id);
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='scans' AND policyname='Users read own scan history') THEN
+        EXECUTE 'CREATE POLICY "Users read own scan history" ON public.scans FOR SELECT TO authenticated USING (auth.uid() = user_id)';
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='scans' AND policyname='Users insert own scan history') THEN
+        EXECUTE 'CREATE POLICY "Users insert own scan history" ON public.scans FOR INSERT TO authenticated WITH CHECK (auth.uid() = user_id)';
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='scans' AND policyname='Users update own scan history') THEN
+        EXECUTE 'CREATE POLICY "Users update own scan history" ON public.scans FOR UPDATE TO authenticated USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id)';
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='scans' AND policyname='Users delete own scan history') THEN
+        EXECUTE 'CREATE POLICY "Users delete own scan history" ON public.scans FOR DELETE TO authenticated USING (auth.uid() = user_id)';
+    END IF;
+END;
+$$;
 
-CREATE POLICY "Users update own scan history"
-    ON public.scans FOR UPDATE TO authenticated
-    USING (auth.uid() = user_id)
-    WITH CHECK (auth.uid() = user_id);
-
-CREATE POLICY "Users delete own scan history"
-    ON public.scans FOR DELETE TO authenticated
-    USING (auth.uid() = user_id);
+COMMIT;
 """
 
 

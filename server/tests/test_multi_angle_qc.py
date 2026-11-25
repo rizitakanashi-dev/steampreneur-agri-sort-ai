@@ -5,7 +5,10 @@ Dokumen Acuan: docs/rencana-kerja-ml-engineer.md (Bab 8B Poin 1)
 """
 
 from io import BytesIO
+from pathlib import Path
+import tempfile
 import unittest
+from unittest.mock import patch
 from PIL import Image
 
 try:
@@ -19,6 +22,7 @@ except ImportError:
     HAS_FASTAPI = False
 
 from server.services.multi_angle_service import aggregate_multi_view_qc
+from server.tests.storage_isolation import isolated_scan_storage
 
 
 class TestMultiAngleQCAggregation(unittest.TestCase):
@@ -167,6 +171,10 @@ class TestMultiAngleEndpointAPI(unittest.TestCase):
     """Pengujian integrasi endpoint FastAPI POST /api/v1/qc/scan-multi."""
 
     def setUp(self):
+        self.storage_dir = tempfile.TemporaryDirectory(prefix="agri-sort-qc-test-")
+        test_storage = isolated_scan_storage(Path(self.storage_dir.name))
+        self.storage_patcher = patch("server.routers.qc.storage_service", test_storage)
+        self.storage_patcher.start()
         app.dependency_overrides[get_current_user] = lambda: {
             "id": "test-user",
             "email": "test@gmail.com",
@@ -187,6 +195,8 @@ class TestMultiAngleEndpointAPI(unittest.TestCase):
 
     def tearDown(self):
         app.dependency_overrides.pop(get_current_user, None)
+        self.storage_patcher.stop()
+        self.storage_dir.cleanup()
 
     def test_scan_multi_endpoint_success_mock(self):
         """Memverifikasi pemanggilan sukses endpoint /api/v1/qc/scan-multi (mode mock)."""

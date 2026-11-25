@@ -5,6 +5,7 @@ Tanggung Jawab: Fullstack Developer (Backend)
 Dokumen Acuan: docs/rencana-kerja-fullstack.md (Task FS-BE-01)
 """
 
+from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from typing import Any, Dict
 
@@ -12,12 +13,21 @@ from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    from server.services.auth_service import configure_auth_service
+
+    configure_auth_service()
+    yield
+
+
 app = FastAPI(
     title="Agri-Sort AI Backend",
     description="Backend API Gateway & Quality Control Server untuk Agri-Sort AI (STEAMPreneur 2026)",
     version="1.0.0",
     docs_url="/docs",
     redoc_url="/redoc",
+    lifespan=lifespan,
 )
 
 # Konfigurasi CORS: Mengizinkan Frontend Vite (localhost, LAN, maupun domain Vercel)
@@ -32,7 +42,7 @@ app.add_middleware(
     allow_origins=ALLOWED_ORIGINS,
     allow_origin_regex=LAN_ORIGIN_REGEX,
     allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=["*"],
 )
 
@@ -41,11 +51,15 @@ from server.routers.qc import router as qc_router
 from server.routers.pricing import router as pricing_router
 from server.routers.history import router as history_router
 from server.routers.auth import router as auth_router
+from server.routers.organizations import router as organizations_router
+from server.routers.account import router as account_router
 
 app.include_router(qc_router)
 app.include_router(pricing_router)
 app.include_router(history_router)
 app.include_router(auth_router)
+app.include_router(organizations_router)
+app.include_router(account_router)
 
 
 @app.exception_handler(Exception)

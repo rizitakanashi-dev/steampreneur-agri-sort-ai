@@ -18,6 +18,12 @@ import urllib.parse
 import urllib.request
 import uuid
 
+from server.config.auth_config import (
+    AuthConfig,
+    AuthProviderUnavailableError,
+    load_auth_config,
+)
+
 logger = logging.getLogger("agrisort.auth")
 
 _DATA_DIR = (
@@ -29,33 +35,6 @@ _LOCAL_STATE_PATH = _DATA_DIR / "local_auth_state.json"
 _local_lock = threading.Lock()
 _OTP_EXPIRY_MINUTES = 5
 
-
-def _load_local_auth_config() -> None:
-    """Load auth & SMTP settings from the project .env dynamically."""
-    env_path = os.path.join(os.path.dirname(__file__), "..", "..", ".env")
-    try:
-        with open(os.path.abspath(env_path), encoding="utf-8") as env_file:
-            for raw_line in env_file:
-                line = raw_line.strip()
-                if not line or line.startswith("#") or "=" not in line:
-                    continue
-                key, value = line.split("=", 1)
-                key = key.strip()
-                val = value.strip().strip('"').strip("'")
-                if key in {
-                    "SUPABASE_URL",
-                    "SUPABASE_ANON_KEY",
-                    "SMTP_EMAIL",
-                    "SMTP_APP_PASSWORD",
-                    "VITE_GOOGLE_CLIENT_ID",
-                }:
-                    if val or key not in os.environ:
-                        os.environ[key] = val
-    except OSError:
-        pass
-
-
-_load_local_auth_config()
 
 
 def _hash_password_pbkdf2(password: str, salt: Optional[str] = None) -> str:
@@ -104,17 +83,16 @@ def _write_local_state(state: Dict[str, Any]) -> None:
                 json.dumps(state, indent=2, ensure_ascii=False),
                 encoding="utf-8",
             )
-        except Exception as exc:
-            logger.warning("Gagal menyimpan state auth lokal: %s", exc)
+        except Exception:
+            logger.warning("Local Auth state write failed")
 
 
 def _send_gmail_otp_email(recipient_email: str, otp_code: str, purpose: str) -> Tuple[bool, str]:
-    _load_local_auth_config()
     smtp_email = os.environ.get("SMTP_EMAIL", "").strip()
     smtp_password = os.environ.get("SMTP_APP_PASSWORD", "").replace(" ", "").strip()
 
     if not smtp_email or not smtp_password:
-        logger.warning("SMTP_EMAIL atau SMTP_APP_PASSWORD belum dikonfigurasi di .env.")
+        logger.warning("Local Auth email delivery is unavailable: SMTP is not configured")
         return False, "SMTP_NOT_CONFIGURED"
 
     subject_map = {
@@ -161,9 +139,9 @@ def _send_gmail_otp_email(recipient_email: str, otp_code: str, purpose: str) -> 
             smtp.login(smtp_email, smtp_password)
             smtp.send_message(msg)
         return True, "SENT_VIA_GMAIL_SMTP"
-    except Exception as exc:
-        logger.error("Gagal mengirim email OTP via SMTP Gmail: %s", exc)
-        return False, f"SMTP_ERROR: {exc}"
+    except Exception:
+        logger.error("Local Auth email delivery failed")
+        return False, "SMTP_ERROR"
 
 
 def _verify_official_google_id_token(id_token: str) -> Dict[str, Any]:
@@ -184,8 +162,8 @@ def _verify_official_google_id_token(id_token: str) -> Dict[str, Any]:
                     "picture": data.get("picture"),
                     "google_sub": data.get("sub"),
                 }
-    except Exception as exc:
-        logger.warning("Verifikasi id_token Google gagal: %s", exc)
+    except Exception:
+        logger.warning("Google identity token verification failed")
     raise ValueError("Token Google (id_token) tidak valid atau sudah kedaluwarsa.")
 
 
@@ -202,42 +180,65 @@ def _request_supabase(
             body = response.read().decode("utf-8")
             return json.loads(body) if body else {}
     except urllib.error.HTTPError as exc:
-        try:
-            error = json.loads(exc.read().decode("utf-8"))
-            message = error.get("msg") or error.get("message") or error.get("error_description") or error.get("error")
-        except (json.JSONDecodeError, UnicodeDecodeError):
-            message = None
-        raise ValueError(message or "Permintaan autentikasi ditolak.") from exc
+        exc.close()
+        if exc.code == 429 or exc.code >= 500:
+            raise AuthProviderUnavailableError("Layanan autentikasi tidak tersedia.") from exc
+        raise ValueError("Permintaan autentikasi ditolak.") from exc
     except (urllib.error.URLError, TimeoutError) as exc:
-        logger.warning("Supabase Auth request failed: %s", exc)
-        raise RuntimeError("Tidak dapat menghubungi layanan autentikasi.") from exc
+        logger.warning("Supabase Auth provider unavailable")
+        raise AuthProviderUnavailableError("Layanan autentikasi tidak tersedia.") from exc
 
 
 class AuthService:
-    """Server-side client for Supabase Auth with automatic Gmail SMTP & Google OAuth fallback."""
+    """Auth operations bound to one immutable provider configuration."""
 
     def __init__(
         self,
-        supabase_url: Optional[str] = None,
-        supabase_anon_key: Optional[str] = None,
+        config: Optional[AuthConfig] = None,
         transport: Optional[Callable[..., Dict[str, Any]]] = None,
     ) -> None:
-        self._explicit_supabase = supabase_url is not None or supabase_anon_key is not None
-        self.supabase_url = (supabase_url if supabase_url is not None else os.environ.get("SUPABASE_URL", "")).strip().rstrip("/")
-        self.supabase_anon_key = (supabase_anon_key if supabase_anon_key is not None else os.environ.get("SUPABASE_ANON_KEY", "")).strip()
+        self._config = self._validated_config(config) if config is not None else None
         self.transport = transport or _request_supabase
 
-    def _has_supabase(self) -> bool:
-        if not self._explicit_supabase:
-            _load_local_auth_config()
-            self.supabase_url = os.environ.get("SUPABASE_URL", "").strip().rstrip("/")
-            self.supabase_anon_key = os.environ.get("SUPABASE_ANON_KEY", "").strip()
-        return bool(self.supabase_url and self.supabase_anon_key)
+    @property
+    def config(self) -> AuthConfig:
+        if self._config is None:
+            raise RuntimeError("Authentication provider has not been configured at startup")
+        return self._config
 
-    def _use_local_fallback(self) -> bool:
-        return not self._explicit_supabase and not self._has_supabase()
+    @staticmethod
+    def _validated_config(config: AuthConfig) -> AuthConfig:
+        return AuthConfig.from_env({
+            "APP_ENV": config.app_env,
+            "AUTH_MODE": config.auth_mode,
+            "SUPABASE_URL": config.supabase_url,
+            "SUPABASE_ANON_KEY": config.supabase_anon_key,
+        })
+
+    def configure(self, config: AuthConfig) -> None:
+        validated = self._validated_config(config)
+        if self._config is not None and self._config != validated:
+            raise RuntimeError("Authentication provider configuration is immutable")
+        self._config = validated
+
+    @property
+    def auth_mode(self) -> str:
+        return self.config.auth_mode
+
+    def _is_local_mode(self) -> bool:
+        return self.config.auth_mode == "local"
+
+    def _reject_local_token_in_supabase_mode(self, token: str, prefix: str) -> None:
+        if not self._is_local_mode() and token.startswith(prefix):
+            raise ValueError("Sesi tidak valid atau kedaluwarsa. Silakan masuk kembali.")
+
+    def _require_local_token(self, token: str, prefix: str) -> None:
+        if self._is_local_mode() and not token.startswith(prefix):
+            raise ValueError("Sesi tidak valid atau kedaluwarsa. Silakan masuk kembali.")
 
     def _create_local_session(self, user_record: Dict[str, Any]) -> Dict[str, Any]:
+        if not self._is_local_mode():
+            raise RuntimeError("Local Auth is disabled for the selected provider")
         access_token = f"ags_at_{secrets.token_urlsafe(24)}"
         refresh_token = f"ags_rt_{secrets.token_urlsafe(24)}"
         expires_at = int((datetime.now(timezone.utc) + timedelta(days=7)).timestamp())
@@ -271,14 +272,14 @@ class AuthService:
         payload: Optional[Dict[str, Any]] = None,
         access_token: Optional[str] = None,
     ) -> Dict[str, Any]:
-        if not self._has_supabase():
-            raise RuntimeError("Supabase Auth belum dikonfigurasi di server.")
+        if self.config.auth_mode == "local":
+            raise RuntimeError("Supabase Auth is disabled in local mode")
         headers = {
-            "apikey": self.supabase_anon_key,
-            "Authorization": f"Bearer {access_token or self.supabase_anon_key}",
+            "apikey": self.config.supabase_anon_key,
+            "Authorization": f"Bearer {access_token or self.config.supabase_anon_key}",
             "Content-Type": "application/json",
         }
-        return self.transport(method, f"{self.supabase_url}/auth/v1{path}", headers, payload)
+        return self.transport(method, f"{self.config.supabase_url}/auth/v1{path}", headers, payload)
 
     @staticmethod
     def _user_payload(user: Optional[Dict[str, Any]]) -> Dict[str, Any]:
@@ -308,6 +309,7 @@ class AuthService:
         }
 
     def register_gmail_user(self, full_name: str, email: str, password: str) -> Dict[str, Any]:
+        _ = self.config
         clean_name = (full_name or "").strip()
         clean_email = (email or "").strip().lower()
         if len(clean_name) < 3:
@@ -317,7 +319,7 @@ class AuthService:
         if len(password or "") < 8 or not any(c.isalpha() for c in password) or not any(c.isdigit() for c in password):
             raise ValueError("Password minimal 8 karakter dengan kombinasi huruf dan angka.")
 
-        if self._use_local_fallback():
+        if self._is_local_mode():
             state = _read_local_state()
             existing = state["users"].get(clean_email)
             if existing and existing.get("verified", True):
@@ -345,7 +347,7 @@ class AuthService:
 
             sent_ok, status_msg = _send_gmail_otp_email(clean_email, otp_code, "register")
             if not sent_ok:
-                raise RuntimeError(f"Gagal mengirim email OTP ({status_msg}). Pastikan SMTP_EMAIL dan SMTP_APP_PASSWORD di .env benar.")
+                raise RuntimeError("Gagal mengirim email OTP. Periksa konfigurasi SMTP development.")
 
             return {
                 "confirmation_required": True,
@@ -373,11 +375,12 @@ class AuthService:
         }
 
     def login_gmail_user(self, email: str, password: str) -> Dict[str, Any]:
+        _ = self.config
         clean_email = (email or "").strip().lower()
         if not clean_email.endswith("@gmail.com") or not password:
             raise ValueError("Periksa kembali alamat Gmail dan kata sandi Anda.")
 
-        if self._use_local_fallback():
+        if self._is_local_mode():
             state = _read_local_state()
             user_record = state["users"].get(clean_email)
             if not user_record:
@@ -396,11 +399,12 @@ class AuthService:
         return self._session_payload(response)
 
     def verify_otp(self, email: str, token: str, purpose: str) -> Dict[str, Any]:
+        _ = self.config
         otp_type = {"register": "signup", "reset_password": "recovery"}.get(purpose)
         if not otp_type:
             raise ValueError("Tujuan verifikasi OTP tidak valid.")
 
-        if self._use_local_fallback():
+        if self._is_local_mode():
             clean_email = (email or "").strip().lower()
             clean_code = (token or "").strip()
             state = _read_local_state()
@@ -432,11 +436,12 @@ class AuthService:
         return self._session_payload(response)
 
     def send_otp(self, email: str, purpose: str) -> Dict[str, Any]:
+        _ = self.config
         clean_email = (email or "").strip().lower()
         if not clean_email.endswith("@gmail.com"):
             raise ValueError("Masukkan alamat @gmail.com yang valid.")
 
-        if self._use_local_fallback():
+        if self._is_local_mode():
             if purpose not in {"register", "reset_password"}:
                 raise ValueError("Tujuan OTP tidak valid.")
             state = _read_local_state()
@@ -454,7 +459,7 @@ class AuthService:
 
             sent_ok, status_msg = _send_gmail_otp_email(clean_email, otp_code, purpose)
             if not sent_ok:
-                raise RuntimeError(f"Gagal mengirim email OTP ({status_msg}).")
+                raise RuntimeError("Gagal mengirim email OTP.")
             return {
                 "email": clean_email,
                 "purpose": purpose,
@@ -470,10 +475,11 @@ class AuthService:
         return {"email": clean_email, "purpose": purpose, "message": "Kode pemulihan telah dikirim ke email Anda."}
 
     def authenticate_google(self, id_token: str) -> Dict[str, Any]:
+        _ = self.config
         if not id_token:
             raise ValueError("Token resmi Google wajib disertakan.")
 
-        if self._use_local_fallback():
+        if self._is_local_mode():
             verified = _verify_official_google_id_token(id_token)
             clean_email = verified["email"]
             state = _read_local_state()
@@ -506,13 +512,19 @@ class AuthService:
         return self._session_payload(response)
 
     def get_user(self, access_token: str) -> Dict[str, Any]:
+        _ = self.config
         if not access_token:
             raise ValueError("Token sesi wajib disertakan.")
+        self._reject_local_token_in_supabase_mode(access_token, "ags_at_")
+        self._require_local_token(access_token, "ags_at_")
 
-        if self._use_local_fallback() or access_token.startswith("ags_at_"):
+        if self._is_local_mode():
             state = _read_local_state()
             session = state["sessions"].get(access_token)
             if not session:
+                raise ValueError("Sesi tidak valid atau kedaluwarsa. Silakan masuk kembali.")
+            expires_at = session.get("expires_at")
+            if expires_at is None or int(expires_at) <= int(datetime.now(timezone.utc).timestamp()):
                 raise ValueError("Sesi tidak valid atau kedaluwarsa. Silakan masuk kembali.")
             return session["user"]
 
@@ -520,10 +532,13 @@ class AuthService:
         return self._user_payload(user)
 
     def refresh_session(self, refresh_token: str) -> Dict[str, Any]:
+        _ = self.config
         if not refresh_token:
             raise ValueError("Token sesi kedaluwarsa. Silakan masuk kembali.")
+        self._reject_local_token_in_supabase_mode(refresh_token, "ags_rt_")
+        self._require_local_token(refresh_token, "ags_rt_")
 
-        if self._use_local_fallback() or refresh_token.startswith("ags_rt_"):
+        if self._is_local_mode():
             state = _read_local_state()
             for token, sess in list(state["sessions"].items()):
                 if sess.get("refresh_token") == refresh_token:
@@ -538,18 +553,73 @@ class AuthService:
         return self._session_payload(response)
 
     def logout(self, access_token: str) -> None:
-        if self._use_local_fallback() or (access_token and access_token.startswith("ags_at_")):
+        _ = self.config
+        self._reject_local_token_in_supabase_mode(access_token, "ags_at_")
+        self._require_local_token(access_token, "ags_at_")
+        if self._is_local_mode():
             state = _read_local_state()
             state["sessions"].pop(access_token, None)
             _write_local_state(state)
             return
         self._request("POST", "/logout", {}, access_token=access_token)
 
+
+    def local_user_exists(self, user_id: str) -> bool:
+        if not self._is_local_mode():
+            raise RuntimeError('Local Auth is disabled for the selected provider')
+        with _local_lock:
+            if not _LOCAL_STATE_PATH.exists():
+                return False
+            try:
+                state = json.loads(_LOCAL_STATE_PATH.read_text(encoding='utf-8'))
+            except Exception:
+                return False
+            return any(
+                isinstance(record, dict) and str(record.get('id')) == str(user_id)
+                for record in state.get('users', {}).values()
+            )
+
+    def delete_local_user(self, user_id: str) -> bool:
+        '''Delete one local user and all of that user's local sessions.
+
+        Returns False when the user does not exist. The state file is replaced
+        atomically so a failed write cannot leave a half-deleted account.
+        '''
+        if not self._is_local_mode():
+            raise RuntimeError('Local Auth is disabled for the selected provider')
+        with _local_lock:
+            if not _LOCAL_STATE_PATH.exists():
+                return False
+            try:
+                state = json.loads(_LOCAL_STATE_PATH.read_text(encoding='utf-8'))
+            except Exception as exc:
+                raise RuntimeError('Local Auth state is unreadable') from exc
+            users = state.get('users', {})
+            target_email = next(
+                (email for email, record in users.items()
+                 if isinstance(record, dict) and str(record.get('id')) == str(user_id)),
+                None,
+            )
+            if target_email is None:
+                return False
+            users.pop(target_email, None)
+            state.get('otps', {}).pop(target_email, None)
+            state['sessions'] = {
+                token: session for token, session in state.get('sessions', {}).items()
+                if str((session or {}).get('user', {}).get('id')) != str(user_id)
+            }
+            temp = _LOCAL_STATE_PATH.with_suffix('.tmp')
+            _LOCAL_STATE_PATH.parent.mkdir(parents=True, exist_ok=True)
+            temp.write_text(json.dumps(state, indent=2, ensure_ascii=False), encoding='utf-8')
+            os.replace(temp, _LOCAL_STATE_PATH)
+            return True
+
     def reset_password(self, email: str, otp_code: str, new_password: str) -> Dict[str, Any]:
+        _ = self.config
         if len(new_password or "") < 8 or not any(c.isalpha() for c in new_password) or not any(c.isdigit() for c in new_password):
             raise ValueError("Password baru minimal 8 karakter dengan kombinasi huruf dan angka.")
 
-        if self._use_local_fallback():
+        if self._is_local_mode():
             session = self.verify_otp(email, otp_code, "reset_password")
             clean_email = (email or "").strip().lower()
             state = _read_local_state()
@@ -567,5 +637,12 @@ class AuthService:
         return {"user": session["user"], "message": "Kata sandi berhasil diperbarui."}
 
 
-# Keep a stable module-level singleton; environment configuration is read at import time.
+# The singleton is configured exactly once by the application startup lifecycle.
 auth_service = AuthService()
+
+
+def configure_auth_service() -> AuthConfig:
+    config = load_auth_config()
+    auth_service.configure(config)
+    logger.info("Authentication provider configured: environment=%s mode=%s", config.app_env, config.auth_mode)
+    return config

@@ -73,13 +73,18 @@ python3 -m pip install --break-system-packages -r server/requirements.txt
 
 ### 3. Konfigurasi Supabase Auth
 
-Login, konfirmasi email/OTP, Google OAuth, reset sandi, dan sesi QC menggunakan Supabase Auth. Buat project Supabase, lalu di **Authentication → Providers**:
+Backend memakai provider Auth yang dipilih secara eksplisit per startup: Supabase Auth untuk deployment dan Local Auth hanya untuk development lokal. Jika memilih Supabase, buat project Supabase lalu di **Authentication → Providers**:
 
 1. Aktifkan Email dan konfirmasi email; atur template email OTP agar menampilkan `{{ .Token }}`. Tetapkan rate limits OTP yang sesuai di Auth settings (Supabase juga menegakkan rate limit provider); aktifkan CAPTCHA untuk permukaan publik bila diperlukan.
 2. Jika ingin login Google, aktifkan provider Google dan konfigurasikan OAuth Client ID/Secret serta redirect URL sesuai Supabase.
-3. Salin `.env.example` menjadi `.env`, isi `SUPABASE_URL`, `SUPABASE_ANON_KEY`, dan `VITE_GOOGLE_CLIENT_ID` bila memakai Google Sign-In.
-4. Jalankan DDL di `/api/v1/qc/schema` pada Supabase SQL Editor untuk membuat tabel scan dengan RLS per pengguna.
-5. Masukkan `SUPABASE_URL` dan `SUPABASE_ANON_KEY` yang sama ke environment backend Vercel. Karena akses tabel memakai JWT pengguna dan RLS, kunci `service_role` tidak diperlukan untuk fitur ini.
+3. Untuk development lokal dengan Local Auth, salin `.env.example` menjadi `.env`, biarkan `APP_ENV=development` dan `AUTH_MODE=local`. Local Auth hanya tersedia pada proses development lokal dan memakai state file lokal; jangan gunakan untuk Preview, Staging, atau Production.
+4. Untuk Supabase Auth lokal, gunakan `APP_ENV=development`, ubah `AUTH_MODE=supabase`, dan isi `SUPABASE_URL` serta `SUPABASE_ANON_KEY`.
+5. Jalankan DDL di `/api/v1/qc/schema` pada Supabase SQL Editor untuk membuat tabel scan dengan RLS per pengguna.
+6. Untuk setiap environment deployment, set secara eksplisit `APP_ENV` dan `AUTH_MODE=supabase` di environment backend Vercel serta isi `SUPABASE_URL` dan `SUPABASE_ANON_KEY`. Production harus cocok dengan `VERCEL_ENV=production`; Preview dengan `VERCEL_ENV=preview`; Staging yang berjalan sebagai Vercel Preview memakai `APP_ENV=staging` dan `VERCEL_ENV=preview`. Gunakan project Supabase yang disetujui terpisah untuk Preview/Staging bila operator menetapkannya. Tidak ada fallback otomatis ke Local Auth saat kredensial tidak lengkap atau Supabase tidak tersedia; konfigurasi tidak valid menggagalkan startup, dan gangguan provider dilaporkan sebagai layanan tidak tersedia.
+7. `SUPABASE_ANON_KEY` bukan service-role key. Jangan masukkan service-role key ke konfigurasi Auth. `VITE_GOOGLE_CLIENT_ID` opsional untuk Google Sign-In dan bukan rahasia.
+8. Untuk ekspor dan penghapusan akun mandiri, terapkan migrasi RBAC dan forward migration di `supabase/migrations/`, lalu set `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_EXPORT_BUCKET`, dan `EXPORT_HMAC_KEY` hanya pada proses backend. Service-role key tidak boleh dikirim ke browser atau dipakai untuk membaca isi scan; pembacaan scan tetap memakai token pengguna dan RLS.
+
+`APP_ENV` menerima `development`, `preview`, `staging`, atau `production`; `AUTH_MODE` menerima `local` atau `supabase`. Tanpa keduanya, backend gagal tertutup dan endpoint Auth tidak dialihkan ke provider lain. Token Local Auth lama tidak diterima dalam mode Supabase; inventory akun Local Auth deployment belum dipastikan, jadi lakukan rekonsiliasi akun dan minta pengguna login/daftar ulang melalui jalur yang disetujui sebelum rollout.
 
 ### 4. Menjalankan Server Lokal
 

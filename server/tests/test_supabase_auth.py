@@ -1,23 +1,29 @@
 import unittest
 from unittest.mock import Mock
 
+from server.config.auth_config import AuthConfig
 from server.services.auth_service import AuthService
 
 
-class TestSupabaseAuthService(unittest.TestCase):
-    def test_auth_requests_fail_closed_without_supabase_configuration(self):
-        service = AuthService(supabase_url="", supabase_anon_key="")
+def supabase_config():
+    return AuthConfig(
+        app_env="development",
+        auth_mode="supabase",
+        supabase_url="https://example.supabase.co",
+        supabase_anon_key="anon-key",
+    )
 
-        with self.assertRaisesRegex(RuntimeError, "Supabase Auth belum dikonfigurasi"):
+
+class TestSupabaseAuthService(unittest.TestCase):
+    def test_auth_requests_fail_closed_before_startup_configuration(self):
+        service = AuthService()
+
+        with self.assertRaisesRegex(RuntimeError, "not been configured"):
             service.login_gmail_user("user@gmail.com", "Password123")
 
     def test_signup_does_not_create_a_session_until_signup_otp_is_verified(self):
         transport = Mock(return_value={"id": "pending-user", "email": "user@gmail.com"})
-        service = AuthService(
-            supabase_url="https://example.supabase.co",
-            supabase_anon_key="anon-key",
-            transport=transport,
-        )
+        service = AuthService(config=supabase_config(), transport=transport)
 
         result = service.register_gmail_user("User Uji", "user@gmail.com", "Password123")
 
@@ -32,11 +38,7 @@ class TestSupabaseAuthService(unittest.TestCase):
             "refresh_token": "refresh-token",
             "user": {"id": "verified-user", "email": "user@gmail.com", "user_metadata": {"full_name": "User Uji"}},
         })
-        service = AuthService(
-            supabase_url="https://example.supabase.co",
-            supabase_anon_key="anon-key",
-            transport=transport,
-        )
+        service = AuthService(config=supabase_config(), transport=transport)
 
         result = service.verify_otp("user@gmail.com", "123456", "register")
 
@@ -47,11 +49,7 @@ class TestSupabaseAuthService(unittest.TestCase):
 
     def test_access_token_is_validated_against_supabase_auth(self):
         transport = Mock(return_value={"id": "verified-user", "email": "user@gmail.com"})
-        service = AuthService(
-            supabase_url="https://example.supabase.co",
-            supabase_anon_key="anon-key",
-            transport=transport,
-        )
+        service = AuthService(config=supabase_config(), transport=transport)
 
         user = service.get_user("access-token")
 
@@ -68,11 +66,7 @@ class TestSupabaseAuthService(unittest.TestCase):
             },
             {"id": "verified-user", "email": "user@gmail.com"},
         ])
-        service = AuthService(
-            supabase_url="https://example.supabase.co",
-            supabase_anon_key="anon-key",
-            transport=transport,
-        )
+        service = AuthService(config=supabase_config(), transport=transport)
 
         result = service.reset_password("user@gmail.com", "123456", "NewPassword123")
 
