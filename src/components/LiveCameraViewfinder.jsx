@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { forwardRef, useImperativeHandle, useEffect, useRef, useState } from 'react'
 import {
   Alert,
   Box,
@@ -42,7 +42,8 @@ export function stopAllActiveCameraStreams() {
  * Komponen Live Camera Viewfinder untuk Agri-Sort AI
  * Mengakses webcam desktop atau kamera HP langsung dengan capture snapshot instan.
  */
-export function LiveCameraViewfinder({ onCapture, disabled = false }) {
+export const LiveCameraViewfinder = forwardRef(function LiveCameraViewfinder({ onCapture, disabled = false, variant = 'default' }, ref) {
+  const isImmersive = variant === 'immersive'
   const videoRef = useRef(null)
   const streamRef = useRef(null)
   const [cameraState, setCameraState] = useState('initializing') // 'initializing' | 'active' | 'error'
@@ -205,6 +206,17 @@ export function LiveCameraViewfinder({ onCapture, disabled = false }) {
     setFacingMode((prev) => (prev === 'environment' ? 'user' : 'environment'))
   }
 
+  // Kontrol eksternal (issue #30): shutter & flip di bottom action bar
+  // memanggil method ini via ref — guard internal tetap berlaku
+  useImperativeHandle(
+    ref,
+    () => ({
+      capture: handleCapturePhoto,
+      flip: toggleFacingMode,
+    }),
+    [cameraState, isCapturing, disabled, facingMode]
+  )
+
   const handleCapturePhoto = () => {
     if (!videoRef.current || cameraState !== 'active' || isCapturing || disabled) return
     setIsCapturing(true)
@@ -244,11 +256,12 @@ export function LiveCameraViewfinder({ onCapture, disabled = false }) {
   return (
     <Box
       sx={{
-        borderRadius: 2.5,
+        borderRadius: isImmersive ? 0 : 2.5,
         overflow: 'hidden',
         bgcolor: '#0f172a',
         position: 'relative',
-        minHeight: { xs: 260, sm: 360 },
+        minHeight: isImmersive ? 280 : { xs: 260, sm: 360 },
+        flex: isImmersive ? 1 : undefined,
         display: 'flex',
         flexDirection: 'column',
         justifyContent: 'center',
@@ -332,8 +345,9 @@ export function LiveCameraViewfinder({ onCapture, disabled = false }) {
         </Box>
       )}
 
-      {/* Bar Kontrol Bawah (Tombol Capture & Ganti Kamera) */}
-      {cameraState === 'active' && (
+      {/* Bar Kontrol Bawah (Tombol Capture & Ganti Kamera) — disembunyikan
+          di mode immersive: digantikan bottom action bar milik halaman */}
+      {cameraState === 'active' && !isImmersive && (
         <Stack
           direction="row"
           spacing={2}
@@ -384,4 +398,4 @@ export function LiveCameraViewfinder({ onCapture, disabled = false }) {
       )}
     </Box>
   )
-}
+})

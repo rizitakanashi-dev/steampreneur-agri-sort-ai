@@ -90,6 +90,16 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
   const fileInputRef = useRef(null)
   const fileInputRefFront = useRef(null)
   const fileInputRefBack = useRef(null)
+  // Issue #30 fase 3: kontrol kamera eksternal + referensi section hasil
+  const viewfinderRef = useRef(null)
+  const resultSectionRef = useRef(null)
+
+  // Setelah scan selesai di mode immersive, gulir otomatis ke hasil
+  useEffect(() => {
+    if (immersive && scanResult && resultSectionRef.current) {
+      resultSectionRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }
+  }, [immersive, scanResult])
 
   // Pastikan kamera langsung mati saat unmount (misal pindah ke Dashboard atau menu lain)
   useEffect(() => {
@@ -647,6 +657,10 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
       (firstBox.x2 - firstBox.x1) * (firstBox.y2 - firstBox.y1) > 0.5 * imgDims.width * imgDims.height
   )
 
+  // Thumbnail bottom bar: pakai foto terakhir yang tersedia
+  const barThumbSrc =
+    imagePreviewFront || imagePreview || scanResult?.imagePreviewFront || scanResult?.imagePreview
+
   // Panel sensitivitas diekstrak agar dipakai bersama layout dashboard & immersive
   const sensitivityControls = (
     <Box sx={{ p: 1.5, bgcolor: '#f8fafc', borderRadius: 2, border: '1px dashed #cbd5e1' }}>
@@ -686,7 +700,14 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
   )
 
   return (
-    <Stack spacing={immersive ? 2 : 3} sx={immersive ? { minHeight: '100dvh', px: 1.5, pt: 1, pb: 3 } : undefined}>
+    <Stack
+      spacing={immersive ? 2 : 3}
+      sx={
+        immersive
+          ? { minHeight: '100dvh', px: 1.5, pt: 1, pb: 'calc(120px + env(safe-area-inset-bottom))' }
+          : undefined
+      }
+    >
       {/* 1a. MODE IMMERSIVE (issue #30): komoditas + mode sebagai baris ringkas */}
       {immersive ? (
         <Box>
@@ -874,8 +895,9 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
       </Card>
       )}
 
-      {/* 2. TAMPILAN SCANNER (JIKA BELUM ADA HASIL SCAN) */}
-      {!scanResult && (
+      {/* 2. TAMPILAN SCANNER — di immersive kamera TETAP HIDUP setelah scan
+          (hasil tampil di bawah + auto-scroll), sesuai kriteria issue #30 */}
+      {(!scanResult || immersive) && (
         <Card
           elevation={2}
           onDragOver={handleDragOver}
@@ -1056,9 +1078,11 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
                     )}
 
                     <LiveCameraViewfinder
+                      ref={viewfinderRef}
                       key={`viewfinder-step-${multiStep}`}
                       onCapture={handleLiveCameraCapture}
                       disabled={isScanning}
+                      variant={immersive ? 'immersive' : 'default'}
                     />
 
                     {isScanning && (
@@ -1124,8 +1148,10 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
                       </Box>
                     ) : (
                       <LiveCameraViewfinder
+                        ref={viewfinderRef}
                         onCapture={handleLiveCameraCapture}
                         disabled={isScanning}
+                        variant={immersive ? 'immersive' : 'default'}
                       />
                     )}
 
@@ -1423,7 +1449,7 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
 
       {/* 3. HASIL SCAN INSTAN LANGSUNG MUNCUL DI SINI! */}
       {scanResult && (
-        <Stack spacing={3}>
+        <Stack ref={resultSectionRef} spacing={3}>
           {saveSuccessMsg && (
             <Alert severity="success" onClose={() => setSaveSuccessMsg('')}>
               {saveSuccessMsg}
@@ -1928,6 +1954,136 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
         selectedCommodity={selectedCommodity}
         statusDetails={statusDetails}
       />
+
+      {/* 4. BOTTOM ACTION BAR IMMERSIVE (issue #30): thumbnail hasil kiri,
+          shutter thumb-friendly tengah, galeri kanan — fixed di dasar layar */}
+      {immersive && (
+        <Box
+          sx={{
+            position: 'fixed',
+            bottom: 0,
+            left: 0,
+            right: 0,
+            zIndex: 1100,
+            px: 2.5,
+            pt: 1.5,
+            pb: 'calc(14px + env(safe-area-inset-bottom))',
+            bgcolor: 'rgba(15, 23, 42, 0.94)',
+            backdropFilter: 'blur(10px)',
+            borderTop: '1px solid rgba(255, 255, 255, 0.08)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: { xs: 1.25, sm: 2 },
+          }}
+        >
+          {/* Kiri: Periksa Hasil (aktif setelah ada hasil scan) */}
+          <Button
+            aria-label="Periksa hasil pemindaian terkini"
+            disabled={!scanResult}
+            onClick={() => resultSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+            sx={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              minWidth: 64,
+              px: 0.5,
+              py: 0.5,
+              borderRadius: 2,
+              color: '#fff',
+              opacity: scanResult ? 1 : 0.45,
+              '& .caption-label': { fontSize: '0.6875rem', fontWeight: 700, mt: 0.25 },
+              '&.Mui-disabled': { color: '#94a3b8' },
+            }}
+          >
+            {barThumbSrc ? (
+              <Box
+                component="img"
+                src={barThumbSrc}
+                alt="Thumbnail hasil terakhir"
+                sx={{
+                  width: 40,
+                  height: 40,
+                  objectFit: 'cover',
+                  borderRadius: 1.5,
+                  border: '1px solid rgba(255, 255, 255, 0.25)',
+                  bgcolor: '#1e293b',
+                }}
+              />
+            ) : (
+              <Box
+                sx={{
+                  width: 40,
+                  height: 40,
+                  borderRadius: 1.5,
+                  border: '1px dashed rgba(255, 255, 255, 0.25)',
+                  bgcolor: '#1e293b',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <CameraAltRoundedIcon sx={{ fontSize: 20, color: '#475569' }} />
+              </Box>
+            )}
+            <Typography className="caption-label" component="span">
+              Hasil
+            </Typography>
+          </Button>
+
+          {/* Flip kamera */}
+          <IconButton
+            aria-label="Ganti kamera depan atau belakang"
+            onClick={() => viewfinderRef.current?.flip()}
+            disabled={activeTab !== 0 || isScanning}
+            sx={{
+              width: 44,
+              height: 44,
+              color: '#fff',
+              bgcolor: 'rgba(255, 255, 255, 0.10)',
+              '&:hover': { bgcolor: 'rgba(255, 255, 255, 0.2)' },
+              '&.Mui-disabled': { color: '#64748b' },
+            }}
+          >
+            <FlipCameraIosRoundedIcon />
+          </IconButton>
+
+          {/* Shutter utama ~72px, thumb-friendly */}
+          <IconButton
+            aria-label="Ambil foto dan scan mutu"
+            disabled={activeTab !== 0 || isScanning}
+            onClick={() => viewfinderRef.current?.capture()}
+            sx={{
+              width: 72,
+              height: 72,
+              borderRadius: '50%',
+              bgcolor: '#047857',
+              color: '#fff',
+              boxShadow: '0 8px 24px rgba(3, 110, 69, 0.45)',
+              '&:hover': { bgcolor: '#065f46' },
+              '&.Mui-disabled': { bgcolor: '#1e293b', color: '#475569' },
+              border: '3px solid rgba(255, 255, 255, 0.35)',
+            }}
+          >
+            {isScanning ? <CircularProgress size={30} sx={{ color: '#fff' }} /> : <CameraAltRoundedIcon sx={{ fontSize: 30 }} />}
+          </IconButton>
+
+          {/* Kanan: Galeri / kembali ke kamera */}
+          <IconButton
+            aria-label={activeTab === 0 ? 'Buka galeri untuk unggah berkas' : 'Kembali ke kamera langsung'}
+            onClick={() => setActiveTab(activeTab === 0 ? 1 : 0)}
+            sx={{
+              width: 44,
+              height: 44,
+              color: '#fff',
+              bgcolor: 'rgba(255, 255, 255, 0.10)',
+              '&:hover': { bgcolor: 'rgba(255, 255, 255, 0.2)' },
+            }}
+          >
+            {activeTab === 0 ? <PhotoLibraryRoundedIcon /> : <CameraAltRoundedIcon />}
+          </IconButton>
+        </Box>
+      )}
     </Stack>
   )
 }
