@@ -10,6 +10,8 @@ import {
   Typography,
 } from '@mui/material'
 import CameraAltRoundedIcon from '@mui/icons-material/CameraAltRounded'
+import FlashOnRoundedIcon from '@mui/icons-material/FlashOnRounded'
+import FlashOffRoundedIcon from '@mui/icons-material/FlashOffRounded'
 import FlipCameraIosRoundedIcon from '@mui/icons-material/FlipCameraIosRounded'
 import VideocamOffRoundedIcon from '@mui/icons-material/VideocamOffRounded'
 import RefreshRoundedIcon from '@mui/icons-material/RefreshRounded'
@@ -50,6 +52,9 @@ export const LiveCameraViewfinder = forwardRef(function LiveCameraViewfinder({ o
   const [errorMessage, setErrorMessage] = useState('')
   const [facingMode, setFacingMode] = useState('environment') // 'environment' (belakang) | 'user' (depan)
   const [isCapturing, setIsCapturing] = useState(false)
+  // Torch (lampu kilat) — dideteksi via track capabilities
+  const [torchSupported, setTorchSupported] = useState(false)
+  const [torchOn, setTorchOn] = useState(false)
 
   const isMountedRef = useRef(true)
   const sessionRef = useRef(0)
@@ -140,6 +145,17 @@ export const LiveCameraViewfinder = forwardRef(function LiveCameraViewfinder({ o
       activeStreams.add(stream)
       streamRef.current = stream
 
+      // Issue #30 fase 4: deteksi dukungan torch (lampu kilat) per perangkat —
+      // hanya tampil jika kamera benar-benar mendukung applyConstraints torch
+      try {
+        const track = stream.getVideoTracks?.()[0]
+        const caps = typeof track?.getCapabilities === 'function' ? track.getCapabilities() : null
+        isMountedRef.current && setTorchSupported(Boolean(caps?.torch))
+        isMountedRef.current && setTorchOn(false)
+      } catch {
+        isMountedRef.current && setTorchSupported(false)
+      }
+
       if (videoRef.current) {
         videoRef.current.srcObject = stream
         videoRef.current.onloadedmetadata = () => {
@@ -213,9 +229,22 @@ export const LiveCameraViewfinder = forwardRef(function LiveCameraViewfinder({ o
     () => ({
       capture: handleCapturePhoto,
       flip: toggleFacingMode,
+      toggleTorch,
     }),
-    [cameraState, isCapturing, disabled, facingMode]
+    [cameraState, isCapturing, disabled, facingMode, torchSupported, torchOn]
   )
+
+  /** Nyalakan/matikan lampu kilat jika kamera mendukung torch */
+  const toggleTorch = async () => {
+    const track = streamRef.current?.getVideoTracks?.()[0]
+    if (!track || !torchSupported) return
+    try {
+      await track.applyConstraints({ advanced: [{ torch: !torchOn }] })
+      setTorchOn((prev) => !prev)
+    } catch (err) {
+      console.error('Gagal mengatur lampu kilat (torch):', err)
+    }
+  }
 
   const handleCapturePhoto = () => {
     if (!videoRef.current || cameraState !== 'active' || isCapturing || disabled) return
@@ -269,6 +298,27 @@ export const LiveCameraViewfinder = forwardRef(function LiveCameraViewfinder({ o
       }}
     >
       {/* Video Viewfinder */}
+      {/* Torch (lampu kilat) — hanya jika kamera mendukung & mode immersive */}
+      {isImmersive && cameraState === 'active' && torchSupported && (
+        <IconButton
+          aria-label={torchOn ? 'Matikan lampu kilat' : 'Nyalakan lampu kilat'}
+          onClick={toggleTorch}
+          sx={{
+            position: 'absolute',
+            top: 12,
+            right: 12,
+            zIndex: 15,
+            width: 40,
+            height: 40,
+            color: torchOn ? '#fbbf24' : '#fff',
+            bgcolor: 'rgba(0, 0, 0, 0.5)',
+            '&:hover': { bgcolor: 'rgba(0, 0, 0, 0.7)' },
+          }}
+        >
+          {torchOn ? <FlashOnRoundedIcon /> : <FlashOffRoundedIcon />}
+        </IconButton>
+      )}
+
       <video
         ref={videoRef}
         playsInline
