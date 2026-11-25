@@ -15,6 +15,7 @@ import FlashOffRoundedIcon from '@mui/icons-material/FlashOffRounded'
 import LightModeRoundedIcon from '@mui/icons-material/LightModeRounded'
 import BlurOnRoundedIcon from '@mui/icons-material/BlurOnRounded'
 import FlipCameraIosRoundedIcon from '@mui/icons-material/FlipCameraIosRounded'
+import RotateRightRoundedIcon from '@mui/icons-material/RotateRightRounded'
 import VideocamOffRoundedIcon from '@mui/icons-material/VideocamOffRounded'
 import RefreshRoundedIcon from '@mui/icons-material/RefreshRounded'
 
@@ -59,9 +60,23 @@ export const LiveCameraViewfinder = forwardRef(function LiveCameraViewfinder({ o
   const [torchOn, setTorchOn] = useState(false)
   // Issue #30 fase 5: kualitas citra real-time + auto-detect saat scene stabil
   const [qualityStatus, setQualityStatus] = useState(null) // null | 'dark' | 'blur'
+  // Orientasi native-like: dimensi frame stream + orientasi viewport
+  const [videoDims, setVideoDims] = useState(null) // { w, h }
+  const [isPortraitViewport, setIsPortraitViewport] = useState(() =>
+    typeof window !== 'undefined' && window.matchMedia ? window.matchMedia('(orientation: portrait)').matches : true
+  )
 
   const isMountedRef = useRef(true)
   const sessionRef = useRef(0)
+
+  // Ikuti perubahan orientasi layar (portrait <-> landscape)
+  useEffect(() => {
+    if (!window.matchMedia) return undefined
+    const mq = window.matchMedia('(orientation: portrait)')
+    const handler = (e) => setIsPortraitViewport(e.matches)
+    mq.addEventListener('change', handler)
+    return () => mq.removeEventListener('change', handler)
+  }, [])
 
   const stopStream = () => {
     // Invalidate request getUserMedia yang sedang berjalan
@@ -114,6 +129,7 @@ export const LiveCameraViewfinder = forwardRef(function LiveCameraViewfinder({ o
     if (isMountedRef.current) {
       setCameraState('initializing')
       setErrorMessage('')
+      setVideoDims(null)
     }
 
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
@@ -125,13 +141,15 @@ export const LiveCameraViewfinder = forwardRef(function LiveCameraViewfinder({ o
     }
 
     try {
+      // Ideal 1080p-class: sekali foto memuat bidang luas & detail untuk YOLO11.
+      // Petunjuk orientasi mengikuti layar — sebagian browser menghormati (frame
+      // portrait), sisanya tetap landscape dan ditangani rotasi CSS di atas
+      const portraitNow = typeof window !== 'undefined' && window.matchMedia ? window.matchMedia('(orientation: portrait)').matches : false
       const constraints = {
         video: {
           facingMode: { ideal: targetFacing },
-          // Ideal 1080p: sekali foto memuat bidang lebih luas & lebih detail
-          // untuk model YOLO11 mendeteksi banyak butir sekaligus
-          width: { ideal: 1920 },
-          height: { ideal: 1080 },
+          width: { ideal: portraitNow ? 1080 : 1920 },
+          height: { ideal: portraitNow ? 1920 : 1080 },
         },
         audio: false,
       }
@@ -173,6 +191,7 @@ export const LiveCameraViewfinder = forwardRef(function LiveCameraViewfinder({ o
             })
             return
           }
+          isMountedRef.current && setVideoDims({ w: videoRef.current.videoWidth, h: videoRef.current.videoHeight })
           videoRef.current
             ?.play()
             .then(() => isMountedRef.current && setCameraState('active'))
@@ -324,20 +343,57 @@ export const LiveCameraViewfinder = forwardRef(function LiveCameraViewfinder({ o
     return () => window.clearInterval(id)
   }, [isImmersive, cameraState, autoDetect, isCapturing, disabled])
 
+  // Rotasi kamera: basis otomatis (portrait layar + stream landscape → ±90°)
+  // + offset manual yang TERSIMPAN (localStorage) — pengguna tap sampai tegak,
+  // dan foto tersimpan selalu mengikuti persis apa yang terlihat di preview.
+  const needsRotation = Boolean(
+    isImmersive && isPortraitViewport && videoDims && videoDims.w > videoDims.h
+  )
+  const ROTATION_STORAGE_KEY = 'agrisort-cam-rotation-offset'
+  const [rotationOffset, setRotationOffset] = useState(() => {
+    try {
+      return Number(localStorage.getItem(ROTATION_STORAGE_KEY)) || 0
+    } catch {
+      return 0
+    }
+  })
+  useEffect(() => {
+    try {
+      localStorage.setItem(ROTATION_STORAGE_KEY, String(rotationOffset))
+    } catch {
+      /* private mode: abaikan */
+    }
+  }, [rotationOffset])
+
+  const totalRotation =
+    ((((needsRotation ? (facingMode === 'environment' ? 90 : -90) : 0) + rotationOffset) % 360) + 360) % 360
+
+  const handleRotateView = () => setRotationOffset((prev) => (prev + 90) % 360)
+
   const handleCapturePhoto = () => {
     if (!videoRef.current || cameraState !== 'active' || isCapturing || disabled) return
     setIsCapturing(true)
 
     try {
       const video = videoRef.current
-      const canvas = document.createElement('canvas')
       const w = video.videoWidth || 1280
       const h = video.videoHeight || 720
-      canvas.width = w
-      canvas.height = h
-
+      const canvas = document.createElement('canvas')
       const ctx = canvas.getContext('2d')
-      ctx.drawImage(video, 0, 0, w, h)
+
+      if (totalRotation === 0) {
+        canvas.width = w
+        canvas.height = h
+        ctx.drawImage(video, 0, 0, w, h)
+      } else {
+        // Frame diputar: lebar/tinggi canvas ditukar untuk 90°/270°
+        const swap = totalRotation === 90 || totalRotation === 270
+        canvas.width = swap ? h : w
+        canvas.height = swap ? w : h
+        ctx.translate(canvas.width / 2, canvas.height / 2)
+        ctx.rotate((totalRotation * Math.PI) / 180)
+        ctx.drawImage(video, -w / 2, -h / 2, w, h)
+      }
 
       const fingerprint = extractGreyscaleThumbnail(canvas, 16)
       const dataUrl = canvas.toDataURL('image/jpeg', 0.92)
@@ -376,6 +432,27 @@ export const LiveCameraViewfinder = forwardRef(function LiveCameraViewfinder({ o
       }}
     >
       {/* Video Viewfinder */}
+      {/* Tombol putar manual (immersive): kalibrasi orientasi per perangkat, tersimpan */}
+      {isImmersive && cameraState === 'active' && (
+        <IconButton
+          aria-label="Putar tampilan kamera 90 derajat"
+          onClick={handleRotateView}
+          sx={{
+            position: 'absolute',
+            bottom: 64,
+            right: 12,
+            zIndex: 15,
+            width: 40,
+            height: 40,
+            color: '#fff',
+            bgcolor: 'rgba(0, 0, 0, 0.5)',
+            '&:hover': { bgcolor: 'rgba(0, 0, 0, 0.7)' },
+          }}
+        >
+          <RotateRightRoundedIcon />
+        </IconButton>
+      )}
+
       {/* Torch (lampu kilat) — hanya jika kamera mendukung & mode immersive */}
       {isImmersive && cameraState === 'active' && torchSupported && (
         <IconButton
@@ -427,16 +504,32 @@ export const LiveCameraViewfinder = forwardRef(function LiveCameraViewfinder({ o
         ref={videoRef}
         playsInline
         muted
-        style={{
-          width: '100%',
-          // Immersive: full-bleed khas kamera HP — tinggi EKSPLISIT via dvh (bukan
-          // persentase, yang gagal resolve dalam rantai flex), cover edge-to-edge;
-          // foto yang disimpan tetap frame sensor penuh via videoWidth×videoHeight
-          height: isImmersive ? 'calc(100dvh - 160px - env(safe-area-inset-bottom))' : 'auto',
-          maxHeight: isImmersive ? 'none' : 460,
-          objectFit: isImmersive ? 'cover' : 'contain',
-          display: cameraState === 'active' ? 'block' : 'none',
-        }}
+        style={
+          totalRotation !== 0
+            ? {
+                // Tampilan diputar (auto + manual): diposisikan absolut di tengah
+                // dengan dimensi ditukar agar mengisi penuh kontainer portrait
+                position: 'absolute',
+                top: '50%',
+                left: '50%',
+                width: 'calc(100dvh - 160px - env(safe-area-inset-bottom))',
+                height: '100vw',
+                maxWidth: 'none',
+                transform: `translate(-50%, -50%) rotate(${totalRotation}deg)`,
+                objectFit: 'cover',
+                display: 'block',
+              }
+            : {
+                width: '100%',
+                // Immersive: full-bleed khas kamera HP — tinggi EKSPLISIT via dvh (bukan
+                // persentase, yang gagal resolve dalam rantai flex), cover edge-to-edge;
+                // foto yang disimpan tetap frame sensor penuh via videoWidth×videoHeight
+                height: isImmersive ? 'calc(100dvh - 160px - env(safe-area-inset-bottom))' : 'auto',
+                maxHeight: isImmersive ? 'none' : 460,
+                objectFit: isImmersive ? 'cover' : 'contain',
+                display: cameraState === 'active' ? 'block' : 'none',
+              }
+        }
       />
 
       {/* Frame Visual Overlay (Corner Guides) */}
