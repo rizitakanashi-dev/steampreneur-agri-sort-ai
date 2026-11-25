@@ -71,3 +71,33 @@ test('login form validation rejects malformed Gmail and empty password', () => {
   assert.ok(result.errors.email)
   assert.ok(result.errors.password)
 })
+
+test('login displays FastAPI string detail instead of the generic auth error', async () => {
+  const originalFetch = globalThis.fetch
+  globalThis.fetch = async () => ({
+    ok: false,
+    status: 401,
+    json: async () => ({ detail: 'Email atau kata sandi tidak cocok.' }),
+  })
+  try {
+    const result = await loginWithGmailBackend({ email: 'user@gmail.com', password: 'Password123' }, createMemoryStorage())
+    assert.deepEqual(result, { ok: false, errors: { password: 'Email atau kata sandi tidak cocok.' } })
+  } finally {
+    globalThis.fetch = originalFetch
+  }
+})
+
+test('login explains a non-JSON backend error using its HTTP status', async () => {
+  const originalFetch = globalThis.fetch
+  globalThis.fetch = async () => ({
+    ok: false,
+    status: 503,
+    json: async () => { throw new SyntaxError('not JSON') },
+  })
+  try {
+    const result = await loginWithGmailBackend({ email: 'user@gmail.com', password: 'Password123' }, createMemoryStorage())
+    assert.deepEqual(result, { ok: false, errors: { email: 'Layanan login sedang mengalami gangguan. Silakan coba lagi.' } })
+  } finally {
+    globalThis.fetch = originalFetch
+  }
+})

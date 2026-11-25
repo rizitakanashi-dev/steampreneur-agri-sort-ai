@@ -8,8 +8,23 @@ function resolveStorage(customStorage) {
   return null
 }
 
-function parseResponse(payload) {
-  return payload?.detail?.message || payload?.error?.message || payload?.message || 'Permintaan autentikasi gagal.'
+function parseResponse(payload, status) {
+  const detail = payload?.detail
+  if (typeof detail === 'string' && detail.trim()) return detail.trim()
+  if (Array.isArray(detail)) {
+    const messages = detail
+      .map((item) => typeof item?.msg === 'string' ? item.msg.trim() : '')
+      .filter(Boolean)
+    if (messages.length) return messages.join(' ')
+  }
+
+  const message = detail?.message || payload?.error?.message || payload?.message
+  if (typeof message === 'string' && message.trim()) return message.trim()
+
+  if (status === 401 || status === 403) return 'Email atau kata sandi tidak cocok. Periksa kembali lalu coba lagi.'
+  if (status === 404) return 'Layanan login tidak ditemukan. Hubungi pengelola aplikasi.'
+  if (status >= 500) return 'Layanan login sedang mengalami gangguan. Silakan coba lagi.'
+  return 'Login gagal. Periksa kembali data Anda lalu coba lagi.'
 }
 
 function normalizedUser(user = {}) {
@@ -151,7 +166,7 @@ async function postAuth(path, body, customStorage, saveSession = true) {
       body: JSON.stringify(body),
     })
     const payload = await response.json().catch(() => null)
-    if (!response.ok) return { ok: false, message: parseResponse(payload) }
+    if (!response.ok) return { ok: false, message: parseResponse(payload, response.status) }
     const data = payload?.data || {}
     const user = saveSession ? persistSession(data, customStorage) : data.user
     return { ok: true, user: user ? normalizedUser(user) : null, data, message: payload?.message || data.message }
