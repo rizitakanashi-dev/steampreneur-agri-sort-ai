@@ -50,6 +50,7 @@ import { REFERENCE_PRICES_PER_KG } from '../business/priceReference.js'
 import { calculateHarvest, calculateHarvestValue } from '../business/harvestCalculation.js'
 import { getTodayDateString } from '../business/harvestValidation.js'
 import { isSceneStationary } from '../utils/imageSimilarity.js'
+import { compressImageFile } from '../utils/imageCompress.js'
 import { COMMODITIES, formatRupiah } from './scanner/constants.js'
 import { SaveToRecapDialog } from './scanner/SaveToRecapDialog.jsx'
 import { CertificatePreviewDialog } from './scanner/CertificatePreviewDialog.jsx'
@@ -134,14 +135,18 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
 
   // Handle capture dari Live Camera
   const handleLiveCameraCapture = async (file, previewUrl, fingerprint) => {
+    if (!file) return
+    // Paket 2 "Unggah Cerdas": kompres foto kamera sebelum dipakai/ dikirim
+    // (fallback aman ke berkas asli bila kompresi gagal)
+    const compressed = await compressImageFile(file)
     if (!isMultiAngleMode) {
-      setImageFile(file)
+      setImageFile(compressed)
       setImagePreview(previewUrl)
       setScanError('')
-      await triggerInference(file, previewUrl, selectedCommodity, confidenceThreshold)
+      await triggerInference(compressed, previewUrl, selectedCommodity, confidenceThreshold)
     } else {
       if (multiStep === 1) {
-        setImageFileFront(file)
+        setImageFileFront(compressed)
         setImagePreviewFront(previewUrl)
         setCameraFingerprintFront(fingerprint)
         setScanError('')
@@ -156,12 +161,12 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
           )
           return
         }
-        setImageFileBack(file)
+        setImageFileBack(compressed)
         setImagePreviewBack(previewUrl)
         setScanError('')
         await triggerMultiInference(
           imageFileFront,
-          file,
+          compressed,
           imagePreviewFront,
           previewUrl,
           selectedCommodity,
@@ -172,7 +177,7 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
   }
 
   // Handle pemrosesan berkas untuk sisi spesifik (Multi-Angle)
-  const handleProcessFileForSide = (file, side = 'front') => {
+  const handleProcessFileForSide = async (file, side = 'front') => {
     if (!file) return
 
     const allowedTypes = ['image/jpeg', 'image/png', 'image/webp']
@@ -186,11 +191,14 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
       return
     }
 
+    // Paket 2: kompres sebelum dipakai (fallback aman ke berkas asli)
+    const compressed = await compressImageFile(file)
+
     // Pengecekan instan anti-kecurangan berkas kembar antara Sisi 1 dan Sisi 2
     if (side === 'back' && imageFileFront) {
       if (
-        imageFileFront.size === file.size &&
-        (imageFileFront.name === file.name || imageFileFront.lastModified === file.lastModified)
+        imageFileFront.size === compressed.size &&
+        (imageFileFront.name === compressed.name || imageFileFront.lastModified === compressed.lastModified)
       ) {
         setScanError(
           'Peringatan Anti-Kecurangan: Foto Sisi 2 terdeteksi identik dengan Sisi 1 (file kembar). Harap pilih foto berbeda setelah nampan digoyang!'
@@ -200,8 +208,8 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
       }
     } else if (side === 'front' && imageFileBack) {
       if (
-        imageFileBack.size === file.size &&
-        (imageFileBack.name === file.name || imageFileBack.lastModified === file.lastModified)
+        imageFileBack.size === compressed.size &&
+        (imageFileBack.name === compressed.name || imageFileBack.lastModified === compressed.lastModified)
       ) {
         setScanError(
           'Peringatan Anti-Kecurangan: Foto Sisi 1 terdeteksi identik dengan Sisi 2 (file kembar). Harap pilih foto berbeda setelah nampan digoyang!'
@@ -216,7 +224,7 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
     const reader = new FileReader()
     reader.onload = (event) => {
       const dataUrl = event.target?.result
-      if (side === 'back' && (imagePreviewFront === dataUrl || (imageFileFront && imageFileFront.size === file.size && imageFileFront.name === file.name))) {
+      if (side === 'back' && (imagePreviewFront === dataUrl || (imageFileFront && imageFileFront.size === compressed.size && imageFileFront.name === compressed.name))) {
         setScanError(
           'Peringatan Anti-Kecurangan: Foto Sisi 2 terdeteksi identik dengan Sisi 1 (file kembar). Harap pilih foto berbeda setelah nampan digoyang!'
         )
@@ -225,7 +233,7 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
         if (fileInputRefBack.current) fileInputRefBack.current.value = ''
         return
       }
-      if (side === 'front' && (imagePreviewBack === dataUrl || (imageFileBack && imageFileBack.size === file.size && imageFileBack.name === file.name))) {
+      if (side === 'front' && (imagePreviewBack === dataUrl || (imageFileBack && imageFileBack.size === compressed.size && imageFileBack.name === compressed.name))) {
         setScanError(
           'Peringatan Anti-Kecurangan: Foto Sisi 1 terdeteksi identik dengan Sisi 2 (file kembar). Harap pilih foto berbeda setelah nampan digoyang!'
         )
@@ -236,10 +244,10 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
       }
 
       if (side === 'front') {
-        setImageFileFront(file)
+        setImageFileFront(compressed)
         setImagePreviewFront(dataUrl)
       } else {
-        setImageFileBack(file)
+        setImageFileBack(compressed)
         setImagePreviewBack(dataUrl)
       }
     }
@@ -247,7 +255,7 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
   }
 
   // Handle pemrosesan berkas citra (baik via file dialog maupun drag and drop)
-  const handleProcessFile = (file) => {
+  const handleProcessFile = async (file) => {
     if (!file) return
 
     const allowedTypes = ['image/jpeg', 'image/png', 'image/webp']
@@ -261,7 +269,10 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
       return
     }
 
-    setImageFile(file)
+    // Paket 2: kompres sebelum dipakai (fallback aman ke berkas asli)
+    const compressed = await compressImageFile(file)
+
+    setImageFile(compressed)
     setScanError('')
     setScanResult(null)
     setActiveTab(1) // Beralih otomatis ke tab Pratinjau Berkas
@@ -270,7 +281,7 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
       const dataUrl = event.target?.result
       setImagePreview(dataUrl)
     }
-    reader.readAsDataURL(file)
+    reader.readAsDataURL(compressed)
   }
 
   // Handle pilih berkas gambar via input file
