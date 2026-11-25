@@ -128,8 +128,10 @@ export const LiveCameraViewfinder = forwardRef(function LiveCameraViewfinder({ o
       const constraints = {
         video: {
           facingMode: { ideal: targetFacing },
-          width: { ideal: 1280 },
-          height: { ideal: 720 },
+          // Ideal 1080p: sekali foto memuat bidang lebih luas & lebih detail
+          // untuk model YOLO11 mendeteksi banyak butir sekaligus
+          width: { ideal: 1920 },
+          height: { ideal: 1080 },
         },
         audio: false,
       }
@@ -365,8 +367,7 @@ export const LiveCameraViewfinder = forwardRef(function LiveCameraViewfinder({ o
         overflow: 'hidden',
         bgcolor: '#0f172a',
         position: 'relative',
-        minHeight: isImmersive ? 280 : { xs: 260, sm: 360 },
-        flex: isImmersive ? 1 : undefined,
+        minHeight: isImmersive ? 200 : { xs: 260, sm: 360 },
         display: 'flex',
         flexDirection: 'column',
         justifyContent: 'center',
@@ -427,7 +428,10 @@ export const LiveCameraViewfinder = forwardRef(function LiveCameraViewfinder({ o
         muted
         style={{
           width: '100%',
-          maxHeight: 460,
+          // Immersive: viewfinder besar (±68% layar) — seluruh frame sensor
+          // tetap tampil (contain), tidak dipotong preview
+          height: isImmersive ? 'min(68dvh, 640px)' : 'auto',
+          maxHeight: isImmersive ? 'none' : 460,
           objectFit: 'contain',
           display: cameraState === 'active' ? 'block' : 'none',
         }}

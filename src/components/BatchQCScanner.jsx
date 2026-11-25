@@ -919,7 +919,7 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
           (hasil tampil di bawah + auto-scroll), sesuai kriteria issue #30 */}
       {(!scanResult || immersive) && (
         <Card
-          elevation={2}
+          elevation={immersive ? 0 : 2}
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
@@ -958,16 +958,23 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
           )}
 
           <CardContent sx={{ p: immersive ? 0 : { xs: 2, sm: 3 } }}>
+            {/* Di immersive tab disembunyikan — bottom bar Galeri sudah menggantikan toggle */}
             <Tabs
               value={activeTab}
               onChange={(_, val) => setActiveTab(val)}
-              variant={{ xs: 'fullWidth', sm: 'standard' }}
+              variant="standard"
               sx={{
                 borderBottom: 1,
                 borderColor: 'divider',
                 mb: 2.5,
-                // Mobile: label tab ringkas agar 2 tab muat berdampingan
+                display: immersive ? 'none' : 'block',
+                // Mobile: label tab ringkas + kedua tab berbagi lebar penuh
+                // (sebelumnya: variant object {{xs,sm}} tidak valid — MUI diam-diam memakai 'standard')
                 '& .MuiTab-root': { fontSize: { xs: '0.8125rem', sm: '0.875rem' }, minWidth: { xs: 0, sm: 90 } },
+                '@media (max-width: 599.95px)': {
+                  '& .MuiTabs-flexContainer': { width: '100%' },
+                  '& .MuiTab-root': { flex: 1 },
+                },
               }}
             >
               <Tab
@@ -1010,7 +1017,14 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
             <Alert
               severity="info"
               icon={<InfoOutlinedIcon />}
-              sx={{ mb: 2.5, borderRadius: 2, bgcolor: '#f0fdf4', borderColor: '#bbf7d0', color: '#166534' }}
+              sx={{
+                mb: immersive ? 1.5 : 2.5,
+                py: immersive ? 0.75 : undefined,
+                borderRadius: 2,
+                bgcolor: '#f0fdf4',
+                borderColor: '#bbf7d0',
+                color: '#166534',
+              }}
             >
               <Typography variant="body2" fontWeight={700}>
                 Tips Akurasi AI ({selectedCommodity}):
