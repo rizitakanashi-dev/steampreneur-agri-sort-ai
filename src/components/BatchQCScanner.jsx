@@ -37,6 +37,7 @@ import RefreshRoundedIcon from '@mui/icons-material/RefreshRounded'
 import SaveRoundedIcon from '@mui/icons-material/SaveRounded'
 import TuneRoundedIcon from '@mui/icons-material/TuneRounded'
 import VideocamRoundedIcon from '@mui/icons-material/VideocamRounded'
+import AppsRoundedIcon from '@mui/icons-material/AppsRounded'
 import AssessmentRoundedIcon from '@mui/icons-material/AssessmentRounded'
 import RecyclingRoundedIcon from '@mui/icons-material/RecyclingRounded'
 import VerifiedRoundedIcon from '@mui/icons-material/VerifiedRounded'
@@ -80,6 +81,8 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
   const [showImmersiveTips, setShowImmersiveTips] = useState(false)
   // Status torch dari viewfinder (flash kiri-atas pada mode kamera)
   const [torchInfo, setTorchInfo] = useState({ supported: false, on: false })
+  // Panel menu ala kamera native (ikon ⠿ kanan-atas): mode & pengaturan
+  const [cameraMenuOpen, setCameraMenuOpen] = useState(false)
   const [multiStep, setMultiStep] = useState(1) // 1: Foto Sisi 1 (Depan), 2: Foto Sisi 2 (Belakang / Goyang Nampan)
   const [imageFileFront, setImageFileFront] = useState(null)
   const [imagePreviewFront, setImagePreviewFront] = useState(null)
@@ -767,7 +770,7 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
 
   return (
     <Stack
-      spacing={immersive ? 2 : 3}
+      spacing={immersive ? 0 : 3}
       sx={
         immersive
           ? {
@@ -804,13 +807,14 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
       {/* 1a. MODE IMMERSIVE: header band gelap khas kamera native — kontrol kecil, kamera tetap lebar */}
       {immersive ? (
         <>
-          {/* Header band gelap: ✕ + Flash kiri, Sensitivitas + Tips kanan — tombol kecil seperti kamera HP */}
+          {/* Header band gelap: ✕ + Flash kiri, menu ⠿ kanan — pas di tengah band, ala kamera HP */}
           <Box
             sx={{
               bgcolor: '#0f172a',
               px: 1,
-              pt: 'calc(4px + env(safe-area-inset-top))',
-              pb: 0.75,
+              height: 'calc(56px + env(safe-area-inset-top))',
+              boxSizing: 'border-box',
+              pt: 'env(safe-area-inset-top)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
@@ -851,61 +855,139 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
                 </IconButton>
               )}
             </Stack>
-            <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>
-              <Tooltip title="Atur sensitivitas threshold keyakinan model AI">
-                <Chip
-                  clickable
-                  onClick={() => setShowSensitivitySetting((prev) => !prev)}
-                  label={`Sensitivitas ${Math.round(confidenceThreshold * 100)}%`}
-                  size="small"
-                  variant="outlined"
-                  sx={{
-                    fontSize: '0.6875rem',
-                    height: 26,
-                    fontWeight: 700,
-                    color: '#e2e8f0',
-                    bgcolor: 'rgba(255, 255, 255, 0.10)',
-                    borderColor: 'rgba(255, 255, 255, 0.25)',
-                  }}
-                />
-              </Tooltip>
-              <Tooltip title="Tips akurasi pemindaian">
-                <Chip
-                  clickable
-                  icon={<InfoOutlinedIcon />}
-                  onClick={() => setShowImmersiveTips((prev) => !prev)}
-                  label="Tips"
-                  size="small"
-                  variant="outlined"
-                  sx={{
-                    fontSize: '0.6875rem',
-                    height: 26,
-                    fontWeight: 700,
-                    color: '#e2e8f0',
-                    bgcolor: 'rgba(255, 255, 255, 0.10)',
-                    borderColor: 'rgba(255, 255, 255, 0.25)',
-                    '& .MuiChip-icon': { color: '#e2e8f0', fontSize: 14 },
-                  }}
-                />
-              </Tooltip>
-            </Stack>
+            <Tooltip title="Mode & pengaturan kamera">
+              <IconButton
+                aria-label="Buka menu mode dan pengaturan kamera"
+                onClick={() => setCameraMenuOpen((prev) => !prev)}
+                sx={{
+                  width: 32,
+                  height: 32,
+                  '& .MuiSvgIcon-root': { fontSize: 20 },
+                  color: cameraMenuOpen ? '#4ade80' : '#e2e8f0',
+                  bgcolor: 'rgba(255, 255, 255, 0.10)',
+                  '&:hover': { bgcolor: 'rgba(255, 255, 255, 0.2)' },
+                }}
+              >
+                <AppsRoundedIcon />
+              </IconButton>
+            </Tooltip>
           </Box>
 
-          {/* Kartu sensitivitas / tips saat dibuka — mengambang di bawah bar atas */}
-          {(showSensitivitySetting || showImmersiveTips) && (
+          {/* Panel menu ala kamera native: ikon bulat + label, muncul saat ⠿ ditekan */}
+          {cameraMenuOpen && (
             <Box
               sx={{
                 position: 'fixed',
-                top: 'calc(56px + env(safe-area-inset-top))',
-                left: 8,
+                top: 'calc(64px + env(safe-area-inset-top))',
                 right: 8,
+                left: 8,
                 zIndex: 1260,
+                bgcolor: 'rgba(23, 33, 53, 0.94)',
+                backdropFilter: 'blur(10px)',
+                borderRadius: 3,
+                p: 1.5,
+                boxShadow: '0 12px 40px rgba(0, 0, 0, 0.5)',
                 maxHeight: '50dvh',
                 overflowY: 'auto',
               }}
             >
-              {showSensitivitySetting && <Box sx={{ mb: 1 }}>{sensitivityControls}</Box>}
-              {showImmersiveTips && tipsAlert}
+              <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: 'wrap', alignItems: 'flex-start' }}>
+                {[
+                  {
+                    key: 'sensitivity',
+                    label: `Sensitivitas ${Math.round(confidenceThreshold * 100)}%`,
+                    icon: <TuneRoundedIcon />,
+                    active: showSensitivitySetting,
+                    onClick: () => setShowSensitivitySetting((prev) => !prev),
+                  },
+                  {
+                    key: 'tips',
+                    label: 'Tips',
+                    icon: <InfoOutlinedIcon />,
+                    active: showImmersiveTips,
+                    onClick: () => setShowImmersiveTips((prev) => !prev),
+                  },
+                  {
+                    key: 'single',
+                    label: '1 Sisi',
+                    icon: <CameraAltRoundedIcon />,
+                    active: !isMultiAngleMode && !autoDetectMode,
+                    onClick: () => {
+                      if (isMultiAngleMode || autoDetectMode) {
+                        setIsMultiAngleMode(false)
+                        setAutoDetectMode(false)
+                        handleClearImage()
+                      }
+                    },
+                  },
+                  {
+                    key: 'multi',
+                    label: '2 Sisi',
+                    icon: <PhotoLibraryRoundedIcon />,
+                    active: isMultiAngleMode && !autoDetectMode,
+                    onClick: () => {
+                      if (!isMultiAngleMode || autoDetectMode) {
+                        setIsMultiAngleMode(true)
+                        setAutoDetectMode(false)
+                        handleClearImage()
+                      }
+                    },
+                  },
+                  {
+                    key: 'auto',
+                    label: 'Auto',
+                    icon: <AutoAwesomeRoundedIcon />,
+                    active: autoDetectMode,
+                    onClick: () => {
+                      if (!autoDetectMode) {
+                        setAutoDetectMode(true)
+                        if (isMultiAngleMode) {
+                          setIsMultiAngleMode(false)
+                          handleClearImage()
+                        }
+                      }
+                    },
+                  },
+                ].map((item) => (
+                  <Stack
+                    key={item.key}
+                    sx={{ alignItems: 'center', width: 72, flexShrink: 0, cursor: 'pointer' }}
+                    component="button"
+                    type="button"
+                    onClick={item.onClick}
+                  >
+                    <Box
+                      sx={{
+                        width: 48,
+                        height: 48,
+                        borderRadius: '50%',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: item.active ? '#052e16' : '#e2e8f0',
+                        bgcolor: item.active ? '#4ade80' : 'rgba(255, 255, 255, 0.10)',
+                        border: item.active ? 'none' : '1px solid rgba(255, 255, 255, 0.14)',
+                      }}
+                    >
+                      {item.icon}
+                    </Box>
+                    <Typography
+                      sx={{
+                        mt: 0.5,
+                        fontSize: '0.6875rem',
+                        fontWeight: 700,
+                        color: '#e2e8f0',
+                        textAlign: 'center',
+                        lineHeight: 1.2,
+                      }}
+                    >
+                      {item.label}
+                    </Typography>
+                  </Stack>
+                ))}
+              </Stack>
+              {showSensitivitySetting && <Box sx={{ mt: 1.5 }}>{sensitivityControls}</Box>}
+              {showImmersiveTips && <Box sx={{ mt: 1.5 }}>{tipsAlert}</Box>}
             </Box>
           )}
 
@@ -1047,7 +1129,7 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
             // agar viewfinder full-bleed KHAS KAMERA HP — tanpa bergantung rantai flex
             display: immersive ? 'flex' : undefined,
             flexDirection: immersive ? 'column' : undefined,
-            height: immersive ? 'calc(100dvh - 184px - env(safe-area-inset-top) - env(safe-area-inset-bottom))' : undefined,
+            height: immersive ? 'calc(100dvh - 188px - env(safe-area-inset-top) - env(safe-area-inset-bottom))' : undefined,
             flex: immersive ? '1 0 auto' : undefined,
           }}
         >
@@ -2311,18 +2393,18 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
           </IconButton>
           </Stack>
 
-          {/* Selector bawah gaya kamera native: komoditas | mode —
-              sembunyi saat sudah ada foto/preview/scanning agar tidak menutupi konten */}
+          {/* Label di bawah tombol, khas kamera native (PRO/VIDEO/FOTO/POTRET) — komoditas saja */}
           {activeTab === 0 && !isScanning && !imagePreview && !imagePreviewFront && (
             <Box
               sx={{
                 pt: 0.5,
+                pb: 0.25,
                 overflowX: 'auto',
                 scrollbarWidth: 'none',
                 '&::-webkit-scrollbar': { display: 'none' },
               }}
             >
-            <Stack direction="row" spacing={0.5} useFlexGap sx={{ mx: 'auto', width: 'max-content', alignItems: 'center', px: 2 }}>
+            <Stack direction="row" spacing={1} useFlexGap sx={{ justifyContent: 'center', width: '100%', alignItems: 'center', px: 1 }}>
               {COMMODITIES.map((c) => {
                 const active = selectedCommodity === c.id
                 return (
@@ -2351,95 +2433,8 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
                   </Box>
                 )
               })}
-              <Box sx={{ width: 1, height: 22, bgcolor: 'rgba(255, 255, 255, 0.2)', mx: 0.5, flexShrink: 0 }} />
-              <Box
-                component="button"
-                type="button"
-                aria-pressed={!isMultiAngleMode && !autoDetectMode}
-                onClick={() => {
-                  if (isMultiAngleMode || autoDetectMode) {
-                    setIsMultiAngleMode(false)
-                    setAutoDetectMode(false)
-                    handleClearImage()
-                  }
-                }}
-                sx={{
-                  px: 1.75,
-                  py: 0.9,
-                  borderRadius: 999,
-                  border: 'none',
-                  cursor: 'pointer',
-                  flexShrink: 0,
-                  fontSize: '0.8125rem',
-                  fontWeight: 800,
-                  letterSpacing: 0.2,
-                  color: !isMultiAngleMode && !autoDetectMode ? '#052e16' : 'rgba(226, 232, 240, 0.85)',
-                  bgcolor: !isMultiAngleMode && !autoDetectMode ? '#4ade80' : 'rgba(255, 255, 255, 0.14)',
-                  transition: 'background-color 0.15s',
-                }}
-              >
-                1 Sisi
-              </Box>
-              <Box
-                component="button"
-                type="button"
-                aria-pressed={isMultiAngleMode && !autoDetectMode}
-                onClick={() => {
-                  if (!isMultiAngleMode || autoDetectMode) {
-                    setIsMultiAngleMode(true)
-                    setAutoDetectMode(false)
-                    handleClearImage()
-                  }
-                }}
-                sx={{
-                  px: 1.75,
-                  py: 0.9,
-                  borderRadius: 999,
-                  border: 'none',
-                  cursor: 'pointer',
-                  flexShrink: 0,
-                  fontSize: '0.8125rem',
-                  fontWeight: 800,
-                  letterSpacing: 0.2,
-                  color: isMultiAngleMode && !autoDetectMode ? '#052e16' : 'rgba(226, 232, 240, 0.85)',
-                  bgcolor: isMultiAngleMode && !autoDetectMode ? '#4ade80' : 'rgba(255, 255, 255, 0.14)',
-                  transition: 'background-color 0.15s',
-                }}
-              >
-                2 Sisi
-              </Box>
-              <Box
-                component="button"
-                type="button"
-                aria-pressed={autoDetectMode}
-                onClick={() => {
-                  if (!autoDetectMode) {
-                    setAutoDetectMode(true)
-                    if (isMultiAngleMode) {
-                      setIsMultiAngleMode(false)
-                      handleClearImage()
-                    }
-                  }
-                }}
-                sx={{
-                  px: 1.75,
-                  py: 0.9,
-                  borderRadius: 999,
-                  border: 'none',
-                  cursor: 'pointer',
-                  flexShrink: 0,
-                  fontSize: '0.8125rem',
-                  fontWeight: 800,
-                  letterSpacing: 0.2,
-                  color: autoDetectMode ? '#052e16' : 'rgba(226, 232, 240, 0.85)',
-                  bgcolor: autoDetectMode ? '#4ade80' : 'rgba(255, 255, 255, 0.14)',
-                  transition: 'background-color 0.15s',
-                }}
-              >
-                ⚡ Auto
-              </Box>
             </Stack>
-          </Box>
+            </Box>
           )}
         </Box>
       )}
