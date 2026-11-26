@@ -2503,9 +2503,14 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
             justifyContent: 'center',
           }}
         >
+          {/* Baris tombol simetris: Hasil+Flip kiri, shutter PERSIS tengah, putar kanan */}
           <Stack
             direction="row"
-            sx={{ alignItems: 'center', justifyContent: 'center', gap: { xs: 1.5, sm: 2 } }}
+            sx={{ width: '100%', alignItems: 'center', justifyContent: 'space-between', px: 0.5 }}
+          >
+          <Stack
+            direction="row"
+            sx={{ alignItems: 'center', gap: { xs: 1.25, sm: 2 }, minWidth: 132, justifyContent: 'flex-start' }}
           >
           {/* Kiri: Periksa Hasil (aktif setelah ada hasil scan) */}
           <Button
@@ -2586,8 +2591,9 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
           >
             <FlipCameraIosRoundedIcon />
           </IconButton>
+          </Stack>
 
-          {/* Shutter utama ~72px, thumb-friendly */}
+          {/* Shutter utama ~72px, thumb-friendly, PERSIS di tengah */}
           <IconButton
             aria-label="Ambil foto dan scan mutu"
             disabled={activeTab !== 0 || isScanning}
