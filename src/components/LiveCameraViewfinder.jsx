@@ -10,8 +10,6 @@ import {
   Typography,
 } from '@mui/material'
 import CameraAltRoundedIcon from '@mui/icons-material/CameraAltRounded'
-import FlashOnRoundedIcon from '@mui/icons-material/FlashOnRounded'
-import FlashOffRoundedIcon from '@mui/icons-material/FlashOffRounded'
 import LightModeRoundedIcon from '@mui/icons-material/LightModeRounded'
 import BlurOnRoundedIcon from '@mui/icons-material/BlurOnRounded'
 import FlipCameraIosRoundedIcon from '@mui/icons-material/FlipCameraIosRounded'
@@ -47,7 +45,7 @@ export function stopAllActiveCameraStreams() {
  * Komponen Live Camera Viewfinder untuk Agri-Sort AI
  * Mengakses webcam desktop atau kamera HP langsung dengan capture snapshot instan.
  */
-export const LiveCameraViewfinder = forwardRef(function LiveCameraViewfinder({ onCapture, disabled = false, variant = 'default', autoDetect = false }, ref) {
+export const LiveCameraViewfinder = forwardRef(function LiveCameraViewfinder({ onCapture, disabled = false, variant = 'default', autoDetect = false, onTorchStateChange }, ref) {
   const isImmersive = variant === 'immersive'
   const videoRef = useRef(null)
   const streamRef = useRef(null)
@@ -174,10 +172,13 @@ export const LiveCameraViewfinder = forwardRef(function LiveCameraViewfinder({ o
       try {
         const track = stream.getVideoTracks?.()[0]
         const caps = typeof track?.getCapabilities === 'function' ? track.getCapabilities() : null
-        isMountedRef.current && setTorchSupported(Boolean(caps?.torch))
+        const supported = Boolean(caps?.torch)
+        isMountedRef.current && setTorchSupported(supported)
         isMountedRef.current && setTorchOn(false)
+        onTorchStateChange?.({ supported, on: false })
       } catch {
         isMountedRef.current && setTorchSupported(false)
+        onTorchStateChange?.({ supported: false, on: false })
       }
 
       if (videoRef.current) {
@@ -265,7 +266,11 @@ export const LiveCameraViewfinder = forwardRef(function LiveCameraViewfinder({ o
     if (!track || !torchSupported) return
     try {
       await track.applyConstraints({ advanced: [{ torch: !torchOn }] })
-      setTorchOn((prev) => !prev)
+      setTorchOn((prev) => {
+        const next = !prev
+        onTorchStateChange?.({ supported: true, on: next })
+        return next
+      })
     } catch (err) {
       console.error('Gagal mengatur lampu kilat (torch):', err)
     }
@@ -453,26 +458,7 @@ export const LiveCameraViewfinder = forwardRef(function LiveCameraViewfinder({ o
         </IconButton>
       )}
 
-      {/* Torch (lampu kilat) — hanya jika kamera mendukung & mode immersive */}
-      {isImmersive && cameraState === 'active' && torchSupported && (
-        <IconButton
-          aria-label={torchOn ? 'Matikan lampu kilat' : 'Nyalakan lampu kilat'}
-          onClick={toggleTorch}
-          sx={{
-            position: 'absolute',
-            bottom: 14,
-            right: 12,
-            zIndex: 15,
-            width: 40,
-            height: 40,
-            color: torchOn ? '#fbbf24' : '#fff',
-            bgcolor: 'rgba(0, 0, 0, 0.5)',
-            '&:hover': { bgcolor: 'rgba(0, 0, 0, 0.7)' },
-          }}
-        >
-          {torchOn ? <FlashOnRoundedIcon /> : <FlashOffRoundedIcon />}
-        </IconButton>
-      )}
+      {/* Torch dipindah ke bottom action bar parent (dikendalikan via ref) */}
 
       {/* Indikator kualitas citra real-time (issue #30): blur / cahaya rendah */}
       {isImmersive && cameraState === 'active' && qualityStatus && (

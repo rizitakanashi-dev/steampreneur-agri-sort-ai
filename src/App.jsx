@@ -886,9 +886,24 @@ function App() {
             direction="row"
             alignItems="center"
             justifyContent="space-between"
-            sx={{ pt: 'calc(10px + env(safe-area-inset-top))', pr: 0.5 }}
+            sx={
+              scannerImmersiveActive
+                ? {
+                    // Header gelap menyatu dengan layar kamera — tanpa pita putih
+                    pt: 'calc(10px + env(safe-area-inset-top))',
+                    pr: 0.5,
+                    pb: 0.5,
+                    px: 1,
+                    bgcolor: '#0f172a',
+                  }
+                : { pt: 'calc(10px + env(safe-area-inset-top))', pr: 0.5 }
+            }
           >
-            <Typography variant="subtitle1" fontWeight={800} color="text.primary">
+            <Typography
+              variant="subtitle1"
+              fontWeight={800}
+              color={scannerImmersiveActive ? '#e2e8f0' : 'text.primary'}
+            >
               {page.title}
             </Typography>
             <IconButton
@@ -896,6 +911,7 @@ function App() {
               edge="end"
               onClick={() => setScannerImmersive(false)}
               size="small"
+              sx={scannerImmersiveActive ? { color: '#e2e8f0' } : undefined}
             >
               <CloseRoundedIcon />
             </IconButton>
