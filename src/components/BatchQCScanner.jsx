@@ -864,27 +864,26 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
                 </IconButton>
               )}
             </Stack>
-            {/* Mode 2 Sisi: indikator langkah DI BARIS KONTROL — kamera bersih total */}
+            {/* Mode 2 Sisi: indikator langkah DI BARIS KONTROL — satu chip kecil, kamera bersih */}
             {isMultiAngleMode && (
-              <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>
+              <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center', minWidth: 0 }}>
                 <Chip
                   size="small"
-                  label={`Langkah ${multiStep}/2`}
-                  sx={{ bgcolor: 'rgba(15, 23, 42, 0.8)', color: '#4ade80', fontWeight: 800 }}
-                />
-                <Typography
-                  variant="caption"
+                  label={
+                    multiStep === 1
+                      ? '1/2 · Sisi 1: tampak atas'
+                      : '2/2 · Sisi 2: balik buah'
+                  }
                   sx={{
                     bgcolor: 'rgba(15, 23, 42, 0.8)',
-                    color: '#fff',
-                    px: 1,
-                    py: 0.25,
-                    borderRadius: 1.5,
-                    fontWeight: 600,
+                    color: '#4ade80',
+                    fontWeight: 700,
+                    fontSize: '0.6875rem',
+                    whiteSpace: 'nowrap',
+                    flexShrink: 1,
+                    '& .MuiChip-label': { px: 1 },
                   }}
-                >
-                  {multiStep === 1 ? 'Sisi 1: tampak atas' : 'Sisi 2: goyang / balik buah'}
-                </Typography>
+                />
                 {multiStep === 2 && imagePreviewFront && (
                   <Chip
                     clickable
@@ -896,7 +895,7 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
                       setImagePreviewFront(null)
                       setMultiStep(1)
                     }}
-                    sx={{ color: '#e2e8f0', fontWeight: 700 }}
+                    sx={{ color: '#e2e8f0', fontWeight: 700, flexShrink: 0 }}
                   />
                 )}
               </Stack>
