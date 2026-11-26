@@ -415,17 +415,19 @@ function FoundationPage({
   if (activePage === 'scanner') {
     return (
       <Stack spacing={2.5}>
-        <Stack direction="row" sx={{ justifyContent: 'flex-end' }}>
-          <Button
-            size="small"
-            variant="text"
-            color="inherit"
-            onClick={() => setShowManualForm((prev) => !prev)}
-            sx={{ textDecoration: 'underline', color: 'text.secondary' }}
-          >
-            {showManualForm ? '← Kembali ke Scanner Kamera AI' : 'Beralih ke Input Panen Manual (Tanpa Foto) →'}
-          </Button>
-        </Stack>
+        {!immersive && (
+          <Stack direction="row" sx={{ justifyContent: 'flex-end' }}>
+            <Button
+              size="small"
+              variant="text"
+              color="inherit"
+              onClick={() => setShowManualForm((prev) => !prev)}
+              sx={{ textDecoration: 'underline', color: 'text.secondary' }}
+            >
+              {showManualForm ? '← Kembali ke Scanner Kamera AI' : 'Beralih ke Input Panen Manual (Tanpa Foto) →'}
+            </Button>
+          </Stack>
+        )}
 
         {showManualForm ? (
           <HarvestForm onSave={onHarvestConfirm} />
@@ -885,27 +887,24 @@ function App() {
           <Stack
             direction="row"
             alignItems="center"
-            justifyContent="space-between"
+            justifyContent="flex-end"
             sx={
               scannerImmersiveActive
                 ? {
-                    // Header gelap menyatu dengan layar kamera — tanpa pita putih
-                    pt: 'calc(10px + env(safe-area-inset-top))',
-                    pr: 0.5,
-                    pb: 0.5,
+                    // Header kamera native: hanya ✕ kecil — tanpa judul, tanpa ruang berlebih
+                    pt: 'calc(6px + env(safe-area-inset-top))',
+                    pb: 0.25,
                     px: 1,
                     bgcolor: '#0f172a',
                   }
                 : { pt: 'calc(10px + env(safe-area-inset-top))', pr: 0.5 }
             }
           >
-            <Typography
-              variant="subtitle1"
-              fontWeight={800}
-              color={scannerImmersiveActive ? '#e2e8f0' : 'text.primary'}
-            >
-              {page.title}
-            </Typography>
+            {!scannerImmersiveActive && (
+              <Typography variant="subtitle1" fontWeight={800} color="text.primary">
+                {page.title}
+              </Typography>
+            )}
             <IconButton
               aria-label="Keluar layar pemindaian khusus"
               edge="end"

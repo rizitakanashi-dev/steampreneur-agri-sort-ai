@@ -428,7 +428,7 @@ export const LiveCameraViewfinder = forwardRef(function LiveCameraViewfinder({ o
         overflow: 'hidden',
         bgcolor: '#0f172a',
         position: 'relative',
-        minHeight: isImmersive ? 'calc(100dvh - 170px - env(safe-area-inset-bottom))' : { xs: 260, sm: 360 },
+        minHeight: isImmersive ? 'calc(100dvh - 160px - env(safe-area-inset-bottom))' : { xs: 260, sm: 360 },
         flex: isImmersive ? 1 : undefined,
         display: 'flex',
         flexDirection: 'column',
@@ -498,7 +498,7 @@ export const LiveCameraViewfinder = forwardRef(function LiveCameraViewfinder({ o
                 position: 'absolute',
                 top: '50%',
                 left: '50%',
-                width: 'calc(100dvh - 170px - env(safe-area-inset-bottom))',
+                width: 'calc(100dvh - 160px - env(safe-area-inset-bottom))',
                 height: '100vw',
                 maxWidth: 'none',
                 transform: `translate(-50%, -50%) rotate(${totalRotation}deg)`,
@@ -510,7 +510,7 @@ export const LiveCameraViewfinder = forwardRef(function LiveCameraViewfinder({ o
                 // Immersive: full-bleed khas kamera HP — tinggi EKSPLISIT via dvh (bukan
                 // persentase, yang gagal resolve dalam rantai flex), cover edge-to-edge;
                 // foto yang disimpan tetap frame sensor penuh via videoWidth×videoHeight
-                height: isImmersive ? 'calc(100dvh - 170px - env(safe-area-inset-bottom))' : 'auto',
+                height: isImmersive ? 'calc(100dvh - 160px - env(safe-area-inset-bottom))' : 'auto',
                 maxHeight: isImmersive ? 'none' : 460,
                 objectFit: isImmersive ? 'cover' : 'contain',
                 display: cameraState === 'active' ? 'block' : 'none',

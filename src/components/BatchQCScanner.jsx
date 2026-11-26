@@ -817,7 +817,7 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
           ref={overlayPanelRef}
           sx={{
             position: 'fixed',
-            top: 'calc(56px + env(safe-area-inset-top))',
+            top: 'calc(48px + env(safe-area-inset-top))',
             left: 8,
             right: 8,
             zIndex: 1250,
@@ -1077,7 +1077,7 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
             // agar viewfinder full-bleed KHAS KAMERA HP — tanpa bergantung rantai flex
             display: immersive ? 'flex' : undefined,
             flexDirection: immersive ? 'column' : undefined,
-            height: immersive ? 'calc(100dvh - 170px - env(safe-area-inset-bottom))' : undefined,
+            height: immersive ? 'calc(100dvh - 160px - env(safe-area-inset-bottom))' : undefined,
             flex: immersive ? '1 0 auto' : undefined,
           }}
         >
