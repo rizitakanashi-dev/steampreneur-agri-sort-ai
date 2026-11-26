@@ -286,13 +286,16 @@ class AuthService:
         user = user or {}
         metadata = user.get("user_metadata") or {}
         email = str(user.get("email") or "").strip().lower()
+        full_name = metadata.get("full_name") or metadata.get("name") or (email.split("@")[0] if email else "Pengguna")
         return {
             "id": user.get("id"),
-            "fullName": metadata.get("full_name") or metadata.get("name") or (email.split("@")[0] if email else "Pengguna"),
+            "fullName": full_name,
+            "full_name": full_name,
             "email": email,
             "provider": (user.get("app_metadata") or {}).get("provider", "email"),
             "picture": metadata.get("avatar_url") or metadata.get("picture"),
             "createdAt": user.get("created_at"),
+            "user_metadata": {**metadata, "full_name": full_name},
         }
 
     @classmethod

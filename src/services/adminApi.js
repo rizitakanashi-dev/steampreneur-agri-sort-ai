@@ -74,6 +74,8 @@ export function createAdminApi({ fetchImpl = globalThis.fetch, getHeaders = getA
     revokeMembership: (orgId, membershipId) => request(`/api/v1/organizations/${encodeURIComponent(orgId)}/members/${encodeURIComponent(membershipId)}`, { method: 'DELETE' }),
     listUsers: (limit = 50, offset = 0) => request(`/api/v1/admin/users?limit=${limit}&offset=${offset}`),
     setUserStatus: (id, status) => request(`/api/v1/admin/users/${encodeURIComponent(id)}/status`, { method: 'PATCH', body: { status } }),
+    updateUserProfile: (id, body) => request(`/api/v1/admin/users/${encodeURIComponent(id)}/profile`, { method: 'PATCH', body }),
+    getSystemStatus: () => request('/api/v1/admin/system-status'),
     listAuditEvents: (organizationId = null, limit = 50, offset = 0) => {
       const params = new URLSearchParams({ limit: String(limit), offset: String(offset) })
       if (organizationId) params.set('organization_id', organizationId)
@@ -119,7 +121,11 @@ export async function loadAdminContext(api) {
       if (!isExpectedPermissionDenial(error)) throw error
     }
     return {
-      user: { id: currentUserId, email: verifiedUser.email || '', fullName: verifiedUser.user_metadata?.full_name || verifiedUser.user_metadata?.name || '' },
+      user: {
+        id: currentUserId,
+        email: verifiedUser.email || '',
+        fullName: verifiedUser.fullName || verifiedUser.full_name || verifiedUser.user_metadata?.full_name || verifiedUser.user_metadata?.name || (verifiedUser.email ? verifiedUser.email.split('@')[0] : 'Super Admin'),
+      },
       mode: 'super_admin',
       organizations,
       membershipsByOrganization: {},
@@ -152,7 +158,11 @@ export async function loadAdminContext(api) {
     adminOrganizationIds,
   }
   return {
-    user: { id: currentUserId, email: verifiedUser.email || '', fullName: verifiedUser.user_metadata?.full_name || verifiedUser.user_metadata?.name || '' },
+    user: {
+      id: currentUserId,
+      email: verifiedUser.email || '',
+      fullName: verifiedUser.fullName || verifiedUser.full_name || verifiedUser.user_metadata?.full_name || verifiedUser.user_metadata?.name || (verifiedUser.email ? verifiedUser.email.split('@')[0] : 'Admin Organisasi'),
+    },
     mode: adminOrganizationIds.length > 0 ? 'organization_admin' : 'member',
     organizations,
     membershipsByOrganization,

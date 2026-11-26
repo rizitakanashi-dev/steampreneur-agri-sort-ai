@@ -50,6 +50,11 @@ class StatusUpdate(BaseModel):
     status: str = Field(pattern=r"^(active|suspended|pending_assignment)$")
 
 
+class UserProfileUpdate(BaseModel):
+    full_name: str = Field(min_length=1, max_length=120)
+    status: Optional[str] = Field(default=None, pattern=r"^(active|suspended|pending_assignment)$")
+
+
 def _invoke(current_user: Dict[str, Any], operation, *args, code: str = "MANAGEMENT_DENIED", **kwargs):
     try:
         result = operation(current_user["_principal"], *args, **kwargs)
@@ -117,12 +122,33 @@ def list_users(
     offset: int = Query(0, ge=0),
     current_user=Depends(get_authorized_current_user("users.read")),
 ):
-    return _invoke(current_user, current_user["_authorization_service"].list_users, limit, offset, code="USERS_LIST_FAILED")
+    res = _invoke(current_user, current_user["_authorization_service"].list_users, limit, offset, code="USERS_LIST_FAILED")
+    # Auto-heal display names jika nama di DB masih kosong
+    if isinstance(res.get("data"), list):
+        for u in res["data"]:
+            if not u.get("full_name") or not str(u.get("full_name")).strip() or u.get("full_name") == "Name unavailable":
+                email = str(u.get("email") or "").strip()
+                if email and "@" in email:
+                    u["full_name"] = email.split("@")[0]
+                else:
+                    u_id = str(u.get("user_id") or "")
+                    u["full_name"] = f"User {u_id[:8]}" if u_id else "Pengguna"
+    return res
 
 
 @router.patch("/admin/users/{user_id}/status")
 def set_user_status(user_id: str, payload: StatusUpdate, current_user=Depends(get_authorized_current_user("users.update"))):
     return _invoke(current_user, current_user["_authorization_service"].set_user_status, user_id, payload.status, code="USER_STATUS_FAILED")
+
+
+@router.patch("/admin/users/{user_id}/profile")
+def update_user_profile(user_id: str, payload: UserProfileUpdate, current_user=Depends(get_authorized_current_user("users.update"))):
+    return _invoke(current_user, current_user["_authorization_service"].update_user_profile, user_id, payload.full_name, payload.status, code="USER_PROFILE_UPDATE_FAILED")
+
+
+@router.get("/admin/system-status")
+def get_system_status(current_user=Depends(get_authorized_current_user("users.read"))):
+    return _invoke(current_user, current_user["_authorization_service"].get_system_status, code="SYSTEM_STATUS_FAILED")
 
 
 @router.get("/admin/audit-events")

@@ -472,6 +472,59 @@ class AuthorizationService:
             raise AuthorizationError("A user cannot suspend themselves.")
         return self.repository.rpc("rbac_api_set_user_status", {"target_user_id": user_id, "new_status": status})
 
+    def update_user_profile(
+        self,
+        principal: ActivePrincipal,
+        user_id: str,
+        full_name: str,
+        status: Optional[str] = None,
+    ) -> Any:
+        self.require_permission(principal, "users.update")
+        clean_name = (full_name or "").strip()
+        if not clean_name:
+            raise AuthorizationError("Nama lengkap / username wajib diisi.", 422)
+        payload: Dict[str, Any] = {"target_user_id": user_id, "new_full_name": clean_name}
+        if status:
+            if status not in {"active", "suspended", "pending_assignment"}:
+                raise AuthorizationError("User status is invalid.", 422)
+            if user_id == principal.user_id and status != "active":
+                raise AuthorizationError("A user cannot suspend themselves.")
+            payload["new_status"] = status
+        return self.repository.rpc("rbac_api_update_user_profile", payload)
+
+    def get_system_status(self, principal: ActivePrincipal) -> Dict[str, Any]:
+        self.require_permission(principal, "users.read")
+        import os
+        import platform
+        import sys
+        from datetime import datetime, timezone
+        from server.services.ai_engine import ai_engine
+
+        models_info: Dict[str, Any] = {}
+        for comm in ["tomat", "terung", "cabai"]:
+            try:
+                mod, path, ver = ai_engine.get_model(comm, allow_candidate=True)
+                classes = list(mod.names.values()) if hasattr(mod, "names") else []
+                models_info[comm] = {
+                    "status": "ready",
+                    "version": ver,
+                    "classes": classes,
+                }
+            except Exception as e:
+                models_info[comm] = {"status": "unavailable", "message": str(e)}
+
+        return {
+            "status": "operational",
+            "environment": os.environ.get("APP_ENV", "production"),
+            "auth_mode": os.environ.get("AUTH_MODE", "supabase"),
+            "runtime": {
+                "python_version": sys.version.split()[0],
+                "platform": platform.platform(),
+                "server_time": datetime.now(timezone.utc).isoformat(),
+            },
+            "models": models_info,
+        }
+
     def list_audit_events(self, principal: ActivePrincipal, organization_id: Optional[str], limit: int = 50, offset: int = 0) -> Any:
         self.require_permission(principal, "audit.read")
         if not 1 <= limit <= 200 or offset < 0:

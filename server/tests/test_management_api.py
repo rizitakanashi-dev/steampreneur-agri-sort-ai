@@ -84,6 +84,26 @@ class ManagementApiTests(unittest.TestCase):
             response = self.client.get("/api/v1/organizations")
         self.assertEqual(response.status_code, 503)
 
+    def test_super_admin_can_update_user_profile(self):
+        response = self.client.patch("/api/v1/admin/users/farmer-a/profile", json={"full_name": "Pak Budi Santoso", "status": "active"})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(self.repo.rpc_calls[-1][0], "rbac_api_update_user_profile")
+        self.assertEqual(self.repo.rpc_calls[-1][1]["new_full_name"], "Pak Budi Santoso")
+
+    def test_super_admin_can_get_system_status(self):
+        response = self.client.get("/api/v1/admin/system-status")
+        self.assertEqual(response.status_code, 200)
+        data = response.json()["data"]
+        self.assertEqual(data["status"], "operational")
+        self.assertIn("models", data)
+
+    def test_list_users_auto_heals_empty_usernames(self):
+        with patch.object(self.repo, "rpc", return_value=[{"user_id": "u123", "full_name": "", "email": "petani.maju@gmail.com", "status": "active"}]):
+            response = self.client.get("/api/v1/admin/users")
+            self.assertEqual(response.status_code, 200)
+            users = response.json()["data"]
+            self.assertEqual(users[0]["full_name"], "petani.maju")
+
 
 if __name__ == "__main__":
     unittest.main()
