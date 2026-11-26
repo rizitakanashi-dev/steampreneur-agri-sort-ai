@@ -122,8 +122,13 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
   }, [scanResult])
 
   // Scan selesai di mode kamera: keluar otomatis + lompat ke tampilan hasil analisis
+  // (guard ref: hanya SEKALI per hasil — jangan menendang user keluar lagi saat
+  //  dia kembali masuk mode kamera dengan hasil scan lama masih tersimpan)
+  const lastAutoExitedRef = useRef(null)
   useEffect(() => {
     if (!immersive || !scanResult || pendingCapture) return undefined
+    if (lastAutoExitedRef.current === scanResult) return undefined
+    lastAutoExitedRef.current = scanResult
     if (typeof onExitImmersive === 'function') onExitImmersive()
     const t = setTimeout(() => {
       resultSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
@@ -1861,20 +1866,7 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
                 flexShrink: 0,
               }}
             />
-          )}
-          {!immersive && onEnterImmersive && (
-            <Stack direction="row" sx={{ justifyContent: 'flex-end' }}>
-              <Button
-                variant="outlined"
-                startIcon={<CameraAltRoundedIcon />}
-                onClick={onEnterImmersive}
-                sx={{ borderRadius: 2, fontWeight: 800 }}
-              >
-                Kembali ke Mode Kamera
-              </Button>
-            </Stack>
-          )}
-          {saveSuccessMsg && (
+          )}          {saveSuccessMsg && (
             <Alert severity="success" onClose={() => setSaveSuccessMsg('')}>
               {saveSuccessMsg}
             </Alert>
