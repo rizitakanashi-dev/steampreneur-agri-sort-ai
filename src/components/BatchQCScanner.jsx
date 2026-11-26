@@ -869,7 +869,7 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
             sx={{
               bgcolor: '#0f172a',
               px: 1,
-              height: 'calc(56px + env(safe-area-inset-top))',
+              height: 'calc(48px + env(safe-area-inset-top))',
               boxSizing: 'border-box',
               pt: 'env(safe-area-inset-top)',
               display: 'flex',
@@ -2503,14 +2503,20 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
             justifyContent: 'center',
           }}
         >
-          {/* Baris tombol simetris: Hasil+Flip kiri, shutter PERSIS tengah, putar kanan */}
-          <Stack
-            direction="row"
-            sx={{ width: '100%', alignItems: 'center', justifyContent: 'space-between', px: 0.5 }}
+          {/* Baris tombol: Hasil+Flip kiri, shutter ABSOLUT persis di tengah, putar kanan */}
+          <Box
+            sx={{
+              position: 'relative',
+              width: '100%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              py: 0.25,
+            }}
           >
           <Stack
             direction="row"
-            sx={{ alignItems: 'center', gap: { xs: 1.25, sm: 2 }, minWidth: 132, justifyContent: 'flex-start' }}
+            sx={{ alignItems: 'center', gap: { xs: 1.25, sm: 2 }, justifyContent: 'flex-start' }}
           >
           {/* Kiri: Periksa Hasil (aktif setelah ada hasil scan) */}
           <Button
@@ -2593,7 +2599,15 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
           </IconButton>
           </Stack>
 
-          {/* Shutter utama ~72px, thumb-friendly, PERSIS di tengah */}
+          {/* Shutter utama ~72px — ABSOLUT di tengah layar, tidak terpengaruh lebar grup kiri/kanan */}
+          <Box
+            sx={{
+              position: 'absolute',
+              left: '50%',
+              top: '50%',
+              transform: 'translate(-50%, -50%)',
+            }}
+          >
           <IconButton
             aria-label="Ambil foto dan scan mutu"
             disabled={activeTab !== 0 || isScanning}
@@ -2617,6 +2631,7 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
           >
             {isScanning ? <CircularProgress size={30} sx={{ color: '#fff' }} /> : <CameraAltRoundedIcon sx={{ fontSize: 30 }} />}
           </IconButton>
+          </Box>
 
           {/* Kanan: tombol putar manual (kalibrasi orientasi per perangkat) */}
           <IconButton
@@ -2635,7 +2650,7 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
           >
             <RotateRightRoundedIcon />
           </IconButton>
-          </Stack>
+          </Box>
 
           {/* Label di bawah tombol, khas kamera native (PRO/VIDEO/FOTO/POTRET) — komoditas saja */}
           {activeTab === 0 && !isScanning && !imagePreview && !imagePreviewFront && (

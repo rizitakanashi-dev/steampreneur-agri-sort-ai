@@ -1,4 +1,4 @@
-import { forwardRef, useImperativeHandle, useEffect, useRef, useState } from 'react'
+import { forwardRef, useImperativeHandle, useEffect, useRef, useState, useCallback } from 'react'
 import {
   Alert,
   Box,
@@ -61,6 +61,9 @@ export const LiveCameraViewfinder = forwardRef(function LiveCameraViewfinder({ o
   const [qualityStatus, setQualityStatus] = useState(null) // null | 'dark' | 'blur'
   // Orientasi native-like: dimensi frame stream + orientasi viewport
   const [videoDims, setVideoDims] = useState(null) // { w, h }
+  // Area gambar kamera yang benar-benar terlihat (objectFit: contain) — agar garis
+  // panduan & label menempel ke gambar, bukan melar ke band gelap atas/bawah
+  const [contentRect, setContentRect] = useState(null)
   const [isPortraitViewport, setIsPortraitViewport] = useState(() =>
     typeof window !== 'undefined' && window.matchMedia ? window.matchMedia('(orientation: portrait)').matches : true
   )
@@ -375,6 +378,34 @@ export const LiveCameraViewfinder = forwardRef(function LiveCameraViewfinder({ o
   const totalRotation =
     ((((needsRotation ? (facingMode === 'environment' ? 90 : -90) : 0) + rotationOffset) % 360) + 360) % 360
 
+  // Ukur area gambar yang terlihat (contain): dipakai garis panduan agar tidak
+  // meluber ke band gelap. Diputar ulang saat dims kamera/rotasi/resize berubah.
+  const updateContentRect = useCallback(() => {
+    const cont = containerRef.current
+    if (!cont || !videoDims || cameraState !== 'active') {
+      setContentRect(null)
+      return
+    }
+    const cw = cont.clientWidth
+    const ch = cont.clientHeight
+    const { w, h } = videoDims
+    let scale
+    if (totalRotation === 90 || totalRotation === 270) {
+      scale = Math.min(cw / h, ch / w)
+    } else {
+      scale = Math.min(cw / w, ch / h)
+    }
+    const dw = (totalRotation === 90 || totalRotation === 270 ? h : w) * scale
+    const dh = (totalRotation === 90 || totalRotation === 270 ? w : h) * scale
+    setContentRect({ top: (ch - dh) / 2, left: (cw - dw) / 2, width: dw, height: dh })
+  }, [videoDims, cameraState, totalRotation])
+
+  useEffect(() => {
+    updateContentRect()
+    window.addEventListener('resize', updateContentRect)
+    return () => window.removeEventListener('resize', updateContentRect)
+  }, [updateContentRect])
+
   const handleRotateView = () => setRotationOffset((prev) => (prev + 90) % 360)
 
   const handleCapturePhoto = () => {
@@ -509,12 +540,20 @@ export const LiveCameraViewfinder = forwardRef(function LiveCameraViewfinder({ o
         }
       />
 
-      {/* Frame Visual Overlay (Corner Guides) */}
+      {/* Frame Visual Overlay (Corner Guides) — mengikuti area gambar kamera */}
       {cameraState === 'active' && (
         <Box
           sx={{
             position: 'absolute',
-            inset: { xs: 16, sm: 24 },
+            ...(contentRect
+              ? {
+                  top: Math.max(contentRect.top - 10, 4),
+                  left: Math.max(contentRect.left - 10, 4),
+                  width: contentRect.width + 20,
+                  height: contentRect.height + 20,
+                  boxSizing: 'border-box',
+                }
+              : { inset: { xs: 16, sm: 24 } }),
             border: '2px dashed rgba(255, 255, 255, 0.4)',
             borderRadius: 2,
             pointerEvents: 'none',
