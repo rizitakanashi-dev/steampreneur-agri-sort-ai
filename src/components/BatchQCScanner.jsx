@@ -776,7 +776,7 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
               // height:100% anak-anaknya jatuh ke auto)
               px: 0,
               pt: 0,
-              pb: 'calc(114px + env(safe-area-inset-bottom))',
+              pb: 'calc(140px + env(safe-area-inset-bottom))',
             }
           : undefined
       }
@@ -805,8 +805,7 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
           ✕ kiri-atas + flash, sensitivitas+tips kanan-atas, selector komoditas & mode di bawah */}
       {immersive ? (
         <>
-          {/* Bar atas: ✕ + Flash kiri, Sensitivitas + Tips kanan — mengapung di atas kamera penuh */}
-          <Box
+          {/* Bar atas: ✕ + Flash kiri, Sensitivitas + Tips kanan — mengapung di atas kamera penuh */}          <Box
             sx={{
               position: 'fixed',
               top: 'calc(6px + env(safe-area-inset-top))',
@@ -905,140 +904,6 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
             </Box>
           )}
 
-          {/* Selector bawah gaya kamera native: komoditas | mode —
-              sembunyi saat sudah ada foto/preview/scanning agar tidak menutupi konten */}
-          {activeTab === 0 && !isScanning && !imagePreview && !imagePreviewFront && (
-          <Box
-            sx={{
-              position: 'fixed',
-              bottom: 'calc(106px + env(safe-area-inset-bottom))',
-              left: 0,
-              right: 0,
-              zIndex: 1150,
-              overflowX: 'auto',
-              scrollbarWidth: 'none',
-              '&::-webkit-scrollbar': { display: 'none' },
-            }}
-          >
-            <Stack direction="row" spacing={0.5} useFlexGap sx={{ mx: 'auto', width: 'max-content', alignItems: 'center', px: 2 }}>
-              {COMMODITIES.map((c) => {
-                const active = selectedCommodity === c.id
-                return (
-                  <Box
-                    key={c.id}
-                    component="button"
-                    type="button"
-                    aria-pressed={active}
-                    onClick={() => handleSelectCommodity(c.id)}
-                    sx={{
-                      px: 1.75,
-                      py: 0.9,
-                      borderRadius: 999,
-                      border: 'none',
-                      cursor: 'pointer',
-                      flexShrink: 0,
-                      fontSize: '0.8125rem',
-                      fontWeight: 800,
-                      letterSpacing: 0.2,
-                      color: active ? '#052e16' : 'rgba(226, 232, 240, 0.85)',
-                      bgcolor: active ? '#4ade80' : 'rgba(15, 23, 42, 0.55)',
-                      transition: 'background-color 0.15s',
-                    }}
-                  >
-                    {c.name.split(' (')[0]}
-                  </Box>
-                )
-              })}
-              <Box sx={{ width: 1, height: 22, bgcolor: 'rgba(255, 255, 255, 0.2)', mx: 0.5, flexShrink: 0 }} />
-              <Box
-                component="button"
-                type="button"
-                aria-pressed={!isMultiAngleMode && !autoDetectMode}
-                onClick={() => {
-                  if (isMultiAngleMode || autoDetectMode) {
-                    setIsMultiAngleMode(false)
-                    setAutoDetectMode(false)
-                    handleClearImage()
-                  }
-                }}
-                sx={{
-                  px: 1.75,
-                  py: 0.9,
-                  borderRadius: 999,
-                  border: 'none',
-                  cursor: 'pointer',
-                  flexShrink: 0,
-                  fontSize: '0.8125rem',
-                  fontWeight: 800,
-                  letterSpacing: 0.2,
-                  color: !isMultiAngleMode && !autoDetectMode ? '#052e16' : 'rgba(226, 232, 240, 0.85)',
-                  bgcolor: !isMultiAngleMode && !autoDetectMode ? '#4ade80' : 'rgba(15, 23, 42, 0.55)',
-                  transition: 'background-color 0.15s',
-                }}
-              >
-                1 Sisi
-              </Box>
-              <Box
-                component="button"
-                type="button"
-                aria-pressed={isMultiAngleMode && !autoDetectMode}
-                onClick={() => {
-                  if (!isMultiAngleMode || autoDetectMode) {
-                    setIsMultiAngleMode(true)
-                    setAutoDetectMode(false)
-                    handleClearImage()
-                  }
-                }}
-                sx={{
-                  px: 1.75,
-                  py: 0.9,
-                  borderRadius: 999,
-                  border: 'none',
-                  cursor: 'pointer',
-                  flexShrink: 0,
-                  fontSize: '0.8125rem',
-                  fontWeight: 800,
-                  letterSpacing: 0.2,
-                  color: isMultiAngleMode && !autoDetectMode ? '#052e16' : 'rgba(226, 232, 240, 0.85)',
-                  bgcolor: isMultiAngleMode && !autoDetectMode ? '#4ade80' : 'rgba(15, 23, 42, 0.55)',
-                  transition: 'background-color 0.15s',
-                }}
-              >
-                2 Sisi
-              </Box>
-              <Box
-                component="button"
-                type="button"
-                aria-pressed={autoDetectMode}
-                onClick={() => {
-                  if (!autoDetectMode) {
-                    setAutoDetectMode(true)
-                    if (isMultiAngleMode) {
-                      setIsMultiAngleMode(false)
-                      handleClearImage()
-                    }
-                  }
-                }}
-                sx={{
-                  px: 1.75,
-                  py: 0.9,
-                  borderRadius: 999,
-                  border: 'none',
-                  cursor: 'pointer',
-                  flexShrink: 0,
-                  fontSize: '0.8125rem',
-                  fontWeight: 800,
-                  letterSpacing: 0.2,
-                  color: autoDetectMode ? '#052e16' : 'rgba(226, 232, 240, 0.85)',
-                  bgcolor: autoDetectMode ? '#4ade80' : 'rgba(15, 23, 42, 0.55)',
-                  transition: 'background-color 0.15s',
-                }}
-              >
-                ⚡ Auto
-              </Box>
-            </Stack>
-          </Box>
-          )}
         </>
       ) : (
         /* 1. KARTU SELEKSI KOMODITAS UTAMA (PROMINENT DI ATAS) */
@@ -1177,7 +1042,7 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
             // agar viewfinder full-bleed KHAS KAMERA HP — tanpa bergantung rantai flex
             display: immersive ? 'flex' : undefined,
             flexDirection: immersive ? 'column' : undefined,
-            height: immersive ? 'calc(100dvh - 114px - env(safe-area-inset-bottom))' : undefined,
+            height: immersive ? 'calc(100dvh - 140px - env(safe-area-inset-bottom))' : undefined,
             flex: immersive ? '1 0 auto' : undefined,
           }}
         >
@@ -2435,6 +2300,137 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
           >
             <RotateRightRoundedIcon />
           </IconButton>
+
+          {/* Selector bawah gaya kamera native: komoditas | mode —
+              sembunyi saat sudah ada foto/preview/scanning agar tidak menutupi konten */}
+          {activeTab === 0 && !isScanning && !imagePreview && !imagePreviewFront && (
+            <Box
+              sx={{
+                pt: 0.5,
+                overflowX: 'auto',
+                scrollbarWidth: 'none',
+                '&::-webkit-scrollbar': { display: 'none' },
+              }}
+            >
+            <Stack direction="row" spacing={0.5} useFlexGap sx={{ mx: 'auto', width: 'max-content', alignItems: 'center', px: 2 }}>
+              {COMMODITIES.map((c) => {
+                const active = selectedCommodity === c.id
+                return (
+                  <Box
+                    key={c.id}
+                    component="button"
+                    type="button"
+                    aria-pressed={active}
+                    onClick={() => handleSelectCommodity(c.id)}
+                    sx={{
+                      px: 1.75,
+                      py: 0.9,
+                      borderRadius: 999,
+                      border: 'none',
+                      cursor: 'pointer',
+                      flexShrink: 0,
+                      fontSize: '0.8125rem',
+                      fontWeight: 800,
+                      letterSpacing: 0.2,
+                      color: active ? '#052e16' : 'rgba(226, 232, 240, 0.85)',
+                      bgcolor: active ? '#4ade80' : 'rgba(255, 255, 255, 0.14)',
+                      transition: 'background-color 0.15s',
+                    }}
+                  >
+                    {c.name.split(' (')[0]}
+                  </Box>
+                )
+              })}
+              <Box sx={{ width: 1, height: 22, bgcolor: 'rgba(255, 255, 255, 0.2)', mx: 0.5, flexShrink: 0 }} />
+              <Box
+                component="button"
+                type="button"
+                aria-pressed={!isMultiAngleMode && !autoDetectMode}
+                onClick={() => {
+                  if (isMultiAngleMode || autoDetectMode) {
+                    setIsMultiAngleMode(false)
+                    setAutoDetectMode(false)
+                    handleClearImage()
+                  }
+                }}
+                sx={{
+                  px: 1.75,
+                  py: 0.9,
+                  borderRadius: 999,
+                  border: 'none',
+                  cursor: 'pointer',
+                  flexShrink: 0,
+                  fontSize: '0.8125rem',
+                  fontWeight: 800,
+                  letterSpacing: 0.2,
+                  color: !isMultiAngleMode && !autoDetectMode ? '#052e16' : 'rgba(226, 232, 240, 0.85)',
+                  bgcolor: !isMultiAngleMode && !autoDetectMode ? '#4ade80' : 'rgba(255, 255, 255, 0.14)',
+                  transition: 'background-color 0.15s',
+                }}
+              >
+                1 Sisi
+              </Box>
+              <Box
+                component="button"
+                type="button"
+                aria-pressed={isMultiAngleMode && !autoDetectMode}
+                onClick={() => {
+                  if (!isMultiAngleMode || autoDetectMode) {
+                    setIsMultiAngleMode(true)
+                    setAutoDetectMode(false)
+                    handleClearImage()
+                  }
+                }}
+                sx={{
+                  px: 1.75,
+                  py: 0.9,
+                  borderRadius: 999,
+                  border: 'none',
+                  cursor: 'pointer',
+                  flexShrink: 0,
+                  fontSize: '0.8125rem',
+                  fontWeight: 800,
+                  letterSpacing: 0.2,
+                  color: isMultiAngleMode && !autoDetectMode ? '#052e16' : 'rgba(226, 232, 240, 0.85)',
+                  bgcolor: isMultiAngleMode && !autoDetectMode ? '#4ade80' : 'rgba(255, 255, 255, 0.14)',
+                  transition: 'background-color 0.15s',
+                }}
+              >
+                2 Sisi
+              </Box>
+              <Box
+                component="button"
+                type="button"
+                aria-pressed={autoDetectMode}
+                onClick={() => {
+                  if (!autoDetectMode) {
+                    setAutoDetectMode(true)
+                    if (isMultiAngleMode) {
+                      setIsMultiAngleMode(false)
+                      handleClearImage()
+                    }
+                  }
+                }}
+                sx={{
+                  px: 1.75,
+                  py: 0.9,
+                  borderRadius: 999,
+                  border: 'none',
+                  cursor: 'pointer',
+                  flexShrink: 0,
+                  fontSize: '0.8125rem',
+                  fontWeight: 800,
+                  letterSpacing: 0.2,
+                  color: autoDetectMode ? '#052e16' : 'rgba(226, 232, 240, 0.85)',
+                  bgcolor: autoDetectMode ? '#4ade80' : 'rgba(255, 255, 255, 0.14)',
+                  transition: 'background-color 0.15s',
+                }}
+              >
+                ⚡ Auto
+              </Box>
+            </Stack>
+          </Box>
+          )}
         </Box>
       )}
     </Stack>

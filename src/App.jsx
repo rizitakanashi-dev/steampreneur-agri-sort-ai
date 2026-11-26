@@ -524,13 +524,16 @@ function App() {
   const page = pages[activePage] || pages.overview
 
   // Mode kamera HP = layar terkunci (khas kamera native): halaman tidak bisa di-geser,
-  // header ✕ tetap di tempat, panel chip tidak pernah menimpanya
+  // dan seluruh latar jadi gelap — sisa celah page di atas kamera tidak lagi putih
   useEffect(() => {
     if (scannerImmersiveActive) {
-      const previous = document.body.style.overflow
+      const previousOverflow = document.body.style.overflow
+      const previousBg = document.body.style.backgroundColor
       document.body.style.overflow = 'hidden'
+      document.body.style.backgroundColor = '#0f172a'
       return () => {
-        document.body.style.overflow = previous
+        document.body.style.overflow = previousOverflow
+        document.body.style.backgroundColor = previousBg
       }
     }
     return undefined
