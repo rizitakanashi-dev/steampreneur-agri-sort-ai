@@ -83,6 +83,8 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
   const [torchInfo, setTorchInfo] = useState({ supported: false, on: false })
   // Panel menu ala kamera native (ikon ⠿ kanan-atas): mode & pengaturan
   const [cameraMenuOpen, setCameraMenuOpen] = useState(false)
+  // Foto menunggu konfirmasi komoditas (mode kamera): muncul pilihan sebelum dikirim ke model AI
+  const [pendingCapture, setPendingCapture] = useState(null)
   const [multiStep, setMultiStep] = useState(1) // 1: Foto Sisi 1 (Depan), 2: Foto Sisi 2 (Belakang / Goyang Nampan)
   const [imageFileFront, setImageFileFront] = useState(null)
   const [imagePreviewFront, setImagePreviewFront] = useState(null)
@@ -114,11 +116,20 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
   // (Paket 3: lembar hasil di atas kamera — native, kamera tetap hidup di belakang)
   const [resultSheetOpen, setResultSheetOpen] = useState(false)
   useEffect(() => {
-    if (immersive && scanResult) {
-      setResultSheetOpen(true)
-    } else if (!scanResult) {
+    if (!scanResult) {
       setResultSheetOpen(false)
     }
+  }, [scanResult])
+
+  // Scan selesai di mode kamera: keluar otomatis + lompat ke tampilan hasil analisis
+  useEffect(() => {
+    if (!immersive || !scanResult || pendingCapture) return undefined
+    if (typeof onExitImmersive === 'function') onExitImmersive()
+    const t = setTimeout(() => {
+      resultSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }, 80)
+    return () => clearTimeout(t)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [immersive, scanResult])
 
   // Pastikan kamera langsung mati saat unmount (misal pindah ke Dashboard atau menu lain)
@@ -155,6 +166,11 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
     // (fallback aman ke berkas asli bila kompresi gagal)
     const compressed = await compressImageFile(file)
     if (!isMultiAngleMode) {
+      // Mode kamera: minta konfirmasi komoditas dulu (auto-detect tetap langsung)
+      if (immersive && !autoDetectMode) {
+        setPendingCapture({ mode: 'single', file: compressed, previewUrl })
+        return
+      }
       setImageFile(compressed)
       setImagePreview(previewUrl)
       setScanError('')
@@ -176,6 +192,11 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
           )
           return
         }
+        // Mode kamera: konfirmasi komoditas dulu sebelum analisis 2-sudut
+        if (immersive) {
+          setPendingCapture({ mode: 'multi', file: compressed, previewUrl })
+          return
+        }
         setImageFileBack(compressed)
         setImagePreviewBack(previewUrl)
         setScanError('')
@@ -189,6 +210,37 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
         )
       }
     }
+  }
+
+  // Lanjutkan foto yang menunggu konfirmasi komoditas
+  const proceedPendingCapture = (commodityId) => {
+    if (!pendingCapture) return
+    const { mode, file, previewUrl } = pendingCapture
+    setPendingCapture(null)
+    handleSelectCommodity(commodityId)
+    if (mode === 'single') {
+      setImageFile(file)
+      setImagePreview(previewUrl)
+      setScanError('')
+      triggerInference(file, previewUrl, commodityId, confidenceThreshold)
+    } else {
+      setImageFileBack(file)
+      setImagePreviewBack(previewUrl)
+      setScanError('')
+      triggerMultiInference(
+        imageFileFront,
+        file,
+        imagePreviewFront,
+        previewUrl,
+        commodityId,
+        confidenceThreshold
+      )
+    }
+  }
+
+  // Batalkan foto yang menunggu konfirmasi — kamera tetap menyala, user bisa ambil ulang
+  const cancelPendingCapture = () => {
+    setPendingCapture(null)
   }
 
   // Handle pemrosesan berkas untuk sisi spesifik (Multi-Angle)
@@ -1373,7 +1425,7 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
                       onTorchStateChange={setTorchInfo}
                     />
 
-                    {isScanning && (
+                    {!immersive && isScanning && (
                       <Stack direction="row" spacing={1.5} sx={{alignItems: 'center', justifyContent: 'center',  mt: 2 }}>
                         <CircularProgress size={20} color="primary" />
                         <Typography variant="body2" fontWeight={600} color="primary.main">
@@ -1445,7 +1497,7 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
                       />
                     )}
 
-                    {isScanning && (
+                    {!immersive && isScanning && (
                       <Stack direction="row" spacing={1.5} sx={{alignItems: 'center', justifyContent: 'center',  mt: 2 }}>
                         <CircularProgress size={20} color="primary" />
                         <Typography variant="body2" fontWeight={600} color="primary.main">
@@ -1809,6 +1861,18 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
                 flexShrink: 0,
               }}
             />
+          )}
+          {!immersive && onEnterImmersive && (
+            <Stack direction="row" sx={{ justifyContent: 'flex-end' }}>
+              <Button
+                variant="outlined"
+                startIcon={<CameraAltRoundedIcon />}
+                onClick={onEnterImmersive}
+                sx={{ borderRadius: 2, fontWeight: 800 }}
+              >
+                Kembali ke Mode Kamera
+              </Button>
+            </Stack>
           )}
           {saveSuccessMsg && (
             <Alert severity="success" onClose={() => setSaveSuccessMsg('')}>
@@ -2315,6 +2379,116 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
         statusDetails={statusDetails}
       />
 
+      {/* 3b. MODE IMMERSIVE: overlay progres analisis — jelas & terlihat */}
+      {immersive && isScanning && !pendingCapture && (
+        <Box
+          sx={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 1220,
+            bgcolor: 'rgba(2, 6, 23, 0.82)',
+            backdropFilter: 'blur(6px)',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 2,
+            p: 3,
+          }}
+        >
+          {(imagePreview || imagePreviewFront) && (
+            <Box
+              component="img"
+              src={imagePreview || imagePreviewFront}
+              alt="Foto yang dianalisis"
+              sx={{
+                width: 132,
+                height: 176,
+                objectFit: 'cover',
+                borderRadius: 2.5,
+                border: '2px solid rgba(255, 255, 255, 0.35)',
+                boxShadow: '0 12px 32px rgba(0, 0, 0, 0.5)',
+              }}
+            />
+          )}
+          <CircularProgress size={40} sx={{ color: '#4ade80' }} />
+          <Typography sx={{ color: '#e2e8f0', fontWeight: 700, textAlign: 'center' }}>
+            Menganalisis foto dengan model YOLO11 {selectedCommodity}…
+          </Typography>
+        </Box>
+      )}
+
+      {/* 3c. MODE IMMERSIVE: konfirmasi komoditas sebelum foto dikirim ke model */}
+      {immersive && pendingCapture && (
+        <Box
+          sx={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 1230,
+            bgcolor: 'rgba(2, 6, 23, 0.72)',
+            backdropFilter: 'blur(6px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            p: 2,
+          }}
+        >
+          <Box
+            sx={{
+              width: '100%',
+              maxWidth: 360,
+              bgcolor: '#16233b',
+              borderRadius: 3,
+              p: 2.5,
+              border: '1px solid rgba(255, 255, 255, 0.12)',
+              boxShadow: '0 16px 48px rgba(0, 0, 0, 0.55)',
+            }}
+          >
+            <Typography sx={{ color: '#e2e8f0', fontWeight: 800 }}>Komoditas yang discan?</Typography>
+            <Typography variant="caption" sx={{ color: '#94a3b8' }}>
+              Konfirmasi sebelum foto dikirim ke model AI
+            </Typography>
+            {pendingCapture.previewUrl && (
+              <Box
+                component="img"
+                src={pendingCapture.previewUrl}
+                alt="Pratinjau foto"
+                sx={{
+                  display: 'block',
+                  mx: 'auto',
+                  mt: 1.5,
+                  width: 120,
+                  height: 90,
+                  objectFit: 'cover',
+                  borderRadius: 2,
+                  border: '1px solid rgba(255, 255, 255, 0.2)',
+                }}
+              />
+            )}
+            <Stack direction="row" spacing={1} sx={{ mt: 2 }}>
+              {COMMODITIES.map((c) => {
+                const active = selectedCommodity === c.id
+                return (
+                  <Button
+                    key={c.id}
+                    fullWidth
+                    variant={active ? 'contained' : 'outlined'}
+                    color="primary"
+                    onClick={() => proceedPendingCapture(c.id)}
+                    sx={{ borderRadius: 2, fontWeight: 800, px: 0.5 }}
+                  >
+                    {c.name.split(' (')[0]}
+                  </Button>
+                )
+              })}
+            </Stack>
+            <Button fullWidth color="inherit" onClick={cancelPendingCapture} sx={{ mt: 1, color: '#94a3b8' }}>
+              Batalkan & Ambil Ulang
+            </Button>
+          </Box>
+        </Box>
+      )}
+
       {/* 4. BOTTOM ACTION BAR IMMERSIVE (issue #30): thumbnail hasil kiri,
           shutter thumb-friendly tengah, galeri kanan — fixed di dasar layar */}
       {immersive && (
@@ -2346,8 +2520,11 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
             aria-label="Periksa hasil pemindaian terkini"
             disabled={!scanResult}
             onClick={() => {
-              if (immersive) setResultSheetOpen((prev) => !prev)
-              else resultSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+              if (immersive) {
+                // Tombol Hasil: keluar mode kamera → langsung ke tampilan hasil analisis
+                if (typeof onExitImmersive === 'function') onExitImmersive()
+                setTimeout(() => resultSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80)
+              } else resultSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
             }}
             sx={{
               display: 'flex',

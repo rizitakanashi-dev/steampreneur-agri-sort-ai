@@ -48,6 +48,8 @@ export const LiveCameraViewfinder = forwardRef(function LiveCameraViewfinder({ o
   const isImmersive = variant === 'immersive'
   const videoRef = useRef(null)
   const streamRef = useRef(null)
+  // Kontainer viewfinder — dipakai agar hasil foto = persis area yang terlihat (WYSIWYG)
+  const containerRef = useRef(null)
   const [cameraState, setCameraState] = useState('initializing') // 'initializing' | 'active' | 'error'
   const [errorMessage, setErrorMessage] = useState('')
   const [facingMode, setFacingMode] = useState('environment') // 'environment' (belakang) | 'user' (depan)
@@ -383,22 +385,46 @@ export const LiveCameraViewfinder = forwardRef(function LiveCameraViewfinder({ o
       const video = videoRef.current
       const w = video.videoWidth || 1280
       const h = video.videoHeight || 720
-      const canvas = document.createElement('canvas')
-      const ctx = canvas.getContext('2d')
 
+      // --- WYSIWYG: hasil foto = persis apa yang terlihat di preview ---
+      // 1) Lurkan frame sensor sesuai rotasi tampilan (auto + kalibrasi manual)
+      const swap = totalRotation === 90 || totalRotation === 270
+      const rw = swap ? h : w
+      const rh = swap ? w : h
+      const upright = document.createElement('canvas')
+      upright.width = rw
+      upright.height = rh
+      const uctx = upright.getContext('2d')
       if (totalRotation === 0) {
-        canvas.width = w
-        canvas.height = h
-        ctx.drawImage(video, 0, 0, w, h)
+        uctx.drawImage(video, 0, 0, w, h)
       } else {
-        // Frame diputar: lebar/tinggi canvas ditukar untuk 90°/270°
-        const swap = totalRotation === 90 || totalRotation === 270
-        canvas.width = swap ? h : w
-        canvas.height = swap ? w : h
-        ctx.translate(canvas.width / 2, canvas.height / 2)
-        ctx.rotate((totalRotation * Math.PI) / 180)
-        ctx.drawImage(video, -w / 2, -h / 2, w, h)
+        uctx.translate(rw / 2, rh / 2)
+        uctx.rotate((totalRotation * Math.PI) / 180)
+        uctx.drawImage(video, -w / 2, -h / 2, w, h)
       }
+
+      // 2) Center-crop mengikuti aspek kontainer (identik objectFit: cover di preview)
+      let outW = rw
+      let outH = rh
+      const cont = containerRef.current
+      const cw = cont?.clientWidth || 0
+      const ch = cont?.clientHeight || 0
+      if (cw > 0 && ch > 0) {
+        const aspect = cw / ch
+        if (rw / rh > aspect) {
+          outW = Math.round(rh * aspect)
+          outH = rh
+        } else {
+          outW = rw
+          outH = Math.round(rw / aspect)
+        }
+      }
+
+      const canvas = document.createElement('canvas')
+      canvas.width = outW
+      canvas.height = outH
+      const ctx = canvas.getContext('2d')
+      ctx.drawImage(upright, (rw - outW) / 2, (rh - outH) / 2, outW, outH, 0, 0, outW, outH)
 
       const fingerprint = extractGreyscaleThumbnail(canvas, 16)
       const dataUrl = canvas.toDataURL('image/jpeg', 0.92)
@@ -423,6 +449,7 @@ export const LiveCameraViewfinder = forwardRef(function LiveCameraViewfinder({ o
 
   return (
     <Box
+      ref={containerRef}
       sx={{
         borderRadius: isImmersive ? 0 : 2.5,
         overflow: 'hidden',
