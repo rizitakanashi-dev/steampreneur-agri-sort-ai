@@ -887,15 +887,13 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
                 borderRadius: 3,
                 p: 1.5,
                 boxShadow: '0 12px 40px rgba(0, 0, 0, 0.5)',
-                maxHeight: '50dvh',
-                overflowY: 'auto',
               }}
             >
               <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: 'wrap', alignItems: 'flex-start' }}>
                 {[
                   {
                     key: 'sensitivity',
-                    label: `Sensitivitas ${Math.round(confidenceThreshold * 100)}%`,
+                    label: 'Sensitivitas',
                     icon: <TuneRoundedIcon />,
                     active: showSensitivitySetting,
                     onClick: () => setShowSensitivitySetting((prev) => !prev),
@@ -951,7 +949,18 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
                 ].map((item) => (
                   <Stack
                     key={item.key}
-                    sx={{ alignItems: 'center', width: 72, flexShrink: 0, cursor: 'pointer' }}
+                    sx={{
+                      alignItems: 'center',
+                      width: 72,
+                      flexShrink: 0,
+                      cursor: 'pointer',
+                      // Tombol native: hapus latar/border bawaan agar item gelap, teks terlihat
+                      bgcolor: 'transparent',
+                      border: 'none',
+                      p: 0,
+                      color: '#e2e8f0',
+                      fontFamily: 'inherit',
+                    }}
                     component="button"
                     type="button"
                     onClick={item.onClick}
@@ -1228,8 +1237,67 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
               <Box sx={immersive ? { flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 } : undefined}>
                 {/* 1. KONDISI MODE MULTI-SUDUT AKTIF */}
                 {isMultiAngleMode ? (
-                  <Box sx={immersive ? { flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 } : undefined}>
-                    {/* Stepper Indikator 2 Langkah */}
+                  <Box sx={immersive ? { flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, position: 'relative' } : undefined}>
+                    {/* Stepper: desktop = kartu lengkap; immersive = pill kompak di kanan-atas kamera */}
+                    {immersive ? (
+                      <Stack
+                        spacing={0.5}
+                        sx={{ position: 'absolute', top: 8, right: 8, zIndex: 16, alignItems: 'flex-end', maxWidth: '62%' }}
+                      >
+                        <Chip
+                          size="small"
+                          label={`Langkah ${multiStep} dari 2`}
+                          sx={{ bgcolor: 'rgba(15, 23, 42, 0.8)', backdropFilter: 'blur(4px)', color: '#4ade80', fontWeight: 800 }}
+                        />
+                        <Typography
+                          variant="caption"
+                          sx={{
+                            bgcolor: 'rgba(15, 23, 42, 0.8)',
+                            backdropFilter: 'blur(4px)',
+                            color: '#fff',
+                            px: 1,
+                            py: 0.25,
+                            borderRadius: 1.5,
+                            fontWeight: 600,
+                            textAlign: 'right',
+                          }}
+                        >
+                          {multiStep === 1 ? 'Sisi 1: tampak atas' : 'Sisi 2: goyang / balik buah'}
+                        </Typography>
+                        {multiStep === 2 && imagePreviewFront && (
+                          <Box
+                            sx={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: 0.5,
+                              p: 0.5,
+                              borderRadius: 2,
+                              bgcolor: 'rgba(15, 23, 42, 0.8)',
+                              backdropFilter: 'blur(4px)',
+                            }}
+                          >
+                            <Box
+                              component="img"
+                              src={imagePreviewFront}
+                              alt="Pratinjau Sisi 1"
+                              sx={{ width: 44, height: 44, objectFit: 'cover', borderRadius: 1 }}
+                            />
+                            <Chip
+                              clickable
+                              size="small"
+                              icon={<RefreshRoundedIcon />}
+                              label="Ulang"
+                              onClick={() => {
+                                setImageFileFront(null)
+                                setImagePreviewFront(null)
+                                setMultiStep(1)
+                              }}
+                              sx={{ color: '#e2e8f0', fontWeight: 700 }}
+                            />
+                          </Box>
+                        )}
+                      </Stack>
+                    ) : (
                     <Box sx={{ mb: 2.5, p: 2, bgcolor: '#f0fdf4', borderRadius: 2, border: '1px solid #bbf7d0' }}>
                       <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} sx={{ justifyContent: 'space-between', alignItems: { sm: 'center' } }}>
                         <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
@@ -1268,9 +1336,10 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
                           : 'Goyang nampan perlahan atau balikkan buah sampel secara acak agar sisi bawahnya terlihat oleh kamera.'}
                       </Typography>
                     </Box>
+                    )}
 
-                    {/* Pratinjau Sisi 1 jika sedang di Langkah 2 */}
-                    {multiStep === 2 && imagePreviewFront && (
+                    {/* Pratinjau Sisi 1 jika sedang di Langkah 2 (desktop; immersive sudah kompak di atas) */}
+                    {multiStep === 2 && imagePreviewFront && !immersive && (
                       <Box sx={{ mb: 2, p: 1.5, bgcolor: '#f8fafc', borderRadius: 2, border: '1px dashed #cbd5e1' }}>
                         <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center' }}>
                           <Box
