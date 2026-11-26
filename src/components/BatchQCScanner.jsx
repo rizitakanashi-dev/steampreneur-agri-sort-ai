@@ -880,66 +880,22 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
                 <AppsRoundedIcon />
               </IconButton>
             </Tooltip>
-          </Box>
-  )
-
-  return (
-    <Stack
-      spacing={immersive ? 0 : 3}
-      sx={
-        immersive
-          ? {
-              // Tanpa minHeight 100dvh: tinggi dikendalikan kartu kamera eksplisit
-              // (rantai persentase flex tidak reliable — root minHeight membuat
-              // height:100% anak-anaknya jatuh ke auto)
-              px: 0,
-              pt: 0,
-              pb: 'calc(140px + env(safe-area-inset-bottom))',
-            }
-          : undefined
-      }
-    >
-      {/* Banner masuk mode kamera — khusus HP di tampilan scanner biasa (Opsi A,
-          menggantikan FAB yang menimpa kontrol kamera internal) */}
-      {!immersive && isMobileViewport && onEnterImmersive && (
-        <Button
-          fullWidth
-          variant="contained"
-          color="primary"
-          startIcon={<CameraAltRoundedIcon />}
-          onClick={onEnterImmersive}
-          sx={{
-            borderRadius: 2.5,
-            py: 1.25,
-            fontWeight: 800,
-            boxShadow: '0 6px 18px rgba(3, 110, 69, 0.35)',
-          }}
-        >
-          Buka Mode Kamera Layar Penuh
-        </Button>
-      )}
-
-      {/* 1a. MODE IMMERSIVE: kontrol atas (✕/⚡/menu) dikirim ke viewfinder —
-          diposisikan di tengah area gelap atas kamera (tidak lagi navbar tersendiri) */}
-      {immersive ? (
-        <>
-          {/* Panel menu ala kamera native: ikon bulat + label, muncul saat ⠿ ditekan */}
-          {cameraMenuOpen && (
+  {cameraMenuOpen && (
             <Box
               sx={{
-                position: 'fixed',
-                top: 'calc(52px + env(safe-area-inset-top))',
-                right: 8,
-                left: 8,
+                position: 'absolute',
+                top: 40,
+                left: 0,
+                right: 0,
                 zIndex: 1260,
                 bgcolor: 'rgba(23, 33, 53, 0.94)',
                 backdropFilter: 'blur(10px)',
                 borderRadius: 3,
-                p: 1.5,
+                p: 1,
                 boxShadow: '0 12px 40px rgba(0, 0, 0, 0.5)',
               }}
             >
-              <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: 'wrap', alignItems: 'flex-start', justifyContent: 'center' }}>
+              <Stack direction="row" spacing={0.5} useFlexGap sx={{ flexWrap: 'wrap', alignItems: 'flex-start', justifyContent: 'center' }}>
                 {[
                   {
                     key: 'sensitivity',
@@ -1001,7 +957,7 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
                     key={item.key}
                     sx={{
                       alignItems: 'center',
-                      width: 72,
+                      width: 64,
                       flexShrink: 0,
                       cursor: 'pointer',
                       // Tombol native: hapus latar/border bawaan agar item gelap, teks terlihat
@@ -1049,6 +1005,51 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
               {showImmersiveTips && <Box sx={{ mt: 1.5 }}>{tipsAlert}</Box>}
             </Box>
           )}
+    </Box>
+  )
+
+  return (
+    <Stack
+      spacing={immersive ? 0 : 3}
+      sx={
+        immersive
+          ? {
+              // Tanpa minHeight 100dvh: tinggi dikendalikan kartu kamera eksplisit
+              // (rantai persentase flex tidak reliable — root minHeight membuat
+              // height:100% anak-anaknya jatuh ke auto)
+              px: 0,
+              pt: 0,
+              pb: 'calc(140px + env(safe-area-inset-bottom))',
+            }
+          : undefined
+      }
+    >
+      {/* Banner masuk mode kamera — khusus HP di tampilan scanner biasa (Opsi A,
+          menggantikan FAB yang menimpa kontrol kamera internal) */}
+      {!immersive && isMobileViewport && onEnterImmersive && (
+        <Button
+          fullWidth
+          variant="contained"
+          color="primary"
+          startIcon={<CameraAltRoundedIcon />}
+          onClick={onEnterImmersive}
+          sx={{
+            borderRadius: 2.5,
+            py: 1.25,
+            fontWeight: 800,
+            boxShadow: '0 6px 18px rgba(3, 110, 69, 0.35)',
+          }}
+        >
+          Buka Mode Kamera Layar Penuh
+        </Button>
+      )}
+
+      {/* 1a. MODE IMMERSIVE: kontrol atas (✕/⚡/menu) dikirim ke viewfinder —
+          diposisikan di tengah area gelap atas kamera (tidak lagi navbar tersendiri) */}
+      {immersive ? (
+        <>
+          {/* Panel menu ala kamera native: ikon bulat + label, muncul saat ⠿ ditekan */}
+
 
         </>
       ) : (
@@ -1292,7 +1293,7 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
                     {immersive ? (
                       <Stack
                         spacing={0.5}
-                        sx={{ position: 'absolute', top: 8, right: 8, zIndex: 16, alignItems: 'flex-end', maxWidth: '62%' }}
+                        sx={{ position: 'absolute', bottom: 96, left: 8, zIndex: 16, alignItems: 'flex-start', maxWidth: '62%' }}
                       >
                         <Chip
                           size="small"

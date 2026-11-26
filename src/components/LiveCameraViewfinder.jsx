@@ -502,8 +502,9 @@ export const LiveCameraViewfinder = forwardRef(function LiveCameraViewfinder({ o
         <Box
           sx={{
             position: 'absolute',
-            top: overlayTop + 40,
-            left: 12,
+            // Di DALAM gambar kamera (seperti pill "Arahkan kamera" di bawah, tapi di atas)
+            top: contentRect ? contentRect.top + 10 : 12,
+            left: contentRect ? contentRect.guides.left + 10 : 12,
             zIndex: 15,
             px: 1.25,
             py: 0.5,
