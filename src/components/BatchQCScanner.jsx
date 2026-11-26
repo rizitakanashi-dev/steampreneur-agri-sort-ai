@@ -30,6 +30,8 @@ import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined'
 import Inventory2RoundedIcon from '@mui/icons-material/Inventory2Rounded'
 import PhotoLibraryRoundedIcon from '@mui/icons-material/PhotoLibraryRounded'
 import FlashOnRoundedIcon from '@mui/icons-material/FlashOnRounded'
+import RotateRightRoundedIcon from '@mui/icons-material/RotateRightRounded'
+import CloseRoundedIcon from '@mui/icons-material/CloseRounded'
 import FlashOffRoundedIcon from '@mui/icons-material/FlashOffRounded'
 import RefreshRoundedIcon from '@mui/icons-material/RefreshRounded'
 import SaveRoundedIcon from '@mui/icons-material/SaveRounded'
@@ -58,7 +60,7 @@ import { COMMODITIES, formatRupiah } from './scanner/constants.js'
 import { SaveToRecapDialog } from './scanner/SaveToRecapDialog.jsx'
 import { CertificatePreviewDialog } from './scanner/CertificatePreviewDialog.jsx'
 
-export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, immersive = false, onEnterImmersive }) {
+export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, immersive = false, onEnterImmersive, onExitImmersive }) {
   const isMobileViewport = useMediaQuery('(max-width: 599.95px)')
   const [selectedCommodity, setSelectedCommodity] = useState('Terung')
   const [activeTab, setActiveTab] = useState(0) // 0: Live Camera, 1: Upload File
@@ -800,14 +802,14 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
       )}
 
       {/* 1a. MODE IMMERSIVE: kontrol mengapung gaya kamera native —
-          ⚡ flash kiri-atas, sensitivitas+tips kanan-atas, selector komoditas & mode di bawah */}
+          ✕ kiri-atas + flash, sensitivitas+tips kanan-atas, selector komoditas & mode di bawah */}
       {immersive ? (
         <>
-          {/* Bar atas: Flash kiri, Sensitivitas + Tips kanan — tanpa kotak panel */}
+          {/* Bar atas: ✕ + Flash kiri, Sensitivitas + Tips kanan — mengapung di atas kamera penuh */}
           <Box
             sx={{
               position: 'fixed',
-              top: 'calc(42px + env(safe-area-inset-top))',
+              top: 'calc(6px + env(safe-area-inset-top))',
               left: 8,
               right: 8,
               zIndex: 1250,
@@ -817,24 +819,38 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
               pointerEvents: 'none',
             }}
           >
-            {torchInfo.supported ? (
-              <IconButton
-                aria-label={torchInfo.on ? 'Matikan lampu kilat' : 'Nyalakan lampu kilat'}
-                onClick={() => viewfinderRef.current?.toggleTorch()}
-                sx={{
-                  pointerEvents: 'auto',
-                  width: 40,
-                  height: 40,
-                  color: torchInfo.on ? '#fbbf24' : '#fff',
-                  bgcolor: 'rgba(15, 23, 42, 0.55)',
-                  '&:hover': { bgcolor: 'rgba(15, 23, 42, 0.75)' },
-                }}
-              >
-                {torchInfo.on ? <FlashOnRoundedIcon /> : <FlashOffRoundedIcon />}
-              </IconButton>
-            ) : (
-              <Box sx={{ width: 40, height: 40 }} />
-            )}
+            <Stack direction="row" spacing={0.75} sx={{ pointerEvents: 'auto', alignItems: 'center' }}>
+              {onExitImmersive && (
+                <IconButton
+                  aria-label="Keluar layar pemindaian khusus"
+                  onClick={onExitImmersive}
+                  sx={{
+                    width: 40,
+                    height: 40,
+                    color: '#fff',
+                    bgcolor: 'rgba(15, 23, 42, 0.55)',
+                    '&:hover': { bgcolor: 'rgba(15, 23, 42, 0.75)' },
+                  }}
+                >
+                  <CloseRoundedIcon />
+                </IconButton>
+              )}
+              {torchInfo.supported && (
+                <IconButton
+                  aria-label={torchInfo.on ? 'Matikan lampu kilat' : 'Nyalakan lampu kilat'}
+                  onClick={() => viewfinderRef.current?.toggleTorch()}
+                  sx={{
+                    width: 40,
+                    height: 40,
+                    color: torchInfo.on ? '#fbbf24' : '#fff',
+                    bgcolor: 'rgba(15, 23, 42, 0.55)',
+                    '&:hover': { bgcolor: 'rgba(15, 23, 42, 0.75)' },
+                  }}
+                >
+                  {torchInfo.on ? <FlashOnRoundedIcon /> : <FlashOffRoundedIcon />}
+                </IconButton>
+              )}
+            </Stack>
             <Stack direction="row" spacing={0.75} sx={{ pointerEvents: 'auto', alignItems: 'center' }}>
               <Tooltip title="Atur sensitivitas threshold keyakinan model AI">
                 <Chip
@@ -876,7 +892,7 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
             <Box
               sx={{
                 position: 'fixed',
-                top: 'calc(94px + env(safe-area-inset-top))',
+                top: 'calc(56px + env(safe-area-inset-top))',
                 left: 8,
                 right: 8,
                 zIndex: 1260,
@@ -889,7 +905,9 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
             </Box>
           )}
 
-          {/* Selector bawah gaya kamera native: komoditas | mode */}
+          {/* Selector bawah gaya kamera native: komoditas | mode —
+              sembunyi saat sudah ada foto/preview/scanning agar tidak menutupi konten */}
+          {activeTab === 0 && !isScanning && !imagePreview && !imagePreviewFront && (
           <Box
             sx={{
               position: 'fixed',
@@ -1020,6 +1038,7 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
               </Box>
             </Stack>
           </Box>
+          )}
         </>
       ) : (
         /* 1. KARTU SELEKSI KOMODITAS UTAMA (PROMINENT DI ATAS) */
@@ -1158,7 +1177,7 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
             // agar viewfinder full-bleed KHAS KAMERA HP — tanpa bergantung rantai flex
             display: immersive ? 'flex' : undefined,
             flexDirection: immersive ? 'column' : undefined,
-            height: immersive ? 'calc(100dvh - 160px - env(safe-area-inset-bottom))' : undefined,
+            height: immersive ? 'calc(100dvh - 114px - env(safe-area-inset-bottom))' : undefined,
             flex: immersive ? '1 0 auto' : undefined,
           }}
         >
@@ -2397,6 +2416,24 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
             }}
           >
             {isScanning ? <CircularProgress size={30} sx={{ color: '#fff' }} /> : <CameraAltRoundedIcon sx={{ fontSize: 30 }} />}
+          </IconButton>
+
+          {/* Kanan: tombol putar manual (kalibrasi orientasi per perangkat) */}
+          <IconButton
+            aria-label="Putar tampilan kamera 90 derajat"
+            disabled={isScanning}
+            onClick={() => viewfinderRef.current?.rotateView()}
+            sx={{
+              width: 44,
+              height: 44,
+              color: '#fff',
+              bgcolor: 'rgba(255, 255, 255, 0.10)',
+              '&:hover': { bgcolor: 'rgba(255, 255, 255, 0.2)' },
+              '&.Mui-disabled': { color: '#64748b' },
+              ...((activeTab !== 0 || isScanning) ? { color: '#64748b', bgcolor: 'rgba(255, 255, 255, 0.05)' } : {}),
+            }}
+          >
+            <RotateRightRoundedIcon />
           </IconButton>
         </Box>
       )}

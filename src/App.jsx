@@ -404,6 +404,7 @@ function FoundationPage({
   openCertModal = false,
   immersive = false,
   onEnterImmersive,
+  onExitImmersive,
 }) {
   const [showManualForm, setShowManualForm] = useState(false)
   const page = pages[activePage]
@@ -437,6 +438,7 @@ function FoundationPage({
             onViewResults={(batch) => onSelectBatch(batch)}
             immersive={immersive}
             onEnterImmersive={onEnterImmersive}
+            onExitImmersive={onExitImmersive}
           />
         )}
       </Stack>
@@ -884,47 +886,19 @@ function App() {
         }
       >
         {scannerImmersiveActive ? (
-          <Stack
-            direction="row"
-            alignItems="center"
-            justifyContent="flex-end"
-            sx={
-              scannerImmersiveActive
-                ? {
-                    // Header kamera native: hanya ✕ kecil — tanpa judul, tanpa ruang berlebih
-                    pt: 'calc(6px + env(safe-area-inset-top))',
-                    pb: 0.25,
-                    px: 1,
-                    bgcolor: '#0f172a',
-                  }
-                : { pt: 'calc(10px + env(safe-area-inset-top))', pr: 0.5 }
-            }
-          >
-            {!scannerImmersiveActive && (
-              <Typography variant="subtitle1" fontWeight={800} color="text.primary">
-                {page.title}
-              </Typography>
-            )}
-            <IconButton
-              aria-label="Keluar layar pemindaian khusus"
-              edge="end"
-              onClick={() => setScannerImmersive(false)}
-              size="small"
-              sx={scannerImmersiveActive ? { color: '#e2e8f0' } : undefined}
-            >
-              <CloseRoundedIcon />
-            </IconButton>
-          </Stack>
+          // Mode kamera: atas = kamera penuh, tanpa navbar — ✕/flash mengapung di atas gambar (di scanner)
+          null
         ) : (
           <PageHeader eyebrow="Agri-Sort AI / Precision Agriculture" title={page.title} description={page.description} />
         )}
-        {harvestMessage && <Alert onClose={() => setHarvestMessage('')} severity="success" sx={{ mb: 2 }}>{harvestMessage}</Alert>}
+        {harvestMessage && !scannerImmersiveActive && <Alert onClose={() => setHarvestMessage('')} severity="success" sx={{ mb: 2 }}>{harvestMessage}</Alert>}
         <ErrorBoundary key={activePage} onReset={() => setActivePage('overview')}>
           <Suspense fallback={<PageLoadingFallback />}>
             <FoundationPage
               activePage={activePage}
               immersive={scannerImmersiveActive}
               onEnterImmersive={() => setScannerImmersive(true)}
+              onExitImmersive={() => setScannerImmersive(false)}
               batches={batches}
               canSyncPrices={platformAdminAccess}
               onBackToInput={handleBackToInput}
