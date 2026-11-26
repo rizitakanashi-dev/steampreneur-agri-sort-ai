@@ -44,7 +44,7 @@ export function stopAllActiveCameraStreams() {
  * Komponen Live Camera Viewfinder untuk Agri-Sort AI
  * Mengakses webcam desktop atau kamera HP langsung dengan capture snapshot instan.
  */
-export const LiveCameraViewfinder = forwardRef(function LiveCameraViewfinder({ onCapture, disabled = false, variant = 'default', autoDetect = false, onTorchStateChange }, ref) {
+export const LiveCameraViewfinder = forwardRef(function LiveCameraViewfinder({ onCapture, disabled = false, variant = 'default', autoDetect = false, onTorchStateChange, topOverlay }, ref) {
   const isImmersive = variant === 'immersive'
   const videoRef = useRef(null)
   const streamRef = useRef(null)
@@ -377,9 +377,12 @@ export const LiveCameraViewfinder = forwardRef(function LiveCameraViewfinder({ o
 
   const totalRotation =
     ((((needsRotation ? (facingMode === 'environment' ? 90 : -90) : 0) + rotationOffset) % 360) + 360) % 360
+  // Hanya 90/270 yang butuh elemen video berdimensi tukar (landscape↔portrait).
+  // Offset 180 TIDAK — kalau ikut dipaksa elemen besar, video meluber melebihi layar.
+  const swapLayout = totalRotation === 90 || totalRotation === 270
 
-  // Ukur area gambar yang terlihat (contain): dipakai garis panduan agar tidak
-  // meluber ke band gelap. Diputar ulang saat dims kamera/rotasi/resize berubah.
+  // Ukur area gambar yang terlihat (contain) + kotak panduan yang di-CLAMP ke dalam
+  // kontainer (tidak boleh meluber melewati tepi/navbar)
   const updateContentRect = useCallback(() => {
     const cont = containerRef.current
     if (!cont || !videoDims || cameraState !== 'active') {
@@ -389,16 +392,24 @@ export const LiveCameraViewfinder = forwardRef(function LiveCameraViewfinder({ o
     const cw = cont.clientWidth
     const ch = cont.clientHeight
     const { w, h } = videoDims
-    let scale
-    if (totalRotation === 90 || totalRotation === 270) {
+    let scale, dw, dh
+    if (swapLayout) {
       scale = Math.min(cw / h, ch / w)
+      dw = h * scale
+      dh = w * scale
     } else {
       scale = Math.min(cw / w, ch / h)
+      dw = w * scale
+      dh = h * scale
     }
-    const dw = (totalRotation === 90 || totalRotation === 270 ? h : w) * scale
-    const dh = (totalRotation === 90 || totalRotation === 270 ? w : h) * scale
-    setContentRect({ top: (ch - dh) / 2, left: (cw - dw) / 2, width: dw, height: dh })
-  }, [videoDims, cameraState, totalRotation])
+    const contentTop = (ch - dh) / 2
+    const pad = 10
+    const gTop = Math.max(contentTop - pad, 4)
+    const gLeft = Math.max(((cw - dw) / 2) - pad, 4)
+    const gRight = Math.min(((cw + dw) / 2) + pad, cw - 4)
+    const gBottom = Math.min(((ch + dh) / 2) + pad, ch - 4)
+    setContentRect({ top: contentTop, guides: { top: gTop, left: gLeft, width: gRight - gLeft, height: gBottom - gTop } })
+  }, [videoDims, cameraState, swapLayout])
 
   useEffect(() => {
     updateContentRect()
@@ -471,7 +482,7 @@ export const LiveCameraViewfinder = forwardRef(function LiveCameraViewfinder({ o
         overflow: 'hidden',
         bgcolor: '#0f172a',
         position: 'relative',
-        minHeight: isImmersive ? 'calc(100dvh - 188px - env(safe-area-inset-top) - env(safe-area-inset-bottom))' : { xs: 260, sm: 360 },
+        minHeight: isImmersive ? 'calc(100dvh - 140px - env(safe-area-inset-top) - env(safe-area-inset-bottom))' : { xs: 260, sm: 360 },
         flex: isImmersive ? 1 : undefined,
         display: 'flex',
         flexDirection: 'column',
@@ -514,14 +525,13 @@ export const LiveCameraViewfinder = forwardRef(function LiveCameraViewfinder({ o
         playsInline
         muted
         style={
-          totalRotation !== 0
+          swapLayout
             ? {
-                // Tampilan diputar (auto + manual): diposisikan absolut di tengah
-                // dengan dimensi ditukar agar mengisi penuh kontainer portrait
+                // Rotasi 90/270: elemen berdimensi tukar, absolut di tengah
                 position: 'absolute',
                 top: '50%',
                 left: '50%',
-                width: 'calc(100dvh - 188px - env(safe-area-inset-top) - env(safe-area-inset-bottom))',
+                width: 'calc(100dvh - 140px - env(safe-area-inset-top) - env(safe-area-inset-bottom))',
                 height: '100vw',
                 maxWidth: 'none',
                 transform: `translate(-50%, -50%) rotate(${totalRotation}deg)`,
@@ -530,27 +540,44 @@ export const LiveCameraViewfinder = forwardRef(function LiveCameraViewfinder({ o
               }
             : {
                 width: '100%',
-                // Immersive: TANPA ZOOM (objectFit contain) — frame kamera utuh terlihat,
-                // sisa area gelap seperti band kamera HP. User menolak efek zoom.
-                height: isImmersive ? 'calc(100dvh - 188px - env(safe-area-inset-top) - env(safe-area-inset-bottom))' : 'auto',
+                // Immersive: TANPA ZOOM (objectFit contain) — frame kamera utuh terlihat.
+                // Rotasi 180 (kalibrasi manual) cukup CSS rotate — ukuran elemen normal.
+                height: isImmersive ? 'calc(100dvh - 140px - env(safe-area-inset-top) - env(safe-area-inset-bottom))' : 'auto',
                 maxHeight: isImmersive ? 'none' : 460,
                 objectFit: isImmersive ? 'contain' : 'contain',
+                transform: totalRotation === 180 ? 'rotate(180deg)' : undefined,
                 display: cameraState === 'active' ? 'block' : 'none',
               }
         }
       />
 
-      {/* Frame Visual Overlay (Corner Guides) — mengikuti area gambar kamera */}
+      {/* Slot kontrol atas (✕/⚡/menu) — diposisikan di tengah area gelap antara
+          navbar dan gambar kamera, menyesuaikan tinggi letterbox otomatis */}
+      {topOverlay && (
+        <Box
+          sx={{
+            position: 'absolute',
+            left: 8,
+            right: 8,
+            top: contentRect ? Math.max((contentRect.top - 32) / 2, 8) : 8,
+            zIndex: 30,
+          }}
+        >
+          {topOverlay}
+        </Box>
+      )}
+
+      {/* Frame Visual Overlay (Corner Guides) — mengikuti area gambar kamera, di-CLAMP */}
       {cameraState === 'active' && (
         <Box
           sx={{
             position: 'absolute',
             ...(contentRect
               ? {
-                  top: Math.max(contentRect.top - 10, 4),
-                  left: Math.max(contentRect.left - 10, 4),
-                  width: contentRect.width + 20,
-                  height: contentRect.height + 20,
+                  top: contentRect.guides.top,
+                  left: contentRect.guides.left,
+                  width: contentRect.guides.width,
+                  height: contentRect.guides.height,
                   boxSizing: 'border-box',
                 }
               : { inset: { xs: 16, sm: 24 } }),

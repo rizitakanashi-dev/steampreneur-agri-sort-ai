@@ -825,6 +825,64 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
     </Alert>
   )
 
+  // Baris kontrol atas mode kamera (✕/⚡/menu) — dirender viewfinder di tengah area gelap atas
+  const cameraTopControls = (
+    <Box
+      sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}
+    >
+            <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>
+              {onExitImmersive && (
+                <IconButton
+                  aria-label="Keluar layar pemindaian khusus"
+                  onClick={onExitImmersive}
+                  sx={{
+                    width: 32,
+                    height: 32,
+                    '& .MuiSvgIcon-root': { fontSize: 20 },
+                    color: '#e2e8f0',
+                    bgcolor: 'rgba(15, 23, 42, 0.55)',
+                    '&:hover': { bgcolor: 'rgba(15, 23, 42, 0.75)' },
+                  }}
+                >
+                  <CloseRoundedIcon />
+                </IconButton>
+              )}
+              {torchInfo.supported && (
+                <IconButton
+                  aria-label={torchInfo.on ? 'Matikan lampu kilat' : 'Nyalakan lampu kilat'}
+                  onClick={() => viewfinderRef.current?.toggleTorch()}
+                  sx={{
+                    width: 32,
+                    height: 32,
+                    '& .MuiSvgIcon-root': { fontSize: 20 },
+                    color: torchInfo.on ? '#fbbf24' : '#e2e8f0',
+                    bgcolor: 'rgba(15, 23, 42, 0.55)',
+                    '&:hover': { bgcolor: 'rgba(15, 23, 42, 0.75)' },
+                  }}
+                >
+                  {torchInfo.on ? <FlashOnRoundedIcon /> : <FlashOffRoundedIcon />}
+                </IconButton>
+              )}
+            </Stack>
+            <Tooltip title="Mode & pengaturan kamera">
+              <IconButton
+                aria-label="Buka menu mode dan pengaturan kamera"
+                onClick={() => setCameraMenuOpen((prev) => !prev)}
+                sx={{
+                  width: 32,
+                  height: 32,
+                  '& .MuiSvgIcon-root': { fontSize: 20 },
+                  color: cameraMenuOpen ? '#4ade80' : '#e2e8f0',
+                  bgcolor: 'rgba(15, 23, 42, 0.55)',
+                  '&:hover': { bgcolor: 'rgba(15, 23, 42, 0.75)' },
+                }}
+              >
+                <AppsRoundedIcon />
+              </IconButton>
+            </Tooltip>
+          </Box>
+  )
+
   return (
     <Stack
       spacing={immersive ? 0 : 3}
@@ -861,81 +919,16 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
         </Button>
       )}
 
-      {/* 1a. MODE IMMERSIVE: header band gelap khas kamera native — kontrol kecil, kamera tetap lebar */}
+      {/* 1a. MODE IMMERSIVE: kontrol atas (✕/⚡/menu) dikirim ke viewfinder —
+          diposisikan di tengah area gelap atas kamera (tidak lagi navbar tersendiri) */}
       {immersive ? (
         <>
-          {/* Header band gelap: ✕ + Flash kiri, menu ⠿ kanan — pas di tengah band, ala kamera HP */}
-          <Box
-            sx={{
-              bgcolor: '#0f172a',
-              px: 1,
-              height: 'calc(48px + env(safe-area-inset-top))',
-              boxSizing: 'border-box',
-              pt: 'env(safe-area-inset-top)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              flexShrink: 0,
-            }}
-          >
-            <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>
-              {onExitImmersive && (
-                <IconButton
-                  aria-label="Keluar layar pemindaian khusus"
-                  onClick={onExitImmersive}
-                  sx={{
-                    width: 32,
-                    height: 32,
-                    '& .MuiSvgIcon-root': { fontSize: 20 },
-                    color: '#e2e8f0',
-                    bgcolor: 'rgba(255, 255, 255, 0.10)',
-                    '&:hover': { bgcolor: 'rgba(255, 255, 255, 0.2)' },
-                  }}
-                >
-                  <CloseRoundedIcon />
-                </IconButton>
-              )}
-              {torchInfo.supported && (
-                <IconButton
-                  aria-label={torchInfo.on ? 'Matikan lampu kilat' : 'Nyalakan lampu kilat'}
-                  onClick={() => viewfinderRef.current?.toggleTorch()}
-                  sx={{
-                    width: 32,
-                    height: 32,
-                    '& .MuiSvgIcon-root': { fontSize: 20 },
-                    color: torchInfo.on ? '#fbbf24' : '#e2e8f0',
-                    bgcolor: 'rgba(255, 255, 255, 0.10)',
-                    '&:hover': { bgcolor: 'rgba(255, 255, 255, 0.2)' },
-                  }}
-                >
-                  {torchInfo.on ? <FlashOnRoundedIcon /> : <FlashOffRoundedIcon />}
-                </IconButton>
-              )}
-            </Stack>
-            <Tooltip title="Mode & pengaturan kamera">
-              <IconButton
-                aria-label="Buka menu mode dan pengaturan kamera"
-                onClick={() => setCameraMenuOpen((prev) => !prev)}
-                sx={{
-                  width: 32,
-                  height: 32,
-                  '& .MuiSvgIcon-root': { fontSize: 20 },
-                  color: cameraMenuOpen ? '#4ade80' : '#e2e8f0',
-                  bgcolor: 'rgba(255, 255, 255, 0.10)',
-                  '&:hover': { bgcolor: 'rgba(255, 255, 255, 0.2)' },
-                }}
-              >
-                <AppsRoundedIcon />
-              </IconButton>
-            </Tooltip>
-          </Box>
-
           {/* Panel menu ala kamera native: ikon bulat + label, muncul saat ⠿ ditekan */}
           {cameraMenuOpen && (
             <Box
               sx={{
                 position: 'fixed',
-                top: 'calc(64px + env(safe-area-inset-top))',
+                top: 'calc(52px + env(safe-area-inset-top))',
                 right: 8,
                 left: 8,
                 zIndex: 1260,
@@ -1195,7 +1188,7 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
             // agar viewfinder full-bleed KHAS KAMERA HP — tanpa bergantung rantai flex
             display: immersive ? 'flex' : undefined,
             flexDirection: immersive ? 'column' : undefined,
-            height: immersive ? 'calc(100dvh - 188px - env(safe-area-inset-top) - env(safe-area-inset-bottom))' : undefined,
+            height: immersive ? 'calc(100dvh - 140px - env(safe-area-inset-top) - env(safe-area-inset-bottom))' : undefined,
             flex: immersive ? '1 0 auto' : undefined,
           }}
         >
@@ -1422,6 +1415,7 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
 
                     <LiveCameraViewfinder
                       ref={viewfinderRef}
+                      topOverlay={cameraTopControls}
                       key={`viewfinder-step-${multiStep}`}
                       onCapture={handleLiveCameraCapture}
                       disabled={isScanning}
@@ -1494,6 +1488,7 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
                     ) : (
                       <LiveCameraViewfinder
                         ref={viewfinderRef}
+                        topOverlay={cameraTopControls}
                         onCapture={handleLiveCameraCapture}
                         disabled={isScanning}
                         variant={immersive ? 'immersive' : 'default'}
