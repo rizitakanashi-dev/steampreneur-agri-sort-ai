@@ -180,7 +180,14 @@ def _request_supabase(
             body = response.read().decode("utf-8")
             return json.loads(body) if body else {}
     except urllib.error.HTTPError as exc:
-        exc.close()
+        body = ""
+        try:
+            body = exc.read().decode("utf-8", "replace")[:300]
+        except Exception:
+            pass
+        finally:
+            exc.close()
+        logger.warning("Supabase Auth ditolak HTTP %s: %s", exc.code, body)
         if exc.code == 429 or exc.code >= 500:
             raise AuthProviderUnavailableError("Layanan autentikasi tidak tersedia.") from exc
         raise ValueError("Permintaan autentikasi ditolak.") from exc
