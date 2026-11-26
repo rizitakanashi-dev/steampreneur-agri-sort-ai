@@ -801,34 +801,34 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
         </Button>
       )}
 
-      {/* 1a. MODE IMMERSIVE: kontrol mengapung gaya kamera native —
-          ✕ kiri-atas + flash, sensitivitas+tips kanan-atas, selector komoditas & mode di bawah */}
+      {/* 1a. MODE IMMERSIVE: header band gelap khas kamera native — kontrol kecil, kamera tetap lebar */}
       {immersive ? (
         <>
-          {/* Bar atas: ✕ + Flash kiri, Sensitivitas + Tips kanan — mengapung di atas kamera penuh */}          <Box
+          {/* Header band gelap: ✕ + Flash kiri, Sensitivitas + Tips kanan — tombol kecil seperti kamera HP */}
+          <Box
             sx={{
-              position: 'fixed',
-              top: 'calc(6px + env(safe-area-inset-top))',
-              left: 8,
-              right: 8,
-              zIndex: 1250,
+              bgcolor: '#0f172a',
+              px: 1,
+              pt: 'calc(4px + env(safe-area-inset-top))',
+              pb: 0.75,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
-              pointerEvents: 'none',
+              flexShrink: 0,
             }}
           >
-            <Stack direction="row" spacing={0.75} sx={{ pointerEvents: 'auto', alignItems: 'center' }}>
+            <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>
               {onExitImmersive && (
                 <IconButton
                   aria-label="Keluar layar pemindaian khusus"
                   onClick={onExitImmersive}
                   sx={{
-                    width: 40,
-                    height: 40,
-                    color: '#fff',
-                    bgcolor: 'rgba(15, 23, 42, 0.55)',
-                    '&:hover': { bgcolor: 'rgba(15, 23, 42, 0.75)' },
+                    width: 32,
+                    height: 32,
+                    '& .MuiSvgIcon-root': { fontSize: 20 },
+                    color: '#e2e8f0',
+                    bgcolor: 'rgba(255, 255, 255, 0.10)',
+                    '&:hover': { bgcolor: 'rgba(255, 255, 255, 0.2)' },
                   }}
                 >
                   <CloseRoundedIcon />
@@ -839,18 +839,19 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
                   aria-label={torchInfo.on ? 'Matikan lampu kilat' : 'Nyalakan lampu kilat'}
                   onClick={() => viewfinderRef.current?.toggleTorch()}
                   sx={{
-                    width: 40,
-                    height: 40,
-                    color: torchInfo.on ? '#fbbf24' : '#fff',
-                    bgcolor: 'rgba(15, 23, 42, 0.55)',
-                    '&:hover': { bgcolor: 'rgba(15, 23, 42, 0.75)' },
+                    width: 32,
+                    height: 32,
+                    '& .MuiSvgIcon-root': { fontSize: 20 },
+                    color: torchInfo.on ? '#fbbf24' : '#e2e8f0',
+                    bgcolor: 'rgba(255, 255, 255, 0.10)',
+                    '&:hover': { bgcolor: 'rgba(255, 255, 255, 0.2)' },
                   }}
                 >
                   {torchInfo.on ? <FlashOnRoundedIcon /> : <FlashOffRoundedIcon />}
                 </IconButton>
               )}
             </Stack>
-            <Stack direction="row" spacing={0.75} sx={{ pointerEvents: 'auto', alignItems: 'center' }}>
+            <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>
               <Tooltip title="Atur sensitivitas threshold keyakinan model AI">
                 <Chip
                   clickable
@@ -859,9 +860,11 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
                   size="small"
                   variant="outlined"
                   sx={{
+                    fontSize: '0.6875rem',
+                    height: 26,
                     fontWeight: 700,
                     color: '#e2e8f0',
-                    bgcolor: 'rgba(15, 23, 42, 0.55)',
+                    bgcolor: 'rgba(255, 255, 255, 0.10)',
                     borderColor: 'rgba(255, 255, 255, 0.25)',
                   }}
                 />
@@ -875,11 +878,13 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
                   size="small"
                   variant="outlined"
                   sx={{
+                    fontSize: '0.6875rem',
+                    height: 26,
                     fontWeight: 700,
                     color: '#e2e8f0',
-                    bgcolor: 'rgba(15, 23, 42, 0.55)',
+                    bgcolor: 'rgba(255, 255, 255, 0.10)',
                     borderColor: 'rgba(255, 255, 255, 0.25)',
-                    '& .MuiChip-icon': { color: '#e2e8f0' },
+                    '& .MuiChip-icon': { color: '#e2e8f0', fontSize: 14 },
                   }}
                 />
               </Tooltip>
@@ -1042,7 +1047,7 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
             // agar viewfinder full-bleed KHAS KAMERA HP — tanpa bergantung rantai flex
             display: immersive ? 'flex' : undefined,
             flexDirection: immersive ? 'column' : undefined,
-            height: immersive ? 'calc(100dvh - 140px - env(safe-area-inset-bottom))' : undefined,
+            height: immersive ? 'calc(100dvh - 184px - env(safe-area-inset-top) - env(safe-area-inset-bottom))' : undefined,
             flex: immersive ? '1 0 auto' : undefined,
           }}
         >
@@ -2171,16 +2176,20 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
             zIndex: 1100,
             px: 2.5,
             pt: 1.5,
-            pb: 'calc(14px + env(safe-area-inset-bottom))',
+            pb: 'calc(10px + env(safe-area-inset-bottom))',
             bgcolor: 'rgba(15, 23, 42, 0.94)',
             backdropFilter: 'blur(10px)',
             borderTop: '1px solid rgba(255, 255, 255, 0.08)',
             display: 'flex',
+            flexDirection: 'column',
             alignItems: 'center',
             justifyContent: 'center',
-            gap: { xs: 1.5, sm: 2 },
           }}
         >
+          <Stack
+            direction="row"
+            sx={{ alignItems: 'center', justifyContent: 'center', gap: { xs: 1.5, sm: 2 } }}
+          >
           {/* Kiri: Periksa Hasil (aktif setelah ada hasil scan) */}
           <Button
             aria-label="Periksa hasil pemindaian terkini"
@@ -2300,6 +2309,7 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
           >
             <RotateRightRoundedIcon />
           </IconButton>
+          </Stack>
 
           {/* Selector bawah gaya kamera native: komoditas | mode —
               sembunyi saat sudah ada foto/preview/scanning agar tidak menutupi konten */}
