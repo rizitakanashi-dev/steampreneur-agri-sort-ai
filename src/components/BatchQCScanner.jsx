@@ -2628,7 +2628,15 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
           </IconButton>
           </Box>
 
-          {/* Kanan: tombol putar manual (kalibrasi orientasi per perangkat) */}
+          {/* Kanan: tombol putar manual — di kanan shutter, agak berjarak, bukan nempel ujung */}
+          <Box
+            sx={{
+              position: 'absolute',
+              left: 'calc(50% + 48px)',
+              top: '50%',
+              transform: 'translateY(-50%)',
+            }}
+          >
           <IconButton
             aria-label="Putar tampilan kamera 90 derajat"
             disabled={isScanning}
@@ -2645,6 +2653,7 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
           >
             <RotateRightRoundedIcon />
           </IconButton>
+          </Box>
           </Box>
 
           {/* Label di bawah tombol, khas kamera native (PRO/VIDEO/FOTO/POTRET) — komoditas saja */}

@@ -383,6 +383,9 @@ export const LiveCameraViewfinder = forwardRef(function LiveCameraViewfinder({ o
 
   // Ukur area gambar yang terlihat (contain) + kotak panduan yang di-CLAMP ke dalam
   // kontainer (tidak boleh meluber melewati tepi/navbar)
+  // Posisi vertikal baris kontrol atas = tengah area gelap di atas gambar kamera
+  const overlayTop = contentRect ? Math.max((contentRect.top - 32) / 2, 8) : 8
+
   const updateContentRect = useCallback(() => {
     const cont = containerRef.current
     if (!cont || !videoDims || cameraState !== 'active') {
@@ -499,7 +502,7 @@ export const LiveCameraViewfinder = forwardRef(function LiveCameraViewfinder({ o
         <Box
           sx={{
             position: 'absolute',
-            top: 12,
+            top: overlayTop + 40,
             left: 12,
             zIndex: 15,
             px: 1.25,
@@ -559,7 +562,7 @@ export const LiveCameraViewfinder = forwardRef(function LiveCameraViewfinder({ o
             position: 'absolute',
             left: 8,
             right: 8,
-            top: contentRect ? Math.max((contentRect.top - 32) / 2, 8) : 8,
+            top: overlayTop,
             zIndex: 30,
           }}
         >
