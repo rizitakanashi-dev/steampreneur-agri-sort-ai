@@ -44,7 +44,7 @@ export function stopAllActiveCameraStreams() {
  * Komponen Live Camera Viewfinder untuk Agri-Sort AI
  * Mengakses webcam desktop atau kamera HP langsung dengan capture snapshot instan.
  */
-export const LiveCameraViewfinder = forwardRef(function LiveCameraViewfinder({ onCapture, disabled = false, variant = 'default', autoDetect = false, onTorchStateChange, topOverlay }, ref) {
+export const LiveCameraViewfinder = forwardRef(function LiveCameraViewfinder({ onCapture, disabled = false, variant = 'default', autoDetect = false, onTorchStateChange, topOverlay, topRightOverlay }, ref) {
   const isImmersive = variant === 'immersive'
   const videoRef = useRef(null)
   const streamRef = useRef(null)
@@ -554,6 +554,21 @@ export const LiveCameraViewfinder = forwardRef(function LiveCameraViewfinder({ o
               }
         }
       />
+
+      {/* Slot kanan-atas DI DALAM gambar kamera (indikator langkah 2-Sisi) —
+          berhadapan dengan chip kualitas di kiri-atas, keduanya di dalam gambar */}
+      {topRightOverlay && cameraState === 'active' && (
+        <Box
+          sx={{
+            position: 'absolute',
+            top: contentRect ? contentRect.top + 10 : 12,
+            right: contentRect ? contentRect.guides.left + 10 : 12,
+            zIndex: 25,
+          }}
+        >
+          {topRightOverlay}
+        </Box>
+      )}
 
       {/* Slot kontrol atas (✕/⚡/menu) — diposisikan di tengah area gelap antara
           navbar dan gambar kamera, menyesuaikan tinggi letterbox otomatis */}

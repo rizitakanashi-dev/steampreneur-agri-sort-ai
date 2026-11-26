@@ -828,7 +828,7 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
   // Baris kontrol atas mode kamera (✕/⚡/menu) — dirender viewfinder di tengah area gelap atas
   const cameraTopControls = (
     <Box
-      sx={{ display: 'flex', flexDirection: 'column', gap: 0.75, width: '100%' }}
+      sx={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}
     >
             <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>
               {onExitImmersive && (
@@ -884,7 +884,7 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
             <Box
               sx={{
                 position: 'absolute',
-                top: 40,
+                top: 44,
                 left: 0,
                 right: 0,
                 zIndex: 1260,
@@ -1005,8 +1005,11 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
               {showImmersiveTips && <Box sx={{ mt: 1.5 }}>{tipsAlert}</Box>}
             </Box>
           )}
-    {/* Mode 2 Sisi: indikator langkah — baris kedua di bawah kontrol, tidak menabrak pill panduan */}
-    {isMultiAngleMode && (
+    </Box>
+  )
+
+  // Indikator langkah 2-Sisi — pojok kanan-atas DI DALAM gambar kamera (dirender viewfinder)
+  const stepperOverlay = isMultiAngleMode ? (
       <Stack direction="row" spacing={0.5} sx={{ justifyContent: 'flex-end', alignItems: 'center' }}>
         <Chip
           size="small"
@@ -1042,9 +1045,7 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
           />
         )}
       </Stack>
-    )}
-    </Box>
-  )
+  ) : undefined
 
   return (
     <Stack
@@ -1397,6 +1398,7 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
                     <LiveCameraViewfinder
                       ref={viewfinderRef}
                       topOverlay={cameraTopControls}
+                      topRightOverlay={stepperOverlay}
                       key={`viewfinder-step-${multiStep}`}
                       onCapture={handleLiveCameraCapture}
                       disabled={isScanning}
@@ -1470,6 +1472,7 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
                       <LiveCameraViewfinder
                         ref={viewfinderRef}
                         topOverlay={cameraTopControls}
+                        topRightOverlay={stepperOverlay}
                         onCapture={handleLiveCameraCapture}
                         disabled={isScanning}
                         variant={immersive ? 'immersive' : 'default'}
