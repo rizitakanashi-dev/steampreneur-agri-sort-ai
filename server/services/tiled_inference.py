@@ -16,6 +16,8 @@ Fitur Utama:
 """
 
 from typing import Any, Dict, List, Optional, Tuple
+import cv2
+import numpy as np
 from PIL import Image
 
 
@@ -555,6 +557,114 @@ def is_watermark_or_text_artifact(box: List[float], image: Image.Image, commodit
     return False
 
 
+def detect_tomato_fungal_mold(image: Image.Image, box: List[float]) -> float:
+    """
+    Menghitung rasio kontaminasi jamur berbulu (mycelium putih/kelabu pucat)
+    dan pembusukan basah/nekrotik gelap pada area buah tomat.
+    Mengembalikan nilai rasio 0.0 - 1.0.
+    """
+    try:
+        width, height = image.size
+        x1 = max(0, int(box[0]))
+        y1 = max(0, int(box[1]))
+        x2 = min(width, int(box[2]))
+        y2 = min(height, int(box[3]))
+        bw = x2 - x1
+        bh = y2 - y1
+        if bw < 12 or bh < 12:
+            return 0.0
+
+        crop = image.crop((x1, y1, x2, y2))
+        np_crop = np.array(crop)
+        if np_crop.size == 0 or np_crop.shape[2] < 3:
+            return 0.0
+
+        rgb = np_crop[:, :, :3]
+        hsv = cv2.cvtColor(rgb, cv2.COLOR_RGB2HSV)
+        gray = cv2.cvtColor(rgb, cv2.COLOR_RGB2GRAY)
+
+        s = hsv[:, :, 1]
+        v = hsv[:, :, 2]
+        lap_abs = np.abs(cv2.Laplacian(gray, cv2.CV_64F))
+
+        # Jamur putih/kelabu pucat bertekstur (mycelium)
+        mold_white = (s < 60) & (v >= 60) & (v <= 220) & (lap_abs >= 8.0)
+        # Jamur nekrotik / busuk hitam/coklat pekat
+        rot_dark = (v < 55) & (lap_abs >= 6.0)
+
+        total_defect_pixels = np.count_nonzero(mold_white | rot_dark)
+        total_fruit_pixels = bw * bh
+        return float(total_defect_pixels / total_fruit_pixels)
+    except Exception:
+        return 0.0
+
+
+def refine_tomato_detections(
+    image: Image.Image,
+    detections: List[Dict[str, Any]],
+) -> List[Dict[str, Any]]:
+    """
+    Penyempurnaan pasca-proses khusus komoditas Tomat:
+    Mencegah jamur berbulu (mycelium) dan busuk basah/nekrotik salah diklasifikasi sebagai Grade A/B.
+
+    Aturan:
+    1. Jamur nyata soliter: jika mold_ratio >= 0.040 (>= 4.0% luas buah tertutup jamur),
+       demote ke Reject (conf = max(conf, 0.75)).
+    2. Kontaminasi batch: jika dalam satu citra terkonfirmasi ada buah Reject (conf >= 0.50 atau mold >= 0.040),
+       maka buah lain yang memiliki indikasi jamur (mold_ratio >= 0.018) atau prediksi Grade A-nya marginal (conf < 0.70)
+       didemotasikan ke Reject karena merupakan bagian dari tumpukan terkontaminasi.
+    """
+    if not detections:
+        return detections
+
+    mold_scores = []
+    has_confirmed_reject = False
+    for d in detections:
+        bx = d.get("box", {})
+        if isinstance(bx, dict):
+            b = [bx.get("x1", 0), bx.get("y1", 0), bx.get("x2", 0), bx.get("y2", 0)]
+        elif isinstance(bx, (list, tuple)):
+            b = list(bx)
+        else:
+            b = [0, 0, 0, 0]
+
+        mr = detect_tomato_fungal_mold(image, b)
+        mold_scores.append(mr)
+
+        if d.get("class_name") == "Reject" and d.get("confidence", 0.0) >= 0.50:
+            has_confirmed_reject = True
+        elif mr >= 0.040:
+            has_confirmed_reject = True
+
+    refined = []
+    for d, mr in zip(detections, mold_scores):
+        cls_name = d.get("class_name", "")
+        conf = float(d.get("confidence", 0.0))
+
+        should_demote = False
+        reason = None
+
+        if cls_name != "Reject":
+            if mr >= 0.040:
+                should_demote = True
+                reason = "fungal_mold_detected"
+            elif has_confirmed_reject:
+                if mr >= 0.018 or conf < 0.70:
+                    should_demote = True
+                    reason = "batch_contamination_fungal_mold"
+
+        if should_demote:
+            d["class_name"] = "Reject"
+            d["class_id"] = 2
+            d["confidence"] = round(max(conf, 0.75), 4)
+            d["disambiguated"] = False
+            d["disambiguation_reason"] = reason
+
+        refined.append(d)
+
+    return refined
+
+
 def run_sliced_yolo_inference(
     image: Image.Image,
     model: Any,
@@ -579,6 +689,7 @@ def run_sliced_yolo_inference(
     img_area = float(max(1, width * height))
     comm_lower = commodity.lower()
     is_terung = "terung" in comm_lower or "terong" in comm_lower or "eggplant" in comm_lower
+    is_tomat = "tomat" in comm_lower or "tomato" in comm_lower
     is_cabai = "cabai" in comm_lower or "chili" in comm_lower or "chilli" in comm_lower or "cabe" in comm_lower
     is_elongated = is_terung or is_cabai
     has_real_texture = _has_real_image_texture(image)
@@ -638,8 +749,8 @@ def run_sliced_yolo_inference(
             else:
                 touches_border = False
                 is_monolithic = (
-                    (b_area >= 0.15 * img_area and bw >= 0.38 * width and bh >= 0.38 * height)
-                    or (b_area >= 0.25 * img_area)
+                    (b_area >= 0.40 * img_area and bw >= 0.60 * width and bh >= 0.60 * height)
+                    or (b_area >= 0.50 * img_area)
                 )
 
             if conf < 0.45 and is_watermark_or_text_artifact([gx1, gy1, gx2, gy2], image, commodity):
@@ -734,7 +845,7 @@ def run_sliced_yolo_inference(
             disambiguated = False
             reason = None
 
-            if (is_terung or is_3grade_model) and disambiguate_grades:
+            if is_terung and disambiguate_grades:
                 (
                     chosen_cls,
                     chosen_conf,
@@ -764,6 +875,8 @@ def run_sliced_yolo_inference(
                 "disambiguated": disambiguated,
                 "disambiguation_reason": reason,
             })
+        if is_tomat:
+            formatted_detections = refine_tomato_detections(image, formatted_detections)
         return {
             "detections": formatted_detections,
             "candidates": full_boxes,
@@ -859,11 +972,30 @@ def run_sliced_yolo_inference(
     merged_candidates: List[Dict[str, Any]] = []
 
     if len(slice_candidates) >= 2:
-        # Jika sliced inference menemukan buah-buah individual, hapus box raksasa full-image
+        # Jika sliced inference menemukan buah-buah individual, supresi box raksasa full-image
+        # hanya jika box tersebut terbukti memuat minimal 2 kandidat sub-tile yang lebih kecil.
         for fb in full_boxes:
-            if fb["is_monolithic"]:
-                dense_box_suppressed = True
-            else:
+            fb_suppressed = False
+            if fb.get("is_monolithic"):
+                fb_box = fb["box"]
+                fb_area = max(1.0, (fb_box[2] - fb_box[0]) * (fb_box[3] - fb_box[1]))
+                contained_smaller = 0
+                for sc in slice_candidates:
+                    sc_box = sc["box"]
+                    sc_area = max(1.0, (sc_box[2] - sc_box[0]) * (sc_box[3] - sc_box[1]))
+                    if sc_area <= 0.45 * fb_area:
+                        ix1 = max(fb_box[0], sc_box[0])
+                        iy1 = max(fb_box[1], sc_box[1])
+                        ix2 = min(fb_box[2], sc_box[2])
+                        iy2 = min(fb_box[3], sc_box[3])
+                        inter = max(0.0, ix2 - ix1) * max(0.0, iy2 - iy1)
+                        if inter / sc_area >= 0.70:
+                            contained_smaller += 1
+                if contained_smaller >= 2:
+                    fb_suppressed = True
+                    dense_box_suppressed = True
+
+            if not fb_suppressed:
                 merged_candidates.append(fb)
         merged_candidates.extend(slice_candidates)
     else:
@@ -1018,7 +1150,7 @@ def run_sliced_yolo_inference(
         best_raw_conf = max(it["conf"] for it in items)
         if best_raw_conf < 0.45 and is_watermark_or_text_artifact(cl["centroid_box"], image, commodity):
             continue
-        if (is_terung or is_3grade_model) and disambiguate_grades:
+        if is_terung and disambiguate_grades:
             (
                 chosen_cls,
                 chosen_conf,
@@ -1055,6 +1187,9 @@ def run_sliced_yolo_inference(
             "disambiguated": disambiguated,
             "disambiguation_reason": reason,
         })
+
+    if is_tomat:
+        final_detections = refine_tomato_detections(image, final_detections)
 
     return {
         "detections": final_detections,

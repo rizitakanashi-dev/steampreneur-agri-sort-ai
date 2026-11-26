@@ -671,6 +671,48 @@ class TestTiledInferenceAndDisambiguation(unittest.TestCase):
         det_x1s = sorted([d["box"]["x1"] for d in result["detections"]])
         self.assertEqual(det_x1s, [440.0, 575.0, 640.0, 750.0])
 
+    def test_refine_tomato_detections_mold_and_batch_demotion(self):
+        """
+        Memverifikasi bahwa tomat berjamur atau tomat ragu dalam batch yang terkontaminasi
+        didemotasikan menjadi Reject tanpa memicu false warning Class II terung.
+        """
+        import numpy as np
+        from server.services.tiled_inference import refine_tomato_detections
+
+        # Buat dummy image dengan bintik jamur bertekstur
+        img = Image.new("RGB", (300, 300), color=(180, 30, 30))
+        # Tambahkan bercak jamur putih kelabu bertekstur
+        img_np = np.array(img)
+        # Bintik bertekstur di kuadran kiri atas
+        noise = np.random.randint(90, 180, size=(60, 60, 3), dtype=np.uint8)
+        img_np[20:80, 20:80] = noise
+        img_with_mold = Image.fromarray(img_np)
+
+        detections = [
+            {
+                "id": 1,
+                "class_id": 0,
+                "class_name": "Grade A",
+                "confidence": 0.62,
+                "box": {"x1": 10.0, "y1": 10.0, "x2": 90.0, "y2": 90.0},
+                "disambiguated": False,
+            },
+            {
+                "id": 2,
+                "class_id": 0,
+                "class_name": "Grade A",
+                "confidence": 0.55,
+                "box": {"x1": 120.0, "y1": 120.0, "x2": 200.0, "y2": 200.0},
+                "disambiguated": False,
+            }
+        ]
+
+        refined = refine_tomato_detections(img_with_mold, detections)
+        # Deteksi 1 memiliki bercak jamur nyata -> harus didemote ke Reject
+        self.assertEqual(refined[0]["class_name"], "Reject")
+        # Karena deteksi 1 terkonfirmasi reject dan deteksi 2 conf < 0.70 di batch yang sama -> didemote juga
+        self.assertEqual(refined[1]["class_name"], "Reject")
+
 
 if __name__ == "__main__":
     unittest.main()
