@@ -864,6 +864,43 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
                 </IconButton>
               )}
             </Stack>
+            {/* Mode 2 Sisi: indikator langkah DI BARIS KONTROL — kamera bersih total */}
+            {isMultiAngleMode && (
+              <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>
+                <Chip
+                  size="small"
+                  label={`Langkah ${multiStep}/2`}
+                  sx={{ bgcolor: 'rgba(15, 23, 42, 0.8)', color: '#4ade80', fontWeight: 800 }}
+                />
+                <Typography
+                  variant="caption"
+                  sx={{
+                    bgcolor: 'rgba(15, 23, 42, 0.8)',
+                    color: '#fff',
+                    px: 1,
+                    py: 0.25,
+                    borderRadius: 1.5,
+                    fontWeight: 600,
+                  }}
+                >
+                  {multiStep === 1 ? 'Sisi 1: tampak atas' : 'Sisi 2: goyang / balik buah'}
+                </Typography>
+                {multiStep === 2 && imagePreviewFront && (
+                  <Chip
+                    clickable
+                    size="small"
+                    icon={<RefreshRoundedIcon />}
+                    label="Ulang"
+                    onClick={() => {
+                      setImageFileFront(null)
+                      setImagePreviewFront(null)
+                      setMultiStep(1)
+                    }}
+                    sx={{ color: '#e2e8f0', fontWeight: 700 }}
+                  />
+                )}
+              </Stack>
+            )}
             <Tooltip title="Mode & pengaturan kamera">
               <IconButton
                 aria-label="Buka menu mode dan pengaturan kamera"
@@ -1008,44 +1045,6 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
     </Box>
   )
 
-  // Indikator langkah 2-Sisi — pojok kanan-atas DI DALAM gambar kamera (dirender viewfinder)
-  const stepperOverlay = isMultiAngleMode ? (
-      <Stack direction="row" spacing={0.5} sx={{ justifyContent: 'flex-end', alignItems: 'center' }}>
-        <Chip
-          size="small"
-          label={`Langkah ${multiStep} dari 2`}
-          sx={{ bgcolor: 'rgba(15, 23, 42, 0.8)', backdropFilter: 'blur(4px)', color: '#4ade80', fontWeight: 800 }}
-        />
-        <Typography
-          variant="caption"
-          sx={{
-            bgcolor: 'rgba(15, 23, 42, 0.8)',
-            backdropFilter: 'blur(4px)',
-            color: '#fff',
-            px: 1,
-            py: 0.25,
-            borderRadius: 1.5,
-            fontWeight: 600,
-          }}
-        >
-          {multiStep === 1 ? 'Sisi 1: tampak atas' : 'Sisi 2: goyang / balik buah'}
-        </Typography>
-        {multiStep === 2 && imagePreviewFront && (
-          <Chip
-            clickable
-            size="small"
-            icon={<RefreshRoundedIcon />}
-            label="Ulang"
-            onClick={() => {
-              setImageFileFront(null)
-              setImagePreviewFront(null)
-              setMultiStep(1)
-            }}
-            sx={{ color: '#e2e8f0', fontWeight: 700 }}
-          />
-        )}
-      </Stack>
-  ) : undefined
 
   return (
     <Stack
@@ -1398,7 +1397,6 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
                     <LiveCameraViewfinder
                       ref={viewfinderRef}
                       topOverlay={cameraTopControls}
-                      topRightOverlay={stepperOverlay}
                       key={`viewfinder-step-${multiStep}`}
                       onCapture={handleLiveCameraCapture}
                       disabled={isScanning}
@@ -1472,7 +1470,6 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
                       <LiveCameraViewfinder
                         ref={viewfinderRef}
                         topOverlay={cameraTopControls}
-                        topRightOverlay={stepperOverlay}
                         onCapture={handleLiveCameraCapture}
                         disabled={isScanning}
                         variant={immersive ? 'immersive' : 'default'}
