@@ -556,12 +556,13 @@ export const LiveCameraViewfinder = forwardRef(function LiveCameraViewfinder({ o
       />
 
       {/* Slot kanan-atas DI DALAM gambar kamera (indikator langkah 2-Sisi) —
-          berhadapan dengan chip kualitas di kiri-atas, keduanya di dalam gambar */}
+          SENDBARIS sendiri di BAWAH chip kualitas (baris 1 = chip kiri,
+          baris 2 = pill langkah kanan) → mustahil berdesakan */}
       {topRightOverlay && cameraState === 'active' && (
         <Box
           sx={{
             position: 'absolute',
-            top: contentRect ? contentRect.top + 10 : 12,
+            top: contentRect ? contentRect.top + 56 : 60,
             right: contentRect ? contentRect.guides.left + 10 : 12,
             zIndex: 25,
           }}
