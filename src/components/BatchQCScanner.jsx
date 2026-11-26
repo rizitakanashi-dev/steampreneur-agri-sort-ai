@@ -946,7 +946,7 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
                 boxShadow: '0 12px 40px rgba(0, 0, 0, 0.5)',
               }}
             >
-              <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: 'wrap', alignItems: 'flex-start' }}>
+              <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: 'wrap', alignItems: 'flex-start', justifyContent: 'center' }}>
                 {[
                   {
                     key: 'sensitivity',

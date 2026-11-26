@@ -403,13 +403,29 @@ export const LiveCameraViewfinder = forwardRef(function LiveCameraViewfinder({ o
         uctx.drawImage(video, -w / 2, -h / 2, w, h)
       }
 
-      // 2) Preview memakai objectFit: contain — frame UTUH terlihat di layar,
-      //    jadi capture = frame utuh yang sudah tegak (tanpa crop tambahan)
+      // 2) Center-crop dengan aspek kontainer — identik objectFit: cover di preview.
+      //    Hasil foto = PERSIS apa yang terlihat di layar (WYSIWYG).
+      let outW = rw
+      let outH = rh
+      const cont = containerRef.current
+      const cw = cont?.clientWidth || 0
+      const ch = cont?.clientHeight || 0
+      if (cw > 0 && ch > 0) {
+        const aspect = cw / ch
+        if (rw / rh > aspect) {
+          outW = Math.round(rh * aspect)
+          outH = rh
+        } else {
+          outW = rw
+          outH = Math.round(rw / aspect)
+        }
+      }
+
       const canvas = document.createElement('canvas')
-      canvas.width = rw
-      canvas.height = rh
+      canvas.width = outW
+      canvas.height = outH
       const ctx = canvas.getContext('2d')
-      ctx.drawImage(upright, 0, 0)
+      ctx.drawImage(upright, (rw - outW) / 2, (rh - outH) / 2, outW, outH, 0, 0, outW, outH)
 
       const fingerprint = extractGreyscaleThumbnail(canvas, 16)
       const dataUrl = canvas.toDataURL('image/jpeg', 0.92)
@@ -494,16 +510,16 @@ export const LiveCameraViewfinder = forwardRef(function LiveCameraViewfinder({ o
                 height: '100vw',
                 maxWidth: 'none',
                 transform: `translate(-50%, -50%) rotate(${totalRotation}deg)`,
-                objectFit: 'contain',
+                objectFit: 'cover',
                 display: 'block',
               }
             : {
                 width: '100%',
-                // Immersive: full frame TANPA zoom (objectFit contain + band hitam,
-                // seperti kamera HP yang punya band hitam atas-bawah); capture = frame utuh tegak
+                // Immersive: full-bleed besar & lebar khas kamera HP (cover edge-to-edge,
+                // band hitam minim). Capture WYSIWYG: hasil foto = persis area yang terlihat
                 height: isImmersive ? 'calc(100dvh - 188px - env(safe-area-inset-top) - env(safe-area-inset-bottom))' : 'auto',
                 maxHeight: isImmersive ? 'none' : 460,
-                objectFit: isImmersive ? 'contain' : 'contain',
+                objectFit: isImmersive ? 'cover' : 'contain',
                 display: cameraState === 'active' ? 'block' : 'none',
               }
         }
