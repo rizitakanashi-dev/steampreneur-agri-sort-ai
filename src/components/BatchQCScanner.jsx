@@ -23,7 +23,6 @@ import AutoAwesomeRoundedIcon from '@mui/icons-material/AutoAwesomeRounded'
 import CameraAltRoundedIcon from '@mui/icons-material/CameraAltRounded'
 import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded'
 import CloudUploadRoundedIcon from '@mui/icons-material/CloudUploadRounded'
-import CloseRoundedIcon from '@mui/icons-material/CloseRounded'
 import DeleteOutlineRoundedIcon from '@mui/icons-material/DeleteOutlineRounded'
 import FlipCameraIosRoundedIcon from '@mui/icons-material/FlipCameraIosRounded'
 import HistoryRoundedIcon from '@mui/icons-material/HistoryRounded'
@@ -77,11 +76,8 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
   const [autoDetectMode, setAutoDetectMode] = useState(false)
   // Panel overlay immersive: toggle tips akurasi di atas kamera
   const [showImmersiveTips, setShowImmersiveTips] = useState(false)
-  // Status torch dari viewfinder (bottom bar menampilkan tombol Flash)
+  // Status torch dari viewfinder (flash kiri-atas pada mode kamera)
   const [torchInfo, setTorchInfo] = useState({ supported: false, on: false })
-  // Tinggi panel overlay (diukur) — dipakai agar konten tab Unggah tak tertutup panel
-  const overlayPanelRef = useRef(null)
-  const [overlayPanelHeight, setOverlayPanelHeight] = useState(0)
   const [multiStep, setMultiStep] = useState(1) // 1: Foto Sisi 1 (Depan), 2: Foto Sisi 2 (Belakang / Goyang Nampan)
   const [imageFileFront, setImageFileFront] = useState(null)
   const [imagePreviewFront, setImagePreviewFront] = useState(null)
@@ -119,14 +115,6 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
       setResultSheetOpen(false)
     }
   }, [immersive, scanResult])
-
-  // Ukur tinggi panel overlay saat isinya berubah (sensitivitas/tips di-toggle)
-  useEffect(() => {
-    if (!immersive) return undefined
-    const el = overlayPanelRef.current
-    if (!el) return undefined
-    setOverlayPanelHeight(el.offsetHeight)
-  }, [immersive, showSensitivitySetting, showImmersiveTips, autoDetectMode, isMultiAngleMode])
 
   // Pastikan kamera langsung mati saat unmount (misal pindah ke Dashboard atau menu lain)
   useEffect(() => {
@@ -811,63 +799,143 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
         </Button>
       )}
 
-      {/* 1a. MODE IMMERSIVE: panel kontrol MENGAPUNG di atas kamera (khas aplikasi kamera HP) */}
+      {/* 1a. MODE IMMERSIVE: kontrol mengapung gaya kamera native —
+          ⚡ flash kiri-atas, sensitivitas+tips kanan-atas, selector komoditas & mode di bawah */}
       {immersive ? (
-        <Box
-          ref={overlayPanelRef}
-          sx={{
-            position: 'fixed',
-            top: 'calc(48px + env(safe-area-inset-top))',
-            left: 8,
-            right: 8,
-            zIndex: 1250,
-            p: 1,
-            borderRadius: 2.5,
-            bgcolor: 'rgba(15, 23, 42, 0.62)',
-            backdropFilter: 'blur(8px)',
-            border: '1px solid rgba(255, 255, 255, 0.12)',
-            color: '#e2e8f0',
-            '& .MuiChip-outlined': { color: '#e2e8f0', borderColor: 'rgba(255, 255, 255, 0.3)' },
-          }}
-        >
-          <Stack
-            direction="row"
-            spacing={0.75}
-            useFlexGap
+        <>
+          {/* Bar atas: Flash kiri, Sensitivitas + Tips kanan — tanpa kotak panel */}
+          <Box
             sx={{
+              position: 'fixed',
+              top: 'calc(42px + env(safe-area-inset-top))',
+              left: 8,
+              right: 8,
+              zIndex: 1250,
+              display: 'flex',
               alignItems: 'center',
+              justifyContent: 'space-between',
+              pointerEvents: 'none',
+            }}
+          >
+            {torchInfo.supported ? (
+              <IconButton
+                aria-label={torchInfo.on ? 'Matikan lampu kilat' : 'Nyalakan lampu kilat'}
+                onClick={() => viewfinderRef.current?.toggleTorch()}
+                sx={{
+                  pointerEvents: 'auto',
+                  width: 40,
+                  height: 40,
+                  color: torchInfo.on ? '#fbbf24' : '#fff',
+                  bgcolor: 'rgba(15, 23, 42, 0.55)',
+                  '&:hover': { bgcolor: 'rgba(15, 23, 42, 0.75)' },
+                }}
+              >
+                {torchInfo.on ? <FlashOnRoundedIcon /> : <FlashOffRoundedIcon />}
+              </IconButton>
+            ) : (
+              <Box sx={{ width: 40, height: 40 }} />
+            )}
+            <Stack direction="row" spacing={0.75} sx={{ pointerEvents: 'auto', alignItems: 'center' }}>
+              <Tooltip title="Atur sensitivitas threshold keyakinan model AI">
+                <Chip
+                  clickable
+                  onClick={() => setShowSensitivitySetting((prev) => !prev)}
+                  label={`Sensitivitas ${Math.round(confidenceThreshold * 100)}%`}
+                  size="small"
+                  variant="outlined"
+                  sx={{
+                    fontWeight: 700,
+                    color: '#e2e8f0',
+                    bgcolor: 'rgba(15, 23, 42, 0.55)',
+                    borderColor: 'rgba(255, 255, 255, 0.25)',
+                  }}
+                />
+              </Tooltip>
+              <Tooltip title="Tips akurasi pemindaian">
+                <Chip
+                  clickable
+                  icon={<InfoOutlinedIcon />}
+                  onClick={() => setShowImmersiveTips((prev) => !prev)}
+                  label="Tips"
+                  size="small"
+                  variant="outlined"
+                  sx={{
+                    fontWeight: 700,
+                    color: '#e2e8f0',
+                    bgcolor: 'rgba(15, 23, 42, 0.55)',
+                    borderColor: 'rgba(255, 255, 255, 0.25)',
+                    '& .MuiChip-icon': { color: '#e2e8f0' },
+                  }}
+                />
+              </Tooltip>
+            </Stack>
+          </Box>
+
+          {/* Kartu sensitivitas / tips saat dibuka — mengambang di bawah bar atas */}
+          {(showSensitivitySetting || showImmersiveTips) && (
+            <Box
+              sx={{
+                position: 'fixed',
+                top: 'calc(94px + env(safe-area-inset-top))',
+                left: 8,
+                right: 8,
+                zIndex: 1260,
+                maxHeight: '50dvh',
+                overflowY: 'auto',
+              }}
+            >
+              {showSensitivitySetting && <Box sx={{ mb: 1 }}>{sensitivityControls}</Box>}
+              {showImmersiveTips && tipsAlert}
+            </Box>
+          )}
+
+          {/* Selector bawah gaya kamera native: komoditas | mode */}
+          <Box
+            sx={{
+              position: 'fixed',
+              bottom: 'calc(106px + env(safe-area-inset-bottom))',
+              left: 0,
+              right: 0,
+              zIndex: 1150,
               overflowX: 'auto',
               scrollbarWidth: 'none',
               '&::-webkit-scrollbar': { display: 'none' },
             }}
           >
-            {COMMODITIES.map((c) => (
-              <Chip
-                key={c.id}
-                size="small"
-                label={`${c.emoji} ${c.name}`}
-                onClick={() => handleSelectCommodity(c.id)}
-                color={selectedCommodity === c.id ? 'primary' : 'default'}
-                variant={selectedCommodity === c.id ? 'filled' : 'outlined'}
-                sx={{ fontWeight: 700, flexShrink: 0 }}
-              />
-            ))}
-          </Stack>
-          <Stack
-            direction="row"
-            spacing={0.75}
-            useFlexGap
-            sx={{
-              alignItems: 'center',
-              overflowX: 'auto',
-              scrollbarWidth: 'none',
-              '&::-webkit-scrollbar': { display: 'none' },
-            }}
-          >
-            <Tooltip title="Cepat — 1 foto tampak atas keranjang">
-              <Chip
-                size="small"
-                label="1 Sisi"
+            <Stack direction="row" spacing={0.5} useFlexGap sx={{ mx: 'auto', width: 'max-content', alignItems: 'center', px: 2 }}>
+              {COMMODITIES.map((c) => {
+                const active = selectedCommodity === c.id
+                return (
+                  <Box
+                    key={c.id}
+                    component="button"
+                    type="button"
+                    aria-pressed={active}
+                    onClick={() => handleSelectCommodity(c.id)}
+                    sx={{
+                      px: 1.75,
+                      py: 0.9,
+                      borderRadius: 999,
+                      border: 'none',
+                      cursor: 'pointer',
+                      flexShrink: 0,
+                      fontSize: '0.8125rem',
+                      fontWeight: 800,
+                      letterSpacing: 0.2,
+                      color: active ? '#052e16' : 'rgba(226, 232, 240, 0.85)',
+                      bgcolor: active ? '#4ade80' : 'rgba(15, 23, 42, 0.55)',
+                      transition: 'background-color 0.15s',
+                    }}
+                  >
+                    {c.name.split(' (')[0]}
+                  </Box>
+                )
+              })}
+              <Box sx={{ width: 1, height: 22, bgcolor: 'rgba(255, 255, 255, 0.2)', mx: 0.5, flexShrink: 0 }} />
+              <Box
+                component="button"
+                type="button"
+                aria-pressed={!isMultiAngleMode && !autoDetectMode}
                 onClick={() => {
                   if (isMultiAngleMode || autoDetectMode) {
                     setIsMultiAngleMode(false)
@@ -875,15 +943,27 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
                     handleClearImage()
                   }
                 }}
-                color={isMultiAngleMode || autoDetectMode ? 'default' : 'primary'}
-                variant={isMultiAngleMode || autoDetectMode ? 'outlined' : 'filled'}
-                sx={{ fontWeight: 700, flexShrink: 0 }}
-              />
-            </Tooltip>
-            <Tooltip title="2 foto: depan & belakang (anti oklusi / goyang nampan)">
-              <Chip
-                size="small"
-                label="2 Sisi"
+                sx={{
+                  px: 1.75,
+                  py: 0.9,
+                  borderRadius: 999,
+                  border: 'none',
+                  cursor: 'pointer',
+                  flexShrink: 0,
+                  fontSize: '0.8125rem',
+                  fontWeight: 800,
+                  letterSpacing: 0.2,
+                  color: !isMultiAngleMode && !autoDetectMode ? '#052e16' : 'rgba(226, 232, 240, 0.85)',
+                  bgcolor: !isMultiAngleMode && !autoDetectMode ? '#4ade80' : 'rgba(15, 23, 42, 0.55)',
+                  transition: 'background-color 0.15s',
+                }}
+              >
+                1 Sisi
+              </Box>
+              <Box
+                component="button"
+                type="button"
+                aria-pressed={isMultiAngleMode && !autoDetectMode}
                 onClick={() => {
                   if (!isMultiAngleMode || autoDetectMode) {
                     setIsMultiAngleMode(true)
@@ -891,15 +971,27 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
                     handleClearImage()
                   }
                 }}
-                color={isMultiAngleMode && !autoDetectMode ? 'success' : 'default'}
-                variant={isMultiAngleMode && !autoDetectMode ? 'filled' : 'outlined'}
-                sx={{ fontWeight: 700, flexShrink: 0 }}
-              />
-            </Tooltip>
-            <Tooltip title="Scan otomatis saat nampan diam ±3 detik">
-              <Chip
-                size="small"
-                label="⚡ Auto"
+                sx={{
+                  px: 1.75,
+                  py: 0.9,
+                  borderRadius: 999,
+                  border: 'none',
+                  cursor: 'pointer',
+                  flexShrink: 0,
+                  fontSize: '0.8125rem',
+                  fontWeight: 800,
+                  letterSpacing: 0.2,
+                  color: isMultiAngleMode && !autoDetectMode ? '#052e16' : 'rgba(226, 232, 240, 0.85)',
+                  bgcolor: isMultiAngleMode && !autoDetectMode ? '#4ade80' : 'rgba(15, 23, 42, 0.55)',
+                  transition: 'background-color 0.15s',
+                }}
+              >
+                2 Sisi
+              </Box>
+              <Box
+                component="button"
+                type="button"
+                aria-pressed={autoDetectMode}
                 onClick={() => {
                   if (!autoDetectMode) {
                     setAutoDetectMode(true)
@@ -909,37 +1001,26 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
                     }
                   }
                 }}
-                color={autoDetectMode ? 'warning' : 'default'}
-                variant={autoDetectMode ? 'filled' : 'outlined'}
-                sx={{ fontWeight: 700, flexShrink: 0 }}
-              />
-            </Tooltip>
-            <Tooltip title="Atur sensitivitas threshold keyakinan model AI">
-              <Chip
-                clickable
-                onClick={() => setShowSensitivitySetting((prev) => !prev)}
-                label={`Sensitivitas ${Math.round(confidenceThreshold * 100)}%`}
-                size="small"
-                color="primary"
-                variant="outlined"
-                sx={{ fontWeight: 700, flexShrink: 0 }}
-              />
-            </Tooltip>
-            <Tooltip title="Tips akurasi pemindaian">
-              <Chip
-                clickable
-                icon={<InfoOutlinedIcon />}
-                onClick={() => setShowImmersiveTips((prev) => !prev)}
-                label="Tips"
-                size="small"
-                variant="outlined"
-                sx={{ fontWeight: 700, flexShrink: 0 }}
-              />
-            </Tooltip>
-          </Stack>
-          {showSensitivitySetting && <Box sx={{ mb: 1 }}>{sensitivityControls}</Box>}
-          {showImmersiveTips && <Box sx={{ mb: 1 }}>{tipsAlert}</Box>}
-        </Box>
+                sx={{
+                  px: 1.75,
+                  py: 0.9,
+                  borderRadius: 999,
+                  border: 'none',
+                  cursor: 'pointer',
+                  flexShrink: 0,
+                  fontSize: '0.8125rem',
+                  fontWeight: 800,
+                  letterSpacing: 0.2,
+                  color: autoDetectMode ? '#052e16' : 'rgba(226, 232, 240, 0.85)',
+                  bgcolor: autoDetectMode ? '#4ade80' : 'rgba(15, 23, 42, 0.55)',
+                  transition: 'background-color 0.15s',
+                }}
+              >
+                ⚡ Auto
+              </Box>
+            </Stack>
+          </Box>
+        </>
       ) : (
         /* 1. KARTU SELEKSI KOMODITAS UTAMA (PROMINENT DI ATAS) */
         <Card elevation={2} sx={{ borderRadius: 3, border: '1px solid', borderColor: 'divider' }}>
@@ -1347,8 +1428,6 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
                         display: 'flex',
                         flexDirection: 'column',
                         minHeight: 0,
-                        // Turunkan konten di bawah panel overlay agar dropzone tidak tertutup
-                        pt: overlayPanelHeight ? overlayPanelHeight + 16 : 12,
                         // Multi-sudut (2 kartu) bisa melebihi tinggi kartu kamera yang terkunci —
                         // gulir di dalam area unggah, bukan menggeser halaman
                         overflowY: 'auto',
@@ -1672,20 +1751,24 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
           }
         >
           {immersive && (
-            <Stack direction="row" sx={{ alignItems: 'center', justifyContent: 'space-between' }}>
-              <Typography variant="subtitle2" fontWeight={800} sx={{ color: '#e2e8f0' }}>
-                Hasil Pemindaian
-              </Typography>
-              <IconButton
-                aria-label="Tutup lembar hasil"
-                edge="end"
-                size="small"
-                onClick={() => setResultSheetOpen(false)}
-                sx={{ color: '#94a3b8' }}
-              >
-                <CloseRoundedIcon />
-              </IconButton>
-            </Stack>
+            <Box
+              component="button"
+              type="button"
+              aria-label="Tutup lembar hasil"
+              onClick={() => setResultSheetOpen(false)}
+              sx={{
+                alignSelf: 'center',
+                width: 48,
+                height: 5,
+                py: 0,
+                border: 'none',
+                borderRadius: 999,
+                bgcolor: 'rgba(255, 255, 255, 0.35)',
+                cursor: 'pointer',
+                mb: 1,
+                flexShrink: 0,
+              }}
+            />
           )}
           {saveSuccessMsg && (
             <Alert severity="success" onClose={() => setSaveSuccessMsg('')}>
@@ -2211,7 +2294,7 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            gap: { xs: 1.25, sm: 2 },
+            gap: { xs: 1.5, sm: 2 },
           }}
         >
           {/* Kiri: Periksa Hasil (aktif setelah ada hasil scan) */}
@@ -2219,7 +2302,7 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
             aria-label="Periksa hasil pemindaian terkini"
             disabled={!scanResult}
             onClick={() => {
-              if (immersive) setResultSheetOpen(true)
+              if (immersive) setResultSheetOpen((prev) => !prev)
               else resultSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
             }}
             sx={{
@@ -2315,26 +2398,6 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
           >
             {isScanning ? <CircularProgress size={30} sx={{ color: '#fff' }} /> : <CameraAltRoundedIcon sx={{ fontSize: 30 }} />}
           </IconButton>
-
-          {/* Kanan: Flash/lampu kilat (unggah tetap tersedia via ✕ → scanner biasa) */}
-          {torchInfo.supported && (
-            <IconButton
-              aria-label={torchInfo.on ? 'Matikan lampu kilat' : 'Nyalakan lampu kilat'}
-              disabled={isScanning}
-              onClick={() => viewfinderRef.current?.toggleTorch()}
-              sx={{
-                width: 44,
-                height: 44,
-                color: torchInfo.on ? '#fbbf24' : '#fff',
-                bgcolor: 'rgba(255, 255, 255, 0.10)',
-                '&:hover': { bgcolor: 'rgba(255, 255, 255, 0.2)' },
-                '&.Mui-disabled': { color: '#64748b' },
-                ...((activeTab !== 0 || isScanning) ? { color: '#64748b', bgcolor: 'rgba(255, 255, 255, 0.05)' } : {}),
-              }}
-            >
-              {torchInfo.on ? <FlashOnRoundedIcon /> : <FlashOffRoundedIcon />}
-            </IconButton>
-          )}
         </Box>
       )}
     </Stack>
