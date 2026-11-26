@@ -828,7 +828,7 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
   // Baris kontrol atas mode kamera (✕/⚡/menu) — dirender viewfinder di tengah area gelap atas
   const cameraTopControls = (
     <Box
-      sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}
+      sx={{ display: 'flex', flexDirection: 'column', gap: 0.75, width: '100%' }}
     >
             <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>
               {onExitImmersive && (
@@ -1005,6 +1005,44 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
               {showImmersiveTips && <Box sx={{ mt: 1.5 }}>{tipsAlert}</Box>}
             </Box>
           )}
+    {/* Mode 2 Sisi: indikator langkah — baris kedua di bawah kontrol, tidak menabrak pill panduan */}
+    {isMultiAngleMode && (
+      <Stack direction="row" spacing={0.5} sx={{ justifyContent: 'flex-end', alignItems: 'center' }}>
+        <Chip
+          size="small"
+          label={`Langkah ${multiStep} dari 2`}
+          sx={{ bgcolor: 'rgba(15, 23, 42, 0.8)', backdropFilter: 'blur(4px)', color: '#4ade80', fontWeight: 800 }}
+        />
+        <Typography
+          variant="caption"
+          sx={{
+            bgcolor: 'rgba(15, 23, 42, 0.8)',
+            backdropFilter: 'blur(4px)',
+            color: '#fff',
+            px: 1,
+            py: 0.25,
+            borderRadius: 1.5,
+            fontWeight: 600,
+          }}
+        >
+          {multiStep === 1 ? 'Sisi 1: tampak atas' : 'Sisi 2: goyang / balik buah'}
+        </Typography>
+        {multiStep === 2 && imagePreviewFront && (
+          <Chip
+            clickable
+            size="small"
+            icon={<RefreshRoundedIcon />}
+            label="Ulang"
+            onClick={() => {
+              setImageFileFront(null)
+              setImagePreviewFront(null)
+              setMultiStep(1)
+            }}
+            sx={{ color: '#e2e8f0', fontWeight: 700 }}
+          />
+        )}
+      </Stack>
+    )}
     </Box>
   )
 
@@ -1289,66 +1327,8 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
                 {/* 1. KONDISI MODE MULTI-SUDUT AKTIF */}
                 {isMultiAngleMode ? (
                   <Box sx={immersive ? { flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, position: 'relative' } : undefined}>
-                    {/* Stepper: desktop = kartu lengkap; immersive = pill kompak di kanan-atas kamera */}
-                    {immersive ? (
-                      <Stack
-                        spacing={0.5}
-                        sx={{ position: 'absolute', bottom: 96, left: 8, zIndex: 16, alignItems: 'flex-start', maxWidth: '62%' }}
-                      >
-                        <Chip
-                          size="small"
-                          label={`Langkah ${multiStep} dari 2`}
-                          sx={{ bgcolor: 'rgba(15, 23, 42, 0.8)', backdropFilter: 'blur(4px)', color: '#4ade80', fontWeight: 800 }}
-                        />
-                        <Typography
-                          variant="caption"
-                          sx={{
-                            bgcolor: 'rgba(15, 23, 42, 0.8)',
-                            backdropFilter: 'blur(4px)',
-                            color: '#fff',
-                            px: 1,
-                            py: 0.25,
-                            borderRadius: 1.5,
-                            fontWeight: 600,
-                            textAlign: 'right',
-                          }}
-                        >
-                          {multiStep === 1 ? 'Sisi 1: tampak atas' : 'Sisi 2: goyang / balik buah'}
-                        </Typography>
-                        {multiStep === 2 && imagePreviewFront && (
-                          <Box
-                            sx={{
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: 0.5,
-                              p: 0.5,
-                              borderRadius: 2,
-                              bgcolor: 'rgba(15, 23, 42, 0.8)',
-                              backdropFilter: 'blur(4px)',
-                            }}
-                          >
-                            <Box
-                              component="img"
-                              src={imagePreviewFront}
-                              alt="Pratinjau Sisi 1"
-                              sx={{ width: 44, height: 44, objectFit: 'cover', borderRadius: 1 }}
-                            />
-                            <Chip
-                              clickable
-                              size="small"
-                              icon={<RefreshRoundedIcon />}
-                              label="Ulang"
-                              onClick={() => {
-                                setImageFileFront(null)
-                                setImagePreviewFront(null)
-                                setMultiStep(1)
-                              }}
-                              sx={{ color: '#e2e8f0', fontWeight: 700 }}
-                            />
-                          </Box>
-                        )}
-                      </Stack>
-                    ) : (
+                    {/* Stepper desktop = kartu lengkap; immersive: indikator di baris kontrol atas */}
+                    {!immersive && (
                     <Box sx={{ mb: 2.5, p: 2, bgcolor: '#f0fdf4', borderRadius: 2, border: '1px solid #bbf7d0' }}>
                       <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} sx={{ justifyContent: 'space-between', alignItems: { sm: 'center' } }}>
                         <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
