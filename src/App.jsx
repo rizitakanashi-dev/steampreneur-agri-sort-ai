@@ -169,8 +169,8 @@ function DashboardPreview({ onNavigate, batches = [], onSelectBatch }) {
     },
     {
       label: 'Sumber acuan harga',
-      value: bapanasData ? 'BAPANAS Live' : 'BAPANAS & SP2KP',
-      detail: bapanasData?.market_center || 'Panel Pangan & Kemendag RI',
+      value: bapanasData ? 'SP2KP Live' : 'SP2KP & Acuan Lokal',
+      detail: bapanasData?.market_center || 'Panel SP2KP & Kemendag RI',
       icon: TrendingUpRoundedIcon,
       color: '#036e45',
     },
@@ -219,16 +219,16 @@ function DashboardPreview({ onNavigate, batches = [], onSelectBatch }) {
                     Harga acuan pasar
                   </Typography>
                   {bapanasData ? (
-                    <Chip color="success" icon={<CheckCircleRoundedIcon />} label="BAPANAS Terverifikasi" size="small" />
+                    <Chip color="success" icon={<CheckCircleRoundedIcon />} label="SP2KP Terverifikasi" size="small" />
                   ) : bapanasOffline ? (
                     <Chip color="warning" label="Offline — pakai acuan lokal" size="small" />
                   ) : (
-                    <Chip color="default" label="Acuan BAPANAS Payakumbuh" size="small" variant="outlined" />
+                    <Chip color="default" label="Acuan SP2KP Payakumbuh" size="small" variant="outlined" />
                   )}
-                  <Tooltip title="Perbarui / Sinkronisasi Harga BAPANAS Terkini">
+                  <Tooltip title="Perbarui / Sinkronisasi Harga SP2KP Terkini">
                     <span>
                       <IconButton
-                        aria-label="Sinkronisasi harga BAPANAS"
+                        aria-label="Sinkronisasi harga SP2KP"
                         disabled={isRefreshingPrice}
                         onClick={handleRefreshBapanas}
                         size="small"
@@ -240,7 +240,7 @@ function DashboardPreview({ onNavigate, batches = [], onSelectBatch }) {
                 </Stack>
                 <Typography color="text.secondary" sx={{ display: 'block', mt: 0.5 }} variant="caption">
                   {bapanasData
-                    ? `Panel BAPANAS • ${bapanasData.market_center}`
+                    ? `Panel SP2KP • ${bapanasData.market_center}`
                     : `Acuan Pasar • Diperbarui ${PRICE_REFERENCE_SOURCE.updatedAt}${bapanasOffline ? ' (gagal sinkron, menampilkan acuan lokal)' : ''}`}
                 </Typography>
               </Box>

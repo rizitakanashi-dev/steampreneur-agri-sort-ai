@@ -11,7 +11,7 @@ import { FeatureMockup } from './FeatureMockups.jsx'
 const CATEGORY_TAGS = {
   'yolo-3class': 'Visi Komputer · YOLO11n 3-Class',
   'multi-angle': 'Anti-Oklusi · Inspeksi 2-Sisi',
-  'smart-pricing': 'Ekonomi Panen · BAPANAS & SP2KP',
+  'smart-pricing': 'Ekonomi Panen · SP2KP Kemendag',
   'recap-pwa': 'Dokumentasi · PWA & Sertifikat A4',
 }
 

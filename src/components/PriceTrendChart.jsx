@@ -29,7 +29,7 @@ export function PriceTrendChart({ history = [], commodity, isOfficialBapanas = f
           color: '#036e45',
           curve: 'linear',
           data: history.map((point) => point.pricePerKg),
-          label: isOfficialBapanas ? 'Harga BAPANAS (Rp/kg)' : 'Harga referensi (Rp/kg)',
+          label: isOfficialBapanas ? 'Harga SP2KP (Rp/kg)' : 'Harga referensi (Rp/kg)',
           showMark: true,
           valueFormatter: (value) => `Rp${rupiahFormatter.format(value ?? 0)}`,
         }]}
@@ -38,7 +38,7 @@ export function PriceTrendChart({ history = [], commodity, isOfficialBapanas = f
       />
       <Typography color="text.secondary" variant="caption">
         {isOfficialBapanas
-          ? `${history.length} titik data resmi Badan Pangan Nasional (BAPANAS) — Pasar Ibuh Payakumbuh untuk ${commodity}.`
+          ? `${history.length} titik data resmi SP2KP Kemendag RI — Pasar Ibuh Payakumbuh untuk ${commodity}.`
           : `${history.length} titik data contoh untuk ${commodity}. Simulasi acuan lokal.`}
       </Typography>
     </Stack>

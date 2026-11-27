@@ -156,7 +156,7 @@ export function StepMotionVisual({ stepIndex }) {
         }}
       >
         <Typography sx={{ fontFamily: AGRI_FONTS.sans, fontSize: '0.75rem', color: AGRI_COLORS.slateMuted }}>
-          Acuan BAPANAS + SP2KP
+          Acuan SP2KP Kemendag
         </Typography>
         <Typography sx={{ fontFamily: AGRI_FONTS.sans, fontSize: '0.82rem', fontWeight: 600, color: AGRI_COLORS.emerald }}>
           Rp 12.000/kg
@@ -363,7 +363,7 @@ export function DashboardModuleMotion({ moduleId }) {
         {[
           { label: 'Batch tersimpan', val: '4 Batch', sub: 'Tersimpan di browser ini' },
           { label: 'Komoditas terdaftar', val: '3 Komoditas', sub: 'Terung, Tomat, Cabai' },
-          { label: 'Sumber acuan harga', val: 'BAPANAS Live', sub: 'Pasar Ibuh Payakumbuh' },
+          { label: 'Sumber acuan harga', val: 'SP2KP Live', sub: 'Pasar Ibuh Payakumbuh' },
         ].map((c) => (
           <Grid key={c.label} size={{ xs: 4 }}>
             <Box sx={{ p: 1.25, borderRadius: '12px', bgcolor: '#FFFFFF', border: '1px solid #E3E8E7' }}>
@@ -385,7 +385,7 @@ export function DashboardModuleMotion({ moduleId }) {
         <Grid size={{ xs: 7 }}>
           <Box sx={{ p: 1.5, borderRadius: '12px', bgcolor: '#FFFFFF', border: '1px solid #E3E8E7', height: '100%' }}>
             <Typography sx={{ fontFamily: AGRI_FONTS.sans, fontSize: '0.78rem', fontWeight: 700, color: '#1D2326', mb: 0.75 }}>
-              Harga acuan pasar · BAPANAS
+              Harga acuan pasar · SP2KP
             </Typography>
             {[
               { n: 'Tomat', p: 'Rp 12.000/kg' },

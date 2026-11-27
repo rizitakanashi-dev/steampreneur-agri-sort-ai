@@ -11,7 +11,7 @@
 
 export const PRICE_REFERENCE_SOURCE = Object.freeze({
   label: 'Simulasi (tabel tetap di dalam kode)',
-  note: 'Bukan data resmi BAPANAS dan tidak diperbarui otomatis.',
+  note: 'Bukan data resmi lembaga pemerintah dan tidak diperbarui otomatis.',
   updatedAt: '2026-10-13',
 })
 

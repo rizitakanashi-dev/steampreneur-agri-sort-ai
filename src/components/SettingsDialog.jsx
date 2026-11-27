@@ -227,7 +227,7 @@ export function SettingsDialog({ open, onClose, onDataChanged }) {
                         </Box>
                       </Stack>
                       <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
-                        Frontend React 19, REST API SP2KP &amp; BAPANAS, Triangulasi harga komposit, sertifikat QC A4, dan penjaminan mutu.
+                        Frontend React 19, REST API SP2KP, Triangulasi harga komposit, sertifikat QC A4, dan penjaminan mutu.
                       </Typography>
                     </CardContent>
                   </Card>
@@ -306,8 +306,8 @@ export function SettingsDialog({ open, onClose, onDataChanged }) {
                         <AccountBalanceRoundedIcon color="success" fontSize="small" />
                       </ListItemIcon>
                       <ListItemText
-                        primary="Panel Harga BAPANAS RI"
-                        secondary="Live Feed resmi Pasar Ibuh Payakumbuh — Cache 12 jam (panelharga.badanpangan.go.id)"
+                        primary="Panel Harga SP2KP RI"
+                        secondary="Live feed acuan Pasar Ibuh Payakumbuh — Cache 12 jam (sp2kp.kemendag.go.id)"
                         primaryTypographyProps={{ variant: 'body2', fontWeight: 700 }}
                         secondaryTypographyProps={{ variant: 'caption' }}
                       />
@@ -447,7 +447,7 @@ export function SettingsDialog({ open, onClose, onDataChanged }) {
                     <ListItem disablePadding sx={{ py: 0.25 }}>
                       <ListItemText
                         primary="3. Harga Pasar & Triangulasi:"
-                        secondary="Tunjukkan perbandingan data live BAPANAS RI vs SP2KP Kemendag RI dan hitung titik impas (BEP)."
+                        secondary="Tunjukkan perbandingan harga acuan SP2KP Kemendag RI dengan acuan lokal dan hitung titik impas (BEP)."
                         primaryTypographyProps={{ variant: 'body2', fontWeight: 700 }}
                         secondaryTypographyProps={{ variant: 'caption' }}
                       />

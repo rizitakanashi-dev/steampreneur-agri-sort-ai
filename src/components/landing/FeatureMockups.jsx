@@ -138,7 +138,7 @@ function PricingMockup() {
       avatarColor="#6E4212"
       avatarLabel="Analis Harga Pasar"
     >
-      <FloatingArtifactCard parallaxFactor={-0.015} statusLabel="BAPANAS + SP2KP" title="Kalkulator Smart Pricing">
+      <FloatingArtifactCard parallaxFactor={-0.015} statusLabel="SP2KP Live" title="Kalkulator Smart Pricing">
         <Stack spacing={1.25}>
           {tiers.map((t) => (
             <Box

@@ -32,7 +32,6 @@ import CalculateRoundedIcon from '@mui/icons-material/CalculateRounded'
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined'
 import SyncRoundedIcon from '@mui/icons-material/SyncRounded'
 import VerifiedRoundedIcon from '@mui/icons-material/VerifiedRounded'
-import AccountBalanceRoundedIcon from '@mui/icons-material/AccountBalanceRounded'
 import BalanceRoundedIcon from '@mui/icons-material/BalanceRounded'
 import StorefrontRoundedIcon from '@mui/icons-material/StorefrontRounded'
 import { calculateMinimumPrice, parseNumeric } from '../business/harvestCalculation.js'
@@ -41,8 +40,6 @@ import { calculateFarmerProfitability } from '../business/farmerFinance.js'
 import { COMMODITY_OPTIONS, PRICE_HISTORY, PRICE_REFERENCE_SOURCE, REFERENCE_PRICES_PER_KG, getReferencePricePerKg } from '../business/priceReference.js'
 import { PriceTrendChart } from './PriceTrendChart.jsx'
 import {
-  fetchBapanasLive,
-  syncBapanasPrices,
   fetchSp2kpLive,
   syncSp2kpPrices,
   fetchGovernmentPriceComparison,
@@ -89,11 +86,10 @@ export function PricingDashboard({ canSyncPrices = false }) {
   const [bppInput, setBppInput] = useState('7000')
   const [targetMargin, setTargetMargin] = useState('20')
 
-  // State Sumber Data Pemerintah: 'bapanas' | 'sp2kp'
-  const [activeSource, setActiveSource] = useState('bapanas')
+  // State Sumber Data Pemerintah: 'sp2kp' | 'triangulasi'
+  const [activeSource, setActiveSource] = useState('sp2kp')
 
-  // State untuk Live Feed BAPANAS & SP2KP Kemendag RI
-  const [bapanasPayload, setBapanasPayload] = useState(null)
+  // State untuk Live Feed SP2KP Kemendag RI
   const [sp2kpPayload, setSp2kpPayload] = useState(null)
   const [comparisonPayload, setComparisonPayload] = useState(null)
   const [isComparisonModalOpen, setIsComparisonModalOpen] = useState(false)
@@ -105,15 +101,11 @@ export function PricingDashboard({ canSyncPrices = false }) {
     let isMounted = true
     async function loadFeeds() {
       try {
-        const [bapanasFeed, sp2kpFeed, compFeed] = await Promise.allSettled([
-          fetchBapanasLive(4000),
+        const [sp2kpFeed, compFeed] = await Promise.allSettled([
           fetchSp2kpLive(4000),
           fetchGovernmentPriceComparison(4000),
         ])
         if (isMounted) {
-          if (bapanasFeed.status === 'fulfilled' && bapanasFeed.value?.commodities) {
-            setBapanasPayload(bapanasFeed.value)
-          }
           if (sp2kpFeed.status === 'fulfilled' && sp2kpFeed.value?.commodities) {
             setSp2kpPayload(sp2kpFeed.value)
           }
@@ -142,27 +134,17 @@ export function PricingDashboard({ canSyncPrices = false }) {
           setSyncStatusMsg('Harga pangan SP2KP Kemendag RI berhasil disinkronkan langsung!')
         }
       } else if (activeSource === 'triangulasi') {
-        const [refreshedComp, refreshedBapanas, refreshedSp2kp] = await Promise.allSettled([
+        const [refreshedComp, refreshedSp2kp] = await Promise.allSettled([
           fetchGovernmentPriceComparison(6000),
-          syncBapanasPrices(6000),
           syncSp2kpPrices(6000),
         ])
         if (refreshedComp.status === 'fulfilled' && refreshedComp.value?.comparison) {
           setComparisonPayload(refreshedComp.value)
         }
-        if (refreshedBapanas.status === 'fulfilled' && refreshedBapanas.value?.commodities) {
-          setBapanasPayload(refreshedBapanas.value)
-        }
         if (refreshedSp2kp.status === 'fulfilled' && refreshedSp2kp.value?.commodities) {
           setSp2kpPayload(refreshedSp2kp.value)
         }
-        setSyncStatusMsg('Harga komposit triangulasi BAPANAS & SP2KP berhasil disinkronkan langsung!')
-      } else {
-        const refreshed = await syncBapanasPrices(6000)
-        if (refreshed && refreshed.commodities) {
-          setBapanasPayload(refreshed)
-          setSyncStatusMsg('Harga pangan BAPANAS berhasil disinkronkan langsung!')
-        }
+        setSyncStatusMsg('Harga komposit triangulasi SP2KP & acuan lokal berhasil disinkronkan langsung!')
       }
     } catch (err) {
       setSyncStatusMsg(`Gagal menyinkronkan: ${err?.message || 'Server offline'}`)
@@ -174,15 +156,14 @@ export function PricingDashboard({ canSyncPrices = false }) {
   const effectiveComparison = comparisonPayload || DEFAULT_GOVERNMENT_COMPARISON
   const effectiveComparisonList = effectiveComparison?.comparison || []
 
-  const isBapanasActive = Boolean(bapanasPayload && bapanasPayload.commodities)
   const isSp2kpActive = Boolean(sp2kpPayload && sp2kpPayload.commodities)
   const isTriangulasiActive = activeSource === 'triangulasi'
 
-  const currentFeedPayload = activeSource === 'sp2kp' ? sp2kpPayload : bapanasPayload
-  const isFeedActive = activeSource === 'sp2kp' ? isSp2kpActive : isBapanasActive
+  const currentFeedPayload = sp2kpPayload
+  const isFeedActive = isSp2kpActive
   const currentCommodities = currentFeedPayload?.commodities || {}
 
-  // Resolusi harga acuan untuk komoditas terpilih (BAPANAS / SP2KP / Triangulasi / Fallback Lokal)
+  // Resolusi harga acuan untuk komoditas terpilih (SP2KP / Triangulasi / Fallback Lokal)
   const bKey = normalizeToBapanasKey(commodity)
   const activeItem = isFeedActive ? currentCommodities[bKey] : null
   const triangulasiItem = effectiveComparisonList.find(
@@ -286,31 +267,11 @@ export function PricingDashboard({ canSyncPrices = false }) {
                 Sumber Data Acuan Harga Pasar
               </Typography>
               <Typography variant="caption" color="text.secondary">
-                Data resmi BAPANAS & SP2KP Kemendag RI untuk Pasar Ibuh Payakumbuh
+                Data acuan SP2KP Kemendag RI untuk Pasar Ibuh Payakumbuh
               </Typography>
             </Box>
 
             <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap', gap: 1 }} useFlexGap>
-              <Button
-                size="small"
-                variant={activeSource === 'bapanas' ? 'contained' : 'outlined'}
-                color={activeSource === 'bapanas' ? 'success' : 'inherit'}
-                onClick={() => {
-                  setActiveSource('bapanas')
-                  setSyncStatusMsg('Sumber harga diubah ke Panel BAPANAS RI.')
-                }}
-                startIcon={<AccountBalanceRoundedIcon fontSize="small" />}
-                sx={{
-                  borderRadius: 2,
-                  fontWeight: 700,
-                  whiteSpace: 'nowrap',
-                  textTransform: 'none',
-                  px: 1.5,
-                  py: 0.75,
-                }}
-              >
-                BAPANAS RI
-              </Button>
               <Button
                 size="small"
                 variant={activeSource === 'sp2kp' ? 'contained' : 'outlined'}
@@ -337,7 +298,7 @@ export function PricingDashboard({ canSyncPrices = false }) {
                 color={activeSource === 'triangulasi' ? 'primary' : 'inherit'}
                 onClick={() => {
                   setActiveSource('triangulasi')
-                  setSyncStatusMsg('Sumber harga diubah ke Triangulasi Komposit Dua Lembaga Negara.')
+                  setSyncStatusMsg('Sumber harga diubah ke Triangulasi Komposit SP2KP + Acuan Lokal.')
                 }}
                 startIcon={<VerifiedRoundedIcon fontSize="small" />}
                 sx={{
@@ -405,12 +366,12 @@ export function PricingDashboard({ canSyncPrices = false }) {
           sx={{ borderRadius: 2, bgcolor: 'rgba(5, 150, 105, 0.08)', border: '1px solid #10b981' }}
         >
           <Typography fontWeight={700} variant="body2">
-            🛡️ Menggunakan Triangulasi Dua Lembaga Negara (BAPANAS RI + SP2KP Kemendag RI)
+            Menggunakan Triangulasi Komposit (SP2KP Kemendag RI + Acuan Harga Lokal)
           </Typography>
           <Typography variant="body2">
             Harga Komposit Adil Pasar Ibuh Payakumbuh untuk <strong>{commodity}</strong>: <strong>{formatRupiah(referencePrice)} / kg</strong>
             {triangulasiItem?.convergence_index_percent ? ` &bull; Indeks Konvergensi: ${triangulasiItem.convergence_index_percent}%` : ''}
-            {triangulasiItem?.disparity_rp !== undefined ? ` &bull; Selisih Antar-Lembaga: ${formatRupiah(triangulasiItem.disparity_rp)}` : ''}
+            {triangulasiItem?.disparity_rp !== undefined ? ` &bull; Selisih Harga: ${formatRupiah(triangulasiItem.disparity_rp)}` : ''}
           </Typography>
           {syncStatusMsg && (
             <Typography sx={{ fontStyle: 'italic', mt: 0.5 }} variant="caption">
@@ -482,7 +443,7 @@ export function PricingDashboard({ canSyncPrices = false }) {
                   <Chip
                     color="primary"
                     icon={<VerifiedRoundedIcon />}
-                    label="Triangulasi BAPANAS + SP2KP"
+                    label="Triangulasi SP2KP + Acuan Lokal"
                     size="small"
                     sx={{ fontWeight: 700 }}
                   />
@@ -490,7 +451,7 @@ export function PricingDashboard({ canSyncPrices = false }) {
                   <Chip
                     color="success"
                     icon={<VerifiedRoundedIcon />}
-                    label={activeSource === 'sp2kp' ? 'SP2KP Kemendag RI' : 'Panel BAPANAS RI'}
+                    label="SP2KP Kemendag RI"
                     size="small"
                     sx={{ fontWeight: 700 }}
                   />
@@ -500,7 +461,7 @@ export function PricingDashboard({ canSyncPrices = false }) {
               </Stack>
               <Typography color="text.secondary" sx={{ mb: 2 }} variant="body2">
                 {isTriangulasiActive
-                  ? `${effectiveComparison.market_center || 'Pasar Ibuh Payakumbuh'} — Harga Komposit Konsensus Dua Lembaga Negara`
+                  ? `${effectiveComparison.market_center || 'Pasar Ibuh Payakumbuh'} — Harga Komposit SP2KP & Acuan Lokal`
                   : isFeedActive
                   ? `${currentFeedPayload.market_center || 'Pasar Ibuh Payakumbuh'} — Diperbarui per ${currentFeedPayload.data_date}`
                   : `Diperbarui: ${PRICE_REFERENCE_SOURCE.updatedAt}`}
@@ -521,7 +482,7 @@ export function PricingDashboard({ canSyncPrices = false }) {
                         price = tItem.composite_fair_price
                         trendLabel = `Konv ${tItem.convergence_index_percent}%`
                         changeRp = 0
-                        categorySub = `BAPANAS ${formatRupiah(tItem.bapanas_price_per_kg)} • SP2KP ${formatRupiah(tItem.sp2kp_kemendag_price_per_kg)}`
+                        categorySub = `Lokal ${formatRupiah(tItem.bapanas_price_per_kg)} • SP2KP ${formatRupiah(tItem.sp2kp_kemendag_price_per_kg)}`
                       }
                     } else if (isFeedActive) {
                       const bItem = currentCommodities[itemKey]
@@ -596,7 +557,7 @@ export function PricingDashboard({ canSyncPrices = false }) {
                           price = tItem.composite_fair_price
                           trendLabel = `Konv ${tItem.convergence_index_percent}%`
                           changeRp = 0
-                          categorySub = `BAPANAS ${formatRupiah(tItem.bapanas_price_per_kg)} • SP2KP ${formatRupiah(tItem.sp2kp_kemendag_price_per_kg)}`
+                          categorySub = `Lokal ${formatRupiah(tItem.bapanas_price_per_kg)} • SP2KP ${formatRupiah(tItem.sp2kp_kemendag_price_per_kg)}`
                         }
                       } else if (isFeedActive) {
                         const bItem = currentCommodities[itemKey]
@@ -657,7 +618,7 @@ export function PricingDashboard({ canSyncPrices = false }) {
               <PriceTrendChart
                 commodity={commodity}
                 history={history}
-                isOfficialBapanas={isBapanasActive}
+                isOfficialBapanas={isSp2kpActive}
               />
             </CardContent>
           </Card>
@@ -834,7 +795,7 @@ export function PricingDashboard({ canSyncPrices = false }) {
         </Grid>
       </Grid>
 
-      {/* DIALOG TRIANGULASI HARGA RESMI PEMERINTAH (BAPANAS VS SP2KP KEMENDAG) */}
+      {/* DIALOG TRIANGULASI HARGA ACUAN (SP2KP KEMENDAG VS ACUAN LOKAL) */}
       <TriangulasiComparisonModal
         commodity={commodity}
         effectiveComparisonList={effectiveComparisonList}

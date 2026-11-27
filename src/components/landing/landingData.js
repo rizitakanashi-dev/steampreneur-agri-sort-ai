@@ -49,7 +49,7 @@ export const PROBLEM_VS_SOLUTION = [
   {
     problemTitle: 'Harga Jual Tidak Transparan',
     problemDetail: 'Petani sering menerima potongan borongan tanpa rincian bobot per mutu.',
-    solutionTitle: 'Smart Pricing BAPANAS & SP2KP Kemendag',
+    solutionTitle: 'Smart Pricing SP2KP Kemendag RI',
     solutionDetail: 'Nilai jual dihitung otomatis per grade (1.15x / 0.80x / 0x) sesuai acuan harga resmi.',
   },
 ]
@@ -87,10 +87,10 @@ export const FEATURE_STAGES = [
     id: 'smart-pricing',
     gradient: AGRI_STAGE_GRADIENTS.harvestGold,
     headline: 'SMART PRICING LIVE PASAR',
-    body: 'Tidak ada lagi taksiran harga sepihak. Nilai batch langsung dihitung dari rasio berat tiap grade terhadap feed harga BAPANAS dan SP2KP Kemendag RI.',
+    body: 'Tidak ada lagi taksiran harga sepihak. Nilai batch langsung dihitung dari rasio berat tiap grade terhadap feed harga SP2KP Kemendag RI.',
     bullets: [
       'Grade A (1.15x), Grade B (0.80x), Reject (Rp 0)',
-      'Triangulasi acuan harga BAPANAS & SP2KP harian',
+      'Triangulasi acuan harga SP2KP harian',
       'Kalkulator ROI & Break-Even Point petani',
     ],
     mockupType: 'pricing',
@@ -129,7 +129,7 @@ export const HOW_IT_WORKS_STEPS = [
   {
     step: 'LANGKAH 3',
     title: 'PRICING & SERTIFIKAT A4',
-    description: 'Dapatkan estimasi harga resmi BAPANAS/SP2KP dan cetak Sertifikat QC A4 atau ekspor ke Excel.',
+    description: 'Dapatkan estimasi harga acuan SP2KP dan cetak Sertifikat QC A4 atau ekspor ke Excel.',
     accent: AGRI_COLORS.gold,
   },
 ]
@@ -141,10 +141,10 @@ export const PREVIEW_TABS = [
     icon: DashboardRoundedIcon,
     appTarget: 'overview',
     title: 'Ringkasan Eksekutif & Acuan Pasar',
-    description: 'Pantau metrik batch tersimpan, status harga BAPANAS & SP2KP Kemendag RI, serta akses cepat ke batch terakhir.',
+    description: 'Pantau metrik batch tersimpan, status harga SP2KP Kemendag RI, serta akses cepat ke batch terakhir.',
     highlights: [
       'Indikator kesiapan sistem & status PWA offline',
-      'Acuan harga BAPANAS & SP2KP Kemendag terverifikasi',
+      'Acuan harga SP2KP Kemendag terverifikasi',
       'Kartu batch terbaru lengkap dengan estimasi nilai jual',
     ],
   },
@@ -257,7 +257,7 @@ export const TARGET_USERS = [
     accent: AGRI_COLORS.gold,
     headline: 'Tekan Risiko Susut Pasokan',
     benefit: 'Terima pasokan tersertifikasi dengan komposisi grade jelas sesuai segmen pembeli.',
-    points: ['Sertifikat QC A4 pendamping pengiriman', 'Rekomendasi patologi pasca panen', 'Keselarasan grade dengan harga BAPANAS'],
+    points: ['Sertifikat QC A4 pendamping pengiriman', 'Rekomendasi patologi pasca panen', 'Keselarasan grade dengan harga SP2KP'],
   },
 ]
 

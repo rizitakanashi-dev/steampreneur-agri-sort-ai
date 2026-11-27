@@ -51,10 +51,10 @@ export function TriangulasiComparisonModal({
           <BalanceRoundedIcon color="primary" />
           <Box>
             <Typography variant="h6" fontWeight={800}>
-              Triangulasi Harga Pangan Resmi Pemerintah RI
+              Triangulasi Harga Pangan (SP2KP & Acuan Lokal)
             </Typography>
             <Typography variant="caption" color="text.secondary">
-              Komparasi BAPANAS RI vs SP2KP Kemendag RI (Wilayah: Sumatera Barat / Pasar Ibuh Payakumbuh)
+              Komparasi Acuan Lokal vs SP2KP Kemendag RI (Wilayah: Sumatera Barat / Pasar Ibuh Payakumbuh)
             </Typography>
           </Box>
         </Stack>
@@ -65,7 +65,7 @@ export function TriangulasiComparisonModal({
       <DialogContent dividers>
         <Alert severity="info" icon={<InfoOutlinedIcon />} sx={{ mb: 2.5, borderRadius: 2 }}>
           <Typography variant="body2">
-            Sistem membandingkan data harian dari <strong>Panel Harga BAPANAS (Badan Pangan Nasional)</strong> dan{' '}
+            Sistem membandingkan data harian dari <strong>Acuan Harga Lokal (baseline pasar)</strong> dan{' '}
             <strong>SP2KP (Kementerian Perdagangan RI)</strong> untuk menghitung harga komposit yang adil (<em>fair market price</em>).
           </Typography>
           <Typography variant="caption" sx={{ display: 'block', mt: 0.5, color: 'text.secondary', fontWeight: 600 }}>
@@ -78,7 +78,7 @@ export function TriangulasiComparisonModal({
             <TableHead sx={{ bgcolor: '#f8fafc' }}>
               <TableRow>
                 <TableCell sx={{ fontWeight: 700 }}>Komoditas</TableCell>
-                <TableCell align="right" sx={{ fontWeight: 700 }}>BAPANAS RI</TableCell>
+                <TableCell align="right" sx={{ fontWeight: 700 }}>Acuan Lokal</TableCell>
                 <TableCell align="right" sx={{ fontWeight: 700 }}>SP2KP Kemendag</TableCell>
                 <TableCell align="right" sx={{ fontWeight: 700, bgcolor: 'rgba(5, 150, 105, 0.08)' }}>Harga Komposit Adil</TableCell>
                 <TableCell align="right" sx={{ fontWeight: 700 }}>Disparitas</TableCell>

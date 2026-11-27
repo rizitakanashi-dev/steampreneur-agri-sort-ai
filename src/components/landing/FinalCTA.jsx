@@ -45,7 +45,7 @@ export function FinalCTA({ onOpenApp }) {
                     color: AGRI_COLORS.deepEmerald,
                   }}
                 >
-                  “Dengan memadukan deteksi YOLO11n 3-Class dan triangulasi harga BAPANAS serta SP2KP Kemendag, petani dan pengepul memiliki acuan kualitas objektif sebelum transaksi berlangsung.”
+                  “Dengan memadukan deteksi YOLO11n 3-Class dan triangulasi harga SP2KP Kemendag, petani dan pengepul memiliki acuan kualitas objektif sebelum transaksi berlangsung.”
                 </Typography>
 
                 <Typography

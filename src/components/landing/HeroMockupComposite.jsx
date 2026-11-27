@@ -585,7 +585,7 @@ export function HeroMockupComposite({ onOpenApp, isConverged, trackRef }) {
                           Sumber acuan harga
                         </Typography>
                         <Typography sx={{ fontFamily: AGRI_FONTS.sans, fontSize: '1.45rem', fontWeight: 800, color: '#1D2326', my: 0.4 }}>
-                          BAPANAS Live
+                          SP2KP Live
                         </Typography>
                         <Typography sx={{ fontFamily: AGRI_FONTS.sans, fontSize: '0.7rem', color: '#68747A' }}>
                           Pasar Ibuh Payakumbuh
@@ -649,11 +649,11 @@ export function HeroMockupComposite({ onOpenApp, isConverged, trackRef }) {
                         }}
                       >
                         <CheckCircleRoundedIcon sx={{ fontSize: 12 }} />
-                        BAPANAS Terverifikasi
+                        SP2KP Terverifikasi
                       </Box>
                     </Stack>
                     <Typography sx={{ fontFamily: AGRI_FONTS.sans, fontSize: '0.72rem', color: '#68747A', mb: 2 }}>
-                      Panel BAPANAS • Pasar Ibuh Payakumbuh
+                      Panel SP2KP • Pasar Ibuh Payakumbuh
                     </Typography>
 
                     <Stack spacing={1}>

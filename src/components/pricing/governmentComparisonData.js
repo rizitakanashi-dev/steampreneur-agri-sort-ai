@@ -1,5 +1,5 @@
 /**
- * Data & helper untuk komparasi harga resmi pemerintah (BAPANAS vs SP2KP Kemendag).
+ * Data & helper untuk komparasi harga resmi pemerintah (SP2KP Kemendag vs acuan lokal).
  * Dipisah dari PricingDashboard agar data statis tidak membebani komponen utama.
  */
 
@@ -31,7 +31,7 @@ export const DEFAULT_GOVERNMENT_COMPARISON = Object.freeze({
   last_synced: '2026-11-08T07:00:00+07:00',
   institutions: {
     bapanas: {
-      name: 'Badan Pangan Nasional (BAPANAS)',
+      name: 'Acuan Lokal (Simulasi)',
       url: 'https://panelharga.badanpangan.go.id',
     },
     kemendag: {
