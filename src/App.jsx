@@ -536,16 +536,27 @@ function App() {
 
   // Mode kamera HP = layar terkunci (khas kamera native): halaman tidak bisa di-geser,
   // dan seluruh latar jadi gelap — sisa celah page di atas kamera tidak lagi putih
+  // JARING PENGAMAN: keluar dari mode kamera WAJIB membebaskan scroll — kalau cleanup
+  // restore ke nilai lama yang ternyata masih 'hidden' (sisa lock modal/drawer),
+  // inline style body dibersihkan paksa agar halaman scanner bisa di-scroll lagi
+  const bodyLockRef = useRef(false)
   useEffect(() => {
     if (scannerImmersiveActive) {
+      bodyLockRef.current = true
       const previousOverflow = document.body.style.overflow
       const previousBg = document.body.style.backgroundColor
       document.body.style.overflow = 'hidden'
       document.body.style.backgroundColor = '#17191C'
       return () => {
+        bodyLockRef.current = false
         document.body.style.overflow = previousOverflow
         document.body.style.backgroundColor = previousBg
       }
+    }
+    if (bodyLockRef.current) {
+      bodyLockRef.current = false
+      document.body.style.removeProperty('overflow')
+      document.body.style.removeProperty('background-color')
     }
     return undefined
   }, [scannerImmersiveActive])
