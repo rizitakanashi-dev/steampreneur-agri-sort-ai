@@ -24,8 +24,8 @@
 ```
 python -m unittest test_price_normalization test_price_adapters
                 test_price_repository test_prices_api
-                test_price_freshness test_price_secrets
-Ran 74 tests in 0.339s — OK
+                test_price_freshness test_price_migrations test_price_secrets
+Ran 82 tests — OK
 ```
 
 Cakupan wajib matriks:
@@ -36,6 +36,7 @@ Cakupan wajib matriks:
 | Provider failure | auth/404/429/5xx/timeout/malformed | ⚠️ teruji via fixture (`ProviderFetchError` timeout/server_error, malformed → 0 ingest); failure HTTP nyata menunggu adapter live (terkunci akses) |
 | Kontrak | envelope, `data_status`, error code, null vs 0 | ✓ `test_prices_api` (19 test: 404/422/400/403, envelope + request_id) |
 | Cache/freshness | cold/warm/concurrent/stale/expired/outage | ✓ `test_price_freshness` (21 test: single-flight, negative cache, cold→unavailable, stale→`cached` berlabel, expired→tidak disajikan) |
+| Migrasi DB | diterapkan & di-rollback | ✓ `test_price_migrations` (8 test: Postgres sementara nyata — tabel/index/RLS, enum menolak `data_status`/komoditas/jenis harga liar, upsert idempoten via `ON CONFLICT`, single-flight `running` unik per sumber, RLS memblokir peran anon, rollback bersih + re-apply) |
 | Data quality | idempoten, Terung, wilayah | ✓ `test_price_repository` (batch sama 2× → 0 duplikat) |
 | Kontrak smoke | 5 state + Terung, endpoint nyata | ✓ `tools/prices_smoke.py` — **16/16 PASS** terhadap server lokal (`localhost:8000`, output di bawah) |
 | Security | tanpa kredensial di src/dist/log/error | ✓ `test_price_secrets` + scan `dist/assets/*.js` → **0 kecocokan** marker kredensial |
@@ -71,8 +72,8 @@ diaktifkan lewat flag. State tersebut sudah tercakup test fixture (#43).
 ## Checklist blocked (deploy produksi)
 
 - [ ] **BLOKIR — keputusan akses** #38 (SIPASHORTI) dan #39 (SP2KP) belum ada bukti resmi
-- [ ] Migrasi `20261127000100_price_observations.sql` + `20261127000200_price_freshness.sql` diterapkan & di-rollback di staging (butuh akses dashboard Supabase)
-- [ ] Sandbox credentials opt-in + smoke `actual/historical/cached/stale/unavailable` end-to-end
+- [ ] Migrasi `20261127000100_price_observations.sql` + `20261127000200_price_freshness.sql`: **diterapkan & di-rollback di staging-lokal** (`test_price_migrations`, cluster Postgres disposable) — eksekusi di staging Supabase nyata masih menunggu akses dashboard
+- [ ] Sandbox credentials opt-in + smoke `actual/historical/cached/stale/unavailable` end-to-end (state fixture sudah tercakup test #43)
 - [ ] Monitoring/alerting produksi (runbook #43 ada; alert channel belum terpasang)
 - [ ] Persetujuan eksplisit produksi + bundle bukti bertanggal
 
