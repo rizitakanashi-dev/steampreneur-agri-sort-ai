@@ -307,7 +307,7 @@ export function SettingsDialog({ open, onClose, onDataChanged }) {
                       </ListItemIcon>
                       <ListItemText
                         primary="Panel Harga SP2KP RI"
-                        secondary="Live feed acuan Pasar Ibuh Payakumbuh — Cache 12 jam (sp2kp.kemendag.go.id)"
+                        secondary="Data acuan lokal tersimpan — Pasar Ibuh Payakumbuh (belum terhubung API resmi SP2KP)"
                         primaryTypographyProps={{ variant: 'body2', fontWeight: 700 }}
                         secondaryTypographyProps={{ variant: 'caption' }}
                       />

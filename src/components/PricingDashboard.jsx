@@ -131,7 +131,7 @@ export function PricingDashboard({ canSyncPrices = false }) {
         const refreshed = await syncSp2kpPrices(6000)
         if (refreshed && refreshed.commodities) {
           setSp2kpPayload(refreshed)
-          setSyncStatusMsg('Harga pangan SP2KP Kemendag RI berhasil disinkronkan langsung!')
+          setSyncStatusMsg('Data acuan SP2KP berhasil dimuat ulang (baseline lokal).')
         }
       } else if (activeSource === 'triangulasi') {
         const [refreshedComp, refreshedSp2kp] = await Promise.allSettled([
@@ -144,7 +144,7 @@ export function PricingDashboard({ canSyncPrices = false }) {
         if (refreshedSp2kp.status === 'fulfilled' && refreshedSp2kp.value?.commodities) {
           setSp2kpPayload(refreshedSp2kp.value)
         }
-        setSyncStatusMsg('Harga komposit triangulasi SP2KP & acuan lokal berhasil disinkronkan langsung!')
+        setSyncStatusMsg('Data acuan komposit berhasil dimuat ulang (baseline lokal).')
       }
     } catch (err) {
       setSyncStatusMsg(`Gagal menyinkronkan: ${err?.message || 'Server offline'}`)
@@ -395,10 +395,10 @@ export function PricingDashboard({ canSyncPrices = false }) {
           sx={{ borderRadius: 2 }}
         >
           <Typography fontWeight={700} variant="body2">
-            Terhubung Resmi ke {currentFeedPayload.source || currentFeedPayload.agency}
+            Data Acuan SP2KP Kemendag RI (Baseline Lokal Tersimpan)
           </Typography>
           <Typography variant="body2">
-            Wilayah: {currentFeedPayload.region} ({currentFeedPayload.market_center}) &bull; Tanggal data: {currentFeedPayload.data_date} &bull; Portal: {currentFeedPayload.portal_url || 'https://sp2kp.kemendag.go.id/'}
+            Wilayah: {currentFeedPayload.region} ({currentFeedPayload.market_center}) &bull; Tanggal data: {currentFeedPayload.data_date} &bull; Belum terhubung API resmi SP2KP — menampilkan acuan tersimpan
           </Typography>
           {syncStatusMsg && (
             <Typography sx={{ fontStyle: 'italic', mt: 0.5 }} variant="caption">

@@ -169,7 +169,7 @@ function DashboardPreview({ onNavigate, batches = [], onSelectBatch }) {
     },
     {
       label: 'Sumber acuan harga',
-      value: bapanasData ? 'SP2KP Live' : 'SP2KP & Acuan Lokal',
+      value: bapanasData ? 'SP2KP Tersimpan' : 'SP2KP & Acuan Lokal',
       detail: bapanasData?.market_center || 'Panel SP2KP & Kemendag RI',
       icon: TrendingUpRoundedIcon,
       color: '#036e45',
@@ -219,7 +219,7 @@ function DashboardPreview({ onNavigate, batches = [], onSelectBatch }) {
                     Harga acuan pasar
                   </Typography>
                   {bapanasData ? (
-                    <Chip color="success" icon={<CheckCircleRoundedIcon />} label="SP2KP Terverifikasi" size="small" />
+                    <Chip color="success" icon={<CheckCircleRoundedIcon />} label="Acuan SP2KP Tersimpan" size="small" />
                   ) : bapanasOffline ? (
                     <Chip color="warning" label="Offline — pakai acuan lokal" size="small" />
                   ) : (

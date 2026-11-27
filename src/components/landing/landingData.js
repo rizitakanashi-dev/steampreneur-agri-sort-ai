@@ -144,7 +144,7 @@ export const PREVIEW_TABS = [
     description: 'Pantau metrik batch tersimpan, status harga SP2KP Kemendag RI, serta akses cepat ke batch terakhir.',
     highlights: [
       'Indikator kesiapan sistem & status PWA offline',
-      'Acuan harga SP2KP Kemendag terverifikasi',
+      'Acuan harga SP2KP Kemendag tersimpan',
       'Kartu batch terbaru lengkap dengan estimasi nilai jual',
     ],
   },

@@ -585,7 +585,7 @@ export function HeroMockupComposite({ onOpenApp, isConverged, trackRef }) {
                           Sumber acuan harga
                         </Typography>
                         <Typography sx={{ fontFamily: AGRI_FONTS.sans, fontSize: '1.45rem', fontWeight: 800, color: '#1D2326', my: 0.4 }}>
-                          SP2KP Live
+                          SP2KP Tersimpan
                         </Typography>
                         <Typography sx={{ fontFamily: AGRI_FONTS.sans, fontSize: '0.7rem', color: '#68747A' }}>
                           Pasar Ibuh Payakumbuh
@@ -649,7 +649,7 @@ export function HeroMockupComposite({ onOpenApp, isConverged, trackRef }) {
                         }}
                       >
                         <CheckCircleRoundedIcon sx={{ fontSize: 12 }} />
-                        SP2KP Terverifikasi
+                        Acuan SP2KP Tersimpan
                       </Box>
                     </Stack>
                     <Typography sx={{ fontFamily: AGRI_FONTS.sans, fontSize: '0.72rem', color: '#68747A', mb: 2 }}>

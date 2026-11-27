@@ -363,7 +363,7 @@ export function DashboardModuleMotion({ moduleId }) {
         {[
           { label: 'Batch tersimpan', val: '4 Batch', sub: 'Tersimpan di browser ini' },
           { label: 'Komoditas terdaftar', val: '3 Komoditas', sub: 'Terung, Tomat, Cabai' },
-          { label: 'Sumber acuan harga', val: 'SP2KP Live', sub: 'Pasar Ibuh Payakumbuh' },
+          { label: 'Sumber acuan harga', val: 'SP2KP Tersimpan', sub: 'Pasar Ibuh Payakumbuh' },
         ].map((c) => (
           <Grid key={c.label} size={{ xs: 4 }}>
             <Box sx={{ p: 1.25, borderRadius: '12px', bgcolor: '#FFFFFF', border: '1px solid #E3E8E7' }}>
