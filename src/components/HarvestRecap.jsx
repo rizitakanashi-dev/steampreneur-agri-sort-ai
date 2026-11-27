@@ -6,6 +6,7 @@ import {
   Card,
   CardContent,
   Chip,
+  Collapse,
   Dialog,
   DialogActions,
   DialogContent,
@@ -36,6 +37,8 @@ import {
 } from '@mui/material'
 import AssessmentRoundedIcon from '@mui/icons-material/AssessmentRounded'
 import AutoAwesomeRoundedIcon from '@mui/icons-material/AutoAwesomeRounded'
+import ChevronLeftRoundedIcon from '@mui/icons-material/ChevronLeftRounded'
+import ChevronRightRoundedIcon from '@mui/icons-material/ChevronRightRounded'
 import ClearRoundedIcon from '@mui/icons-material/ClearRounded'
 import DownloadRoundedIcon from '@mui/icons-material/DownloadRounded'
 import FilterAltOffRoundedIcon from '@mui/icons-material/FilterAltOffRounded'
@@ -43,6 +46,7 @@ import FilterListRoundedIcon from '@mui/icons-material/FilterListRounded'
 import PrintRoundedIcon from '@mui/icons-material/PrintRounded'
 import SearchRoundedIcon from '@mui/icons-material/SearchRounded'
 import SortRoundedIcon from '@mui/icons-material/SortRounded'
+import TuneRoundedIcon from '@mui/icons-material/TuneRounded'
 import VerifiedRoundedIcon from '@mui/icons-material/VerifiedRounded'
 import VisibilityRoundedIcon from '@mui/icons-material/VisibilityRounded'
 import WarningAmberRoundedIcon from '@mui/icons-material/WarningAmberRounded'
@@ -65,6 +69,21 @@ function formatRupiah(value) {
 
 function formatNumber(value) {
   return typeof value === 'number' && Number.isFinite(value) ? numberFormatter.format(value) : '-'
+}
+
+const tanggalFormatter = new Intl.DateTimeFormat('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })
+
+/** Tanggal pendek khas kartu mobile: "25 Nov 2026" (fallback: nilai mentah). */
+function formatTanggalPendek(value) {
+  if (!value) return ''
+  const raw = String(value)
+  const date = new Date(raw.length <= 10 ? `${raw}T00:00:00` : raw)
+  return Number.isNaN(date.getTime()) ? raw : tanggalFormatter.format(date)
+}
+
+/** Label komoditas pendek untuk chip HP: "Cabai (Chili)" → "Cabai". */
+function formatKomoditasPendek(name) {
+  return String(name).replace(/\s*\(.*?\)\s*/g, '').trim() || String(name)
 }
 
 function GradeChip({ label, value, color }) {
@@ -206,71 +225,74 @@ function MobileBatchCard({ batch, onSelectBatch, onDeleteBatch, onViewDetail }) 
   return (
     <Card variant="outlined" sx={{ borderRadius: 2 }}>
       <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
-        <Stack direction="row" spacing={1} sx={{ alignItems: 'flex-start', justifyContent: 'space-between' }}>
-          <Box sx={{ flex: 1, minWidth: 0 }}>
-            <Typography fontWeight={700} noWrap variant="body2">{batch.id}</Typography>
-            <Typography color="text.secondary" variant="caption">{batch.tanggal}</Typography>
-          </Box>
+        {/* Baris 1: komoditas + berat — identitas utama kartu */}
+        <Stack direction="row" spacing={1} sx={{ alignItems: 'baseline', justifyContent: 'space-between' }}>
+          <Typography fontWeight={800} variant="body1">{batch.komoditas}</Typography>
+          <Typography fontWeight={800} variant="body2">{formatNumber(batch.beratKg ?? batch.volume_kg)} kg</Typography>
+        </Stack>
+
+        {/* Baris 2: ID + tanggal kecil, badge status di kanan */}
+        <Stack direction="row" spacing={0.75} sx={{ alignItems: 'center', justifyContent: 'space-between', mt: 0.25 }}>
+          <Typography color="text.secondary" noWrap sx={{ flex: 1, minWidth: 0 }} variant="caption">
+            {batch.id} · {formatTanggalPendek(batch.tanggal)}
+          </Typography>
           {execStatus === 'ai_detected' && (
-            <Chip color="success" icon={<AutoAwesomeRoundedIcon style={{ fontSize: 13 }} />} label="AI" size="small" sx={{ height: 20, fontSize: 12, fontWeight: 700 }} />
+            <Chip color="success" label="AI" size="small" sx={{ flexShrink: 0, fontSize: 10, fontWeight: 700, height: 18 }} />
           )}
           {execStatus === 'needs_review' && (
-            <Chip color="warning" icon={<WarningAmberRoundedIcon style={{ fontSize: 13 }} />} label="Review" size="small" sx={{ height: 20, fontSize: 12, fontWeight: 700 }} />
+            <Chip color="warning" label="Review" size="small" sx={{ flexShrink: 0, fontSize: 10, fontWeight: 700, height: 18 }} />
           )}
           {execStatus === 'simulated' && (
-            <Chip color="info" label="Simulasi" size="small" sx={{ height: 20, fontSize: 12, fontWeight: 700 }} />
+            <Chip color="info" label="Simulasi" size="small" sx={{ flexShrink: 0, fontSize: 10, fontWeight: 700, height: 18 }} />
           )}
         </Stack>
 
-        <Stack direction="row" spacing={1.5} sx={{alignItems: 'baseline', justifyContent: 'space-between',  mt: 1 }}>
-          <Typography fontWeight={600} variant="body2">{batch.komoditas}</Typography>
-          <Typography fontWeight={600} variant="body2">{formatNumber(batch.beratKg ?? batch.volume_kg)} kg</Typography>
-        </Stack>
-
+        {/* Baris 3: distribusi grade */}
         <Box sx={{ mt: 1 }}>
           <BatchGradeDistribution batch={batch} />
         </Box>
 
-        <Stack direction="row" spacing={1.5} sx={{alignItems: 'baseline', justifyContent: 'space-between',  mt: 0.5 }}>
-          <Typography color="text.secondary" variant="caption">Estimasi nilai</Typography>
-          <Typography color="success.main" fontWeight={700} variant="body2">{formatRupiah(estValue)}</Typography>
-        </Stack>
+        <Divider sx={{ my: 1 }} />
 
-        <Divider sx={{ my: 1.25 }} />
-
-        <Stack direction="row" sx={{ justifyContent: 'space-between' }}>
-          {onSelectBatch && (
-            <Tooltip title="Buka Hasil Analisis QC">
-              <IconButton
-                aria-label={`Buka Analisis QC ${batch.id}`}
-                color="success"
-                onClick={() => onSelectBatch(batch, { openCertificate: false })}
-              >
-                <AssessmentRoundedIcon />
+        {/* Baris 4: nilai di kiri, aksi rapat di kanan — hapus tidak lagi sendirian di ujung */}
+        <Stack direction="row" spacing={1} sx={{ alignItems: 'center', justifyContent: 'space-between' }}>
+          <Typography color="success.main" fontWeight={700} noWrap variant="body2">{formatRupiah(estValue)}</Typography>
+          <Stack direction="row" spacing={0.25} sx={{ flexShrink: 0 }}>
+            {onSelectBatch && (
+              <Tooltip title="Buka Hasil Analisis QC">
+                <IconButton
+                  aria-label={`Buka Analisis QC ${batch.id}`}
+                  color="success"
+                  onClick={() => onSelectBatch(batch, { openCertificate: false })}
+                  size="small"
+                >
+                  <AssessmentRoundedIcon fontSize="small" />
+                </IconButton>
+              </Tooltip>
+            )}
+            {onSelectBatch && (
+              <Tooltip title="Buka Hasil QC & Cetak Sertifikat">
+                <IconButton
+                  aria-label={`Buka QC ${batch.id}`}
+                  color="primary"
+                  onClick={() => onSelectBatch(batch, { openCertificate: true })}
+                  size="small"
+                >
+                  <PrintRoundedIcon fontSize="small" />
+                </IconButton>
+              </Tooltip>
+            )}
+            <Tooltip title="Lihat detail ringkasan">
+              <IconButton aria-label={`Lihat detail ${batch.id}`} onClick={() => onViewDetail(batch)} size="small">
+                <VisibilityRoundedIcon fontSize="small" />
               </IconButton>
             </Tooltip>
-          )}
-          {onSelectBatch && (
-            <Tooltip title="Buka Hasil QC & Cetak Sertifikat">
-              <IconButton
-                aria-label={`Buka QC ${batch.id}`}
-                color="primary"
-                onClick={() => onSelectBatch(batch, { openCertificate: true })}
-              >
-                <PrintRoundedIcon />
+            <Tooltip title="Hapus batch">
+              <IconButton aria-label={`Hapus ${batch.id}`} color="error" onClick={() => onDeleteBatch(batch)} size="small">
+                <DeleteOutlineRoundedIcon fontSize="small" />
               </IconButton>
             </Tooltip>
-          )}
-          <Tooltip title="Lihat detail ringkasan">
-            <IconButton aria-label={`Lihat detail ${batch.id}`} onClick={() => onViewDetail(batch)}>
-              <VisibilityRoundedIcon />
-            </IconButton>
-          </Tooltip>
-          <Tooltip title="Hapus batch">
-            <IconButton aria-label={`Hapus ${batch.id}`} color="error" onClick={() => onDeleteBatch(batch)}>
-              <DeleteOutlineRoundedIcon />
-            </IconButton>
-          </Tooltip>
+          </Stack>
         </Stack>
       </CardContent>
     </Card>
@@ -290,6 +312,8 @@ export function HarvestRecap({ batches = [], onSelectBatch, onDeleteBatch }) {
   const [methodFilter, setMethodFilter] = useState('') // '' | 'ai' | 'simulated' | 'manual'
   const [sortBy, setSortBy] = useState('newest') // 'newest' | 'oldest' | 'value_desc' | 'weight_desc'
   const [exportStatus, setExportStatus] = useState('')
+  // HP: filter lanjutan (metode, urutkan, tanggal) dilipat supaya data langsung terlihat
+  const [showAdvanced, setShowAdvanced] = useState(false)
 
   const commodities = useMemo(() => listCommodities(batches), [batches])
 
@@ -322,6 +346,9 @@ export function HarvestRecap({ batches = [], onSelectBatch, onDeleteBatch }) {
   const visibleBatches = sortedBatches.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
   const totals = calculateBatchTotals(visibleBatches)
   const filterActive = !isFilterEmpty(filter) || Boolean(methodFilter) || sortBy !== 'newest'
+  // Badge jumlah filter aktif di tombol lipatan HP
+  const advancedCount =
+    (methodFilter ? 1 : 0) + ((filter.tanggalDari || filter.tanggalSampai) ? 1 : 0) + (sortBy !== 'newest' ? 1 : 0)
 
   const handleFilterChange = (field) => (event) => {
     setFilter((current) => ({ ...current, [field]: event.target.value }))
@@ -377,7 +404,193 @@ export function HarvestRecap({ batches = [], onSelectBatch, onDeleteBatch }) {
   return (
     <>
       <Paper sx={{ border: '1px solid', borderColor: 'divider', mb: 2, p: { xs: 2, sm: 2.5 } }}>
-        {/* Baris Filter Cepat (Quick Chips) */}
+        {/* PANEL FILTER — HP: ringkas (2 baris + lipatan); desktop: layout lengkap seperti sebelumnya */}
+        {isMobileLayout ? (
+          <>
+            <TextField
+              fullWidth
+              slotProps={{
+                input: {
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <SearchRoundedIcon fontSize="small" />
+                    </InputAdornment>
+                  ),
+                  endAdornment: filter.search ? (
+                    <InputAdornment position="end">
+                      <IconButton
+                        aria-label="Hapus kata kunci pencarian"
+                        edge="end"
+                        onClick={() => {
+                          setFilter((cur) => ({ ...cur, search: '' }))
+                          setPage(0)
+                        }}
+                        size="small"
+                      >
+                        <ClearRoundedIcon fontSize="small" />
+                      </IconButton>
+                    </InputAdornment>
+                  ) : null,
+                },
+              }}
+              label="Cari ID batch atau komoditas"
+              onChange={handleFilterChange('search')}
+              size="small"
+              sx={{ mb: 1.5 }}
+              value={filter.search}
+            />
+
+            {/* Chip komoditas: scroll horizontal, label pendek */}
+            <Box sx={{ mb: 1.5, overflowX: 'auto', scrollbarWidth: 'none', '&::-webkit-scrollbar': { display: 'none' } }}>
+              <Stack direction="row" spacing={0.75} sx={{ width: 'max-content' }}>
+                <Chip
+                  clickable
+                  color={!filter.komoditas ? 'primary' : 'default'}
+                  label="Semua"
+                  onClick={() => {
+                    setFilter((cur) => ({ ...cur, komoditas: '' }))
+                    setPage(0)
+                  }}
+                  size="small"
+                  variant={!filter.komoditas ? 'filled' : 'outlined'}
+                />
+                {commodities.map((comm) => (
+                  <Chip
+                    clickable
+                    color={filter.komoditas === comm ? 'primary' : 'default'}
+                    key={comm}
+                    label={formatKomoditasPendek(comm)}
+                    onClick={() => {
+                      setFilter((cur) => ({ ...cur, komoditas: filter.komoditas === comm ? '' : comm }))
+                      setPage(0)
+                    }}
+                    size="small"
+                    variant={filter.komoditas === comm ? 'filled' : 'outlined'}
+                  />
+                ))}
+              </Stack>
+            </Box>
+
+            {/* Filter & urutkan: dilipat di HP agar data langsung terlihat */}
+            <Stack direction="row" spacing={1} sx={{ mb: 1.5 }}>
+              <Button
+                color="inherit"
+                endIcon={<span style={{ fontSize: 10 }}>{showAdvanced ? '▲' : '▼'}</span>}
+                onClick={() => setShowAdvanced((prev) => !prev)}
+                startIcon={<TuneRoundedIcon />}
+                sx={{ borderRadius: 2, fontWeight: 700, textTransform: 'none' }}
+                variant="outlined"
+              >
+                Filter &amp; Urutkan{advancedCount > 0 ? ` · ${advancedCount}` : ''}
+              </Button>
+              <Tooltip title="Ekspor CSV">
+                <span>
+                  <IconButton
+                    aria-label="Ekspor CSV"
+                    color="primary"
+                    disabled={sortedBatches.length === 0}
+                    onClick={handleExport}
+                    sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 2 }}
+                  >
+                    <DownloadRoundedIcon fontSize="small" />
+                  </IconButton>
+                </span>
+              </Tooltip>
+            </Stack>
+            <Collapse in={showAdvanced}>
+              <Stack spacing={1.5} sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 2, mb: 1.5, p: 1.5 }}>
+                <Stack direction="row" sx={{ flexWrap: 'wrap', gap: 0.75 }}>
+                  <Chip
+                    clickable
+                    color={methodFilter === 'ai' ? 'success' : 'default'}
+                    label="AI Verified"
+                    onClick={() => {
+                      setMethodFilter((cur) => (cur === 'ai' ? '' : 'ai'))
+                      setPage(0)
+                    }}
+                    size="small"
+                    variant={methodFilter === 'ai' ? 'filled' : 'outlined'}
+                  />
+                  <Chip
+                    clickable
+                    color={methodFilter === 'simulated' ? 'info' : 'default'}
+                    label="Simulasi"
+                    onClick={() => {
+                      setMethodFilter((cur) => (cur === 'simulated' ? '' : 'simulated'))
+                      setPage(0)
+                    }}
+                    size="small"
+                    variant={methodFilter === 'simulated' ? 'filled' : 'outlined'}
+                  />
+                  <Chip
+                    clickable
+                    color={methodFilter === 'manual' ? 'default' : 'default'}
+                    label="Manual"
+                    onClick={() => {
+                      setMethodFilter((cur) => (cur === 'manual' ? '' : 'manual'))
+                      setPage(0)
+                    }}
+                    size="small"
+                    variant={methodFilter === 'manual' ? 'filled' : 'outlined'}
+                  />
+                  <Chip clickable label="Hari Ini" onClick={() => setQuickDateRange(0)} size="small" variant="outlined" />
+                  <Chip clickable label="7 Hari" onClick={() => setQuickDateRange(7)} size="small" variant="outlined" />
+                  <Chip clickable label="Bulan Ini" onClick={() => setQuickDateRange('month')} size="small" variant="outlined" />
+                </Stack>
+                <FormControl fullWidth size="small">
+                  <InputLabel id="recap-sort-label-mobile">Urutkan</InputLabel>
+                  <Select
+                    label="Urutkan"
+                    labelId="recap-sort-label-mobile"
+                    onChange={(e) => {
+                      setSortBy(e.target.value)
+                      setPage(0)
+                    }}
+                    value={sortBy}
+                  >
+                    <MenuItem value="newest">Tanggal Terbaru</MenuItem>
+                    <MenuItem value="oldest">Tanggal Terlama</MenuItem>
+                    <MenuItem value="value_desc">Nilai Tertinggi (Rp)</MenuItem>
+                    <MenuItem value="weight_desc">Bobot Terbesar (kg)</MenuItem>
+                  </Select>
+                </FormControl>
+                <Stack direction="row" spacing={1}>
+                  <TextField
+                    fullWidth
+                    slotProps={{ inputLabel: { shrink: true } }}
+                    label="Dari"
+                    onChange={handleFilterChange('tanggalDari')}
+                    size="small"
+                    type="date"
+                    value={filter.tanggalDari}
+                  />
+                  <TextField
+                    fullWidth
+                    slotProps={{ inputLabel: { shrink: true } }}
+                    label="Sampai"
+                    onChange={handleFilterChange('tanggalSampai')}
+                    size="small"
+                    type="date"
+                    value={filter.tanggalSampai}
+                  />
+                </Stack>
+                <Button
+                  color="inherit"
+                  disabled={!filterActive}
+                  onClick={handleResetFilter}
+                  size="small"
+                  startIcon={<FilterAltOffRoundedIcon />}
+                  sx={{ alignSelf: 'flex-start', color: filterActive ? 'error.main' : 'text.disabled', fontWeight: 600, textTransform: 'none' }}
+                  variant="text"
+                >
+                  Reset semua filter
+                </Button>
+              </Stack>
+            </Collapse>
+          </>
+        ) : (
+          <>
+          {/* Desktop: tata letak filter lengkap (tidak berubah) */}
         <Stack direction={{ xs: 'column', md: 'row' }} spacing={1.5} sx={{justifyContent: 'space-between', alignItems: { xs: 'flex-start', md: 'center' },  mb: 2 }}>
           <Stack direction="row" sx={{ flexWrap: 'wrap', gap: 0.75, alignItems: 'center' }}>
             <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 700, mr: 0.5, display: 'flex', alignItems: 'center', gap: 0.5 }}>
@@ -574,6 +787,8 @@ export function HarvestRecap({ batches = [], onSelectBatch, onDeleteBatch }) {
             </Stack>
           </Grid>
         </Grid>
+          </>
+        )}
 
         {/* Status Baris & Active Filter Badges */}
         <Stack direction="row" sx={{flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center',  mt: 1.5, pt: 1, borderTop: '1px solid #f1f5f9' }}>
@@ -650,20 +865,6 @@ export function HarvestRecap({ batches = [], onSelectBatch, onDeleteBatch }) {
                 />
               ))}
             </Stack>
-            {visibleBatches.length > 0 && (
-              <Stack
-                direction="row"
-                spacing={1.5}
-                sx={{alignItems: 'baseline', justifyContent: 'space-between',  borderTop: '1px solid', borderColor: 'divider', px: 2, py: 1.5 }}
-              >
-                <Typography color="text.secondary" variant="caption">
-                  Total halaman ini ({visibleBatches.length} batch):
-                </Typography>
-                <Typography fontWeight={700} noWrap variant="caption">
-                  {formatNumber(totals.totalBeratKg)} kg • {formatRupiah(totals.totalNilai)}
-                </Typography>
-              </Stack>
-            )}
           </>
         ) : (
           <TableContainer sx={{ overflowX: 'auto' }}>
@@ -803,22 +1004,53 @@ export function HarvestRecap({ batches = [], onSelectBatch, onDeleteBatch }) {
         </Table>
         </TableContainer>
         )}
-        <TablePagination
-          component="div"
-          count={sortedBatches.length}
-          labelDisplayedRows={({ from, to, count }) => `${from}-${to} dari ${count}`}
-          labelRowsPerPage="Baris per halaman:"
-          onPageChange={(_, nextPage) => setPage(nextPage)}
-          onRowsPerPageChange={(event) => { setRowsPerPage(Number(event.target.value)); setPage(0) }}
-          page={page}
-          rowsPerPage={rowsPerPage}
-          rowsPerPageOptions={[5, 10, 25]}
-          sx={{
-            borderBottom: 'none',
-            // Mobile: label "Baris per halaman:" disembunyikan agar paginasi muat di 360px
-            '& .MuiTablePagination-selectLabel': { display: { xs: 'none', sm: 'block' } },
-          }}
-        />
+        {isMobileLayout ? (
+          // HP: total + paginasi digabung satu baris ringkas
+          <Stack
+            direction="row"
+            sx={{ alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid', borderColor: 'divider', px: 2, py: 1 }}
+          >
+            <Typography fontWeight={700} noWrap variant="caption">
+              {formatNumber(totals.totalBeratKg)} kg · {formatRupiah(totals.totalNilai)}
+            </Typography>
+            <Stack direction="row" spacing={0.25} sx={{ alignItems: 'center' }}>
+              <IconButton
+                aria-label="Halaman sebelumnya"
+                disabled={page === 0}
+                onClick={() => setPage((p) => Math.max(0, p - 1))}
+                size="small"
+              >
+                <ChevronLeftRoundedIcon fontSize="small" />
+              </IconButton>
+              <Typography color="text.secondary" variant="caption">
+                {sortedBatches.length === 0
+                  ? '0 / 0'
+                  : `${page * rowsPerPage + 1}–${Math.min((page + 1) * rowsPerPage, sortedBatches.length)} / ${sortedBatches.length}`}
+              </Typography>
+              <IconButton
+                aria-label="Halaman berikutnya"
+                disabled={(page + 1) * rowsPerPage >= sortedBatches.length}
+                onClick={() => setPage((p) => p + 1)}
+                size="small"
+              >
+                <ChevronRightRoundedIcon fontSize="small" />
+              </IconButton>
+            </Stack>
+          </Stack>
+        ) : (
+          <TablePagination
+            component="div"
+            count={sortedBatches.length}
+            labelDisplayedRows={({ from, to, count }) => `${from}-${to} dari ${count}`}
+            labelRowsPerPage="Baris per halaman:"
+            onPageChange={(_, nextPage) => setPage(nextPage)}
+            onRowsPerPageChange={(event) => { setRowsPerPage(Number(event.target.value)); setPage(0) }}
+            page={page}
+            rowsPerPage={rowsPerPage}
+            rowsPerPageOptions={[5, 10, 25]}
+            sx={{ borderBottom: 'none' }}
+          />
+        )}
       </Paper>
       <Dialog fullWidth maxWidth="sm" onClose={() => setSelectedBatch(null)} open={Boolean(selectedBatch)}>
         <DialogTitle sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
