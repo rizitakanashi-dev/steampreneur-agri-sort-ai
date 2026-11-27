@@ -1,0 +1,98 @@
+# Readiness Report — Integrasi Harga Agri-Sort AI (isu #45)
+
+> Tanggal: 2026-11-27 · **Status: SIAP-DI-REVIEW, TIDAK SIAP-PRODUKSI.**
+> Akses provider **unconfirmed** (#38/#39) ⇒ sesuai gerbang isu #45: **tidak ada
+> deployment produksi live**. Integrasi tetap dalam mode `off`/demo, label jujur.
+
+## Status per isu
+
+| Isu | Deliverable | Status |
+|---|---|---|
+| #38 | Investigasi SIPASHORTI | Selesai (keputusan: tidak ada API publik; butuh akses resmi) |
+| #39 | Investigasi SP2KP | Selesai (keputusan: tidak ada API publik; data.go.id historis perlu cek lisensi; Terung tak diterbitkan) |
+| #40 | Arsitektur | Selesai (`03aca83` — extend FastAPI existing, dokumentasi di isu) |
+| #41 | Kontrak API | Selesai (`03aca83` — OpenAPI + pemetaan frontend) |
+| #42 | Adapter + API | Selesai (`b0938ce` — adapter terkunci access-unconfirmed, migrasi SQL, 53 test) |
+| #43 | Cache & freshness | Selesai (freshness per sumber, single-flight DB, cron bersecret, runbook) |
+| #44 | Frontend | Selesai (client kontrak + mode live/demo/off + 5 state + Terung jujur) |
+| #45 | Matriks & deploy | **Dokumen ini** — matriks dieksekusi; deploy produksi DIBLOKIR sampai akses resmi |
+
+## Hasil matriks test (dieksekusi 2026-11-27)
+
+### 1. Test unit/integrasi Python (harga) — `server/tests/test_price_*.py`
+
+```
+python -m unittest test_price_normalization test_price_adapters
+                test_price_repository test_prices_api
+                test_price_freshness test_price_secrets
+Ran 74 tests in 0.339s — OK
+```
+
+Cakupan wajib matriks:
+
+| Lapisan | Requirement | Status |
+|---|---|---|
+| Adapter | mapping eksak, raw label, pemisahan price-type, unit, tanpa fuzzy | ✓ `test_price_normalization` (rawit merah ≠ hijau, Terung ditolak, unit non-massa null) |
+| Provider failure | auth/404/429/5xx/timeout/malformed | ⚠️ teruji via fixture (`ProviderFetchError` timeout/server_error, malformed → 0 ingest); failure HTTP nyata menunggu adapter live (terkunci akses) |
+| Kontrak | envelope, `data_status`, error code, null vs 0 | ✓ `test_prices_api` (19 test: 404/422/400/403, envelope + request_id) |
+| Cache/freshness | cold/warm/concurrent/stale/expired/outage | ✓ `test_price_freshness` (21 test: single-flight, negative cache, cold→unavailable, stale→`cached` berlabel, expired→tidak disajikan) |
+| Data quality | idempoten, Terung, wilayah | ✓ `test_price_repository` (batch sama 2× → 0 duplikat) |
+| Kontrak smoke | 5 state + Terung, endpoint nyata | ✓ `tools/prices_smoke.py` — **16/16 PASS** terhadap server lokal (`localhost:8000`, output di bawah) |
+| Security | tanpa kredensial di src/dist/log/error | ✓ `test_price_secrets` + scan `dist/assets/*.js` → **0 kecocokan** marker kredensial |
+| Regresi | test yang ada tetap jalan | ✓ build Vite ✓ · `node --test` **168/168 ✓** · suite Python 409 test: hanya 20 failure + 1 error **bawaan** (test ML merujuk path mesin lain `/home/Rizi/...`; dibuktikan via `git stash` baseline) |
+| UI tests (Vitest) | admin tests | ⚠️ `npm run test:ui`: adminApi 9 ✓; adminDashboard **3 failure bawaan** (dibuktikan baseline via stash; bukan sentuhan #44) |
+
+### 2. Smoke kontrak nyata (`python tools/prices_smoke.py`)
+
+```
+PASS - commodities 200 + envelope
+PASS - Terung first-class + available:false di SP2KP
+PASS - sources 200 + 2 sumber
+PASS - semua access_status unconfirmed
+PASS - health sp2kp never_fetched
+PASS - latest terung 200 unavailable
+PASS - price_value null (bukan 0)
+PASS - warning SOURCE_DOES_NOT_PUBLISH_COMMODITY
+PASS - warning SOURCE_ACCESS_UNCONFIRMED
+PASS - latest tomat unavailable (flag off)
+PASS - 404 COMMODITY_NOT_FOUND
+PASS - 422 INVALID_PRICE_TYPE
+PASS - 400 INVALID_QUERY (from>to)
+PASS - history rows kosong + warning
+PASS - refresh ditolak tanpa otorisasi (401/403)
+PASS - tidak ada marker kredensial
+Smoke: 16/16 checks passed against http://localhost:8000
+```
+
+State `actual/historical/cached` via smoke **nyata** akan tersedia setelah:
+(1) migrasi SQL diterapkan ke Supabase, (2) akses provider resmi, (3) adapter
+diaktifkan lewat flag. State tersebut sudah tercakup test fixture (#43).
+
+## Checklist blocked (deploy produksi)
+
+- [ ] **BLOKIR — keputusan akses** #38 (SIPASHORTI) dan #39 (SP2KP) belum ada bukti resmi
+- [ ] Migrasi `20261127000100_price_observations.sql` + `20261127000200_price_freshness.sql` diterapkan & di-rollback di staging (butuh akses dashboard Supabase)
+- [ ] Sandbox credentials opt-in + smoke `actual/historical/cached/stale/unavailable` end-to-end
+- [ ] Monitoring/alerting produksi (runbook #43 ada; alert channel belum terpasang)
+- [ ] Persetujuan eksplisit produksi + bundle bukti bertanggal
+
+Yang TIDAK diblokir:
+- [x] Rollback ke demo/off **sudah didemonstrasikan**: frontend default `VITE_PRICE_DATA_MODE=off` → halaman Harga Pasar menampilkan state integrasi nonaktif + kalkulator berlabel demo (dicek di preview); API menjawab `unavailable` jujur (smoke).
+- [x] Tidak ada kredensial provider di bundle/log/error (test + scan).
+
+## Rencana deploy bertahap (saat akses disetujui)
+
+1. Terapkan kedua migrasi di staging Supabase → verifikasi constraint/index/RLS → uji rollback (drop tabel).
+2. Deploy backend+frontend ke Vercel preview dengan flag **OFF** — smoke `16/16` harus tetap hijau.
+3. Nyalakan **satu sumber** lewat flag + bukti akses → smoke `actual/historical/cached/stale` end-to-end → baru sumber berikutnya.
+4. Aktifkan `VITE_PRICE_DATA_MODE=live` setelah kontrak terverifikasi; demo/off tetap mode rollback.
+5. Sign-off produksi dengan bundle bukti bertanggal.
+
+## Risiko terbuka
+
+| Risiko | Mitigasi |
+|---|---|
+| Data.go.id lisensi belum dikonfirmasi (#39) | Jangan ingesti sebelum lisensi jelas; historis selalu berlabel |
+| Limit 60s Vercel untuk ingest besar | Budget `PRICE_TOTAL_BUDGET_SECONDS=45s`; scheduler eksternal bila perlu |
+| 3 failure Vitest adminDashboard (bawaan) | Dilacak terpisah, bukan bagian epic harga |
+| 20 failure test Python ML (path mesin lain) | Jalankan di mesin pelatihan ML; bukan bagian epic harga |
