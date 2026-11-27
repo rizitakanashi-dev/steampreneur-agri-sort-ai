@@ -754,7 +754,7 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
     <Box
       sx={{
         p: 1.5,
-        bgcolor: immersive ? 'rgba(15, 23, 42, 0.55)' : '#f8fafc',
+        bgcolor: immersive ? 'rgba(23, 25, 28, 0.55)' : '#f8fafc',
         borderRadius: 2,
         border: immersive ? '1px solid rgba(255, 255, 255, 0.15)' : '1px dashed #cbd5e1',
         color: immersive ? '#e2e8f0' : undefined,
@@ -840,8 +840,8 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
                     height: 32,
                     '& .MuiSvgIcon-root': { fontSize: 20 },
                     color: '#e2e8f0',
-                    bgcolor: 'rgba(15, 23, 42, 0.55)',
-                    '&:hover': { bgcolor: 'rgba(15, 23, 42, 0.75)' },
+                    bgcolor: 'rgba(23, 25, 28, 0.55)',
+                    '&:hover': { bgcolor: 'rgba(23, 25, 28, 0.75)' },
                   }}
                 >
                   <CloseRoundedIcon />
@@ -855,9 +855,9 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
                     width: 32,
                     height: 32,
                     '& .MuiSvgIcon-root': { fontSize: 20 },
-                    color: torchInfo.on ? '#fbbf24' : '#e2e8f0',
-                    bgcolor: 'rgba(15, 23, 42, 0.55)',
-                    '&:hover': { bgcolor: 'rgba(15, 23, 42, 0.75)' },
+                    color: torchInfo.on ? '#C68F2F' : '#e2e8f0',
+                    bgcolor: 'rgba(23, 25, 28, 0.55)',
+                    '&:hover': { bgcolor: 'rgba(23, 25, 28, 0.75)' },
                   }}
                 >
                   {torchInfo.on ? <FlashOnRoundedIcon /> : <FlashOffRoundedIcon />}
@@ -875,8 +875,8 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
                       : '2/2 · Sisi 2: balik buah'
                   }
                   sx={{
-                    bgcolor: 'rgba(15, 23, 42, 0.8)',
-                    color: '#4ade80',
+                    bgcolor: 'rgba(23, 25, 28, 0.8)',
+                    color: '#289D67',
                     fontWeight: 700,
                     fontSize: '0.6875rem',
                     whiteSpace: 'nowrap',
@@ -908,9 +908,9 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
                   width: 32,
                   height: 32,
                   '& .MuiSvgIcon-root': { fontSize: 20 },
-                  color: cameraMenuOpen ? '#4ade80' : '#e2e8f0',
-                  bgcolor: 'rgba(15, 23, 42, 0.55)',
-                  '&:hover': { bgcolor: 'rgba(15, 23, 42, 0.75)' },
+                  color: cameraMenuOpen ? '#289D67' : '#e2e8f0',
+                  bgcolor: 'rgba(23, 25, 28, 0.55)',
+                  '&:hover': { bgcolor: 'rgba(23, 25, 28, 0.75)' },
                 }}
               >
                 <AppsRoundedIcon />
@@ -1015,8 +1015,8 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        color: item.active ? '#052e16' : '#e2e8f0',
-                        bgcolor: item.active ? '#4ade80' : 'rgba(255, 255, 255, 0.10)',
+                        color: item.active ? '#034D32' : '#e2e8f0',
+                        bgcolor: item.active ? '#E3F3EA' : 'rgba(255, 255, 255, 0.10)',
                         border: item.active ? 'none' : '1px solid rgba(255, 255, 255, 0.14)',
                       }}
                     >
@@ -1074,7 +1074,7 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
             borderRadius: 2.5,
             py: 1.25,
             fontWeight: 800,
-            boxShadow: '0 6px 18px rgba(3, 110, 69, 0.35)',
+            boxShadow: '0 6px 18px rgba(3, 77, 50, 0.35)',
           }}
         >
           Buka Mode Kamera Layar Penuh
@@ -1137,10 +1137,10 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
                       alignItems: 'flex-start',
                       textAlign: 'left',
                       borderColor: isSelected ? 'primary.main' : 'divider',
-                      bgcolor: isSelected ? 'rgba(3, 110, 69, 0.08)' : 'transparent',
+                      bgcolor: isSelected ? 'rgba(3, 77, 50, 0.08)' : 'transparent',
                       color: isSelected ? 'primary.dark' : 'text.primary',
                       '&:hover': {
-                        bgcolor: isSelected ? 'rgba(3, 110, 69, 0.14)' : '#f8fafc',
+                        bgcolor: isSelected ? 'rgba(3, 77, 50, 0.14)' : '#f8fafc',
                       },
                     }}
                   >
@@ -1219,8 +1219,8 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
           sx={{
             borderRadius: immersive ? 0 : 3,
             position: 'relative',
-            border: isDragging ? '2px dashed #047857' : immersive ? 'none' : '1px solid transparent',
-            bgcolor: isDragging ? 'rgba(4, 120, 87, 0.04)' : immersive ? 'transparent' : 'inherit',
+            border: isDragging ? '2px dashed #036E45' : immersive ? 'none' : '1px solid transparent',
+            bgcolor: isDragging ? 'rgba(3, 110, 69, 0.04)' : immersive ? 'transparent' : 'inherit',
             transition: 'all 0.2s',
             // Immersive: tinggi kamera eksplisit (100dvh - header 56 - bottom bar 104)
             // agar viewfinder full-bleed KHAS KAMERA HP — tanpa bergantung rantai flex
@@ -1243,14 +1243,14 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
                 justifyContent: 'center',
                 pointerEvents: 'none',
                 borderRadius: 3,
-                border: '3px dashed #047857',
+                border: '3px dashed #036E45',
               }}
             >
-              <CloudUploadRoundedIcon sx={{ fontSize: 64, color: '#047857', mb: 1.5 }} />
-              <Typography variant="h6" fontWeight={800} color="#047857">
+              <CloudUploadRoundedIcon sx={{ fontSize: 64, color: '#036E45', mb: 1.5 }} />
+              <Typography variant="h6" fontWeight={800} color="#036E45">
                 Lepaskan Berkas Foto di Sini
               </Typography>
-              <Typography variant="body2" color="#065f46">
+              <Typography variant="body2" color="#025736">
                 Foto keranjang {selectedCommodity} akan segera disiapkan untuk dianalisis
               </Typography>
             </Box>
@@ -1417,7 +1417,7 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
                   /* 2. KONDISI MODE SUDUT TUNGGAL */
                   <Box sx={immersive ? { flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 } : undefined}>
                     {imagePreview ? (
-                      <Box sx={{ position: 'relative', borderRadius: 2, overflow: 'hidden', bgcolor: '#0f172a', textAlign: 'center' }}>
+                      <Box sx={{ position: 'relative', borderRadius: 2, overflow: 'hidden', bgcolor: '#17191C', textAlign: 'center' }}>
                         <Box
                           component="img"
                           src={imagePreview}
@@ -1548,7 +1548,7 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
                           </Stack>
 
                           {imagePreviewFront ? (
-                            <Box sx={{ position: 'relative', borderRadius: 2, overflow: 'hidden', bgcolor: '#0f172a', textAlign: 'center', mb: 1 }}>
+                            <Box sx={{ position: 'relative', borderRadius: 2, overflow: 'hidden', bgcolor: '#17191C', textAlign: 'center', mb: 1 }}>
                               <Box
                                 component="img"
                                 src={imagePreviewFront}
@@ -1609,7 +1609,7 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
                           </Stack>
 
                           {imagePreviewBack ? (
-                            <Box sx={{ position: 'relative', borderRadius: 2, overflow: 'hidden', bgcolor: '#0f172a', textAlign: 'center', mb: 1 }}>
+                            <Box sx={{ position: 'relative', borderRadius: 2, overflow: 'hidden', bgcolor: '#17191C', textAlign: 'center', mb: 1 }}>
                               <Box
                                 component="img"
                                 src={imagePreviewBack}
@@ -1698,7 +1698,7 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
                     />
 
                     {imagePreview ? (
-                      <Box sx={{ position: 'relative', borderRadius: 2, overflow: 'hidden', bgcolor: '#0f172a', textAlign: 'center' }}>
+                      <Box sx={{ position: 'relative', borderRadius: 2, overflow: 'hidden', bgcolor: '#17191C', textAlign: 'center' }}>
                         <Box
                           component="img"
                           src={imagePreview}
@@ -1753,12 +1753,12 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
                         onDrop={handleDrop}
                         sx={{
                           border: '2px dashed',
-                          borderColor: isDragging ? 'primary.main' : '#94a3b8',
+                          borderColor: isDragging ? 'primary.main' : '#9DA6A0',
                           borderRadius: 2.5,
                           p: { xs: 3, sm: 5 },
                           textAlign: 'center',
                           cursor: 'pointer',
-                          bgcolor: isDragging ? 'rgba(3, 110, 69, 0.08)' : '#f8fafc',
+                          bgcolor: isDragging ? 'rgba(3, 77, 50, 0.08)' : '#f8fafc',
                           '&:hover': { bgcolor: '#f1f5f9', borderColor: 'primary.main' },
                           transition: 'all 0.2s',
                           // Immersive: dropzone mengisi sisa layar (sejajar kamera)
@@ -1811,7 +1811,7 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
                   overflowY: 'auto',
                   zIndex: 1200,
                   p: 2,
-                  bgcolor: 'rgba(15, 23, 42, 0.94)',
+                  bgcolor: 'rgba(23, 25, 28, 0.94)',
                   backdropFilter: 'blur(10px)',
                   borderRadius: '16px 16px 0 0',
                   border: '1px solid rgba(255, 255, 255, 0.12)',
@@ -2252,11 +2252,11 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
                 // 2 KELAS TOMAT (Legacy Fallback)
                 <Grid container spacing={2}>
                   <Grid size={{ xs: 6, sm: 6 }}>
-                    <Box sx={{ p: 2, borderRadius: 2, bgcolor: 'rgba(4, 120, 87, 0.08)', border: '1px solid #047857' }}>
-                      <Typography variant="caption" fontWeight={700} color="#047857">
+                    <Box sx={{ p: 2, borderRadius: 2, bgcolor: 'rgba(3, 110, 69, 0.08)', border: '1px solid #036E45' }}>
+                      <Typography variant="caption" fontWeight={700} color="#036E45">
                         Tomat Segar
                       </Typography>
-                      <Typography variant="h5" fontWeight={800} color="#047857">
+                      <Typography variant="h5" fontWeight={800} color="#036E45">
                         {counts.fresh_tomato || 0} <Typography component="span" variant="caption">butir</Typography>
                       </Typography>
                       <Typography variant="caption" color="text.secondary">
@@ -2378,7 +2378,7 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
               }}
             />
           )}
-          <CircularProgress size={40} sx={{ color: '#4ade80' }} />
+          <CircularProgress size={40} sx={{ color: '#289D67' }} />
           <Typography sx={{ color: '#e2e8f0', fontWeight: 700, textAlign: 'center' }}>
             Menganalisis foto dengan model YOLO11 {selectedCommodity}…
           </Typography>
@@ -2412,7 +2412,7 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
             }}
           >
             <Typography sx={{ color: '#e2e8f0', fontWeight: 800 }}>Komoditas yang discan?</Typography>
-            <Typography variant="caption" sx={{ color: '#94a3b8' }}>
+            <Typography variant="caption" sx={{ color: '#9DA6A0' }}>
               Konfirmasi sebelum foto dikirim ke model AI
             </Typography>
             {pendingCapture.previewUrl && (
@@ -2449,7 +2449,7 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
                 )
               })}
             </Stack>
-            <Button fullWidth color="inherit" onClick={cancelPendingCapture} sx={{ mt: 1, color: '#94a3b8' }}>
+            <Button fullWidth color="inherit" onClick={cancelPendingCapture} sx={{ mt: 1, color: '#9DA6A0' }}>
               Batalkan & Ambil Ulang
             </Button>
           </Box>
@@ -2469,7 +2469,7 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
             px: 2.5,
             pt: 1.5,
             pb: 'calc(10px + env(safe-area-inset-bottom))',
-            bgcolor: 'rgba(15, 23, 42, 0.94)',
+            bgcolor: 'rgba(23, 25, 28, 0.94)',
             backdropFilter: 'blur(10px)',
             borderTop: '1px solid rgba(255, 255, 255, 0.08)',
             display: 'flex',
@@ -2515,7 +2515,7 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
               color: '#fff',
               opacity: scanResult ? 1 : 0.45,
               '& .caption-label': { fontSize: '0.6875rem', fontWeight: 700, mt: 0.25 },
-              '&.Mui-disabled': { color: '#94a3b8' },
+              '&.Mui-disabled': { color: '#9DA6A0' },
             }}
           >
             {barThumbSrc ? (
@@ -2529,7 +2529,7 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
                   objectFit: 'cover',
                   borderRadius: 1.5,
                   border: '1px solid rgba(255, 255, 255, 0.25)',
-                  bgcolor: '#1e293b',
+                  bgcolor: '#1F2422',
                 }}
               />
             ) : (
@@ -2539,13 +2539,13 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
                   height: 40,
                   borderRadius: 1.5,
                   border: '1px dashed rgba(255, 255, 255, 0.25)',
-                  bgcolor: '#1e293b',
+                  bgcolor: '#1F2422',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                 }}
               >
-                <CameraAltRoundedIcon sx={{ fontSize: 20, color: '#475569' }} />
+                <CameraAltRoundedIcon sx={{ fontSize: 20, color: '#68736D' }} />
               </Box>
             )}
             <Typography className="caption-label" component="span">
@@ -2566,8 +2566,8 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
               '&:hover': { bgcolor: 'rgba(255, 255, 255, 0.2)' },
               // Gaya disabled pakai kondisi langsung — lebih tahan banting lintas browser
               // daripada hanya mengandalkan selector &.Mui-disabled
-              ...(activeTab !== 0 || isScanning ? { color: '#64748b', bgcolor: 'rgba(255, 255, 255, 0.05)' } : {}),
-              '&.Mui-disabled': { color: '#64748b' },
+              ...(activeTab !== 0 || isScanning ? { color: '#8C9690', bgcolor: 'rgba(255, 255, 255, 0.05)' } : {}),
+              '&.Mui-disabled': { color: '#8C9690' },
             }}
           >
             <FlipCameraIosRoundedIcon />
@@ -2591,16 +2591,16 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
               width: 72,
               height: 72,
               borderRadius: '50%',
-              bgcolor: '#047857',
+              bgcolor: '#036E45',
               color: '#fff',
-              boxShadow: '0 8px 24px rgba(3, 110, 69, 0.45)',
-              '&:hover': { bgcolor: '#065f46' },
+              boxShadow: '0 8px 24px rgba(3, 77, 50, 0.45)',
+              '&:hover': { bgcolor: '#025736' },
               // Gaya disabled kondisional langsung (bug: di beberapa perangkat
               // selector &.Mui-disabled kalah sehingga shutter tetap hijau di tab Unggah)
               ...((activeTab !== 0 || isScanning)
-                ? { bgcolor: '#1e293b', color: '#475569', boxShadow: 'none' }
+                ? { bgcolor: '#1F2422', color: '#68736D', boxShadow: 'none' }
                 : {}),
-              '&.Mui-disabled': { bgcolor: '#1e293b', color: '#475569' },
+              '&.Mui-disabled': { bgcolor: '#1F2422', color: '#68736D' },
               border: '3px solid rgba(255, 255, 255, 0.35)',
             }}
           >
@@ -2627,8 +2627,8 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
               color: '#fff',
               bgcolor: 'rgba(255, 255, 255, 0.10)',
               '&:hover': { bgcolor: 'rgba(255, 255, 255, 0.2)' },
-              '&.Mui-disabled': { color: '#64748b' },
-              ...((activeTab !== 0 || isScanning) ? { color: '#64748b', bgcolor: 'rgba(255, 255, 255, 0.05)' } : {}),
+              '&.Mui-disabled': { color: '#8C9690' },
+              ...((activeTab !== 0 || isScanning) ? { color: '#8C9690', bgcolor: 'rgba(255, 255, 255, 0.05)' } : {}),
             }}
           >
             <RotateRightRoundedIcon />
@@ -2667,8 +2667,8 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
                       fontSize: '0.8125rem',
                       fontWeight: 800,
                       letterSpacing: 0.2,
-                      color: active ? '#052e16' : 'rgba(226, 232, 240, 0.85)',
-                      bgcolor: active ? '#4ade80' : 'rgba(255, 255, 255, 0.14)',
+                      color: active ? '#034D32' : 'rgba(226, 232, 240, 0.85)',
+                      bgcolor: active ? '#E3F3EA' : 'rgba(255, 255, 255, 0.14)',
                       transition: 'background-color 0.15s',
                     }}
                   >

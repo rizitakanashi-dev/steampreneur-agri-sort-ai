@@ -483,7 +483,7 @@ export const LiveCameraViewfinder = forwardRef(function LiveCameraViewfinder({ o
       sx={{
         borderRadius: isImmersive ? 0 : 2.5,
         overflow: 'hidden',
-        bgcolor: '#0f172a',
+        bgcolor: '#17191C',
         position: 'relative',
         minHeight: isImmersive ? 'calc(100dvh - 140px - env(safe-area-inset-top) - env(safe-area-inset-bottom))' : { xs: 260, sm: 360 },
         flex: isImmersive ? 1 : undefined,
@@ -509,16 +509,16 @@ export const LiveCameraViewfinder = forwardRef(function LiveCameraViewfinder({ o
             px: 1.25,
             py: 0.5,
             borderRadius: 2,
-            bgcolor: 'rgba(15, 23, 42, 0.78)',
-            color: '#fbbf24',
+            bgcolor: 'rgba(23, 25, 28, 0.78)',
+            color: '#C68F2F',
             display: 'flex',
             alignItems: 'center',
             gap: 0.75,
-            border: '1px solid rgba(251, 191, 36, 0.4)',
+            border: '1px solid rgba(198, 143, 47, 0.4)',
           }}
         >
           {qualityStatus === 'dark' ? <LightModeRoundedIcon sx={{ fontSize: 17 }} /> : <BlurOnRoundedIcon sx={{ fontSize: 17 }} />}
-          <Typography sx={{ fontSize: '0.75rem', fontWeight: 700, color: '#fbbf24' }}>
+          <Typography sx={{ fontSize: '0.75rem', fontWeight: 700, color: '#C68F2F' }}>
             {qualityStatus === 'dark' ? 'Cahaya rendah — tambah penerangan' : 'Citra blur — tahan kamera lebih stabil'}
           </Typography>
         </Box>
@@ -701,9 +701,9 @@ export const LiveCameraViewfinder = forwardRef(function LiveCameraViewfinder({ o
               py: 1.25,
               fontWeight: 800,
               fontSize: '1rem',
-              boxShadow: '0 8px 24px rgba(3, 110, 69, 0.4)',
-              bgcolor: '#047857',
-              '&:hover': { bgcolor: '#065f46' },
+              boxShadow: '0 8px 24px rgba(3, 77, 50, 0.4)',
+              bgcolor: '#036E45',
+              '&:hover': { bgcolor: '#025736' },
             }}
           >
             {isCapturing ? 'Memproses...' : 'Ambil Foto & Scan'}

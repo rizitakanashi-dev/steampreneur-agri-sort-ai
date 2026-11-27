@@ -530,7 +530,7 @@ function App() {
       const previousOverflow = document.body.style.overflow
       const previousBg = document.body.style.backgroundColor
       document.body.style.overflow = 'hidden'
-      document.body.style.backgroundColor = '#0f172a'
+      document.body.style.backgroundColor = '#17191C'
       return () => {
         document.body.style.overflow = previousOverflow
         document.body.style.backgroundColor = previousBg
