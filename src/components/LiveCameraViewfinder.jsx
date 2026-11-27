@@ -57,6 +57,13 @@ export const LiveCameraViewfinder = forwardRef(function LiveCameraViewfinder({ o
   // Torch (lampu kilat) — dideteksi via track capabilities
   const [torchSupported, setTorchSupported] = useState(false)
   const [torchOn, setTorchOn] = useState(false)
+  // Cermin torchOn agar jalur pembersihan (stopStream/unmount) bisa membaca
+  // kondisi fisik lampu tanpa bergantung pada render
+  const torchOnRef = useRef(false)
+
+  useEffect(() => {
+    torchOnRef.current = torchOn
+  }, [torchOn])
   // Issue #30 fase 5: kualitas citra real-time + auto-detect saat scene stabil
   const [qualityStatus, setQualityStatus] = useState(null) // null | 'dark' | 'blur'
   // Orientasi native-like: dimensi frame stream + orientasi viewport
@@ -86,6 +93,21 @@ export const LiveCameraViewfinder = forwardRef(function LiveCameraViewfinder({ o
 
     const stream = streamRef.current
     streamRef.current = null
+
+    // 0. Fallback terbaik: padamkan torch bila masih menyala (fire-and-forget).
+    // Sebagian Android Chrome membiarkan lampu kilat menyala jika track
+    // berhenti dengan torch masih aktif.
+    if (stream && torchOnRef.current) {
+      torchOnRef.current = false
+      try {
+        stream
+          .getVideoTracks?.()[0]
+          ?.applyConstraints?.({ advanced: [{ torch: false }] })
+          ?.catch(() => {})
+      } catch {
+        /* abaikan */
+      }
+    }
 
     // 1. Ambil stream dari video element jika ada
     let videoStream = null
@@ -124,8 +146,23 @@ export const LiveCameraViewfinder = forwardRef(function LiveCameraViewfinder({ o
     }
   }
 
-  const startCamera = async (targetFacing = facingMode) => {
+  /** Matikan torch secara fisik sebelum track dihentikan — menunggu
+   * applyConstraints selesai agar lampu benar-benar padam di semua perangkat */
+  const shutdownStream = async () => {
+    const stream = streamRef.current
+    if (stream && torchOnRef.current) {
+      torchOnRef.current = false
+      try {
+        await stream.getVideoTracks?.()[0]?.applyConstraints?.({ advanced: [{ torch: false }] })
+      } catch {
+        /* abaikan — stopStream tetap dijalankan */
+      }
+    }
     stopStream()
+  }
+
+  const startCamera = async (targetFacing = facingMode) => {
+    await shutdownStream()
     const currentSession = ++sessionRef.current
 
     if (isMountedRef.current) {
@@ -225,14 +262,14 @@ export const LiveCameraViewfinder = forwardRef(function LiveCameraViewfinder({ o
 
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'hidden') {
-        stopStream()
+        shutdownStream()
       } else if (document.visibilityState === 'visible' && isMountedRef.current) {
         startCamera(facingMode)
       }
     }
 
     const handlePageHide = () => {
-      stopStream()
+      shutdownStream()
     }
 
     document.addEventListener('visibilitychange', handleVisibilityChange)
@@ -244,7 +281,7 @@ export const LiveCameraViewfinder = forwardRef(function LiveCameraViewfinder({ o
       document.removeEventListener('visibilitychange', handleVisibilityChange)
       window.removeEventListener('pagehide', handlePageHide)
       window.removeEventListener('beforeunload', handlePageHide)
-      stopStream()
+      shutdownStream()
     }
   }, [facingMode])
 
@@ -260,6 +297,7 @@ export const LiveCameraViewfinder = forwardRef(function LiveCameraViewfinder({ o
       capture: handleCapturePhoto,
       flip: toggleFacingMode,
       toggleTorch,
+      disableTorch,
       rotateView: handleRotateView,
     }),
     [cameraState, isCapturing, disabled, facingMode, torchSupported, torchOn]
@@ -279,6 +317,21 @@ export const LiveCameraViewfinder = forwardRef(function LiveCameraViewfinder({ o
     } catch (err) {
       console.error('Gagal mengatur lampu kilat (torch):', err)
     }
+  }
+
+  /** Padamkan torch tanpa mematikan kamera — dipanggil parent saat keluar
+   * mode kamera layar penuh agar lampu tidak menyala terus di kartu dashboard */
+  const disableTorch = async () => {
+    const track = streamRef.current?.getVideoTracks?.()[0]
+    if (!track || !torchOnRef.current) return
+    try {
+      await track.applyConstraints({ advanced: [{ torch: false }] })
+    } catch (err) {
+      console.error('Gagal memadamkan lampu kilat:', err)
+    }
+    torchOnRef.current = false
+    setTorchOn(false)
+    onTorchStateChange?.({ supported: torchSupported, on: false })
   }
 
   /** Toggle Auto-Detect bila dipanggil dari luar (tidak wajib) */

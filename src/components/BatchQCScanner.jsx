@@ -112,6 +112,13 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
   const viewfinderRef = useRef(null)
   const resultSectionRef = useRef(null)
 
+  // Lampu kilat padam otomatis saat keluar mode kamera layar penuh.
+  // Kamera sengaja tetap hidup di kartu dashboard, tetapi torch jangan ikut
+  // menyala terus di belakang.
+  useEffect(() => {
+    if (!immersive) viewfinderRef.current?.disableTorch?.()
+  }, [immersive])
+
   // Setelah scan selesai di mode immersive, hasil muncul sebagai bottom sheet
   // (Paket 3: lembar hasil di atas kamera — native, kamera tetap hidup di belakang)
   const [resultSheetOpen, setResultSheetOpen] = useState(false)
