@@ -8,4 +8,6 @@ numpy>=1.26.0
 onnxruntime>=1.19.0
 ultralytics>=8.3.0
 opencv-python-headless>=4.8.0
+# Klien HTTP server-side untuk adapter provider harga (isu #40/#42) — pin eksplisit
+httpx==0.28.1
 

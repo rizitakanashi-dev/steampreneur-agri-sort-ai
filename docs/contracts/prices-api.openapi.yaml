@@ -151,7 +151,7 @@ components:
       name: commodity
       in: query
       required: true
-      schema: { type: string, examples: [cabai-rawit-hijau] }
+      schema: { type: string, examples: [cabai_rawit_hijau] }
       description: ID komoditas kanonik katalog Agri-Sort.
     PriceType:
       name: price_type
@@ -391,6 +391,7 @@ components:
       type: string
       enum:
         - SOURCE_DOES_NOT_PUBLISH_COMMODITY
+        - SOURCE_ACCESS_UNCONFIRMED
         - STALE_OBSERVATION
         - UNIT_NOT_NORMALIZABLE
       description: Daftar kode extensible (x-extensible) — frontend harus menoleransi kode baru.
@@ -564,7 +565,7 @@ components:
       summary: data_status=actual
       value:
         data:
-          commodity: { id: cabai-rawit-hijau, name: 'Cabai Rawit Hijau', raw_label: 'C Rawit Hijau' }
+          commodity: { id: cabai_rawit_hijau, name: 'Cabai Rawit Hijau', raw_label: 'C Rawit Hijau' }
           region: { level: kabupaten, code: '1375', name: 'Kota Payakumbuh', parent: { level: provinsi, code: '13', name: 'Sumatera Barat' } }
           price_type: consumer
           currency: IDR
@@ -608,7 +609,7 @@ components:
       summary: data_status=cached
       value:
         data:
-          commodity: { id: cabai-rawit-hijau, name: 'Cabai Rawit Hijau', raw_label: 'C Rawit Hijau' }
+          commodity: { id: cabai_rawit_hijau, name: 'Cabai Rawit Hijau', raw_label: 'C Rawit Hijau' }
           region: { level: kabupaten, code: '1375', name: 'Kota Payakumbuh', parent: null }
           price_type: consumer
           currency: IDR

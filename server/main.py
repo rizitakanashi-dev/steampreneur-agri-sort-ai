@@ -53,9 +53,11 @@ from server.routers.history import router as history_router
 from server.routers.auth import router as auth_router
 from server.routers.organizations import router as organizations_router
 from server.routers.account import router as account_router
+from server.routers.prices import router as prices_router
 
 app.include_router(qc_router)
 app.include_router(pricing_router)
+app.include_router(prices_router)
 app.include_router(history_router)
 app.include_router(auth_router)
 app.include_router(organizations_router)
