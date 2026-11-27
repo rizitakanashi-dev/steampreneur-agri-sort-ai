@@ -39,6 +39,10 @@ import { calculateRevenueProjection, calculateWeightedPricePerKg } from '../busi
 import { calculateFarmerProfitability } from '../business/farmerFinance.js'
 import { COMMODITY_OPTIONS, PRICE_HISTORY, PRICE_REFERENCE_SOURCE, REFERENCE_PRICES_PER_KG, getReferencePricePerKg } from '../business/priceReference.js'
 import { PriceTrendChart } from './PriceTrendChart.jsx'
+import { PRICE_DATA_MODE, commodityNameToId } from '../services/priceApi.js'
+import { LivePricePanel } from './pricing/LivePricePanel.jsx'
+import ScienceRoundedIcon from '@mui/icons-material/ScienceRounded'
+import IntegrationInstructionsRoundedIcon from '@mui/icons-material/IntegrationInstructionsRounded'
 import {
   fetchSp2kpLive,
   syncSp2kpPrices,
@@ -75,6 +79,9 @@ function normalizeToBapanasKey(name) {
 export function PricingDashboard({ canSyncPrices = false }) {
   const theme = useTheme()
   const isCompactLayout = useMediaQuery(theme.breakpoints.down('sm'))
+  // Mode data PUBLIK (isu #44): live | demo | off — default off sampai API tersedia.
+  const priceDataMode = PRICE_DATA_MODE
+  const [liveObservation, setLiveObservation] = useState(null)
   const [commodity, setCommodity] = useState(COMMODITY_OPTIONS[0])
   const [volumeKg, setVolumeKg] = useState('500')
   const [persenA, setPersenA] = useState('72')
@@ -98,6 +105,9 @@ export function PricingDashboard({ canSyncPrices = false }) {
   const [syncStatusMsg, setSyncStatusMsg] = useState('')
 
   useEffect(() => {
+    // Mode LIVE membaca HANYA kontrak /api/v1/prices/* (panel terpisah) —
+    // endpoint statis lama tidak dipanggil sama sekali (#44).
+    if (priceDataMode === 'live') return undefined
     let isMounted = true
     async function loadFeeds() {
       try {
@@ -124,6 +134,7 @@ export function PricingDashboard({ canSyncPrices = false }) {
   }, [])
 
   const handleSyncPrices = async () => {
+    if (priceDataMode === 'live') return // sinkron legacy tidak berlaku di mode live
     setIsSyncing(true)
     setSyncStatusMsg('')
     try {
@@ -253,8 +264,237 @@ export function PricingDashboard({ canSyncPrices = false }) {
     }
   }, [bppInput, targetMargin])
 
+  // Grid proyeksi dipakai bersama mode demo & live (isu #44)
+  const projectionGrid = (
+        <Grid container spacing={3}>
+          <Grid size={{ xs: 12, md: 5 }}>
+            <Card sx={{ height: '100%' }}>
+              <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
+                <Typography gutterBottom variant="h6">Form proyeksi panen</Typography>
+                <Stack spacing={2.25} sx={{ mt: 1 }}>
+                  <FormControl fullWidth size="small">
+                    <Typography color="text.secondary" sx={{ mb: 0.75 }} variant="body2">Komoditas</Typography>
+                    <Select onChange={(event) => setCommodity(event.target.value)} value={commodity}>
+                      {COMMODITY_OPTIONS.map((option) => <MenuItem key={option} value={option}>{option}</MenuItem>)}
+                    </Select>
+                  </FormControl>
+                  <TextField
+                    fullWidth
+                    helperText={`Harga acuan: ${formatRupiah(referencePrice)} / kg${
+                      priceDataMode === 'live'
+                        ? liveObservation?.price_value != null
+                          ? ' (kontrak live)'
+                          : ' (acuan lokal demo — kontrak tidak tersedia)'
+                        : ' (acuan lokal demo)'
+                    }`}
+                    slotProps={{ input: { endAdornment: <InputAdornment position="end">kg</InputAdornment> } }}
+                    inputMode="decimal"
+                    label="Volume panen"
+                    onChange={(event) => setVolumeKg(event.target.value)}
+                    size="small"
+                    value={volumeKg}
+                  />
+                  <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}>
+                    <TextField
+                      fullWidth
+                      slotProps={{ input: { endAdornment: <InputAdornment position="end">%</InputAdornment> } }}
+                      inputMode="decimal"
+                      label="Grade A"
+                      onChange={(event) => setPersenA(event.target.value)}
+                      size="small"
+                      value={persenA}
+                    />
+                    <TextField
+                      fullWidth
+                      slotProps={{ input: { endAdornment: <InputAdornment position="end">%</InputAdornment> } }}
+                      inputMode="decimal"
+                      label="Grade B"
+                      onChange={(event) => setPersenB(event.target.value)}
+                      size="small"
+                      value={persenB}
+                    />
+                  </Stack>
+                  <TextField
+                    fullWidth
+                    disabled
+                    helperText="Reject = 100% - Grade A - Grade B"
+                    slotProps={{ input: { endAdornment: <InputAdornment position="end">%</InputAdornment> } }}
+                    label="Reject"
+                    size="small"
+                    value={projection ? formatNumber(projection.persentase.reject) : '-'}
+                  />
+                  <FormControlLabel
+                    control={<Switch checked={includeReject} onChange={(event) => setIncludeReject(event.target.checked)} />}
+                    label={<Typography variant="body2">Hitung Reject sebagai pendapatan (nilai olahan)</Typography>}
+                  />
+                  <Button disabled endIcon={<CalculateRoundedIcon />} fullWidth variant="outlined">Proyeksi dihitung otomatis</Button>
+                </Stack>
+              </CardContent>
+            </Card>
+          </Grid>
+
+          <Grid size={{ xs: 12, md: 7 }}>
+            <Stack spacing={3}>
+              <Card>
+                <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
+                  <Typography gutterBottom variant="h6">Ringkasan proyeksi pendapatan</Typography>
+                  {validationError && <Alert severity="error" sx={{ mb: 2 }}>{validationError}</Alert>}
+                  {projection ? (
+                    <Stack spacing={2}>
+                      <Box>
+                        <Typography color="text.secondary" variant="body2">Estimasi nilai jual (Grade A + Grade B)</Typography>
+                        <Typography color="primary.dark" variant="h5">{formatRupiah(projection.totalNilaiJual)}</Typography>
+                        <Typography color="text.secondary" variant="caption">
+                          Harga rata-rata tertimbang: {formatRupiah(weightedPrice)} / kg
+                        </Typography>
+                      </Box>
+                      {isCompactLayout ? (
+                        /* Mobile: rincian grade bertumpuk, tanpa scroll horizontal */
+                        <Stack spacing={1.25}>
+                          {[
+                            { key: 'gradeA', color: 'success', label: 'Grade A', persen: projection.persentase.gradeA, berat: projection.beratKg.gradeA, nilai: formatRupiah(projection.nilai.gradeA) },
+                            { key: 'gradeB', color: 'warning', label: 'Grade B', persen: projection.persentase.gradeB, berat: projection.beratKg.gradeB, nilai: formatRupiah(projection.nilai.gradeB) },
+                            { key: 'reject', color: 'error', label: 'Reject', persen: projection.persentase.reject, berat: projection.beratKg.reject, nilai: includeReject ? formatRupiah(projection.nilai.reject) : 'Tidak dihitung' },
+                          ].map((grade) => (
+                            <Stack
+                              key={grade.key}
+                              direction="row"
+                              spacing={1.5}
+                              sx={{alignItems: 'center', justifyContent: 'space-between',  borderBottom: '1px solid', borderColor: 'divider', pb: 1 }}
+                            >
+                              <Chip color={grade.color} label={grade.label} size="small" />
+                              <Box sx={{ textAlign: 'right' }}>
+                                <Typography variant="body2">{formatNumber(grade.persen)}% • {formatNumber(grade.berat)} kg</Typography>
+                                <Typography color="primary.dark" fontWeight={700} variant="body2">{grade.nilai}</Typography>
+                              </Box>
+                            </Stack>
+                          ))}
+                          <Stack
+                            direction="row"
+                            spacing={1.5}
+                            sx={{alignItems: 'center', justifyContent: 'space-between',  bgcolor: '#f7f9fa', borderRadius: 1.5, px: 1.5, py: 1 }}
+                          >
+                            <Typography fontWeight={700} variant="body2">Total volume</Typography>
+                            <Typography fontWeight={700} variant="body2">
+                              {formatNumber(projection.volumeKg)} kg • {formatRupiah(projection.totalNilai)}
+                            </Typography>
+                          </Stack>
+                        </Stack>
+                      ) : (
+                      <TableContainer sx={{ overflowX: 'auto' }}>
+                        <Table size="small" sx={{ minWidth: 480 }}>
+                          <TableHead>
+                            <TableRow sx={{ bgcolor: '#f2f4f6' }}>
+                              <TableCell>Grade</TableCell>
+                              <TableCell align="right">Persentase</TableCell>
+                              <TableCell align="right">Berat</TableCell>
+                              <TableCell align="right">Nilai</TableCell>
+                            </TableRow>
+                          </TableHead>
+                          <TableBody>
+                            <TableRow>
+                              <TableCell><Chip color="success" label="Grade A" size="small" /></TableCell>
+                              <TableCell align="right">{formatNumber(projection.persentase.gradeA)}%</TableCell>
+                              <TableCell align="right">{formatNumber(projection.beratKg.gradeA)} kg</TableCell>
+                              <TableCell align="right">{formatRupiah(projection.nilai.gradeA)}</TableCell>
+                            </TableRow>
+                            <TableRow>
+                              <TableCell><Chip color="warning" label="Grade B" size="small" /></TableCell>
+                              <TableCell align="right">{formatNumber(projection.persentase.gradeB)}%</TableCell>
+                              <TableCell align="right">{formatNumber(projection.beratKg.gradeB)} kg</TableCell>
+                              <TableCell align="right">{formatRupiah(projection.nilai.gradeB)}</TableCell>
+                            </TableRow>
+                            <TableRow>
+                              <TableCell><Chip color="error" label="Reject" size="small" /></TableCell>
+                              <TableCell align="right">{formatNumber(projection.persentase.reject)}%</TableCell>
+                              <TableCell align="right">{formatNumber(projection.beratKg.reject)} kg</TableCell>
+                              <TableCell align="right">{includeReject ? formatRupiah(projection.nilai.reject) : 'Tidak dihitung'}</TableCell>
+                            </TableRow>
+                            <TableRow sx={{ bgcolor: '#f7f9fa' }}>
+                              <TableCell colSpan={2}><Typography fontWeight={700} variant="body2">Total volume</Typography></TableCell>
+                              <TableCell align="right"><Typography fontWeight={700} variant="body2">{formatNumber(projection.volumeKg)} kg</Typography></TableCell>
+                              <TableCell align="right"><Typography fontWeight={700} variant="body2">{formatRupiah(projection.totalNilai)}</Typography></TableCell>
+                            </TableRow>
+                          </TableBody>
+                        </Table>
+                      </TableContainer>
+                      )}
+                    </Stack>
+                  ) : (
+                    <Typography color="text.secondary" variant="body2">
+                      Lengkapi form volume panen dan persentase grade untuk melihat proyeksi.
+                    </Typography>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* KARTU FINANSIAL PETANI: HPP, BEP, DAN LABA BERSIH (STEAM MATH & ENTREPRENEURSHIP) */}
+              <FarmerFinanceCard
+                error={error}
+                farmerFinance={farmerFinance}
+                bppInput={bppInput}
+                onBppChange={(e) => setBppInput(e.target.value)}
+                onTargetMarginChange={(e) => setTargetMargin(e.target.value)}
+                targetMargin={targetMargin}
+                targetPriceRec={targetPriceRec}
+              />
+            </Stack>
+          </Grid>
+        </Grid>
+
+  )
+
+  if (priceDataMode === 'off') {
+    return (
+      <Stack spacing={3}>
+        <Alert severity="info" icon={<IntegrationInstructionsRoundedIcon />} sx={{ borderRadius: 2 }}>
+          <Typography fontWeight={700} variant="body2">Integrasi harga pemerintah belum diaktifkan.</Typography>
+          <Typography variant="body2">
+            Mode integrasi (kontrak /api/v1/prices/*) belum tersedia — akses sumber resmi masih dalam proses.
+            Kalkulator di bawah memakai acuan lokal statis berlabel demo, bukan harga live.
+          </Typography>
+        </Alert>
+        {projectionGrid}
+      </Stack>
+    )
+  }
+
+  if (priceDataMode === 'live') {
+    return (
+      <Stack spacing={3}>
+        <Alert severity="success" icon={<VerifiedRoundedIcon />} sx={{ borderRadius: 2 }}>
+          <Typography fontWeight={700} variant="body2">Mode data LIVE — kontrak /api/v1/prices/* (isu #41).</Typography>
+          <Typography variant="body2">Sumber statis demo disembunyikan; tidak ada fallback nilai lokal. Proyeksi memakai harga kontrak bila tersedia.</Typography>
+        </Alert>
+        <Card elevation={0} sx={{ borderRadius: 2.5, border: '1px solid', borderColor: 'divider' }}>
+          <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
+            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} sx={{ justifyContent: 'space-between', alignItems: { xs: 'flex-start', sm: 'center' }, mb: 2 }}>
+              <Box>
+                <Typography fontWeight={800} variant="subtitle2">Sumber Data Acuan Harga Pasar</Typography>
+                <Typography color="text.secondary" variant="caption">Kontrak harga resmi — Kabupaten 1375 (Pasar Ibuh Payakumbuh)</Typography>
+              </Box>
+              <FormControl size="small" sx={{ minWidth: 220 }}>
+                <Select onChange={(event) => { setCommodity(event.target.value); setLiveObservation(null) }} value={commodity}>
+                  {COMMODITY_OPTIONS.map((option) => <MenuItem key={option} value={option}>{option}</MenuItem>)}
+                </Select>
+              </FormControl>
+            </Stack>
+            <LivePricePanel commodityName={commodity} onObservation={setLiveObservation} />
+          </CardContent>
+        </Card>
+        {projectionGrid}
+      </Stack>
+    )
+  }
+
   return (
     <Stack spacing={3}>
+      {priceDataMode === 'demo' && (
+        <Alert severity="warning" icon={<ScienceRoundedIcon />} sx={{ borderRadius: 2 }}>
+          <Typography fontWeight={700} variant="body2">MODE DEMO — seluruh angka harga di halaman ini adalah acuan lokal statis.</Typography>
+          <Typography variant="body2">Bukan harga live dan bukan data resmi lembaga; tidak diperbarui otomatis.</Typography>
+        </Alert>
+      )}
       {/* 1. Bar Pemilih Lembaga Resmi Negara & Tombol Triangulasi */}
       <Card elevation={0} sx={{ borderRadius: 2.5, border: '1px solid', borderColor: 'divider', bgcolor: '#f8fafc' }}>
         <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
@@ -625,175 +865,7 @@ export function PricingDashboard({ canSyncPrices = false }) {
         </Grid>
       </Grid>
 
-      <Grid container spacing={3}>
-        <Grid size={{ xs: 12, md: 5 }}>
-          <Card sx={{ height: '100%' }}>
-            <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
-              <Typography gutterBottom variant="h6">Form proyeksi panen</Typography>
-              <Stack spacing={2.25} sx={{ mt: 1 }}>
-                <FormControl fullWidth size="small">
-                  <Typography color="text.secondary" sx={{ mb: 0.75 }} variant="body2">Komoditas</Typography>
-                  <Select onChange={(event) => setCommodity(event.target.value)} value={commodity}>
-                    {COMMODITY_OPTIONS.map((option) => <MenuItem key={option} value={option}>{option}</MenuItem>)}
-                  </Select>
-                </FormControl>
-                <TextField
-                  fullWidth
-                  helperText={`Harga acuan: ${formatRupiah(referencePrice)} / kg`}
-                  slotProps={{ input: { endAdornment: <InputAdornment position="end">kg</InputAdornment> } }}
-                  inputMode="decimal"
-                  label="Volume panen"
-                  onChange={(event) => setVolumeKg(event.target.value)}
-                  size="small"
-                  value={volumeKg}
-                />
-                <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}>
-                  <TextField
-                    fullWidth
-                    slotProps={{ input: { endAdornment: <InputAdornment position="end">%</InputAdornment> } }}
-                    inputMode="decimal"
-                    label="Grade A"
-                    onChange={(event) => setPersenA(event.target.value)}
-                    size="small"
-                    value={persenA}
-                  />
-                  <TextField
-                    fullWidth
-                    slotProps={{ input: { endAdornment: <InputAdornment position="end">%</InputAdornment> } }}
-                    inputMode="decimal"
-                    label="Grade B"
-                    onChange={(event) => setPersenB(event.target.value)}
-                    size="small"
-                    value={persenB}
-                  />
-                </Stack>
-                <TextField
-                  fullWidth
-                  disabled
-                  helperText="Reject = 100% - Grade A - Grade B"
-                  slotProps={{ input: { endAdornment: <InputAdornment position="end">%</InputAdornment> } }}
-                  label="Reject"
-                  size="small"
-                  value={projection ? formatNumber(projection.persentase.reject) : '-'}
-                />
-                <FormControlLabel
-                  control={<Switch checked={includeReject} onChange={(event) => setIncludeReject(event.target.checked)} />}
-                  label={<Typography variant="body2">Hitung Reject sebagai pendapatan (nilai olahan)</Typography>}
-                />
-                <Button disabled endIcon={<CalculateRoundedIcon />} fullWidth variant="outlined">Proyeksi dihitung otomatis</Button>
-              </Stack>
-            </CardContent>
-          </Card>
-        </Grid>
-
-        <Grid size={{ xs: 12, md: 7 }}>
-          <Stack spacing={3}>
-            <Card>
-              <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
-                <Typography gutterBottom variant="h6">Ringkasan proyeksi pendapatan</Typography>
-                {validationError && <Alert severity="error" sx={{ mb: 2 }}>{validationError}</Alert>}
-                {projection ? (
-                  <Stack spacing={2}>
-                    <Box>
-                      <Typography color="text.secondary" variant="body2">Estimasi nilai jual (Grade A + Grade B)</Typography>
-                      <Typography color="primary.dark" variant="h5">{formatRupiah(projection.totalNilaiJual)}</Typography>
-                      <Typography color="text.secondary" variant="caption">
-                        Harga rata-rata tertimbang: {formatRupiah(weightedPrice)} / kg
-                      </Typography>
-                    </Box>
-                    {isCompactLayout ? (
-                      /* Mobile: rincian grade bertumpuk, tanpa scroll horizontal */
-                      <Stack spacing={1.25}>
-                        {[
-                          { key: 'gradeA', color: 'success', label: 'Grade A', persen: projection.persentase.gradeA, berat: projection.beratKg.gradeA, nilai: formatRupiah(projection.nilai.gradeA) },
-                          { key: 'gradeB', color: 'warning', label: 'Grade B', persen: projection.persentase.gradeB, berat: projection.beratKg.gradeB, nilai: formatRupiah(projection.nilai.gradeB) },
-                          { key: 'reject', color: 'error', label: 'Reject', persen: projection.persentase.reject, berat: projection.beratKg.reject, nilai: includeReject ? formatRupiah(projection.nilai.reject) : 'Tidak dihitung' },
-                        ].map((grade) => (
-                          <Stack
-                            key={grade.key}
-                            direction="row"
-                            spacing={1.5}
-                            sx={{alignItems: 'center', justifyContent: 'space-between',  borderBottom: '1px solid', borderColor: 'divider', pb: 1 }}
-                          >
-                            <Chip color={grade.color} label={grade.label} size="small" />
-                            <Box sx={{ textAlign: 'right' }}>
-                              <Typography variant="body2">{formatNumber(grade.persen)}% • {formatNumber(grade.berat)} kg</Typography>
-                              <Typography color="primary.dark" fontWeight={700} variant="body2">{grade.nilai}</Typography>
-                            </Box>
-                          </Stack>
-                        ))}
-                        <Stack
-                          direction="row"
-                          spacing={1.5}
-                          sx={{alignItems: 'center', justifyContent: 'space-between',  bgcolor: '#f7f9fa', borderRadius: 1.5, px: 1.5, py: 1 }}
-                        >
-                          <Typography fontWeight={700} variant="body2">Total volume</Typography>
-                          <Typography fontWeight={700} variant="body2">
-                            {formatNumber(projection.volumeKg)} kg • {formatRupiah(projection.totalNilai)}
-                          </Typography>
-                        </Stack>
-                      </Stack>
-                    ) : (
-                    <TableContainer sx={{ overflowX: 'auto' }}>
-                      <Table size="small" sx={{ minWidth: 480 }}>
-                        <TableHead>
-                          <TableRow sx={{ bgcolor: '#f2f4f6' }}>
-                            <TableCell>Grade</TableCell>
-                            <TableCell align="right">Persentase</TableCell>
-                            <TableCell align="right">Berat</TableCell>
-                            <TableCell align="right">Nilai</TableCell>
-                          </TableRow>
-                        </TableHead>
-                        <TableBody>
-                          <TableRow>
-                            <TableCell><Chip color="success" label="Grade A" size="small" /></TableCell>
-                            <TableCell align="right">{formatNumber(projection.persentase.gradeA)}%</TableCell>
-                            <TableCell align="right">{formatNumber(projection.beratKg.gradeA)} kg</TableCell>
-                            <TableCell align="right">{formatRupiah(projection.nilai.gradeA)}</TableCell>
-                          </TableRow>
-                          <TableRow>
-                            <TableCell><Chip color="warning" label="Grade B" size="small" /></TableCell>
-                            <TableCell align="right">{formatNumber(projection.persentase.gradeB)}%</TableCell>
-                            <TableCell align="right">{formatNumber(projection.beratKg.gradeB)} kg</TableCell>
-                            <TableCell align="right">{formatRupiah(projection.nilai.gradeB)}</TableCell>
-                          </TableRow>
-                          <TableRow>
-                            <TableCell><Chip color="error" label="Reject" size="small" /></TableCell>
-                            <TableCell align="right">{formatNumber(projection.persentase.reject)}%</TableCell>
-                            <TableCell align="right">{formatNumber(projection.beratKg.reject)} kg</TableCell>
-                            <TableCell align="right">{includeReject ? formatRupiah(projection.nilai.reject) : 'Tidak dihitung'}</TableCell>
-                          </TableRow>
-                          <TableRow sx={{ bgcolor: '#f7f9fa' }}>
-                            <TableCell colSpan={2}><Typography fontWeight={700} variant="body2">Total volume</Typography></TableCell>
-                            <TableCell align="right"><Typography fontWeight={700} variant="body2">{formatNumber(projection.volumeKg)} kg</Typography></TableCell>
-                            <TableCell align="right"><Typography fontWeight={700} variant="body2">{formatRupiah(projection.totalNilai)}</Typography></TableCell>
-                          </TableRow>
-                        </TableBody>
-                      </Table>
-                    </TableContainer>
-                    )}
-                  </Stack>
-                ) : (
-                  <Typography color="text.secondary" variant="body2">
-                    Lengkapi form volume panen dan persentase grade untuk melihat proyeksi.
-                  </Typography>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* KARTU FINANSIAL PETANI: HPP, BEP, DAN LABA BERSIH (STEAM MATH & ENTREPRENEURSHIP) */}
-            <FarmerFinanceCard
-              error={error}
-              farmerFinance={farmerFinance}
-              bppInput={bppInput}
-              onBppChange={(e) => setBppInput(e.target.value)}
-              onTargetMarginChange={(e) => setTargetMargin(e.target.value)}
-              targetMargin={targetMargin}
-              targetPriceRec={targetPriceRec}
-            />
-          </Stack>
-        </Grid>
-      </Grid>
+      {projectionGrid}
 
       {/* DIALOG TRIANGULASI HARGA ACUAN (SP2KP KEMENDAG VS ACUAN LOKAL) */}
       <TriangulasiComparisonModal
