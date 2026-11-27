@@ -1090,123 +1090,103 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
 
         </>
       ) : (
-        /* 1. KARTU SELEKSI KOMODITAS UTAMA (PROMINENT DI ATAS) */
+        /* SIDEBAR: pilihan komoditas & mode inspeksi — ringkas, sticky di desktop */
+        <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 2, alignItems: 'flex-start', width: '100%' }}>
+        <Box sx={{ width: { xs: '100%', md: 288 }, flexShrink: 0, position: { md: 'sticky' }, top: { md: 24 } }}>
         <Card elevation={2} sx={{ borderRadius: 3, border: '1px solid', borderColor: 'divider' }}>
-        <CardContent sx={{ p: { xs: 2, sm: 2.5 } }}>
-          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} sx={{justifyContent: 'space-between', alignItems: { sm: 'center' },  mb: 2 }}>
-            <Box>
-              <Typography variant="h6" fontWeight={800}>
-                Pilih Komoditas Panen
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                Pilih buah yang akan dipindai agar sistem memuat model AI yang sesuai.
-              </Typography>
-            </Box>
+        <CardContent sx={{ p: 2 }}>
+          <Stack direction="row" sx={{ alignItems: 'center', justifyContent: 'space-between', mb: 1.5 }}>
+            <Typography fontWeight={800} variant="subtitle1">Komoditas Panen</Typography>
             <Tooltip title="Atur sensitivitas threshold keyakinan model AI">
-              <Button
-                size="small"
-                variant="outlined"
-                startIcon={<TuneRoundedIcon />}
-                onClick={() => setShowSensitivitySetting((prev) => !prev)}
-                sx={{ borderRadius: 2 }}
-              >
-                Sensitivitas: {Math.round(confidenceThreshold * 100)}%
-              </Button>
+              <IconButton size="small" onClick={() => setShowSensitivitySetting((prev) => !prev)} sx={{ borderRadius: 2 }}>
+                <TuneRoundedIcon fontSize="small" />
+              </IconButton>
             </Tooltip>
           </Stack>
-
-          {/* Opsi Sensitivitas Slider (dipakai bersama layout dashboard & immersive) */}
-          {showSensitivitySetting && <Box sx={{ mb: 2.5 }}>{sensitivityControls}</Box>}
-
-          {/* Tombol Pilihan Komoditas */}
-          <Grid container spacing={1.5}>
+          {showSensitivitySetting && <Box sx={{ mb: 1.5 }}>{sensitivityControls}</Box>}
+          <Stack spacing={1}>
             {COMMODITIES.map((c) => {
-              const isSelected = selectedCommodity === c.id
+              const sel = selectedCommodity === c.id
               return (
-                <Grid key={c.id} size={{ xs: 12, sm: 4 }}>
-                  <Button
-                    fullWidth
-                    onClick={() => handleSelectCommodity(c.id)}
-                    variant={isSelected ? 'contained' : 'outlined'}
-                    color={isSelected ? 'primary' : 'inherit'}
-                    sx={{
-                      p: 1.75,
-                      borderRadius: 2.5,
-                      display: 'flex',
-                      flexDirection: 'column',
-                      alignItems: 'flex-start',
-                      textAlign: 'left',
-                      borderColor: isSelected ? 'primary.main' : 'divider',
-                      bgcolor: isSelected ? 'rgba(3, 77, 50, 0.08)' : 'transparent',
-                      color: isSelected ? 'primary.dark' : 'text.primary',
-                      '&:hover': {
-                        bgcolor: isSelected ? 'rgba(3, 77, 50, 0.14)' : '#f8fafc',
-                      },
-                    }}
-                  >
-                    <Stack direction="row" sx={{alignItems: 'center', justifyContent: 'space-between',  width: '100%', mb: 0.75 }}>
-                      <Typography fontSize="1.6rem">{c.emoji}</Typography>
-                      <Chip
-                        label={c.badge}
-                        size="small"
-                        color={isSelected ? 'primary' : 'default'}
-                        variant={isSelected ? 'filled' : 'outlined'}
-                        sx={{ fontSize: '0.7rem', height: 22, fontWeight: 700 }}
-                      />
-                    </Stack>
-                    <Typography variant="subtitle2" fontWeight={800}>
+                <Box
+                  key={c.id}
+                  component="button"
+                  type="button"
+                  onClick={() => handleSelectCommodity(c.id)}
+                  sx={{
+                    width: '100%',
+                    textAlign: 'left',
+                    p: 1.25,
+                    borderRadius: 2,
+                    cursor: 'pointer',
+                    border: '1px solid',
+                    borderColor: sel ? 'primary.main' : 'divider',
+                    bgcolor: sel ? 'rgba(3, 77, 50, 0.06)' : 'transparent',
+                    fontFamily: 'inherit',
+                    transition: 'background-color 0.15s',
+                    '&:hover': { bgcolor: sel ? 'rgba(3, 77, 50, 0.1)' : 'rgba(0, 0, 0, 0.02)' },
+                  }}
+                >
+                  <Stack direction="row" spacing={1} sx={{ alignItems: 'center', justifyContent: 'space-between' }}>
+                    <Typography variant="subtitle2" fontWeight={800} color={sel ? 'primary.dark' : 'text.primary'}>
                       {c.name}
                     </Typography>
-                    <Typography variant="caption" color="text.secondary" sx={{ mt: 0.25 }}>
-                      Kelas: {c.classes.join(', ')}
-                    </Typography>
-                  </Button>
-                </Grid>
+                    <Chip
+                      label={c.badge}
+                      size="small"
+                      color={sel ? 'primary' : 'default'}
+                      variant={sel ? 'filled' : 'outlined'}
+                      sx={{ fontSize: '0.65rem', height: 20, fontWeight: 700, flexShrink: 0 }}
+                    />
+                  </Stack>
+                  <Typography variant="caption" color="text.secondary">Kelas: {c.classes.join(', ')}</Typography>
+                </Box>
               )
             })}
-          </Grid>
-
-          {/* Mode Inspeksi: Sudut Tunggal vs Multi-Sudut (Anti-Kecurangan / Goyang Nampan) */}
-          <Box sx={{ mt: 2.5, pt: 2, borderTop: '1px solid', borderColor: 'divider' }}>
-            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} sx={{ justifyContent: 'space-between', alignItems: { sm: 'center' } }}>
-              <Box>
-                <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
-                  <ShieldRoundedIcon color={isMultiAngleMode ? 'success' : 'action'} />
-                  <Typography variant="subtitle2" fontWeight={800}>
-                    Mode Inspeksi: {isMultiAngleMode ? 'Multi-Sudut (2 Sisi — Goyang Nampan)' : 'Sudut Tunggal (1 Sisi Standar)'}
-                  </Typography>
-                  <Chip
-                    label={isMultiAngleMode ? '🛡️ Anti-Bias Oklusi' : 'Cepat'}
-                    size="small"
-                    color={isMultiAngleMode ? 'success' : 'default'}
-                    variant={isMultiAngleMode ? 'filled' : 'outlined'}
-                    sx={{ fontWeight: 700, fontSize: '0.75rem', height: 22 }}
-                  />
-                </Stack>
-                <Typography variant="caption" color="text.secondary">
-                  {isMultiAngleMode
-                    ? 'Memeriksa 2 sisi (Depan & Belakang setelah nampan digoyang) untuk mendeteksi pembusukan tersembunyi.'
-                    : 'Pengambilan 1 foto cepat tampak atas untuk penilaian mutu standar.'}
-                </Typography>
-              </Box>
+          </Stack>
+          {/* Mode inspeksi: segmented ringkas */}
+          <Box sx={{ mt: 1.5, pt: 1.5, borderTop: '1px solid', borderColor: 'divider' }}>
+            <Typography variant="caption" fontWeight={700} color="text.secondary" sx={{ display: 'block', mb: 0.75 }}>
+              Mode Inspeksi {isMultiAngleMode ? '· 2 Sisi (goyang nampan)' : '· 1 Sisi (cepat)'}
+            </Typography>
+            <Stack direction="row" spacing={1}>
               <Button
                 size="small"
+                fullWidth
+                variant={!isMultiAngleMode ? 'contained' : 'outlined'}
+                color={!isMultiAngleMode ? 'primary' : 'inherit'}
+                onClick={() => {
+                  if (isMultiAngleMode) {
+                    setIsMultiAngleMode(false)
+                    handleClearImage()
+                  }
+                }}
+                sx={{ borderRadius: 2, fontWeight: 700 }}
+              >
+                1 Sisi
+              </Button>
+              <Button
+                size="small"
+                fullWidth
                 variant={isMultiAngleMode ? 'contained' : 'outlined'}
                 color={isMultiAngleMode ? 'success' : 'inherit'}
                 onClick={() => {
-                  setIsMultiAngleMode((prev) => !prev)
-                  handleClearImage()
+                  if (!isMultiAngleMode) {
+                    setIsMultiAngleMode(true)
+                    handleClearImage()
+                  }
                 }}
-                startIcon={<FlipCameraAndroidRoundedIcon />}
-                sx={{ borderRadius: 2, fontWeight: 700, flexShrink: 0 }}
+                sx={{ borderRadius: 2, fontWeight: 700 }}
               >
-                {isMultiAngleMode ? 'Beralih ke 1 Sisi' : 'Aktifkan Mode Multi-Sudut'}
+                2 Sisi
               </Button>
             </Stack>
           </Box>
         </CardContent>
-      </Card>
-      )}
+        </Card>
+        </Box>
+        {/* KOLOM UTAMA: kamera + hasil analisis */}
+        <Box sx={{ flex: 1, minWidth: 0, width: '100%' }}>
 
       {/* 2. TAMPILAN SCANNER — di immersive kamera TETAP HIDUP setelah scan
           (hasil tampil di bawah + auto-scroll), sesuai kriteria issue #30 */}
@@ -1924,7 +1904,7 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
                       {scanResult.is_multi_angle && execStatus === 'ai_detected' && (
                         <Chip
                           icon={<ShieldRoundedIcon />}
-                          label="🛡️ Multi-Angle Verified"
+                          label="Multi-Angle Verified"
                           size="small"
                           color="success"
                           sx={{ fontWeight: 800 }}
@@ -2046,7 +2026,7 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
               sx={{ borderRadius: 2.5, bgcolor: '#fffbeb', borderColor: '#fde68a' }}
             >
               <Typography variant="subtitle2" fontWeight={800} color="#92400e">
-                ⚠️ Perlu Verifikasi Manual Petugas
+                Perlu Verifikasi Manual Petugas
               </Typography>
               <Typography variant="body2" color="#b45309" sx={{ mt: 0.5 }}>
                 {statusDetails.message || statusDetails.reason || 'Hasil inferensi memiliki tingkat keyakinan rendah atau kondisi gambar memerlukan peninjauan visual langsung oleh petugas lapangan.'}
@@ -2127,7 +2107,7 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
               sx={{ borderRadius: 2.5, bgcolor: '#fffbeb', borderColor: '#fde68a' }}
             >
               <Typography variant="subtitle2" fontWeight={800} color="#92400e">
-                🛡️ Deteksi Bias Oklusi (Anti-Kecurangan Berhasil Menangkap Cacat Tersembunyi)
+                Deteksi Bias Oklusi (Anti-Kecurangan Berhasil Menangkap Cacat Tersembunyi)
               </Typography>
               <Typography variant="body2" color="#b45309" sx={{ mt: 0.5 }}>
                 {scanResult.occlusion_analysis.warning_message ||
@@ -2319,6 +2299,9 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
             </CardContent>
           </Card>
         </Stack>
+      )}
+        </Box>
+        </Box>
       )}
 
       {/* DIALOG SIMPAN KE REKAP DATA PANEN */}
