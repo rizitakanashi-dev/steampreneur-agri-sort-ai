@@ -14,7 +14,7 @@ Komoditas hortikultura (khususnya cabai merah keriting, cabai rawit, dan tomat) 
 
 **Agri-Sort AI** hadir dengan pendekatan holistik 5 pilar STEAM untuk merevolusi rantai pasok hortikultura melalui dua pilar inti:
 1. **Automated Batch Quality Control (QC):** Deteksi kualitas berbasis *Computer Vision* (YOLO11 ONNX) dalam waktu **< 500 ms** per batch foto untuk mengklasifikasikan buah ke dalam **Grade A**, **Grade B**, dan **Reject (Tolak)** dengan akurasi $\ge 85\%$.
-2. **Smart Pricing Recommendation:** Integrasi data panel harga harian **Badan Pangan Nasional (BAPANAS)** dengan algoritma pembobotan mutu panen untuk memberikan transparansi harga yang adil (*fair pricing*).
+2. **Smart Pricing Recommendation:** Integrasi data panel harga harian **SP2KP (Kementerian Perdagangan RI)** dengan algoritma pembobotan mutu panen untuk memberikan transparansi harga yang adil (*fair pricing*).
 
 ---
 
@@ -43,13 +43,13 @@ flowchart TD
     end
 
     subgraph DataService["4. Layanan Data & Eksternal"]
-        H["API Panel Harga Harian BAPANAS<br/>(Harga Acuan Wilayah/Provinsi)"]
+        H["API Panel Harga SP2KP Kemendag RI<br/>(Harga Acuan Wilayah/Provinsi)"]
         I["Supabase Cloud BaaS<br/>(PostgreSQL Database & Auth)"]
     end
 
     subgraph LogicEngine["5. Engine Logika Bisnis & STEAM Mathematics"]
         J["Kalkulasi Estimasi Berat per Grade<br/>(Total Kg x Rasio Distribusi)"]
-        K["Algoritma Smart Pricing:<br/>Harga Acuan BAPANAS x Bobot Mutu"]
+        K["Algoritma Smart Pricing:<br/>Harga Acuan SP2KP x Bobot Mutu"]
         L["Analisis Risiko & Rekomendasi Tindakan<br/>(Distribusi Pasar Grosir / Olahan / Culling)"]
         J --> K --> L
     end
@@ -112,7 +112,7 @@ flowchart LR
    - Memberikan rekomendasi penanganan pasca panen (misal: pisahkan reject segera untuk mencegah penularan pembusukan).
 
 5. **Langkah 5: Penentuan Harga Cerdas (*Smart Pricing*)**
-   - Sistem mengambil harga acuan harian terbaru dari BAPANAS.
+   - Sistem mengambil harga acuan harian terbaru dari SP2KP.
    - Sistem menghitung harga wajar beli/jual dengan rumus penyesuaian mutu panen:
      $$\text{Harga Rekomendasi} = \left(\%A \times \text{Harga Acuan}\right) + \left(\%B \times \text{Harga Diskon B}\right) + \left(\%Reject \times \text{Harga Sisa/Rp0}\right)$$
    - Pengguna dapat mensimulasikan margin keuntungan sebelum transaksi disepakati.
@@ -131,7 +131,7 @@ flowchart LR
 | **Technology (Teknologi)** | Arsitektur *Computer Vision* terkini (YOLO11 diekspor ke ONNX runtime untuk eksekusi latensi rendah), backend API Python/FastAPI, frontend modern Next.js/Tailwind CSS & React, serta Supabase Cloud BaaS. |
 | **Engineering (Rekayasa)** | Rekayasa alur data (*pipeline engineering*) terpadu: akuisisi citra $\rightarrow$ transfer beban komputasi $\rightarrow$ ekstraksi koordinat *bounding box* $\rightarrow$ kalkulasi logika bisnis penentuan mutu dan harga secara otomatis dan berulang tanpa degradasi performa. |
 | **Arts (Seni/Desain)** | Perancangan UI/UX menggunakan Figma berprinsip *Human-Centered Design* dengan palet warna natural (*earthy green* / hijau tanah) yang ramah mata bagi petani dan pengepul di lapangan. |
-| **Mathematics (Matematika)** | Penerapan statistik pembobotan kelas mutu, perhitungan persentase penyusutan (*food loss reduction*), rasio konversi bobot keranjang panen, deviasi harga pasar harian BAPANAS, serta formula kelayakan usaha (HPP, margin per unit, dan *Break-Even Point* / BEP). |
+| **Mathematics (Matematika)** | Penerapan statistik pembobotan kelas mutu, perhitungan persentase penyusutan (*food loss reduction*), rasio konversi bobot keranjang panen, deviasi harga pasar harian SP2KP, serta formula kelayakan usaha (HPP, margin per unit, dan *Break-Even Point* / BEP). |
 
 ---
 
@@ -144,7 +144,7 @@ gantt
     title Tahapan Pengembangan Agri-Sort AI
     dateFormat  YYYY-MM-DD
     section Tahap 1
-    Riset Literatur & Data BPS/BAPANAS   :done,    des1, 2026-08-01, 7d
+    Riset Literatur & Data BPS/SP2KP   :done,    des1, 2026-08-01, 7d
     section Tahap 2
     Koleksi & Anotasi Dataset (Roboflow) :done,    des2, 2026-08-08, 10d
     Pelatihan YOLO11 di Colab (ONNX)    :done,    des3, after des2, 5d
@@ -154,7 +154,7 @@ gantt
     section Tahap 4
     Koding Frontend & Komponen QC        :active,  des6, 2026-08-22, 14d
     Koding API FastAPI & Integrasi Model :active,  des7, 2026-08-25, 10d
-    Integrasi Supabase & Data BAPANAS    :         des8, after des7, 7d
+    Integrasi Supabase & Data SP2KP    :         des8, after des7, 7d
     section Tahap 5
     Pengujian Fungsional & Black-Box     :         des9, 2026-09-08, 7d
     Validasi Akurasi & Uji Lapangan      :         des10, after des9, 7d
@@ -187,7 +187,7 @@ flowchart TD
     end
 
     subgraph Fase2["FASE 2 (Bulan 2 - 3): Otomasi & Skala Nasional"]
-        F2_1["Integrasi Penuh API Panel Harga BAPANAS Seluruh Provinsi"]
+        F2_1["Integrasi Penuh API Panel Harga SP2KP Seluruh Provinsi"]
         F2_2["Fitur Live Camera Video-Stream Scanning"]
         F2_3["Penerbitan Sertifikat Mutu Digital Ber-QR Code"]
     end
@@ -212,7 +212,7 @@ flowchart TD
 | **Desain Antarmuka UI/UX (Figma)** | C | **R** | A | I |
 | **Pengembangan Frontend Web App** | C | **R** | **R** | I |
 | **Pengembangan Backend REST API** | **R** | C | **R** | I |
-| **Integrasi Data BAPANAS & Supabase** | **R** | C | **R** | I |
+| **Integrasi Data SP2KP & Supabase** | **R** | C | **R** | I |
 | **Uji Fungsional & Kasus Uji (Black-box)** | C | **R** | **A / R** | I |
 | **Pengujian Lapangan Bersama Petani** | **R** | **R** | **R** | **A** |
 

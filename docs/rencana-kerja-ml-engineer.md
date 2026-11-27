@@ -269,7 +269,7 @@ Pekerjaan ML Engineer dinyatakan selesai jika memenuhi seluruh kriteria:
 > **Status Integrasi:** 161 Unit Tests Lulus 100% (96 Frontend JS + 65 Backend Python)
 
 ### A. Fitur yang Sudah Selesai Dikerjakan & Terverifikasi (Hieray):
-1. **Integrasi Live Feed Panel Harga BAPANAS (Badan Pangan Nasional RI):**
+1. **Integrasi Panel Harga SP2KP (Kementerian Perdagangan RI) — adapter terkunci access-unconfirmed (isu #42):**
    - Backend service: `server/services/bapanas_service.py` untuk wilayah Sumatera Barat & Pasar Ibuh Payakumbuh.
    - Endpoint: `GET /api/v1/pricing/bapanas/live`, `GET /api/v1/pricing/bapanas/commodities/{comm}`, dan `POST /api/v1/pricing/bapanas/sync`.
    - Frontend: Sinkronisasi instan, lencana hijau verified di `PricingDashboard.jsx`, dan penyesuaian metric card `App.jsx`.

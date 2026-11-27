@@ -2,8 +2,8 @@
  * Data referensi harga pasar.
  *
  * Sumber: tabel tetap di dalam kode (simulasi), sesuai docs/01-spesifikasi.md Bagian 6.2
- * dan Bagian 5 ("Integrasi harga BAPANAS atau API harga lain" berada di luar cakupan).
- * Ini BUKAN data BAPANAS resmi dan tidak mengambil data live dari API mana pun.
+ * dan Bagian 5 ("Integrasi harga SP2KP atau API harga lain" berada di luar cakupan).
+ * Ini BUKAN data resmi lembaga pemerintah dan tidak mengambil data live dari API mana pun.
  *
  * Cara mengganti harga referensi: ubah angka pada REFERENCE_PRICES_PER_KG di file ini saja.
  * File lain membaca dari sini, jadi tidak perlu menyentuh komponen UI atau modul kalkulasi.

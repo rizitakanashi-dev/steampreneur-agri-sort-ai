@@ -4,7 +4,7 @@
 
 **Nama produk:** Agri-Sort AI (Web App Quality Control & Smart Pricing Berbasis Computer Vision).
 
-**Alur inti yang dibangun:** Pengguna mengambil/mengunggah foto keranjang hasil panen (cabai merah keriting, cabai rawit merah, atau tomat), sistem melakukan validasi kualitas citra di browser, melakukan inferensi AI (YOLOv8/11 via ONNX), menampilkan persentase distribusi grade (A, B, BS/Reject) serta rekomendasi harga pasar (integrasi Panel Harga BAPANAS), lalu menyimpan data transaksi secara privat.
+**Alur inti yang dibangun:** Pengguna mengambil/mengunggah foto keranjang hasil panen (cabai merah keriting, cabai rawit merah, atau tomat), sistem melakukan validasi kualitas citra di browser, melakukan inferensi AI (YOLOv8/11 via ONNX), menampilkan persentase distribusi grade (A, B, BS/Reject) serta rekomendasi harga pasar (integrasi Panel Harga SP2KP), lalu menyimpan data transaksi secara privat.
 
 > **Catatan Hubungan dengan Proposal & Penyesuaian Komoditas:**
 > Dokumen ini menyelaraskan spesifikasi prototipe teknis dengan dokumen Proposal STEAMPreneur SMK 2026. Komoditas utama disesuaikan dengan fokus BPS & BAPANAS, yaitu **Cabai Merah Keriting, Cabai Rawit Merah, dan Tomat**.
@@ -204,7 +204,7 @@ Aplikasi berjalan sepenuhnya di sisi pengguna (client-side) di browser dan menyi
 - **Database eksternal.** Tidak memakai Supabase atau database cloud lain. Satu-satunya penyimpanan adalah `localStorage` di browser pengguna.
 - **Login dan autentikasi.** Tidak ada akun, kata sandi, atau pembagian hak akses. Siapa pun yang membuka aplikasi di browser yang sama melihat data yang sama.
 - **AI vision dan computer vision.** Tidak ada unggah foto keranjang panen, model YOLO11, ONNX, maupun deteksi gambar. Grade dihitung dari angka yang diisi pengguna, bukan dari analisis gambar.
-- **Integrasi harga BAPANAS atau API harga lain.** Harga acuan adalah tabel tetap di dalam kode.
+- **Integrasi harga SP2KP atau API harga lain.** Harga acuan adalah tabel tetap di dalam kode.
 - **Sinkronisasi antar perangkat atau antar pengguna.** Data di HP tidak otomatis muncul di laptop.
 - **Edit dan hapus per baris data.** Data yang sudah disimpan tidak diubah satu per satu pada versi pertama.
 - **Hosting online.** Tidak diwajibkan oleh challenge.
@@ -234,7 +234,7 @@ Ketiganya selalu berjumlah 100%.
 
 ### 6.2 Pengali harga
 
-**Harga acuan Grade A per kg** (**harga acuan tetap untuk simulasi pengujian manual**, bukan data resmi BAPANAS dan bukan harga yang tampil di mockup Figma proposal; ubah di satu tempat di kode jika ada perubahan, lalu perbarui kasus uji dan contoh di Bagian 6.4):
+**Harga acuan Grade A per kg** (**harga acuan tetap untuk simulasi pengujian manual**, bukan data resmi lembaga pemerintah dan bukan harga yang tampil di mockup Figma proposal; ubah di satu tempat di kode jika ada perubahan, lalu perbarui kasus uji dan contoh di Bagian 6.4):
 
 | Komoditas | Harga acuan (Rp/kg) |
 |---|---|
@@ -307,7 +307,7 @@ Total nilai panen (Rp) = Nilai A + Nilai B + Nilai C
 - Nilai C = 0,07 × 12.000 × 0,30 × 0,90 = 226,8, dibulatkan menjadi 227.
 - Total = 3.315 + 4.711 + 227 = **8.253**.
 
-1. **K17 (Offline Fallback Harga):** Jika jaringan internet terputus atau panggilan API Panel Harga BAPANAS mengalami kegagalan, sistem secara otomatis mengambil data harga acuan lokal terakhir (last known price) yang tersimpan pada localStorage (`agrisort.harga_cache.v1`).
+1. **K17 (Offline Fallback Harga):** Jika jaringan internet terputus atau panggilan API Panel Harga SP2KP mengalami kegagalan, sistem secara otomatis mengambil data harga acuan lokal terakhir (last known price) yang tersimpan pada localStorage (`agrisort.harga_cache.v1`).
 2. **Mode Manual Fallback:** Jika panggilan API inferensi model AI mengalami timeout (> 5 detik), sistem menyediakan opsi Mode Input Manual agar alur pencatatan panen di lapangan tetap dapat berjalan tanpa hambatan.
 
 ---

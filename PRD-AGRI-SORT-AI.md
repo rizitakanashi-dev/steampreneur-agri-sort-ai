@@ -12,7 +12,7 @@
 | Repositori GitHub | [`https://github.com/rizitakanashi-dev/steampreneur-agri-sort-ai`](https://github.com/rizitakanashi-dev/steampreneur-agri-sort-ai) |
 | Dokumen Acuan | `Proposal STEAMPreneur SMK Tahun 2026.docx.pdf` & `AUDIT-AGRI-SORT-AI.md` |
 | Terakhir Diperbarui | 3 November 2026 |
-| Status Proyek | **Fase Transisi dari Client-Side MVP ke Arsitektur Lengkap (AI + Cloud + BAPANAS)** |
+| Status Proyek | **Fase Transisi dari Client-Side MVP ke Arsitektur Lengkap (AI + Cloud + SP2KP)** |
 
 ---
 
@@ -30,7 +30,7 @@ Di sentra-sentra produksi hortikultura seperti Payakumbuh dan wilayah sekitarnya
 ### 1.2 Visi & Proposisi Nilai (Value Proposition)
 **Agri-Sort AI** hadir sebagai solusi berbasis perangkat lunak murni (*software-only web app*). Pengguna cukup menggunakan smartphone atau laptop berkamera tanpa perlu membeli mesin mahal.
 
-Dengan memanfaatkan **Computer Vision (YOLO11)** yang dioptimasi ke format **ONNX/OpenVINO** untuk inferensi CPU berbiaya rendah (< 500 ms per foto keranjang), serta integrasi **Panel Harga Harian BAPANAS**, Agri-Sort AI:
+Dengan memanfaatkan **Computer Vision (YOLO11)** yang dioptimasi ke format **ONNX/OpenVINO** untuk inferensi CPU berbiaya rendah (< 500 ms per foto keranjang), serta integrasi **Panel Harga SP2KP Kemendag RI**, Agri-Sort AI:
 - Mempercepat proses QC hingga **>98%** (dari 2-4 jam menjadi beberapa detik).
 - Menekan susut panen (*food loss*) hingga di bawah **5%** melalui deteksi dini pembusukan.
 - Menghadirkan **transparansi dan keadilan harga** bagi petani dan pengepul.
@@ -62,7 +62,7 @@ Dengan memanfaatkan **Computer Vision (YOLO11)** yang dioptimasi ke format **ONN
 ### 3.2 Fitur yang Belum Ada & Menjadi Target Pengembangan (Sesuai Proposal)
 - Inferensi AI Computer Vision (Model YOLO11 ONNX).
 - Pengambilan foto langsung dari kamera keranjang panen (Batch Camera Scanner).
-- Integrasi live feed API Panel Harga Harian BAPANAS.
+- Integrasi live feed API Panel Harga SP2KP Kemendag RI.
 - Backend REST API berbasis Python FastAPI.
 - Cloud BaaS Supabase (Database PostgreSQL, Storage berkas gambar 30 hari, dan Supabase Auth dengan Row Level Security).
 - Sinkronisasi komoditas utama sesuai data BPS nasional (Cabai Merah Keriting / Cabai Besar, Cabai Rawit, Tomat).
@@ -84,11 +84,11 @@ Dengan memanfaatkan **Computer Vision (YOLO11)** yang dioptimasi ke format **ONN
   - Endpoint `POST /api/predict-qc` menerima berkas gambar keranjang.
   - Model YOLO11 mendeteksi objek cabai/tomat individual dan mengklasifikasikan kelas: `Grade_A` (segar, merah cerah, tanpa cacat), `Grade_B` (matang sebagian, ada bercak ringan), dan `Reject` (busuk, patek/antraknosa, berlubang ulat).
   - API merespons dalam waktu **< 500 ms** dengan data bounding box, jumlah deteksi per kelas, dan persentase distribusi otomatis.
-- **FR-06: Integrasi Smart Pricing dengan Panel Harga BAPANAS:**
-  - Service backend mengambil data harga harian komoditas pangan dari portal BAPANAS (Badan Pangan Nasional) per tingkat kabupaten/kota atau provinsi (Sumatera Barat).
-  - Mekanisme *caching* lokal 24 jam dengan *offline fallback* ke tabel acuan jika server BAPANAS tidak merespons.
+- **FR-06: Integrasi Smart Pricing dengan Panel Harga SP2KP:**
+  - Service backend mengambil data harga harian komoditas pangan dari portal SP2KP (Kementerian Perdagangan RI) per tingkat kabupaten/kota atau provinsi (Sumatera Barat).
+  - Mekanisme *caching* lokal 24 jam dengan *offline fallback* ke tabel acuan jika server SP2KP tidak merespons.
   - Perhitungan rekomendasi harga beli yang wajar:
-    $$\text{Harga Saran} = (\%A \times \text{Harga BAPANAS} \times 1.0) + (\%B \times \text{Harga BAPANAS} \times 0.7) + (\%Reject \times \text{Harga BAPANAS} \times 0.3)$$
+    $$\text{Harga Saran} = (\%A \times \text{Harga SP2KP} \times 1.0) + (\%B \times \text{Harga SP2KP} \times 0.7) + (\%Reject \times \text{Harga SP2KP} \times 0.3)$$
 - **FR-07: Tampilan Laporan Hasil QC Digital:**
   - Menampilkan visual foto keranjang dengan kotak deteksi AI (bounding boxes warna hijau untuk Grade A, kuning untuk Grade B, merah untuk Reject).
   - Menampilkan ringkasan rekomendasi tindakan (misal: "Layak kirim pasar induk", "Segera jual cepat", atau "Pisahkan 12% buah busuk agar tidak menular").
@@ -144,13 +144,13 @@ Dengan memanfaatkan **Computer Vision (YOLO11)** yang dioptimasi ke format **ONN
 | - Python 3.11 + FastAPI       |             | - PostgreSQL DB (Transactions)|
 | - ONNX Runtime / OpenVINO     |             | - Supabase Auth (JWT / RLS)   |
 | - Model YOLO11 (Quantized)    |             | - Storage Bucket (Foto 30 Hari)|
-| - BAPANAS Price Scraper Engine|             +-------------------------------+
+| - SP2KP Price Adapter|             +-------------------------------+
 +-------------------------------+
                 |
                 | (3) Tarik Harga Pangan Harian
                 v
 +-------------------------------+
-|      API / PORTAL BAPANAS     |
+|      API / PORTAL SP2KP     |
 | (Badan Pangan Nasional Pusat) |
 +-------------------------------+
 ```
@@ -215,8 +215,8 @@ CREATE POLICY "Isolasi data QC per pemilik batch" ON qc_results
         auth.uid() = (SELECT user_id FROM harvest_batches WHERE id = qc_results.batch_id)
     );
 
--- 4. Tabel Cache Harga BAPANAS
-CREATE TABLE bapanas_prices_cache (
+-- 4. Tabel Cache Harga SP2KP
+CREATE TABLE sp2kp_prices_cache (
     id SERIAL PRIMARY KEY,
     komoditas TEXT NOT NULL,
     wilayah TEXT NOT NULL DEFAULT 'Sumatera Barat',
@@ -263,12 +263,12 @@ CREATE TABLE bapanas_prices_cache (
   }
   ```
 
-### 8.2 Harga Pangan Harian BAPANAS
+### 8.2 Harga Pangan Harian SP2KP
 - **Endpoint:** `GET /api/v1/prices/today?province=Sumatera+Barat`
 - **Response Sukses (200 OK):**
   ```json
   {
-    "source": "Badan Pangan Nasional (BAPANAS)",
+    "source": "SP2KP — Kementerian Perdagangan RI",
     "date": "2026-11-03",
     "province": "Sumatera Barat",
     "data": [
@@ -313,11 +313,11 @@ Sesuai Bab 6.2 Proposal Resmi STEAMPreneur SMK 2026:
                                     |
                                     v
 +-------------------------------------------------------------------------+
-| BULAN 2-3: INTEGRASI AI ONNX & LIVE API BAPANAS                         |
+| BULAN 2-3: INTEGRASI AI ONNX & LIVE API SP2KP                         |
 | - Ekspor model YOLO11 hasil latih Colab ke format ONNX                  |
 | - Setup service backend FastAPI di DigitalOcean CPU Droplet             |
 | - Hubungkan inferensi citra keranjang panen via REST API (<500ms)       |
-| - Integrasi scraper/feed Panel Harga Harian BAPANAS wilayah Sumbar      |
+| - Integrasi scraper/feed Panel Harga SP2KP Kemendag RI wilayah Sumbar      |
 +-------------------------------------------------------------------------+
                                     |
                                     v

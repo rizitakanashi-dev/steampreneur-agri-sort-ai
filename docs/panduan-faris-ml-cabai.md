@@ -12,7 +12,7 @@
 
 Halo Faris! Di sisi Fullstack dan Backend, sistem inti Agri-Sort AI sudah rampung:
 1. **Frontend & Dashboard:** Visualisasi Bounding Box Interaktif, Inspeksi 2-Sisi Bersandingan (*Side-by-Side Dual-Angle*), Rekapitulasi Data Panen, dan Ekspor CSV/PDF.
-2. **Pricing Triangulasi Nasional:** Integrasi live feed API resmi **BAPANAS** (Badan Pangan Nasional) dan **SP2KP Kemendag RI** untuk harga acuan komparasi pasar.
+2. **Pricing Triangulasi Nasional:** Integrasi acuan harga **SP2KP Kemendag RI** (dan acuan lokal berlabel jujur) untuk komparasi pasar — akses API resmi masih dalam investigasi (isu #39).
 3. **Sertifikat Uji Mutu Digital:** Sertifikat QC resmi berstandar A4 dengan cap audit anti-kecurangan (*Anti-Fraud Multi-Angle Verified*).
 4. **Backend Engine:** Uvicorn FastAPI dan ONNX Runtime fallback engine sudah stabil (196 unit tests 100% passing).
 
