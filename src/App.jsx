@@ -35,6 +35,7 @@ import CloseRoundedIcon from '@mui/icons-material/CloseRounded'
 import { calculateHarvest, calculateHarvestValue } from './business/harvestCalculation.js'
 import { deleteBatch, readBatches, saveBatch } from './business/harvestStorage.js'
 import { COMMODITY_OPTIONS, PRICE_REFERENCE_SOURCE, REFERENCE_PRICES_PER_KG } from './business/priceReference.js'
+import { PRICE_DATA_MODE, commodityNameToId, fetchLatestPrice } from './services/priceApi.js'
 import { fetchBapanasLive } from './services/scanService.js'
 import { AppShell } from './components/AppShell.jsx'
 import { stopAllActiveCameraStreams } from './components/LiveCameraViewfinder.jsx'
@@ -120,9 +121,37 @@ function DashboardPreview({ onNavigate, batches = [], onSelectBatch }) {
   const [bapanasData, setBapanasData] = useState(null)
   const [bapanasOffline, setBapanasOffline] = useState(false)
   const [isRefreshingPrice, setIsRefreshingPrice] = useState(false)
+  // Mode data harga PUBLIK (isu #44): live membaca KONTRAK /api/v1/prices/* saja —
+  // endpoint legacy /bapanas/live tidak dipanggil sama sekali.
+  const isLivePriceMode = PRICE_DATA_MODE === 'live'
+  const [livePrices, setLivePrices] = useState(null) // {commodityId: {observation}|{error}}
   // Pengunci dedupe: efek mount (termasuk double-invoke StrictMode) dan tombol
-  // refresh tidak boleh mengirim dua request BAPANAS bersamaan.
+  // refresh tidak boleh mengirim dua request harga bersamaan.
   const bapanasInFlightRef = useRef(false)
+
+  const loadLivePrices = async () => {
+    if (bapanasInFlightRef.current) return
+    bapanasInFlightRef.current = true
+    setIsRefreshingPrice(true)
+    const results = await Promise.allSettled(
+      COMMODITY_OPTIONS.map((name) => fetchLatestPrice({ commodityId: commodityNameToId(name) }))
+    )
+    const map = {}
+    results.forEach((result, index) => {
+      const id = commodityNameToId(COMMODITY_OPTIONS[index])
+      if (!id) return
+      if (result.status === 'fulfilled') {
+        map[id] = { observation: result.value.observation, requestId: result.value.requestId }
+      } else {
+        map[id] = { error: result.reason?.message || 'API harga tidak terjangkau' }
+      }
+    })
+    setLivePrices(map)
+    bapanasInFlightRef.current = false
+    setIsRefreshingPrice(false)
+  }
+
+  const loadPrices = () => (isLivePriceMode ? loadLivePrices() : loadBapanas())
 
   const loadBapanas = (timeoutMs) => {
     if (bapanasInFlightRef.current) return
@@ -146,10 +175,10 @@ function DashboardPreview({ onNavigate, batches = [], onSelectBatch }) {
       })
   }
 
-  const handleRefreshBapanas = () => loadBapanas(5000)
+  const handleRefreshBapanas = () => loadPrices()
 
   useEffect(() => {
-    loadBapanas(4000)
+    loadPrices()
   }, [])
 
   const dynamicMetrics = [
@@ -218,7 +247,17 @@ function DashboardPreview({ onNavigate, batches = [], onSelectBatch }) {
                   <Typography fontWeight={700} variant="h6">
                     Harga acuan pasar
                   </Typography>
-                  {bapanasData ? (
+                  {isLivePriceMode ? (
+                    (() => {
+                      const entries = Object.values(livePrices ?? {})
+                      const ready = entries.length > 0 && entries.every((e) => e.observation && e.observation.price_value != null)
+                      const anyData = entries.some((e) => e.observation && e.observation.price_value != null)
+                      if (!entries.length) return <Chip color="default" label="Kontrak harga — memuat…" size="small" variant="outlined" />
+                      if (ready) return <Chip color="success" icon={<CheckCircleRoundedIcon />} label="Kontrak harga aktif" size="small" />
+                      if (anyData) return <Chip color="success" label="Kontrak harga — sebagian data" size="small" />
+                      return <Chip color="warning" label="Kontrak: data belum tersedia" size="small" />
+                    })()
+                  ) : bapanasData ? (
                     <Chip color="success" icon={<CheckCircleRoundedIcon />} label="Acuan SP2KP Tersimpan" size="small" />
                   ) : bapanasOffline ? (
                     <Chip color="warning" label="Offline — pakai acuan lokal" size="small" />
@@ -239,7 +278,9 @@ function DashboardPreview({ onNavigate, batches = [], onSelectBatch }) {
                   </Tooltip>
                 </Stack>
                 <Typography color="text.secondary" sx={{ display: 'block', mt: 0.5 }} variant="caption">
-                  {bapanasData
+                  {isLivePriceMode
+                    ? 'Kontrak /api/v1/prices • Kabupaten 1375 (Pasar Ibuh Payakumbuh)'
+                    : bapanasData
                     ? `Panel SP2KP • ${bapanasData.market_center}`
                     : `Acuan Pasar • Diperbarui ${PRICE_REFERENCE_SOURCE.updatedAt}${bapanasOffline ? ' (gagal sinkron, menampilkan acuan lokal)' : ''}`}
                 </Typography>
@@ -248,14 +289,25 @@ function DashboardPreview({ onNavigate, batches = [], onSelectBatch }) {
               <Stack spacing={0} sx={{ width: '100%' }}>
                 {COMMODITY_OPTIONS.map((commodity) => {
                   const bapanasKey = commodity.toLowerCase()
-                  const livePrice = bapanasData?.commodities?.[bapanasKey]?.price_per_kg
-                  const priceToShow = livePrice || REFERENCE_PRICES_PER_KG[commodity]
+                  const liveMode = isLivePriceMode
+                  const entry = livePrices?.[commodityNameToId(commodity)]
+                  const livePriceValue = liveMode && entry?.observation
+                    ? entry.observation.price_value
+                    : null
+                  const priceToShow = liveMode
+                    ? livePriceValue
+                    : bapanasData?.commodities?.[bapanasKey]?.price_per_kg || REFERENCE_PRICES_PER_KG[commodity]
+                  const rowLabel = liveMode && priceToShow == null
+                    ? (entry?.observation?.warnings?.includes('SOURCE_DOES_NOT_PUBLISH_COMMODITY')
+                        ? 'Sumber tidak menyediakan data'
+                        : 'Belum tersedia (kontrak)')
+                    : null
                   return (
                     <Stack
                       direction="row"
                       key={commodity}
                       spacing={2}
-                      sx={{alignItems: 'center', justifyContent: 'space-between', 
+                      sx={{alignItems: 'center', justifyContent: 'space-between',
                         width: '100%',
                         borderBottom: '1px solid',
                         borderColor: 'divider',
@@ -266,9 +318,15 @@ function DashboardPreview({ onNavigate, batches = [], onSelectBatch }) {
                       <Typography fontWeight={600} variant="body2" color="text.primary" sx={{ flexGrow: 1 }}>
                         {commodity}
                       </Typography>
-                      <Typography fontWeight={700} variant="body2" color="primary.dark" sx={{ ml: 'auto', textAlign: 'right', whiteSpace: 'nowrap', pl: 2 }}>
-                        {formatRupiah(priceToShow)} / kg
-                      </Typography>
+                      {rowLabel ? (
+                        <Typography fontWeight={600} variant="caption" color="text.disabled" sx={{ textAlign: 'right', whiteSpace: 'nowrap', pl: 2 }}>
+                          {rowLabel}
+                        </Typography>
+                      ) : (
+                        <Typography fontWeight={700} variant="body2" color="primary.dark" sx={{ ml: 'auto', textAlign: 'right', whiteSpace: 'nowrap', pl: 2 }}>
+                          {formatRupiah(priceToShow)} / kg
+                        </Typography>
+                      )}
                     </Stack>
                   )
                 })}
