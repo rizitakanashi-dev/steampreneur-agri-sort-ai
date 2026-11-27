@@ -757,11 +757,11 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
         bgcolor: immersive ? 'rgba(23, 25, 28, 0.55)' : '#f8fafc',
         borderRadius: 2,
         border: immersive ? '1px solid rgba(255, 255, 255, 0.15)' : '1px dashed #cbd5e1',
-        color: immersive ? '#e2e8f0' : undefined,
+        color: immersive ? '#FAFCFB' : undefined,
       }}
     >
       <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center' }}>
-        <Typography variant="caption" fontWeight={700} sx={{ color: immersive ? '#cbd5e1' : 'text.secondary' }}>
+        <Typography variant="caption" fontWeight={700} sx={{ color: immersive ? '#E6ECE8' : 'text.secondary' }}>
           Confidence Threshold (Batas Keyakinan Deteksi): {confidenceThreshold.toFixed(2)}
         </Typography>
         <Chip
@@ -777,7 +777,7 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
           }
           color={isEggplant || isTomato || isChili ? 'info' : 'default'}
           variant="outlined"
-          sx={immersive ? { color: '#e2e8f0', borderColor: 'rgba(255, 255, 255, 0.3)' } : undefined}
+          sx={immersive ? { color: '#FAFCFB', borderColor: 'rgba(255, 255, 255, 0.3)' } : undefined}
         />
       </Stack>
       <Slider
@@ -790,7 +790,7 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
         valueLabelFormat={(v) => `${Math.round(v * 100)}%`}
         sx={{ mt: 1 }}
       />
-      <Typography variant="caption" sx={{ display: 'block', color: immersive ? '#cbd5e1' : 'text.secondary' }}>
+      <Typography variant="caption" sx={{ display: 'block', color: immersive ? '#E6ECE8' : 'text.secondary' }}>
         Nilai lebih rendah (0.15 - 0.25) mendeteksi lebih banyak buah terung yang saling bertumpuk di keranjang.
       </Typography>
     </Box>
@@ -805,15 +805,15 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
         mb: immersive ? 0 : 2.5,
         py: immersive ? 0.75 : undefined,
         borderRadius: 2,
-        bgcolor: '#f0fdf4',
-        borderColor: '#bbf7d0',
-        color: '#166534',
+        bgcolor: '#E3F3EA',
+        borderColor: '#E6ECE8',
+        color: '#034D32',
       }}
     >
       <Typography variant="body2" fontWeight={700}>
         Tips Akurasi AI ({selectedCommodity}):
       </Typography>
-      <Typography variant="caption" sx={{ display: 'block', mt: 0.25, color: '#15803d' }}>
+      <Typography variant="caption" sx={{ display: 'block', mt: 0.25, color: '#036E45' }}>
         {isEggplant
           ? 'Model mendeteksi mutu buah per butir. Untuk akurasi optimal, ambil 2–5 buah sampel dari keranjang dan letakkan berjajar di atas nampan/alas datar (hindari tumpukan padat pasar berlapis).'
           : isChili
@@ -839,7 +839,7 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
                     width: 32,
                     height: 32,
                     '& .MuiSvgIcon-root': { fontSize: 20 },
-                    color: '#e2e8f0',
+                    color: '#FAFCFB',
                     bgcolor: 'rgba(23, 25, 28, 0.55)',
                     '&:hover': { bgcolor: 'rgba(23, 25, 28, 0.75)' },
                   }}
@@ -855,7 +855,7 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
                     width: 32,
                     height: 32,
                     '& .MuiSvgIcon-root': { fontSize: 20 },
-                    color: torchInfo.on ? '#C68F2F' : '#e2e8f0',
+                    color: torchInfo.on ? '#C68F2F' : '#FAFCFB',
                     bgcolor: 'rgba(23, 25, 28, 0.55)',
                     '&:hover': { bgcolor: 'rgba(23, 25, 28, 0.75)' },
                   }}
@@ -895,7 +895,7 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
                       setImagePreviewFront(null)
                       setMultiStep(1)
                     }}
-                    sx={{ color: '#e2e8f0', fontWeight: 700, flexShrink: 0 }}
+                    sx={{ color: '#FAFCFB', fontWeight: 700, flexShrink: 0 }}
                   />
                 )}
               </Stack>
@@ -908,7 +908,7 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
                   width: 32,
                   height: 32,
                   '& .MuiSvgIcon-root': { fontSize: 20 },
-                  color: cameraMenuOpen ? '#289D67' : '#e2e8f0',
+                  color: cameraMenuOpen ? '#289D67' : '#FAFCFB',
                   bgcolor: 'rgba(23, 25, 28, 0.55)',
                   '&:hover': { bgcolor: 'rgba(23, 25, 28, 0.75)' },
                 }}
@@ -924,7 +924,7 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
                 left: 0,
                 right: 0,
                 zIndex: 1260,
-                bgcolor: 'rgba(23, 33, 53, 0.94)',
+                bgcolor: 'rgba(23, 25, 28, 0.94)',
                 backdropFilter: 'blur(10px)',
                 borderRadius: 3,
                 p: 1,
@@ -1000,7 +1000,7 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
                       bgcolor: 'transparent',
                       border: 'none',
                       p: 0,
-                      color: '#e2e8f0',
+                      color: '#FAFCFB',
                       fontFamily: 'inherit',
                     }}
                     component="button"
@@ -1015,7 +1015,7 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        color: item.active ? '#034D32' : '#e2e8f0',
+                        color: item.active ? '#034D32' : '#FAFCFB',
                         bgcolor: item.active ? '#E3F3EA' : 'rgba(255, 255, 255, 0.10)',
                         border: item.active ? 'none' : '1px solid rgba(255, 255, 255, 0.14)',
                       }}
@@ -1027,7 +1027,7 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
                         mt: 0.5,
                         fontSize: '0.6875rem',
                         fontWeight: 700,
-                        color: '#e2e8f0',
+                        color: '#FAFCFB',
                         textAlign: 'center',
                         lineHeight: 1.2,
                       }}
@@ -1328,7 +1328,7 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
                   <Box sx={immersive ? { flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, position: 'relative' } : undefined}>
                     {/* Stepper desktop = kartu lengkap; immersive: indikator di baris kontrol atas */}
                     {!immersive && (
-                    <Box sx={{ mb: 2.5, p: 2, bgcolor: '#f0fdf4', borderRadius: 2, border: '1px solid #bbf7d0' }}>
+                    <Box sx={{ mb: 2.5, p: 2, bgcolor: '#E3F3EA', borderRadius: 2, border: '1px solid #bbf7d0' }}>
                       <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} sx={{ justifyContent: 'space-between', alignItems: { sm: 'center' } }}>
                         <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
                           <Chip
@@ -1861,7 +1861,7 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
                   ? '#eff6ff'
                   : execStatus === 'unsupported'
                   ? '#f8fafc'
-                  : '#f0fdf4',
+                  : '#E3F3EA',
               border: '1px solid',
               borderColor:
                 execStatus === 'model_unavailable'
@@ -1871,8 +1871,8 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
                   : execStatus === 'simulated'
                   ? '#bfdbfe'
                   : execStatus === 'unsupported'
-                  ? '#e2e8f0'
-                  : '#bbf7d0',
+                  ? '#FAFCFB'
+                  : '#E6ECE8',
             }}
           >
             <CardContent sx={{ p: 2 }}>
@@ -1906,7 +1906,7 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
                             ? '#1e40af'
                             : execStatus === 'unsupported'
                             ? '#334155'
-                            : '#166534'
+                            : '#034D32'
                         }
                       >
                         {scanResult.is_multi_angle
@@ -2073,7 +2073,7 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
             <Alert
               severity="info"
               icon={<HelpOutlineRoundedIcon />}
-              sx={{ borderRadius: 2.5, bgcolor: '#f8fafc', borderColor: '#cbd5e1' }}
+              sx={{ borderRadius: 2.5, bgcolor: '#f8fafc', borderColor: '#E6ECE8' }}
             >
               <Typography variant="subtitle2" fontWeight={800} color="#334155">
                 ℹ️ Komoditas Belum Didukung Model AI
@@ -2353,7 +2353,7 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
             position: 'fixed',
             inset: 0,
             zIndex: 1220,
-            bgcolor: 'rgba(2, 6, 23, 0.82)',
+            bgcolor: 'rgba(10, 11, 13, 0.82)',
             backdropFilter: 'blur(6px)',
             display: 'flex',
             flexDirection: 'column',
@@ -2379,7 +2379,7 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
             />
           )}
           <CircularProgress size={40} sx={{ color: '#289D67' }} />
-          <Typography sx={{ color: '#e2e8f0', fontWeight: 700, textAlign: 'center' }}>
+          <Typography sx={{ color: '#FAFCFB', fontWeight: 700, textAlign: 'center' }}>
             Menganalisis foto dengan model YOLO11 {selectedCommodity}…
           </Typography>
         </Box>
@@ -2392,7 +2392,7 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
             position: 'fixed',
             inset: 0,
             zIndex: 1230,
-            bgcolor: 'rgba(2, 6, 23, 0.72)',
+            bgcolor: 'rgba(10, 11, 13, 0.72)',
             backdropFilter: 'blur(6px)',
             display: 'flex',
             alignItems: 'center',
@@ -2404,14 +2404,14 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
             sx={{
               width: '100%',
               maxWidth: 360,
-              bgcolor: '#16233b',
+              bgcolor: '#1F2422',
               borderRadius: 3,
               p: 2.5,
               border: '1px solid rgba(255, 255, 255, 0.12)',
               boxShadow: '0 16px 48px rgba(0, 0, 0, 0.55)',
             }}
           >
-            <Typography sx={{ color: '#e2e8f0', fontWeight: 800 }}>Komoditas yang discan?</Typography>
+            <Typography sx={{ color: '#FAFCFB', fontWeight: 800 }}>Komoditas yang discan?</Typography>
             <Typography variant="caption" sx={{ color: '#9DA6A0' }}>
               Konfirmasi sebelum foto dikirim ke model AI
             </Typography>
@@ -2667,7 +2667,7 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
                       fontSize: '0.8125rem',
                       fontWeight: 800,
                       letterSpacing: 0.2,
-                      color: active ? '#034D32' : 'rgba(226, 232, 240, 0.85)',
+                      color: active ? '#034D32' : 'rgba(250, 252, 251, 0.85)',
                       bgcolor: active ? '#E3F3EA' : 'rgba(255, 255, 255, 0.14)',
                       transition: 'background-color 0.15s',
                     }}
