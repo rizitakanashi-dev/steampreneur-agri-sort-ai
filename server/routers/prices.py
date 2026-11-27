@@ -51,10 +51,12 @@ def _stamp_request_id(request: Request) -> str:
     return request_id
 
 
-def _envelope(request: Request, data) -> JSONResponse:
+def _envelope(request: Request, data, cache_policy: str = "no-store") -> JSONResponse:
+    # Kebijakan cache #43: hanya respons yang aman dibagi yang boleh di-cache publik;
+    # error & respons per-user TIDAK PERNAH di-cache.
     return JSONResponse(
         content={"data": data, "meta": {"request_id": request.state.request_id}},
-        headers={"Cache-Control": "no-store"},  # 5xx & data user-specific tidak di-cache
+        headers={"Cache-Control": cache_policy},
     )
 
 
@@ -62,14 +64,16 @@ def _envelope(request: Request, data) -> JSONResponse:
 async def list_commodities(request: Request) -> JSONResponse:
     _stamp_request_id(request)
     service = _service()
-    return _envelope(request, [entry.model_dump(mode="json") for entry in service.list_commodities()])
+    # Katalog & metadata sumber aman dibagi => boleh cache publik singkat (#43).
+    return _envelope(request, [entry.model_dump(mode="json") for entry in service.list_commodities()], cache_policy="public, max-age=300")
 
 
 @router.get("/sources")
 async def list_sources(request: Request) -> JSONResponse:
     _stamp_request_id(request)
     service = _service()
-    return _envelope(request, [s.model_dump(mode="json") for s in service.list_sources()])
+    # Metadata sumber aman dibagi => cache publik singkat (#43).
+    return _envelope(request, [s.model_dump(mode="json") for s in service.list_sources()], cache_policy="public, max-age=300")
 
 
 @router.get("/sources/{source_id}/health")
@@ -220,16 +224,88 @@ async def get_price_history(
     return response
 
 
+def _build_ingestion_service(config=None) -> PriceIngestionService:
+    cfg = config or load_price_config()
+    registry = SourceRegistry(config=cfg)
+    return PriceIngestionService(
+        registry=registry,
+        repository=build_default_repository(),
+        ingest_enabled=cfg.ingest_enabled,
+        failure_cooldown_seconds=cfg.failure_cooldown_seconds,
+    )
+
+
 @router.post("/refresh", dependencies=[Depends(require_permission("pricing.sync"))])
 async def refresh_prices(request: Request, source_id: str = Query("sp2kp")) -> JSONResponse:
     _stamp_request_id(request)
     if source_id not in {"sp2kp", "sipashorti"}:
         return _error(request, status.HTTP_400_BAD_REQUEST, "INVALID_QUERY", "source_id tidak dikenal.", {"source_id": source_id})
     config = load_price_config()
-    registry = SourceRegistry(config=config)
-    service = PriceIngestionService(
-        registry=registry, repository=build_default_repository(), ingest_enabled=config.ingest_enabled
+    service = _build_ingestion_service(config)
+    try:
+        result = service.run_ingest(source_id)
+    except IngestionRefused as refused:
+        return _error(
+            request,
+            status.HTTP_403_FORBIDDEN,
+            "FORBIDDEN",
+            refused.reason,
+            {"source_id": source_id},
+        )
+    return _envelope(
+        request,
+        {
+            "accepted": True,
+            "run_id": result["run_id"],
+            "status": result["status"],
+            "inserted": result["inserted"],
+            "warnings": [WarningCode.SOURCE_ACCESS_UNCONFIRMED] if result["status"] == "skipped" else [],
+        },
     )
+
+
+# ---------------- Scheduler endpoint (isu #43) ----------------
+# Untuk external scheduler (mis. cron di luar Vercel). BUKAN endpoint publik:
+# memakai server-only secret dengan perbandingan konstanta-waktu + rate limit
+# sederhana. Deployment scheduler ke produksi tetap menunggu keputusan #38/#39.
+
+import hmac  # noqa: E402 — modul bawaan, dipakai per endpoint
+import secrets as _secrets  # noqa: E402
+import time as _time
+
+_CRON_ATTEMPTS: dict = {}
+_CRON_WINDOW_SECONDS = 60
+_CRON_MAX_ATTEMPTS = 5
+
+
+def _rate_limited(key: str) -> bool:
+    now = _time.monotonic()
+    window = [t for t in _CRON_ATTEMPTS.get(key, []) if now - t < _CRON_WINDOW_SECONDS]
+    if len(window) >= _CRON_MAX_ATTEMPTS:
+        _CRON_ATTEMPTS[key] = window
+        return True
+    window.append(now)
+    _CRON_ATTEMPTS[key] = window
+    return False
+
+
+@router.post("/cron/refresh")
+async def cron_refresh(
+    request: Request,
+    source_id: str = Query("sp2kp"),
+) -> JSONResponse:
+    """Endpoint scheduler — dilindungi secret server-only (konstanta-waktu) + rate limit."""
+    _stamp_request_id(request)
+    config = load_price_config()
+    provided = request.headers.get("X-Price-Cron-Secret") or ""
+    if not config.cron_secret or not _secrets.compare_digest(provided, config.cron_secret):
+        return _error(request, status.HTTP_401_UNAUTHORIZED, "UNAUTHORIZED", "Secret scheduler tidak valid.")
+    if _rate_limited(request.client.host if request.client else "unknown"):
+        return _error(request, status.HTTP_429_TOO_MANY_REQUESTS, "RATE_LIMITED", "Terlalu sering memanggil cron.")
+    if source_id not in {"sp2kp", "sipashorti"}:
+        return _error(request, status.HTTP_400_BAD_REQUEST, "INVALID_QUERY", "source_id tidak dikenal.", {"source_id": source_id})
+
+    service = _build_ingestion_service(config)
     try:
         result = service.run_ingest(source_id)
     except IngestionRefused as refused:

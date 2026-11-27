@@ -47,6 +47,12 @@ class PriceIntegrationConfig:
     # Total anggaran waktu per panggilan provider — harus di bawah limit Vercel 60s
     http_total_budget_seconds: int = field(default_factory=lambda: 45)
 
+    # Isu #43: kredensial scheduler (server-only), dipakai cron endpoint dengan
+    # perbandingan konstanta-waktu; kosong => endpoint cron menolak semua pemanggil.
+    cron_secret: Optional[str] = None
+    # Negative cache kegagalan: tahan fetch ulang setelah provider gagal
+    failure_cooldown_seconds: int = 300
+
     @property
     def total_budget_seconds(self) -> int:
         return min(self.http_total_budget_seconds, 55)
@@ -65,4 +71,6 @@ def load_price_config() -> PriceIntegrationConfig:
         http_timeout_seconds=_env_int("PRICE_HTTP_TIMEOUT_SECONDS", 8, minimum=1, maximum=20),
         http_max_retries=_env_int("PRICE_MAX_RETRIES", 2, minimum=0, maximum=5),
         http_total_budget_seconds=_env_int("PRICE_TOTAL_BUDGET_SECONDS", 45, minimum=5, maximum=55),
+        cron_secret=os.environ.get("PRICE_CRON_SECRET") or None,
+        failure_cooldown_seconds=_env_int("PRICE_FAILURE_COOLDOWN_SECONDS", 300, minimum=30, maximum=3600),
     )

@@ -9,12 +9,21 @@ Gerbang:
 """
 
 from datetime import datetime, timezone
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 from server.integrations.base import SourceRegistry
 from server.repositories.price_repository import PriceRepository
 from server.services.price_normalization import resolve_commodity
 from server.services.price_query_service import new_request_id
+from server.services.price_single_flight import RepositorySingleFlight
+
+
+class ProviderFetchError(Exception):
+    """Kegagalan provider berkategori — TIDAK pernah di-cache sebagai data sukses."""
+
+    def __init__(self, category: str, message: str) -> None:
+        super().__init__(message)
+        self.category = category
 
 
 class IngestionRefused(Exception):
@@ -26,10 +35,30 @@ class IngestionRefused(Exception):
 
 
 class PriceIngestionService:
-    def __init__(self, registry: SourceRegistry, repository: PriceRepository, ingest_enabled: bool) -> None:
+    def __init__(
+        self,
+        registry: SourceRegistry,
+        repository: PriceRepository,
+        ingest_enabled: bool,
+        single_flight=None,
+        failure_cooldown_seconds: int = 300,
+    ) -> None:
         self._registry = registry
         self._repo = repository
         self._ingest_enabled = ingest_enabled
+        self._single_flight = single_flight or RepositorySingleFlight(repository)
+        self._failure_cooldown_seconds = failure_cooldown_seconds
+
+    def _in_failure_cooldown(self, source_id: str) -> Optional[str]:
+        """Negative cache singkat: suppresi gagal berulang, BUKAN cache data sukses."""
+        last = self._repo.last_failure(source_id)
+        if not last:
+            return None
+        started = datetime.fromisoformat(last["started_at"].replace("Z", "+00:00"))
+        age = (datetime.now(timezone.utc) - started).total_seconds()
+        if age < self._failure_cooldown_seconds:
+            return last.get("notes") or "recent_failure"
+        return None
 
     def run_ingest(self, source_id: str) -> Dict[str, Any]:
         if not self._ingest_enabled:
@@ -43,11 +72,32 @@ class PriceIngestionService:
             )
             return {"accepted": True, "run_id": run_id, "status": "skipped", "inserted": 0}
 
-        from server.integrations.base import PriceQuery  # import lokal agar siklus bebas
+        # Negative cache: gagal baru-baru ini => tahan, jangan rembes provider lagi.
+        cooldown_category = self._in_failure_cooldown(source_id)
+        if cooldown_category:
+            run_id = self._repo.record_ingest_run(
+                source_id,
+                "skipped",
+                notes=f"FAILURE_COOLDOWN ({cooldown_category}) — {self._failure_cooldown_seconds}s.",
+            )
+            return {"accepted": True, "run_id": run_id, "status": "skipped", "inserted": 0}
 
-        run_id = self._repo.record_ingest_run(source_id, "running")
+        # Single-flight: pemanggil kedua TIDAK boleh mem-fetch provider.
+        run_id, acquired = self._single_flight.acquire(source_id)
+        if not acquired:
+            return {"accepted": True, "run_id": None, "status": "single_flight_skipped", "inserted": 0}
+
         try:
-            result = provider.fetch(PriceQuery(commodity_id="", price_type="", region_level="nasional"))
+            from server.integrations.base import PriceQuery  # import lokal agar siklus bebas
+
+            try:
+                result = provider.fetch(PriceQuery(commodity_id="", price_type="", region_level="nasional"))
+            except ProviderFetchError as fetch_err:
+                self._repo.record_ingest_run(
+                    source_id, "failed", notes=f"error_category={fetch_err.category}"
+                )
+                return {"accepted": True, "run_id": run_id, "status": "failed", "inserted": 0, "error_category": fetch_err.category}
+
             if result.access is not None:
                 self._repo.record_ingest_run(
                     source_id, "skipped", notes="SOURCE_ACCESS_UNCONFIRMED — adapter menolak."
@@ -63,6 +113,8 @@ class PriceIngestionService:
                 source_id, "failed", notes=f"error_category={category}"
             )
             raise
+        finally:
+            self._single_flight.release(source_id)
 
     def _normalize_batch(self, source_id: str, result: Any) -> List[Dict[str, Any]]:
         """Resolusi EKSAK per rekaman; rekaman tak dikenal DITOLAK, bukan ditebak."""

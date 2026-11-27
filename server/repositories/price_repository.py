@@ -55,7 +55,11 @@ class PriceRepository(Protocol):
 
     def record_ingest_run(self, source_id: str, status: str, notes: Optional[str] = None) -> str: ...
 
+    def try_begin_ingest_run(self, source_id: str) -> Optional[str]: ...
+
     def last_success(self, source_id: str) -> Optional[Dict[str, Any]]: ...
+
+    def last_failure(self, source_id: str) -> Optional[Dict[str, Any]]: ...
 
 
 class InMemoryPriceRepository:
@@ -150,6 +154,13 @@ class InMemoryPriceRepository:
         )
         return run_id
 
+    def try_begin_ingest_run(self, source_id: str) -> Optional[str]:
+        """Satu run 'running' per sumber — simulasi unique partial index migrasi #43."""
+        for r in self._runs:
+            if r["source_id"] == source_id and r["status"] == "running":
+                return None
+        return self.record_ingest_run(source_id, "running")
+
     def last_success(self, source_id: str) -> Optional[Dict[str, Any]]:
         successes = [
             r for r in self._runs if r["source_id"] == source_id and r["status"] == "success"
@@ -158,6 +169,15 @@ class InMemoryPriceRepository:
             return None
         successes.sort(key=lambda r: r["started_at"], reverse=True)
         return successes[0]
+
+    def last_failure(self, source_id: str) -> Optional[Dict[str, Any]]:
+        failures = [
+            r for r in self._runs if r["source_id"] == source_id and r["status"] == "failed"
+        ]
+        if not failures:
+            return None
+        failures.sort(key=lambda r: r["started_at"], reverse=True)
+        return failures[0]
 
 
 class SupabasePriceRepository:
@@ -275,8 +295,24 @@ class SupabasePriceRepository:
         )
         return rows[0]["id"] if rows else str(uuid.uuid4())
 
+    def try_begin_ingest_run(self, source_id: str) -> Optional[str]:
+        """None = sudah ada run 'running' (single-flight DB level, migrasi #43)."""
+        import urllib.error  # import lokal
+
+        try:
+            return self.record_ingest_run(source_id, "running")
+        except urllib.error.HTTPError as exc:
+            if exc.code in (400, 409):  # unique violation pada index partial
+                return None
+            raise
+
     def last_success(self, source_id: str) -> Optional[Dict[str, Any]]:
         query = f"?source_id=eq.{source_id}&status=eq.success&order=started_at.desc&limit=1"
+        rows = self._postgrest_request("GET", "price_ingest_runs", query)
+        return rows[0] if rows else None
+
+    def last_failure(self, source_id: str) -> Optional[Dict[str, Any]]:
+        query = f"?source_id=eq.{source_id}&status=eq.failed&order=started_at.desc&limit=1"
         rows = self._postgrest_request("GET", "price_ingest_runs", query)
         return rows[0] if rows else None
 

@@ -2,7 +2,19 @@
 PriceQueryService (isu #42) — jalur baca `/api/v1/prices/*`.
 
 Status akses `unconfirmed` (temuan #38/#39):
-  * Sumber mati => `data_status=unavailable`, `price_value=null`, warning eksplisit.
+  * Sumber mati => `data_status=unavailable`, `price_value=        observed_iso = row.get("observed_at")
+        observed_at = datetime.fromisoformat(observed_iso) if observed_iso else None
+        state, age, max_age = compute_freshness(observed_at, meta.id)
+        max_age = max_age if max_age is not None else 172800
+
+        if state == "stale" and WarningCode.STALE_OBSERVATION not in warnings:
+            warnings.append(WarningCode.STALE_OBSERVATION)
+
+        data_status = row.get("data_status", "historical")
+        if state == "stale" and data_status == "actual":
+            data_status = "cached"  # disajikan hanya dengan label stale + timestamp asli
+
+        return PriceObservation(`, warning eksplisit.
   * TIDAK ada fallback ke data statis/simulasi yang menyamar jadi harga terkini.
   * `simulated` hanya muncul bila panggilan membawa flag demo EKSPLISIT (mode demo),
     dan tetap diberi label simulated — tidak pernah default.
@@ -27,6 +39,7 @@ from server.models.price import (
     WarningCode,
 )
 from server.repositories.price_repository import PriceRepository
+from server.services.price_freshness import compute_freshness
 from server.services.price_normalization import (
     CANONICAL_COMMODITIES,
     SOURCE_LABEL_MAP,
@@ -186,7 +199,20 @@ class PriceQueryService:
             )
 
         row, meta = best
-        return self._assemble_observation(row, meta, region, commodity_ref)
+        observation = self._assemble_observation(row, meta, region, commodity_ref)
+        # Kebijakan penyajian #43: expired TIDAK pernah disajikan sebagai current —
+        # respons dibungkus `unavailable` dengan alasan; stale hanya berlabel `cached`.
+        if observation.freshness.state == "expired":
+            return self._unavailable(
+                region, commodity_ref, observation.price_type, observation.source,
+                notes="Observasi melewati max_stale_age sumber — tidak disajikan sebagai harga terkini.",
+                warnings=[WarningCode.STALE_OBSERVATION],
+            )
+        if observation.freshness.state == "stale" and observation.data_status == "actual":
+            observation = observation.model_copy(
+                update={"data_status": "cached", "is_live": False}, deep=False
+            )
+        return observation
 
     def _assemble_observation(
         self,
@@ -206,14 +232,15 @@ class PriceQueryService:
 
         observed_iso = row.get("observed_at")
         observed_at = datetime.fromisoformat(observed_iso) if observed_iso else None
-        age = None
-        if observed_at:
-            observed_at = observed_at.replace(tzinfo=observed_at.tzinfo or timezone.utc)
-            age = max(0, int((datetime.now(timezone.utc) - observed_at).total_seconds()))
-        max_age = 172800  # cadence harian + grace
-        state = "unknown"
-        if age is not None:
-            state = "fresh" if age <= max_age else "stale"
+        state, age, max_age = compute_freshness(observed_at, meta.id)
+        max_age = max_age if max_age is not None else 172800
+
+        if state == "stale" and WarningCode.STALE_OBSERVATION not in warnings:
+            warnings.append(WarningCode.STALE_OBSERVATION)
+
+        data_status = row.get("data_status", "historical")
+        if state == "stale" and data_status == "actual":
+            data_status = "cached"  # disajikan hanya dengan label stale + timestamp asli
 
         return PriceObservation(
             commodity=commodity_ref,
@@ -236,6 +263,35 @@ class PriceQueryService:
                 reference=row.get("provenance_reference"),
                 notes=None,
             ),
+            warnings=warnings,  # type: ignore[arg-type]
+        )
+
+    def _unavailable(
+        self,
+        region: Region,
+        commodity_ref: CommodityRef,
+        price_type: str,
+        meta: PriceSourceMeta,
+        notes: str,
+        warnings: List[WarningCode],
+    ) -> PriceObservation:
+        return PriceObservation(
+            commodity=commodity_ref,
+            region=region,
+            price_type=price_type,  # type: ignore[arg-type]
+            unit_raw="kg",
+            price_value=None,
+            normalized_price_per_kg=None,
+            normalization=None,
+            data_status="unavailable",
+            is_live=False,
+            is_official=bool(meta and meta.access_status == "authorized"),
+            source=meta,  # type: ignore[arg-type]
+            observed_at=None,
+            published_at=None,
+            fetched_at=datetime.now(timezone.utc),
+            freshness=Freshness(state="unknown", expected_cadence="daily"),
+            provenance=Provenance(method="manual_reference", reference=None, notes=notes),
             warnings=warnings,  # type: ignore[arg-type]
         )
 

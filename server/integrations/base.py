@@ -111,6 +111,8 @@ class SourceRegistry:
 
     config: PriceIntegrationConfig
     transport_factory: Optional[Callable[[], object]] = None
+    # Injeksi fixture untuk test (tidak dipakai runtime)
+    providers: Optional[dict] = None
 
     def is_enabled(self, source_id: str) -> bool:
         if source_id == "sp2kp":
@@ -120,6 +122,13 @@ class SourceRegistry:
         return False
 
     def build_provider(self, source_id: str) -> Optional[PriceProvider]:
+        # Injeksi fixture untuk test; runtime tetap lewat kelas asli di bawah.
+        if self.providers and source_id in self.providers:
+            return self.providers[source_id]
+        # import lokal: hindari siklus base <-> provider
+        from server.integrations.sipashorti import SipashortiPriceProvider
+        from server.integrations.sp2kp import Sp2kpPriceProvider
+
         if source_id == "sp2kp":
             provider: PriceProvider = Sp2kpPriceProvider(self.config)
         elif source_id == "sipashorti":

@@ -527,6 +527,11 @@ components:
         license: { type: [string, 'null'] }
         attribution: { type: [string, 'null'] }
         expected_cadence: { type: [string, 'null'], examples: ['daily'] }
+        # Freshness SPESIFIK PER SUMBER (isu #43) — bukan TTL global:
+        expected_cadence_seconds: { type: [integer, 'null'], default: 86400 }
+        grace_period_seconds: { type: [integer, 'null'], default: 21600 }
+        max_stale_age_seconds: { type: [integer, 'null'], default: 259200 }
+        documented_extension_seconds: { type: [integer, 'null'], default: 0 }
     SourceHealth:
       type: object
       required: [source, state, last_error_category, last_success_age_seconds]
