@@ -483,7 +483,7 @@ export const LiveCameraViewfinder = forwardRef(function LiveCameraViewfinder({ o
     <Box
       ref={containerRef}
       sx={{
-        borderRadius: isImmersive ? 0 : 2.5,
+        borderRadius: isImmersive ? 0 : 3,
         overflow: 'hidden',
         bgcolor: '#17191C',
         position: 'relative',
@@ -508,8 +508,8 @@ export const LiveCameraViewfinder = forwardRef(function LiveCameraViewfinder({ o
             top: contentRect ? contentRect.top + 10 : 12,
             left: contentRect ? contentRect.guides.left + 10 : 12,
             zIndex: 15,
-            px: 1.25,
-            py: 0.5,
+            px: 1,
+            py: 0.375,
             borderRadius: 2,
             bgcolor: 'rgba(23, 25, 28, 0.78)',
             color: '#C68F2F',
@@ -519,8 +519,8 @@ export const LiveCameraViewfinder = forwardRef(function LiveCameraViewfinder({ o
             border: '1px solid rgba(198, 143, 47, 0.4)',
           }}
         >
-          {qualityStatus === 'dark' ? <LightModeRoundedIcon sx={{ fontSize: 17 }} /> : <BlurOnRoundedIcon sx={{ fontSize: 17 }} />}
-          <Typography sx={{ fontSize: '0.75rem', fontWeight: 700, color: '#C68F2F' }}>
+          {qualityStatus === 'dark' ? <LightModeRoundedIcon sx={{ fontSize: 15 }} /> : <BlurOnRoundedIcon sx={{ fontSize: 15 }} />}
+          <Typography sx={{ fontSize: '0.6875rem', fontWeight: 700, color: '#C68F2F' }}>
             {qualityStatus === 'dark' ? 'Cahaya rendah — tambah penerangan' : 'Citra blur — tahan kamera lebih stabil'}
           </Typography>
         </Box>

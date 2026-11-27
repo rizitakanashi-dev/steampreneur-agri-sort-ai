@@ -61,7 +61,7 @@ import { COMMODITIES, formatRupiah } from './scanner/constants.js'
 import { SaveToRecapDialog } from './scanner/SaveToRecapDialog.jsx'
 import { CertificatePreviewDialog } from './scanner/CertificatePreviewDialog.jsx'
 
-export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, immersive = false, onEnterImmersive, onExitImmersive }) {
+export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, immersive = false, onEnterImmersive, onExitImmersive, manualFormToggle = null }) {
   const isMobileViewport = useMediaQuery('(max-width: 599.95px)')
   const [selectedCommodity, setSelectedCommodity] = useState('Terung')
   const [activeTab, setActiveTab] = useState(0) // 0: Live Camera, 1: Upload File
@@ -802,7 +802,7 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
       severity="info"
       icon={<InfoOutlinedIcon />}
       sx={{
-        mb: immersive ? 0 : 2.5,
+        mb: immersive ? 0 : 2,
         py: immersive ? 0.75 : undefined,
         borderRadius: 2,
         bgcolor: '#E3F3EA',
@@ -881,6 +881,7 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
                     fontSize: '0.6875rem',
                     whiteSpace: 'nowrap',
                     flexShrink: 1,
+                    height: 24,
                     '& .MuiChip-label': { px: 1 },
                   }}
                 />
@@ -1089,14 +1090,17 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
         {!immersive && (
         <Box sx={{ width: { xs: '100%', md: 288 }, flexShrink: 0, position: { md: 'sticky' }, top: { md: 24 } }}>
         <Card elevation={2} sx={{ borderRadius: 3, border: '1px solid', borderColor: 'divider' }}>
-        <CardContent sx={{ p: 2 }}>
+        <CardContent sx={{ p: 2.5 }}>
           <Stack direction="row" sx={{ alignItems: 'center', justifyContent: 'space-between', mb: 1.5 }}>
             <Typography fontWeight={800} variant="subtitle1">Komoditas Panen</Typography>
-            <Tooltip title="Atur sensitivitas threshold keyakinan model AI">
-              <IconButton size="small" onClick={() => setShowSensitivitySetting((prev) => !prev)} sx={{ borderRadius: 2 }}>
-                <TuneRoundedIcon fontSize="small" />
-              </IconButton>
-            </Tooltip>
+            <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>
+              {manualFormToggle}
+              <Tooltip title="Atur sensitivitas threshold keyakinan model AI">
+                <IconButton size="small" onClick={() => setShowSensitivitySetting((prev) => !prev)} sx={{ borderRadius: 2 }}>
+                  <TuneRoundedIcon fontSize="small" />
+                </IconButton>
+              </Tooltip>
+            </Stack>
           </Stack>
           {showSensitivitySetting && <Box sx={{ mb: 1.5 }}>{sensitivityControls}</Box>}
           <Stack spacing={1}>
@@ -1122,8 +1126,9 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
                     '&:hover': { bgcolor: sel ? 'rgba(3, 77, 50, 0.1)' : 'rgba(0, 0, 0, 0.02)' },
                   }}
                 >
-                  <Stack direction="row" spacing={1} sx={{ alignItems: 'center', justifyContent: 'space-between' }}>
-                    <Typography variant="subtitle2" fontWeight={800} color={sel ? 'primary.dark' : 'text.primary'}>
+                  {/* Badge nempel di belakang nama — kelompok info komoditas tetap satu genggaman */}
+                  <Stack direction="row" spacing={0.75} sx={{ alignItems: 'center' }}>
+                    <Typography variant="subtitle2" fontWeight={800} color={sel ? 'primary.dark' : 'text.primary'} noWrap>
                       {c.name}
                     </Typography>
                     <Chip
@@ -1234,7 +1239,7 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
 
           <CardContent
             sx={{
-              p: immersive ? 0 : { xs: 2, sm: 3 },
+              p: immersive ? 0 : { xs: 2, sm: 2.5 },
               ...(immersive ? { flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 } : {}),
             }}
           >
@@ -1246,7 +1251,7 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
               sx={{
                 borderBottom: 1,
                 borderColor: 'divider',
-                mb: 2.5,
+                mb: 2,
                 display: immersive ? 'none' : 'block',
                 // Mobile: label tab ringkas + kedua tab berbagi lebar penuh
                 // (sebelumnya: variant object {{xs,sm}} tidak valid — MUI diam-diam memakai 'standard')

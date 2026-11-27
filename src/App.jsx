@@ -416,19 +416,19 @@ function FoundationPage({
   if (activePage === 'scanner') {
     return (
       <Stack spacing={2.5}>
-        {!immersive && (
+        {showManualForm ? (
           <Stack direction="row" sx={{ justifyContent: 'flex-end' }}>
             <Button
               size="small"
               variant="text"
               color="inherit"
-              onClick={() => setShowManualForm((prev) => !prev)}
+              onClick={() => setShowManualForm(false)}
               sx={{ textDecoration: 'underline', color: 'text.secondary' }}
             >
-              {showManualForm ? '← Kembali ke Scanner Kamera AI' : 'Beralih ke Input Panen Manual (Tanpa Foto) →'}
+              ← Kembali ke Scanner Kamera AI
             </Button>
           </Stack>
-        )}
+        ) : null}
 
         {showManualForm ? (
           <HarvestForm onSave={onHarvestConfirm} />
@@ -439,6 +439,17 @@ function FoundationPage({
             immersive={immersive}
             onEnterImmersive={onEnterImmersive}
             onExitImmersive={onExitImmersive}
+            manualFormToggle={
+              <Button
+                size="small"
+                variant="text"
+                color="inherit"
+                onClick={() => setShowManualForm(true)}
+                sx={{ textDecoration: 'underline', color: 'text.secondary', minWidth: 0, px: 0.75 }}
+              >
+                Input Panen Manual →
+              </Button>
+            }
           />
         )}
       </Stack>
