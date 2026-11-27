@@ -1,9 +1,12 @@
 # Alur Kerja Pengembangan Fitur Scanning & Integrasi Model AI
 
 > **Proyek:** Agri-Sort AI — STEAMPreneur SMK Tingkat Nasional 2026  
-> **Tujuan:** Panduan alur kerja (*end-to-end workflow*) untuk fitur *Batch QC Scanner*, integrasi model YOLO11 Terung 4-kelas, visualisasi kanvas interaktif, dan pelaporan mutu digital.  
-> **Model Aktif:** YOLO11n Terung (`models-20261107T170211Z-1-001/models/terung/`) dengan 4 kelas mutu komersial: `Class I`, `Class II`, `Extra Class`, `Reject`.  
+> **Tujuan:** Panduan alur kerja (*end-to-end workflow*) untuk fitur *Batch QC Scanner*, integrasi model YOLO11 Terung, visualisasi kanvas interaktif, dan pelaporan mutu digital.
+>
+> **Model Aktif:** YOLO11n Terung dengan 3 kelas pada artefak saat ini: `Grade A`, `Grade B`, `Reject`. Snapshot historis 8 November 2026 memakai taksonomi 4 kelas (`Class I`, `Class II`, `Extra Class`, `Reject`); taksonomi itu bukan artefak aktif.
 > **Tanggal Pembaruan:** 8 November 2026  
+>
+> **Koreksi provenance (27 November 2026):** artefak ONNX/PT yang ada di repositori adalah **3 kelas** (`Grade A`, `Grade B`, `Reject`), bukan 4 kelas. Klaim `Extra Class`/`Class I`/`Class II` di bawah adalah snapshot historis dan tidak menggambarkan artefak aktif. Lihat `docs/model-evaluation/provenance-matrix.md` dan `docs/model-evaluation/provenance-reconciliation-report.md`.
 
 ---
 

@@ -1,12 +1,15 @@
 # Rencana Kerja Teknis: Fullstack Developer (Backend & Frontend)
 ## Proyek: Agri-Sort AI — Quality Control & Smart Pricing Hortikultura
 
-> **Status:** ROADMAP MUTAKHIR (Integrasi Model Terung 4-Kelas & Fitur Pull Terkini)  
-> **Komoditas AI Aktif:** Terung / Eggplant (4 Kelas Komersial: Extra Class, Class I, Class II, Reject)  
+> **Status:** ROADMAP HISTORIS (snapshot 8 November 2026; artefak saat ini 3 kelas)
+>
+> **Komoditas AI:** Terung / Eggplant (artefak saat ini: `Grade A`, `Grade B`, `Reject`; roadmap 4-kelas di bawah adalah snapshot historis)
 > **Komoditas Sekunder:** Tomat (Legacy 2-Kelas) & Cabai Rawit Hijau (Pencatatan Manual / Non-AI)  
 > **Stack Terverifikasi:** React 19, Vite 8, Material UI 9.5, Python FastAPI, Browser `localStorage`  
 > **Hasil Uji Terkini:** 87 Frontend Unit Tests Pass, 41 Backend Unit Tests Pass  
 > **Tanggal Pembaruan:** 8 November 2026  
+>
+> **Koreksi provenance (27 November 2026):** artefak ONNX/PT yang ada di repositori adalah **3 kelas** (`Grade A`, `Grade B`, `Reject`), bukan 4 kelas. Roadmap 4-kelas di bawah adalah snapshot historis; status model tetap `candidate`/`BLOCKED`. Lihat `docs/model-evaluation/provenance-matrix.md`.
 
 ---
 
