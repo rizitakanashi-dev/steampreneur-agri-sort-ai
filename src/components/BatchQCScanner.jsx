@@ -1081,17 +1081,12 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
         </Button>
       )}
 
-      {/* 1a. MODE IMMERSIVE: kontrol atas (✕/⚡/menu) dikirim ke viewfinder —
-          diposisikan di tengah area gelap atas kamera (tidak lagi navbar tersendiri) */}
-      {immersive ? (
-        <>
-          {/* Panel menu ala kamera native: ikon bulat + label, muncul saat ⠿ ditekan */}
-
-
-        </>
-      ) : (
-        /* SIDEBAR: pilihan komoditas & mode inspeksi — ringkas, sticky di desktop */
-        <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 2, alignItems: 'flex-start', width: '100%' }}>
+      {/* Wrapper dua kolom (desktop): sidebar komoditas + kamera/hasil.
+          Di mode kamera layar penuh: sidebar disembunyikan, kamera lebar penuh.
+          PENTING: kartu kamera & hasil WAJIB selalu dirender (di luar ternary) —
+          kalau masuk cabang kondisional, mode full kehilangan kamera (layar hitam) */}
+      <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 2, alignItems: 'flex-start', width: '100%' }}>
+        {!immersive && (
         <Box sx={{ width: { xs: '100%', md: 288 }, flexShrink: 0, position: { md: 'sticky' }, top: { md: 24 } }}>
         <Card elevation={2} sx={{ borderRadius: 3, border: '1px solid', borderColor: 'divider' }}>
         <CardContent sx={{ p: 2 }}>
@@ -1185,6 +1180,7 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
         </CardContent>
         </Card>
         </Box>
+        )}
         {/* KOLOM UTAMA: kamera + hasil analisis */}
         <Box sx={{ flex: 1, minWidth: 0, width: '100%' }}>
 
@@ -2301,8 +2297,7 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
         </Stack>
       )}
         </Box>
-        </Box>
-      )}
+      </Box>
 
       {/* DIALOG SIMPAN KE REKAP DATA PANEN */}
       <SaveToRecapDialog
