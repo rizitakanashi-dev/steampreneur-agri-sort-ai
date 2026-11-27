@@ -375,8 +375,9 @@ export const LiveCameraViewfinder = forwardRef(function LiveCameraViewfinder({ o
     }
   }, [rotationOffset])
 
-  const totalRotation =
-    ((((needsRotation ? (facingMode === 'environment' ? 90 : -90) : 0) + rotationOffset) % 360) + 360) % 360
+  const totalRotation = isImmersive
+    ? ((((needsRotation ? (facingMode === 'environment' ? 90 : -90) : 0) + rotationOffset) % 360) + 360) % 360
+    : 0
   // Hanya 90/270 yang butuh elemen video berdimensi tukar (landscape↔portrait).
   // Offset 180 TIDAK — kalau ikut dipaksa elemen besar, video meluber melebihi layar.
   const swapLayout = totalRotation === 90 || totalRotation === 270
@@ -388,7 +389,8 @@ export const LiveCameraViewfinder = forwardRef(function LiveCameraViewfinder({ o
 
   const updateContentRect = useCallback(() => {
     const cont = containerRef.current
-    if (!cont || !videoDims || cameraState !== 'active') {
+    // Hanya mode kamera full yang butuh pengukuran letterbox; kamera biasa pakai inset default
+    if (!isImmersive || !cont || !videoDims || cameraState !== 'active') {
       setContentRect(null)
       return
     }
@@ -412,7 +414,7 @@ export const LiveCameraViewfinder = forwardRef(function LiveCameraViewfinder({ o
     const gRight = Math.min(((cw + dw) / 2) + pad, cw - 4)
     const gBottom = Math.min(((ch + dh) / 2) + pad, ch - 4)
     setContentRect({ top: contentTop, guides: { top: gTop, left: gLeft, width: gRight - gLeft, height: gBottom - gTop } })
-  }, [videoDims, cameraState, swapLayout])
+  }, [isImmersive, videoDims, cameraState, swapLayout])
 
   useEffect(() => {
     updateContentRect()

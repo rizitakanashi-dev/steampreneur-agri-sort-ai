@@ -1395,7 +1395,7 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
 
                     <LiveCameraViewfinder
                       ref={viewfinderRef}
-                      topOverlay={cameraTopControls}
+                      topOverlay={immersive ? cameraTopControls : undefined}
                       key={`viewfinder-step-${multiStep}`}
                       onCapture={handleLiveCameraCapture}
                       disabled={isScanning}
@@ -1468,7 +1468,7 @@ export function BatchQCScanner({ onBatchSaved, onViewResults, onOpenManualForm, 
                     ) : (
                       <LiveCameraViewfinder
                         ref={viewfinderRef}
-                        topOverlay={cameraTopControls}
+                        topOverlay={immersive ? cameraTopControls : undefined}
                         onCapture={handleLiveCameraCapture}
                         disabled={isScanning}
                         variant={immersive ? 'immersive' : 'default'}
