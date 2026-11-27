@@ -1,0 +1,676 @@
+openapi: 3.1.0
+info:
+  title: Agri-Sort AI Horticultural Price API
+  version: 1.0.0-draft
+  summary: Kontrak harga hortikultura (SIPASHORTI / SP2KP) antara frontend React dan backend FastAPI Agri-Sort AI.
+  description: |
+    Kontrak untuk isu #41. Proposal — BELUM diimplementasikan (implementasi = #42).
+
+    Prinsip kontrak:
+    - Browser hanya memanggil backend Agri-Sort AI; URL & kredensial provider tidak pernah
+      muncul di kontrak frontend.
+    - Satu respons = satu jenis harga dari satu sumber. Tidak ada pencampuran
+      produsen / grosir / eceran / konsumen menjadi satu angka.
+    - Data hilang = `null` dengan `data_status` eksplisit — bukan `0`, bukan interpolasi,
+      bukan fallback simulasi diam-diam.
+    - Nilai asli dan ternormalisasi dipertahankan; `normalized_price_per_kg` hanya diisi
+      bila unit sumber dan faktor konversinya diketahui.
+    - `observed_at` (kapan provider mengamati), `published_at` (kapan sumber menerbitkan,
+      bila diketahui), `fetched_at` (kapan Agri-Sort menariknya) dibedakan.
+    - Zona waktu: `observed_at`/`published_at` memakai offset Asia/Jakarta (+07:00) karena
+      tanggal sumber lokal; `fetched_at` memakai UTC (`Z`).
+servers:
+  - url: /api/v1
+tags:
+  - name: prices
+  - name: sources
+  - name: operations
+paths:
+  /prices/commodities:
+    get:
+      tags: [prices]
+      operationId: listPriceCommodities
+      summary: Komoditas kanonik yang didukung beserta sumber yang menerbitkannya.
+      description: |
+        Termasuk Terung dengan `available: false` pada sumber yang tidak menerbitkannya
+        (temuan #39: daftar komoditas nasional SP2KP tidak memuat Terung).
+      responses:
+        '200':
+          $ref: '#/components/responses/CommodityList'
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /prices/latest:
+    get:
+      tags: [prices]
+      operationId: getLatestPrice
+      summary: Observasi harga terbaru untuk satu komoditas/region/sumber/jenis harga.
+      parameters:
+        - $ref: '#/components/parameters/Commodity'
+        - $ref: '#/components/parameters/PriceType'
+        - $ref: '#/components/parameters/RegionLevel'
+        - $ref: '#/components/parameters/RegionCode'
+        - $ref: '#/components/parameters/SourceId'
+        - $ref: '#/components/parameters/Market'
+      responses:
+        '200': { $ref: '#/components/responses/PriceObservation' }
+        '400': { $ref: '#/components/responses/InvalidQuery' }
+        '404': { $ref: '#/components/responses/CommodityNotFound' }
+        '422': { $ref: '#/components/responses/InvalidParameters' }
+        '503': { $ref: '#/components/responses/SourceUnavailable' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /prices/history:
+    get:
+      tags: [prices]
+      operationId: getPriceHistory
+      summary: Deret waktu satu komoditas/region/sumber/jenis harga, dengan batas tanggal dan paginasi.
+      parameters:
+        - $ref: '#/components/parameters/Commodity'
+        - $ref: '#/components/parameters/PriceType'
+        - $ref: '#/components/parameters/RegionLevel'
+        - $ref: '#/components/parameters/RegionCode'
+        - $ref: '#/components/parameters/SourceId'
+        - $ref: '#/components/parameters/Market'
+        - $ref: '#/components/parameters/From'
+        - $ref: '#/components/parameters/To'
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Cursor'
+      responses:
+        '200': { $ref: '#/components/responses/PriceHistory' }
+        '400': { $ref: '#/components/responses/InvalidQuery' }
+        '404': { $ref: '#/components/responses/CommodityNotFound' }
+        '422': { $ref: '#/components/responses/InvalidParameters' }
+        '503': { $ref: '#/components/responses/SourceUnavailable' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /prices/sources:
+    get:
+      tags: [sources]
+      operationId: listPriceSources
+      summary: Metadata semua sumber harga (URL resmi, status akses, lisensi, cadence, last success).
+      responses:
+        '200': { $ref: '#/components/responses/SourceList' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /prices/sources/{source_id}/health:
+    get:
+      tags: [sources]
+      operationId: getSourceHealth
+      summary: Kesehatan sumber — last error category (tanpa kredensial) dan umur last success.
+      parameters:
+        - $ref: '#/components/parameters/SourceIdPath'
+      responses:
+        '200': { $ref: '#/components/responses/SourceHealth' }
+        '404': { $ref: '#/components/responses/CommodityNotFound' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /prices/refresh:
+    post:
+      tags: [operations]
+      operationId: refreshPrices
+      summary: |
+        Pemicu operasional (protected). Memerlukan otorisasi admin/internal. Harus idempoten —
+        memanggil dua kali dalam window refresh tidak menimbulkan observasi ganda.
+      security:
+        - internalBearerAuth: []
+      responses:
+        '202':
+          description: Refresh diterima/berjalan; kembalikan status ingest.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data, meta]
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      accepted: { type: boolean }
+                      run_id: { type: string, format: uuid }
+                      started_at: { type: string, format: date-time }
+                  meta: { $ref: '#/components/schemas/Meta' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+components:
+  securitySchemes:
+    internalBearerAuth:
+      type: http
+      scheme: bearer
+      description: Token admin/internal backend Agri-Sort AI. Bukan kredensial provider.
+
+  parameters:
+    Commodity:
+      name: commodity
+      in: query
+      required: true
+      schema: { type: string, examples: [cabai-rawit-hijau] }
+      description: ID komoditas kanonik katalog Agri-Sort.
+    PriceType:
+      name: price_type
+      in: query
+      required: true
+      schema: { $ref: '#/components/schemas/PriceType' }
+    RegionLevel:
+      name: region_level
+      in: query
+      required: true
+      schema: { $ref: '#/components/schemas/RegionLevel' }
+    RegionCode:
+      name: region_code
+      in: query
+      required: true
+      schema: { type: string, examples: ['1375'] }
+      description: Kode wilayah (kabupaten/kota, contoh 1375 = Payakumbuh). Wajib bersama region_level.
+    SourceId:
+      name: source_id
+      in: query
+      required: false
+      schema: { $ref: '#/components/schemas/SourceId' }
+    SourceIdPath:
+      name: source_id
+      in: path
+      required: true
+      schema: { $ref: '#/components/schemas/SourceId' }
+    Market:
+      name: market
+      in: query
+      required: false
+      schema: { type: string, examples: ['Pasar Ibuh Payakumbuh'] }
+    From:
+      name: from
+      in: query
+      required: false
+      schema: { type: string, format: date }
+      description: Batas awal (inklusif), tanggal Asia/Jakarta.
+    To:
+      name: to
+      in: query
+      required: false
+      schema: { type: string, format: date }
+      description: Batas akhir (inklusif). from > to => 400 INVALID_QUERY.
+    Limit:
+      name: limit
+      in: query
+      required: false
+      schema: { type: integer, minimum: 1, maximum: 200, default: 90 }
+    Cursor:
+      name: cursor
+      in: query
+      required: false
+      schema: { type: string }
+      description: Kursor paginasi opak dari meta.next_cursor respons sebelumnya.
+
+  responses:
+    CommodityList:
+      description: Daftar komoditas + ketersediaan per sumber.
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [data, meta]
+            properties:
+              data:
+                type: array
+                items: { $ref: '#/components/schemas/PriceCommodity' }
+              meta: { $ref: '#/components/schemas/Meta' }
+    PriceObservation:
+      description: Observasi harga terbaru (atau `unavailable` dengan alasan eksplisit).
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [data, meta]
+            properties:
+              data: { $ref: '#/components/schemas/PriceObservation' }
+              meta: { $ref: '#/components/schemas/Meta' }
+          examples:
+            actual:
+              $ref: '#/components/examples/StatusActual'
+            historical:
+              $ref: '#/components/examples/StatusHistorical'
+            cached:
+              $ref: '#/components/examples/StatusCached'
+            simulated:
+              $ref: '#/components/examples/StatusSimulated'
+            terung-unavailable:
+              $ref: '#/components/examples/StatusUnavailableTerung'
+    PriceHistory:
+      description: Deret waktu (urut menaik) + kursor berikutnya.
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [data, meta]
+            properties:
+              data:
+                type: array
+                items: { $ref: '#/components/schemas/PriceObservation' }
+              meta:
+                allOf:
+                  - $ref: '#/components/schemas/Meta'
+                  - type: object
+                    properties:
+                      next_cursor: { type: [string, 'null'] }
+    SourceList:
+      description: Metadata semua sumber.
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [data, meta]
+            properties:
+              data:
+                type: array
+                items: { $ref: '#/components/schemas/PriceSource' }
+              meta: { $ref: '#/components/schemas/Meta' }
+    SourceHealth:
+      description: Kesehatan satu sumber.
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [data, meta]
+            properties:
+              data: { $ref: '#/components/schemas/SourceHealth' }
+              meta: { $ref: '#/components/schemas/Meta' }
+    InvalidQuery:
+      description: Rentang tanggal salah atau kombinasi parameter tidak didukung.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          example:
+            error: { code: INVALID_QUERY, message: 'Rentang tanggal tidak valid: from > to.', details: { from: '2026-11-27', to: '2026-11-01' }, request_id: 'req_01h...' }
+    CommodityNotFound:
+      description: Komoditas tidak ada di katalog Agri-Sort.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          example:
+            error: { code: COMMODITY_NOT_FOUND, message: 'Komoditas tidak ditemukan di katalog.', details: { commodity: 'durian' }, request_id: 'req_01h...' }
+    InvalidParameters:
+      description: region_code/level atau price_type tidak valid.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          example:
+            error: { code: INVALID_PRICE_TYPE, message: 'price_type harus salah satu dari producer|wholesale|retail|consumer|unknown.', details: { price_type: 'eceran' }, request_id: 'req_01h...' }
+    SourceUnavailable:
+      description: |
+        Tidak ada sumber dan tidak ada observasi cache yang layak. Header `Retry-After`
+        diisi bila kedaluwarsa diketahui. Body TETAP memuat objek data_status=unavailable.
+      headers:
+        Retry-After:
+          schema: { type: integer }
+          description: Detik hingga refresh berikutnya masuk akal (opsional).
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [data, meta]
+            properties:
+              data: { $ref: '#/components/schemas/PriceObservation' }
+              meta: { $ref: '#/components/schemas/Meta' }
+    Unauthorized:
+      description: Token internal hilang/tidak valid.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          example:
+            error: { code: UNAUTHORIZED, message: 'Otorisasi internal diperlukan.', request_id: 'req_01h...' }
+    Forbidden:
+      description: Token valid tetapi tidak berhak memicu refresh.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          example:
+            error: { code: FORBIDDEN, message: 'Peran ini tidak berhak memicu refresh.', request_id: 'req_01h...' }
+    RateLimited:
+      description: Batas laju terdokumentasi terlampaui.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          example:
+            error: { code: RATE_LIMITED, message: 'Terlalu banyak permintaan.', details: { retry_after_seconds: 30 }, request_id: 'req_01h...' }
+    InternalError:
+      description: |
+        Kegagalan tak terduga. TIDAK PERNAH memuat kredensial provider, cookie,
+        hostname internal, atau raw stack trace upstream.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          example:
+            error: { code: INTERNAL_ERROR, message: 'Kegagalan tak terduga.', request_id: 'req_01h...' }
+
+  schemas:
+    Meta:
+      type: object
+      required: [request_id]
+      properties:
+        request_id: { type: string }
+    PriceType:
+      type: string
+      enum: [producer, wholesale, retail, consumer, unknown]
+      description: |
+        Jenis harga harus eksplisit. SP2KP = harga tingkat konsumen/retail — tidak boleh
+        dilabel produsen atau grosir. SIPASHORTI produsen/eceran/grosir adalah deret terpisah.
+    RegionLevel:
+      type: string
+      enum: [nasional, provinsi, kabupaten]
+    SourceId:
+      type: string
+      enum: [sipashorti, sp2kp]
+      description: ID sumber terdefinisi. Daftar boleh bertambah; kontrak tidak boleh menyematkan kredensial provider.
+    DataStatus:
+      type: string
+      enum: [actual, historical, cached, simulated, unavailable]
+      description: |
+        Semantik status (isu #41):
+        - actual: observasi terkini dari respons provider berizin. Boleh ditampilkan
+          sebagai harga terkini (dengan sumber + waktu).
+        - historical: catatan historis provider, bukan terkini. Tidak boleh dilabel terkini.
+        - cached: nilai yang ditarik sebelumnya, disajikan sesuai policy cache. Boleh
+          ditampilkan hanya dengan freshness + timestamp; tidak pernah sebagai live.
+        - simulated: nilai demo/tes yang diminta eksplisit di mode demo. Tidak pernah di mode live.
+        - unavailable: tidak ada observasi atau sumber tidak bisa memberi. Tunjukkan alasannya.
+    FreshnessState:
+      type: string
+      enum: [fresh, stale, expired, unknown]
+      description: |
+        fresh = dalam cadence sumber + grace. stale hanya boleh disajikan selama periode
+        terbatas saat sumber tidak tersedia dan responsnya harus menyebut stale + waktu
+        observasi. expired tidak boleh disajikan sebagai harga terkini (503 / unavailable).
+    WarningCode:
+      type: string
+      enum:
+        - SOURCE_DOES_NOT_PUBLISH_COMMODITY
+        - STALE_OBSERVATION
+        - UNIT_NOT_NORMALIZABLE
+      description: Daftar kode extensible (x-extensible) — frontend harus menoleransi kode baru.
+    ProvenanceMethod:
+      type: string
+      enum: [official_api, authorized_dataset, manual_reference]
+    PriceCommodity:
+      type: object
+      required: [id, name, sources]
+      properties:
+        id: { type: string, examples: [terung] }
+        name: { type: string, examples: ['Terung (Eggplant)'] }
+        sources:
+          type: array
+          items:
+            type: object
+            required: [source_id, available]
+            properties:
+              source_id: { $ref: '#/components/schemas/SourceId' }
+              available: { type: boolean }
+              price_types:
+                type: array
+                items: { $ref: '#/components/schemas/PriceType' }
+              note: { type: [string, 'null'] }
+    Region:
+      type: object
+      required: [level, code, name]
+      properties:
+        level: { $ref: '#/components/schemas/RegionLevel' }
+        code: { type: [string, 'null'], examples: ['1375'] }
+        name: { type: string, examples: ['Kota Payakumbuh'] }
+        parent:
+          type: [object, 'null']
+          properties:
+            level: { $ref: '#/components/schemas/RegionLevel' }
+            code: { type: string }
+            name: { type: string }
+    PriceObservation:
+      type: object
+      required:
+        - commodity
+        - region
+        - price_type
+        - currency
+        - unit_raw
+        - price_value
+        - normalized_price_per_kg
+        - data_status
+        - is_live
+        - is_official
+        - source
+        - observed_at
+        - published_at
+        - fetched_at
+        - freshness
+        - provenance
+        - warnings
+      properties:
+        commodity:
+          type: object
+          required: [id, name]
+          properties:
+            id: { type: string }
+            name: { type: string }
+            raw_label:
+              type: [string, 'null']
+              description: Label asli di sumber (dipertahankan, tidak dibersihkan).
+        region: { $ref: '#/components/schemas/Region' }
+        price_type: { $ref: '#/components/schemas/PriceType' }
+        currency: { type: string, const: IDR }
+        unit_raw: { type: string, examples: ['kg', 'liter', 'boks'] }
+        price_value:
+          type: [number, 'null']
+          description: Nilai asli dalam unit_raw. `null` = tidak ada observasi. DILARANG memakai 0 untuk 'tidak ada data'.
+        normalized_price_per_kg:
+          type: [number, 'null']
+          description: Hanya diisi bila unit sumber & faktor konversi diketahui; selain itu null.
+        normalization:
+          type: [object, 'null']
+          properties:
+            method: { type: string, examples: ['unit_factor'] }
+            factor: { type: number }
+            source_unit: { type: string }
+        data_status: { $ref: '#/components/schemas/DataStatus' }
+        is_live:
+          type: boolean
+          description: Turunan dari sumber + observasi; tidak pernah di-hardcode oleh UI.
+        is_official:
+          type: boolean
+          description: Turunan dari sumber + observasi; tidak pernah di-hardcode oleh UI.
+        source: { $ref: '#/components/schemas/PriceSource' }
+        observed_at:
+          type: [string, 'null']
+          format: date-time
+          description: ISO-8601 dengan offset +07:00 (tanggal sumber lokal).
+        published_at:
+          type: [string, 'null']
+          format: date-time
+          description: ISO-8601 dengan offset +07:00; null bila sumber tidak menerbitkannya.
+        fetched_at:
+          type: [string, 'null']
+          format: date-time
+          description: UTC (sufiks Z) — kapan Agri-Sort menarik data.
+        freshness:
+          type: object
+          required: [state, age_seconds, max_age_seconds, expected_cadence]
+          properties:
+            state: { $ref: '#/components/schemas/FreshnessState' }
+            age_seconds: { type: [integer, 'null'], minimum: 0 }
+            max_age_seconds: { type: [integer, 'null'], minimum: 0 }
+            expected_cadence: { type: [string, 'null'], examples: ['daily'] }
+        provenance:
+          type: object
+          required: [method, reference, notes]
+          properties:
+            method: { $ref: '#/components/schemas/ProvenanceMethod' }
+            reference: { type: [string, 'null'], description: Nama dataset/file/endpoint resmi. Bukan rahasia provider. }
+            notes: { type: [string, 'null'] }
+        warnings:
+          type: array
+          items: { $ref: '#/components/schemas/WarningCode' }
+    PriceSource:
+      type: object
+      required: [id, name, url, access_status, license, attribution]
+      properties:
+        id: { $ref: '#/components/schemas/SourceId' }
+        name: { type: string, examples: ['SP2KP — Kementerian Perdagangan RI'] }
+        url: { type: string, examples: ['https://sp2kp.kemendag.go.id/'] }
+        access_status:
+          type: string
+          enum: [authorized, unconfirmed, denied]
+          description: Keputusan akses dari isu #38/#39. unconfirmed/denied => adapter tidak boleh aktif (#42).
+        license: { type: [string, 'null'] }
+        attribution: { type: [string, 'null'] }
+        expected_cadence: { type: [string, 'null'], examples: ['daily'] }
+    SourceHealth:
+      type: object
+      required: [source, state, last_error_category, last_success_age_seconds]
+      properties:
+        source: { $ref: '#/components/schemas/SourceId' }
+        state:
+          type: string
+          enum: [healthy, degraded, down, never_fetched]
+        last_error_category:
+          type: [string, 'null']
+          enum: [auth, not_found, rate_limited, server_error, timeout, malformed_payload, null]
+          description: Kategori saja — tanpa pesan upstream mentah atau kredensial.
+        last_success_age_seconds: { type: [integer, 'null'], minimum: 0 }
+        last_success_at:
+          type: [string, 'null']
+          format: date-time
+          description: UTC.
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message, request_id]
+          properties:
+            code:
+              type: string
+              enum: [INVALID_QUERY, COMMODITY_NOT_FOUND, INVALID_REGION, INVALID_PRICE_TYPE, SOURCE_UNAVAILABLE, NO_ACCEPTABLE_DATA, RATE_LIMITED, INTERNAL_ERROR, UNAUTHORIZED, FORBIDDEN]
+            message: { type: string }
+            details: { type: [object, 'null'] }
+            request_id: { type: string }
+          description: Tidak memuat kredensial provider, cookie, hostname internal, atau stack trace mentah.
+
+  examples:
+    StatusActual:
+      summary: data_status=actual
+      value:
+        data:
+          commodity: { id: cabai-rawit-hijau, name: 'Cabai Rawit Hijau', raw_label: 'C Rawit Hijau' }
+          region: { level: kabupaten, code: '1375', name: 'Kota Payakumbuh', parent: { level: provinsi, code: '13', name: 'Sumatera Barat' } }
+          price_type: consumer
+          currency: IDR
+          unit_raw: kg
+          price_value: 44800
+          normalized_price_per_kg: 44800
+          normalization: null
+          data_status: actual
+          is_live: true
+          is_official: true
+          source: { id: sp2kp, name: 'SP2KP — Kementerian Perdagangan RI', url: 'https://sp2kp.kemendag.go.id/', access_status: authorized, license: 'Perlu konfirmasi (lihat #39)', attribution: 'Sumber: SP2KP Kemendag RI', expected_cadence: daily }
+          observed_at: '2026-11-27T08:00:00+07:00'
+          published_at: '2026-11-27T09:30:00+07:00'
+          fetched_at: '2026-11-27T02:31:12Z'
+          freshness: { state: fresh, age_seconds: 9312, max_age_seconds: 172800, expected_cadence: daily }
+          provenance: { method: official_api, reference: 'SP2KP resmi (jalur yang disetujui #39)', notes: null }
+          warnings: []
+    StatusHistorical:
+      summary: data_status=historical
+      value:
+        data:
+          commodity: { id: tomat, name: 'Tomat (Tomato)', raw_label: 'Tomat' }
+          region: { level: kabupaten, code: '1375', name: 'Kota Payakumbuh', parent: null }
+          price_type: consumer
+          currency: IDR
+          unit_raw: kg
+          price_value: 12000
+          normalized_price_per_kg: 12000
+          normalization: null
+          data_status: historical
+          is_live: false
+          is_official: true
+          source: { id: sp2kp, name: 'SP2KP — Kementerian Perdagangan RI', url: 'https://sp2kp.kemendag.go.id/', access_status: authorized, license: null, attribution: 'Sumber: SP2KP Kemendag RI', expected_cadence: daily }
+          observed_at: '2026-11-10T08:00:00+07:00'
+          published_at: null
+          fetched_at: '2026-11-27T02:00:00Z'
+          freshness: { state: expired, age_seconds: 1468800, max_age_seconds: 172800, expected_cadence: daily }
+          provenance: { method: authorized_dataset, reference: 'data.go.id Tingkat Harga Daerah', notes: 'Catatan historis; UI wajib melabel historis.' }
+          warnings: [STALE_OBSERVATION]
+    StatusCached:
+      summary: data_status=cached
+      value:
+        data:
+          commodity: { id: cabai-rawit-hijau, name: 'Cabai Rawit Hijau', raw_label: 'C Rawit Hijau' }
+          region: { level: kabupaten, code: '1375', name: 'Kota Payakumbuh', parent: null }
+          price_type: consumer
+          currency: IDR
+          unit_raw: kg
+          price_value: 44700
+          normalized_price_per_kg: 44700
+          normalization: null
+          data_status: cached
+          is_live: false
+          is_official: true
+          source: { id: sp2kp, name: 'SP2KP — Kementerian Perdagangan RI', url: 'https://sp2kp.kemendag.go.id/', access_status: authorized, license: null, attribution: 'Sumber: SP2KP Kemendag RI', expected_cadence: daily }
+          observed_at: '2026-11-26T08:00:00+07:00'
+          published_at: null
+          fetched_at: '2026-11-26T02:00:00Z'
+          freshness: { state: stale, age_seconds: 102600, max_age_seconds: 172800, expected_cadence: daily }
+          provenance: { method: official_api, reference: 'SP2KP resmi', notes: 'Sumber sementara tidak terjangkau; disajikan sesuai policy cache.' }
+          warnings: [STALE_OBSERVATION]
+    StatusSimulated:
+      summary: data_status=simulated (hanya mode demo)
+      value:
+        data:
+          commodity: { id: tomat, name: 'Tomat (Tomato)', raw_label: 'Tomat' }
+          region: { level: nasional, code: null, name: 'Nasional', parent: null }
+          price_type: unknown
+          currency: IDR
+          unit_raw: kg
+          price_value: 12000
+          normalized_price_per_kg: 12000
+          normalization: null
+          data_status: simulated
+          is_live: false
+          is_official: false
+          source: { id: sp2kp, name: 'SP2KP — Kementerian Perdagangan RI', url: 'https://sp2kp.kemendag.go.id/', access_status: unconfirmed, license: null, attribution: null, expected_cadence: daily }
+          observed_at: null
+          published_at: null
+          fetched_at: null
+          freshness: { state: unknown, age_seconds: null, max_age_seconds: null, expected_cadence: daily }
+          provenance: { method: manual_reference, reference: 'Baseline statis harga acuan Agri-Sort', notes: 'Hanya sah dalam mode demo, diberi label eksplisit.' }
+          warnings: []
+    StatusUnavailableTerung:
+      summary: Terung di SP2KP — SOURCE_DOES_NOT_PUBLISH_COMMODITY
+      description: |
+        Contoh wajib dari isu #41: sumber yang tidak menerbitkan Terung harus mengembalikan
+        respons valid dengan data_status=unavailable, price_value=null, warning eksplisit.
+        TIDAK boleh mengarang angka atau diam-diam mengganti komoditas lain.
+      value:
+        data:
+          commodity: { id: terung, name: 'Terung (Eggplant)', raw_label: null }
+          region: { level: kabupaten, code: '1375', name: 'Kota Payakumbuh', parent: null }
+          price_type: consumer
+          currency: IDR
+          unit_raw: kg
+          price_value: null
+          normalized_price_per_kg: null
+          normalization: null
+          data_status: unavailable
+          is_live: false
+          is_official: true
+          source: { id: sp2kp, name: 'SP2KP — Kementerian Perdagangan RI', url: 'https://sp2kp.kemendag.go.id/', access_status: authorized, license: null, attribution: null, expected_cadence: daily }
+          observed_at: null
+          published_at: null
+          fetched_at: '2026-11-27T02:00:00Z'
+          freshness: { state: unknown, age_seconds: null, max_age_seconds: null, expected_cadence: daily }
+          provenance: { method: official_api, reference: 'SP2KP resmi', notes: 'Daftar komoditas nasional SP2KP tidak memuat Terung (temuan #39).' }
+          warnings: [SOURCE_DOES_NOT_PUBLISH_COMMODITY]
