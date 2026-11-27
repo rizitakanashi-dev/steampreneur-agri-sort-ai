@@ -10,36 +10,158 @@
     "release_evidence": {
       "onnx_export_date": "2026-11-11T06:46:33.302201+07:00",
       "onnx_description": "Ultralytics YOLO11n model trained on /content/Chili-Data-set-v4-2/data.yaml",
-      "onnx_input": {"name": "images", "shape": [1, 3, 640, 640], "type": "tensor(float)"},
-      "onnx_output": {"name": "output0", "shape": [1, 7, 8400], "type": "tensor(float)"}
+      "onnx_input": {
+        "name": "images",
+        "shape": [
+          1,
+          3,
+          640,
+          640
+        ],
+        "type": "tensor(float)"
+      },
+      "onnx_output": {
+        "name": "output0",
+        "shape": [
+          1,
+          7,
+          8400
+        ],
+        "type": "tensor(float)"
+      }
     },
-    "files": {"pytorch": "best.pt", "onnx": "best.onnx", "dataset_config": "data.yaml"}
+    "files": {
+      "pytorch": "best.pt",
+      "onnx": "best.onnx",
+      "dataset_config": "data.yaml"
+    },
+    "artifact_license": "AGPL-3.0 (embedded Ultralytics ONNX metadata)",
+    "artifact_license_review": "REQUIRED — confirm distribution/network-use obligations with counsel before production deployment"
   },
   "artifacts": {
     "best.onnx": "4ea442e1197de2f81e1791a9031ad99341f5e3e92e236d44237b01e4f2da3739",
     "best.pt": "6365a711d59a98d128be5b623cb1c2926c86d12a4b1edffeb58bb10115ec977c"
   },
   "dataset": {
-    "name": "Smart Conveyor Cabai Rawit.v1i.yolov11",
-    "source": "Roboflow export; external source only, not copied into repository",
-    "source_path": "/home/Rizi/dataset/Smart Conveyor Cabai Rawit.v1i.yolov11",
-    "data_config_sha256": "185ef6cd88c970a4b842bf9b20af031bf29e5816871463731200ab4a84ddd63c",
-    "readme_sha256": "459795fda8ec07f370b858c9aede16b6be873d017e863c5a56b258262617d26e",
-    "annotation_tree_sha256": "003615bf2e665b0d5e58c45463196ed9d6cb8be84417963d1da0b3d31863fa05",
-    "config_provenance": {"workspace": "rizi-takanashi", "project": "smart-conveyor-cabai-rawit-ekbju", "project_version": 1},
-    "classes": {"0": "Grade A", "1": "Grade B", "2": "Reject"},
-    "annotation_counts": {
-      "label_files": {"train": 1266, "valid": 353, "test": 181},
-      "instances": {"train": 1280, "valid": 354, "test": 184},
-      "class_instances": {"0": 797, "1": 345, "2": 676}
+    "name": "Chili-Data-set-v4",
+    "role": "training",
+    "source": "Roboflow project chili-data-set-v4-r9wwe version 2; checkpoint/ONNX record /content/Chili-Data-set-v4-2/data.yaml, which is unavailable locally.",
+    "source_url": "https://app.roboflow.com/rizi-takanashi/chili-data-set-v4-r9wwe/2",
+    "source_path": null,
+    "access_status": "UNAVAILABLE_LOCAL",
+    "export_format": "YOLOv11 detect",
+    "export_date": null,
+    "license": "CC BY 4.0 (declared in the model-local data.yaml; training export unavailable)",
+    "license_status": "PARTIALLY_VERIFIED",
+    "license_note": "The model-local data.yaml declares CC BY 4.0, but the exact training export and publisher page were not available for verification.",
+    "data_config_sha256": null,
+    "readme_sha256": null,
+    "annotation_tree_sha256": null,
+    "export_manifest_sha256": null,
+    "config_provenance": {
+      "workspace": "rizi-takanashi",
+      "project": "chili-data-set-v4-r9wwe",
+      "project_version": 2
     },
+    "classes": {
+      "0": "Grade A",
+      "1": "Grade B",
+      "2": "Reject"
+    },
+    "annotation_counts": null,
+    "annotation_counts_status": "UNVERIFIED_TRAINING_EXPORT_UNAVAILABLE",
     "semantics_status": "needs_data",
-    "semantics_note": "The external export's project differs from the previously recorded chili-data-set-v4 project, and no independently verified grading rubric is available."
+    "semantics_note": "The model was trained on Chili-Data-set-v4, not on the locally available Smart Conveyor export. The training labels are unavailable; the external Smart Conveyor labels contain no valid boxes.",
+    "provenance_status": "PARTIALLY_VERIFIED",
+    "provenance_note": "Checkpoint, ONNX metadata, and model-local data.yaml agree on Chili-Data-set-v4 v2. The exact training export is unavailable, and the old manifest incorrectly named Smart Conveyor as the training dataset.",
+    "training_input_path": "/content/Chili-Data-set-v4-2/data.yaml",
+    "training_run": "/content/runs/detect/runs/cabai/yolo11n_chili_v2",
+    "model_data_yaml_sha256": "446afed3845ce4009e77579b0e400142cb60d52f24ad00aed1ae33fe4fc96cbb"
   },
   "grading": {
     "mapping_status": "candidate",
-    "mapping": {"0": "Grade A", "1": "Grade B", "2": "Reject"}
+    "mapping": {
+      "0": "Grade A",
+      "1": "Grade B",
+      "2": "Reject"
+    },
+    "mapping_evidence": "docs/model-evaluation/grade-rubrics.md",
+    "semantics_review": "pending_agronomist"
   },
-  "inference": {"default_confidence_threshold": 0.35, "recommended_input_size": 640},
-  "deployment": {"status": "candidate", "recommended_backend": "Python + FastAPI + ONNX Runtime"}
+  "inference": {
+    "default_confidence_threshold": 0.35,
+    "recommended_input_size": 640
+  },
+  "deployment": {
+    "status": "candidate",
+    "readiness": "BLOCKED",
+    "readiness_reasons": [
+      "training export unavailable",
+      "annotation quality of training data unverified",
+      "external Smart Conveyor export has zero valid boxes",
+      "class semantics and rubric unverified",
+      "no frozen threshold or held-out evaluation"
+    ],
+    "recommended_backend": "Python + FastAPI + ONNX Runtime"
+  },
+  "provenance": {
+    "status": "PARTIALLY_VERIFIED",
+    "training_run": "/content/runs/detect/runs/cabai/yolo11n_chili_v2",
+    "training_evidence": [
+      "best.pt embedded train_args",
+      "best.onnx custom metadata description",
+      "server/models/cabai/data.yaml"
+    ],
+    "evaluation_datasets": [
+      "Smart Conveyor Cabai Rawit.v1i.yolov11"
+    ],
+    "matrix": "docs/model-evaluation/provenance-matrix.md"
+  },
+  "evaluation_datasets": [
+    {
+      "name": "Smart Conveyor Cabai Rawit.v1i.yolov11",
+      "role": "invalid_external_dataset",
+      "source_url": "https://app.roboflow.com/rizi-takanashi/smart-conveyor-cabai-rawit-ekbju/1",
+      "source_path": "/home/Rizi/dataset/Smart Conveyor Cabai Rawit.v1i.yolov11",
+      "data_config_sha256": "185ef6cd88c970a4b842bf9b20af031bf29e5816871463731200ab4a84ddd63c",
+      "readme_sha256": "459795fda8ec07f370b858c9aede16b6be873d017e863c5a56b258262617d26e",
+      "annotation_tree_sha256": "dd147b7ab40b1f548e0cf4a45324908da5b92c7ff6346eb8d7d1f1d6218a9ff4",
+      "export_manifest_sha256": "ec67b176c58ff95f1e88d8579168c456aaf5c4d54a517438591d065e683d49d1",
+      "annotation_counts": {
+        "label_files": {
+          "train": 1266,
+          "valid": 353,
+          "test": 181
+        },
+        "valid_instances": {
+          "train": 0,
+          "valid": 0,
+          "test": 0
+        },
+        "class_instances": {
+          "0": 0,
+          "1": 0,
+          "2": 0
+        },
+        "invalid_label_rows": {
+          "train": 1280,
+          "valid": 354,
+          "test": 184
+        },
+        "empty_labels": {
+          "train": 0,
+          "valid": 0,
+          "test": 0
+        },
+        "duplicate_image_groups": {
+          "within_split": 0,
+          "cross_split": 0
+        }
+      },
+      "audit_status": "FAILED_INVALID_LABELS",
+      "audit_report": "docs/model-evaluation/evidence/cabai-smart-conveyor-v1.audit.json",
+      "usable_as_primary_held_out_test": false,
+      "reason": "All 1,818 label rows fail the five-field YOLO box parser; there are zero valid boxes. This export is neither the training source nor usable evaluation ground truth."
+    }
+  ]
 }

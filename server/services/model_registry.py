@@ -12,10 +12,16 @@ from typing import Any
 
 CANONICAL_CLASSES = {"0": "Grade A", "1": "Grade B", "2": "Reject"}
 _SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
+_PROVENANCE_STATUSES = {"VERIFIED", "PARTIALLY_VERIFIED", "UNVERIFIED", "CONFLICTED"}
+_LICENSE_STATUSES = {"VERIFIED", "PARTIALLY_VERIFIED", "UNVERIFIED"}
 
 
 class ModelContractError(ValueError):
     """Raised when a manifest or model artifact violates the deployment contract."""
+
+
+class ModelNotValidatedError(ModelContractError):
+    """Raised when a model is not validated for production inference."""
 
 
 def _require_fields(value: dict, fields: tuple[str, ...], section: str) -> None:
@@ -27,6 +33,41 @@ def _require_fields(value: dict, fields: tuple[str, ...], section: str) -> None:
 def _require_nonempty_string(value: Any, field: str) -> None:
     if not isinstance(value, str) or not value.strip():
         raise ModelContractError(f"Model manifest field '{field}' must be a non-empty string")
+
+
+def _validate_validated_deployment(manifest: dict) -> None:
+    """Reject a VALIDATED claim unless provenance and evaluation gates are explicit."""
+    dataset = manifest["dataset"]
+    grading = manifest["grading"]
+    if dataset.get("provenance_status") not in _PROVENANCE_STATUSES:
+        raise ModelContractError(
+            "Validated deployment requires dataset.provenance_status in "
+            f"{sorted(_PROVENANCE_STATUSES)}"
+        )
+    if dataset["provenance_status"] != "VERIFIED":
+        raise ModelContractError("Validated deployment requires dataset.provenance_status == VERIFIED")
+    if manifest["deployment"].get("readiness") != "VALIDATED":
+        raise ModelContractError("Validated deployment requires deployment.readiness == VALIDATED")
+    if dataset.get("license_status") != "VERIFIED":
+        raise ModelContractError("Validated deployment requires dataset.license_status == VERIFIED")
+    if dataset.get("annotation_counts_status") not in {"VERIFIED", "VERIFIED_LOCAL_AUDIT"}:
+        raise ModelContractError("Validated deployment requires audited annotation counts")
+    if dataset.get("semantics_status") != "verified":
+        raise ModelContractError("Validated deployment requires dataset.semantics_status == verified")
+    if grading.get("mapping_status") != "verified":
+        raise ModelContractError("Validated deployment requires grading.mapping_status == verified")
+    evaluation = manifest.get("evaluation")
+    if not isinstance(evaluation, dict):
+        raise ModelContractError("Validated deployment requires an evaluation object")
+    if evaluation.get("status") != "PASSED":
+        raise ModelContractError("Validated deployment requires evaluation.status == PASSED")
+    if evaluation.get("threshold_frozen") is not True:
+        raise ModelContractError("Validated deployment requires evaluation.threshold_frozen == true")
+    if evaluation.get("held_out_test") is not True:
+        raise ModelContractError("Validated deployment requires evaluation.held_out_test == true")
+    if evaluation.get("acceptance_criteria_approved") is not True:
+        raise ModelContractError("Validated deployment requires approved acceptance criteria")
+    _require_nonempty_string(evaluation.get("metrics_report"), "evaluation.metrics_report")
 
 
 def _validate_manifest_structure(manifest: dict) -> None:
@@ -83,6 +124,19 @@ def _validate_manifest_structure(manifest: dict) -> None:
     for field in ("name", "source"):
         _require_nonempty_string(dataset[field], f"dataset.{field}")
     _ordered_classes(dataset["classes"], "Manifest")
+    if "role" in dataset:
+        _require_nonempty_string(dataset["role"], "dataset.role")
+    if "provenance_status" in dataset and dataset["provenance_status"] not in _PROVENANCE_STATUSES:
+        raise ModelContractError(
+            f"Model manifest field 'dataset.provenance_status' must be one of {sorted(_PROVENANCE_STATUSES)}"
+        )
+    if "license_status" in dataset and dataset["license_status"] not in _LICENSE_STATUSES:
+        raise ModelContractError(
+            f"Model manifest field 'dataset.license_status' must be one of {sorted(_LICENSE_STATUSES)}"
+        )
+    for field in ("annotation_counts_status", "semantics_status"):
+        if field in dataset:
+            _require_nonempty_string(dataset[field], f"dataset.{field}")
 
     grading = manifest["grading"]
     if not isinstance(grading, dict):
@@ -127,6 +181,10 @@ def _validate_manifest_structure(manifest: dict) -> None:
     _require_fields(deployment, ("status", "recommended_backend"), "deployment")
     for field in ("status", "recommended_backend"):
         _require_nonempty_string(deployment[field], f"deployment.{field}")
+    if "readiness" in deployment:
+        _require_nonempty_string(deployment["readiness"], "deployment.readiness")
+    if deployment["status"] == "validated":
+        _validate_validated_deployment(manifest)
 
 
 def load_model_manifest(commodity: str, base_dir: str) -> dict:

@@ -5,6 +5,8 @@
 
 The canonical output order is ID 0 `Grade A`, ID 1 `Grade B`, ID 2 `Reject`. This taxonomy is a technical interface contract. It does not verify that source annotations follow a commercial grading rubric. All manifests remain `candidate`, with label semantics `needs_data`. See [grade-rubrics.md](grade-rubrics.md).
 
+> **Provenance follow-up (27 November 2026):** the rows below describe *local exports*, not necessarily training data. Terung is the probable training export but its exact training bytes are unavailable. The Tomat and Cabai rows are **external-domain** exports, not the datasets recorded by their checkpoints. See [provenance-matrix.md](provenance-matrix.md), [provenance-reconciliation-report.md](provenance-reconciliation-report.md), and [dataset-integrity-audit.md](dataset-integrity-audit.md). This note supplements, and does not rewrite, the 23 November audit.
+
 ## Structural audit of local external datasets
 
 Audits were run in place by `server/scripts/audit_yolo_dataset.py`. Only aggregate structure/counts and exact image hashes are reported here. Dataset files and per-image inventory remain outside the repository. The tool output omits local roots, config paths, and per-image filenames.

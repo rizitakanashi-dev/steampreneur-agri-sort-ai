@@ -1,0 +1,84 @@
+{
+  "class_order_compatible": true,
+  "data_eligible_for_commercial_grading": false,
+  "dataset_class_names": [
+    "Grade A",
+    "Grade B",
+    "Reject"
+  ],
+  "duplicate_image_hashes": {
+    "cross_split_groups": 0,
+    "within_split_groups": 2
+  },
+  "export_manifest": {
+    "algorithm": "sha256(relative_path NUL size NUL file_sha256 LF), sorted by path",
+    "file_count": 5612,
+    "label_manifest_sha256": "4ec63ee5ec67c6a85fa8e3387ac621012fc83c3c0713b492a6c8da63eadf0a52",
+    "sha256": "7edbc2d4c7c1443c43d5af8b1a68a50e0a5cd1c17a8f364535ed5e9cf3cc6076"
+  },
+  "missing_split_directories": [],
+  "rubric_status": "unverified",
+  "splits": {
+    "test": {
+      "class_object_counts": {
+        "Grade A": 96,
+        "Grade B": 72,
+        "Reject": 137
+      },
+      "corrupt_image_count": 0,
+      "empty_labels": 0,
+      "image_count": 280,
+      "image_resolution_counts": {
+        "640x640": 280
+      },
+      "invalid_label_field_counts": {},
+      "invalid_label_rows": 0,
+      "label_count": 280,
+      "object_count": 305,
+      "unpaired_image_count": 0,
+      "unpaired_label_count": 0,
+      "unreadable_label_files": 0
+    },
+    "train": {
+      "class_object_counts": {
+        "Grade A": 759,
+        "Grade B": 504,
+        "Reject": 1155
+      },
+      "corrupt_image_count": 0,
+      "empty_labels": 0,
+      "image_count": 2100,
+      "image_resolution_counts": {
+        "640x640": 2100
+      },
+      "invalid_label_field_counts": {},
+      "invalid_label_rows": 0,
+      "label_count": 2100,
+      "object_count": 2418,
+      "unpaired_image_count": 0,
+      "unpaired_label_count": 0,
+      "unreadable_label_files": 0
+    },
+    "valid": {
+      "class_object_counts": {
+        "Grade A": 173,
+        "Grade B": 90,
+        "Reject": 182
+      },
+      "corrupt_image_count": 0,
+      "empty_labels": 0,
+      "image_count": 425,
+      "image_resolution_counts": {
+        "640x640": 425
+      },
+      "invalid_label_field_counts": {},
+      "invalid_label_rows": 0,
+      "label_count": 425,
+      "object_count": 445,
+      "unpaired_image_count": 0,
+      "unpaired_label_count": 0,
+      "unreadable_label_files": 0
+    }
+  },
+  "structural_format_compatible": true
+}

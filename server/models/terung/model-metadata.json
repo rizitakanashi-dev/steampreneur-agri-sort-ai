@@ -10,10 +10,33 @@
     "release_evidence": {
       "onnx_export_date": "2026-11-11T12:12:17.148904+07:00",
       "onnx_description": "Ultralytics YOLO11n model trained on /tmp/terung_calib/data.yaml",
-      "onnx_input": {"name": "images", "shape": [1, 3, 640, 640], "type": "tensor(float)"},
-      "onnx_output": {"name": "output0", "shape": [1, 7, 8400], "type": "tensor(float)"}
+      "onnx_input": {
+        "name": "images",
+        "shape": [
+          1,
+          3,
+          640,
+          640
+        ],
+        "type": "tensor(float)"
+      },
+      "onnx_output": {
+        "name": "output0",
+        "shape": [
+          1,
+          7,
+          8400
+        ],
+        "type": "tensor(float)"
+      }
     },
-    "files": {"pytorch": "best.pt", "onnx": "best.onnx", "dataset_config": "data.yaml"}
+    "files": {
+      "pytorch": "best.pt",
+      "onnx": "best.onnx",
+      "dataset_config": "data.yaml"
+    },
+    "artifact_license": "AGPL-3.0 (embedded Ultralytics ONNX metadata)",
+    "artifact_license_review": "REQUIRED — confirm distribution/network-use obligations with counsel before production deployment"
   },
   "artifacts": {
     "best.onnx": "2275d05fafbb8d28f06b305c000e842c56ec2d716697217a56c6daff4e579b4b",
@@ -21,25 +44,159 @@
   },
   "dataset": {
     "name": "Eggplant-Quality-Grades-2",
-    "source": "Roboflow export; external source only, not copied into repository",
+    "role": "training",
+    "source": "Roboflow export available locally; checkpoint/ONNX record the training input as /tmp/terung_calib/data.yaml, which is unavailable for byte comparison.",
+    "source_url": "https://app.roboflow.com/rizi-takanashi/eggplant-quality-grades-hgdr1-oooww/2",
     "source_path": "/home/Rizi/agri-sort-ai/Eggplant-Quality-Grades-2",
+    "access_status": "AVAILABLE_LOCAL",
+    "export_format": "YOLOv11 detect",
+    "export_date": "2026-11-09T08:04:00Z",
+    "license": "CC BY 4.0 (declared in local data.yaml and README.roboflow.txt)",
+    "license_status": "PARTIALLY_VERIFIED",
+    "license_note": "The local export declares CC BY 4.0; the publisher page was not independently retrieved. Attribution is required.",
     "data_config_sha256": "876ad29a13932a63c07443e194b36d6936b56c17e34b719ee610b240b1586e15",
     "readme_sha256": "31c1c10f205a5349dabeb0493067034051c19a4503a32a422d92e3e0bccda235",
-    "annotation_tree_sha256": "6fd169ff1c1c0a7dddd7da48ad6686481394d05ac48dd981ddc1d495c354b887",
-    "config_provenance": {"workspace": "rizi-takanashi", "project": "eggplant-quality-grades-hgdr1-oooww", "project_version": 2},
-    "classes": {"0": "Grade A", "1": "Grade B", "2": "Reject"},
-    "annotation_counts": {
-      "label_files": {"train": 16168, "valid": 1028, "test": 1022},
-      "instances": {"train": 47494, "valid": 1842, "test": 1597},
-      "class_instances": {"0": 16646, "1": 11775, "2": 22512}
+    "annotation_tree_sha256": "50a2c542fd0ea70df820cc32175010bf98ceaa05044fafc703ef711793e13a5a",
+    "annotation_tree_algorithm": "sha256(relative_path NUL size NUL file_sha256 LF), sorted by path",
+    "export_manifest_sha256": "0beffe50676d433ea5751def52029607e032e13465f1e46cfe626291a6c3cbfb",
+    "export_manifest_algorithm": "sha256(relative_path NUL size NUL file_sha256 LF), sorted by path; includes data.yaml, README, images, and labels",
+    "config_provenance": {
+      "workspace": "rizi-takanashi",
+      "project": "eggplant-quality-grades-hgdr1-oooww",
+      "project_version": 2
     },
+    "classes": {
+      "0": "Grade A",
+      "1": "Grade B",
+      "2": "Reject"
+    },
+    "annotation_counts": {
+      "label_files": {
+        "train": 16168,
+        "valid": 1028,
+        "test": 1022
+      },
+      "valid_instances": {
+        "train": 47490,
+        "valid": 1842,
+        "test": 1597
+      },
+      "class_instances": {
+        "0": 16646,
+        "1": 11771,
+        "2": 22512
+      },
+      "invalid_label_rows": {
+        "train": 4,
+        "valid": 0,
+        "test": 0
+      },
+      "empty_labels": {
+        "train": 37,
+        "valid": 0,
+        "test": 0
+      },
+      "duplicate_image_groups": {
+        "within_split": 1,
+        "cross_split": 0
+      }
+    },
+    "annotation_counts_status": "VERIFIED_LOCAL_AUDIT",
     "semantics_status": "needs_data",
-    "semantics_note": "Canonical names and label IDs are recorded in the export, but an independent grading rubric or verified semantic audit was not available."
+    "semantics_note": "The export declares three class names, not the four-class Extra/Class I/Class II/Reject taxonomy assumed in older notes. Label semantics still require an agronomist-approved rubric.",
+    "provenance_status": "PARTIALLY_VERIFIED",
+    "provenance_note": "Project/version and class order agree across model data.yaml, checkpoint training path, ONNX description, and the local export. The exact /tmp/terung_calib export is absent, so byte-level training-input identity is unproven.",
+    "training_input_path": "/tmp/terung_calib/data.yaml",
+    "training_run": "/tmp/terung_finetune/expr"
   },
   "grading": {
     "mapping_status": "candidate",
-    "mapping": {"0": "Grade A", "1": "Grade B", "2": "Reject"}
+    "mapping": {
+      "0": "Grade A",
+      "1": "Grade B",
+      "2": "Reject"
+    },
+    "mapping_evidence": "docs/model-evaluation/grade-rubrics.md",
+    "semantics_review": "pending_agronomist"
   },
-  "inference": {"default_confidence_threshold": 0.25, "recommended_input_size": 640},
-  "deployment": {"status": "candidate", "recommended_backend": "Python + FastAPI + ONNX Runtime"}
+  "inference": {
+    "default_confidence_threshold": 0.25,
+    "recommended_input_size": 640
+  },
+  "deployment": {
+    "status": "candidate",
+    "readiness": "BLOCKED",
+    "readiness_reasons": [
+      "training input export unavailable",
+      "4 invalid training label rows",
+      "37 empty training labels require confirmation",
+      "1 within-split exact duplicate group",
+      "class semantics and rubric unverified",
+      "no frozen threshold or held-out evaluation"
+    ],
+    "recommended_backend": "Python + FastAPI + ONNX Runtime"
+  },
+  "provenance": {
+    "status": "PARTIALLY_VERIFIED",
+    "training_run": "/tmp/terung_finetune/expr",
+    "training_evidence": [
+      "best.pt embedded train_args",
+      "best.onnx custom metadata description",
+      "server/models/terung/data.yaml",
+      "local export data.yaml/README"
+    ],
+    "evaluation_datasets": [
+      "Eggplant-Quality-Grades-2 test split"
+    ],
+    "matrix": "docs/model-evaluation/provenance-matrix.md"
+  },
+  "evaluation_datasets": [
+    {
+      "name": "Eggplant-Quality-Grades-2 (test split)",
+      "role": "in_distribution_test",
+      "same_export_as_training": "PROBABLE",
+      "target_split": "test",
+      "source_url": "https://app.roboflow.com/rizi-takanashi/eggplant-quality-grades-hgdr1-oooww/2",
+      "source_path": "/home/Rizi/agri-sort-ai/Eggplant-Quality-Grades-2",
+      "data_config_sha256": "876ad29a13932a63c07443e194b36d6936b56c17e34b719ee610b240b1586e15",
+      "annotation_counts": {
+        "label_files": {
+          "train": 16168,
+          "valid": 1028,
+          "test": 1022
+        },
+        "valid_instances": {
+          "train": 47490,
+          "valid": 1842,
+          "test": 1597
+        },
+        "class_instances": {
+          "0": 16646,
+          "1": 11771,
+          "2": 22512
+        },
+        "invalid_label_rows": {
+          "train": 4,
+          "valid": 0,
+          "test": 0
+        },
+        "empty_labels": {
+          "train": 37,
+          "valid": 0,
+          "test": 0
+        },
+        "duplicate_image_groups": {
+          "within_split": 1,
+          "cross_split": 0
+        }
+      },
+      "audit_status": "VERIFIED_LOCAL_AUDIT",
+      "audit_report": "docs/model-evaluation/evidence/terung-eggplant-quality-grades-v2.audit.json",
+      "usable_as_primary_held_out_test": false,
+      "reason": "The test split exists in the export, but no evidence proves it was excluded from the training run; no threshold was frozen before inspection.",
+      "readme_sha256": "31c1c10f205a5349dabeb0493067034051c19a4503a32a422d92e3e0bccda235",
+      "annotation_tree_sha256": "50a2c542fd0ea70df820cc32175010bf98ceaa05044fafc703ef711793e13a5a",
+      "export_manifest_sha256": "0beffe50676d433ea5751def52029607e032e13465f1e46cfe626291a6c3cbfb"
+    }
+  ]
 }
