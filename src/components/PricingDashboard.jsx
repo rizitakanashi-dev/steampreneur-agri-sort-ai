@@ -448,9 +448,11 @@ export function PricingDashboard({ canSyncPrices = false }) {
     return (
       <Stack spacing={3}>
         <Alert severity="info" icon={<IntegrationInstructionsRoundedIcon />} sx={{ borderRadius: 2 }}>
-          <Typography fontWeight={700} variant="body2">Integrasi harga pemerintah belum diaktifkan.</Typography>
+          <Typography fontWeight={700} variant="body2">Integrasi harga resmi siap — belum diaktifkan di server ini.</Typography>
           <Typography variant="body2">
-            Mode integrasi (kontrak /api/v1/prices/*) belum tersedia — akses sumber resmi masih dalam proses.
+            Akses SP2KP sudah terkonfirmasi via dataset resmi data.go.id (impor XLSX harian,
+            berlabel historis) dan importer siap di backend — tinggal flag
+            <code> PRICE_SP2KP_ENABLED</code> + <code>PRICE_INGEST_ENABLED</code> yang masih OFF.
             Kalkulator di bawah memakai acuan lokal statis berlabel demo, bukan harga live.
           </Typography>
         </Alert>
