@@ -94,7 +94,7 @@ Field yang menggerakkan state: `data_status`, `freshness.state`, `price_value`,
 
 | Sumber | URL resmi | Status akses | Cadence | Lisensi/attribution |
 |---|---|---|---|---|
-| `sp2kp` | https://sp2kp.kemendag.go.id/ | `unconfirmed` (tidak ada API publik terdokumentasi; jalur data.go.id historis perlu cek lisensi) | harian | "Sumber: SP2KP Kemendag RI" |
+| `sp2kp` | https://data.go.id/dataset/dataset/tingkat-harga-daerah | `authorized` (akses terkonfirmasi: resource dataset resmi `api-sp2kp.kemendag.go.id/kld/api/list-harga-harian/{YYYY}/{MM}` — XLSX harian publik tanpa login; publikasi retrospektif bulanan) | harian (publikasi bulanan) | "Sumber: SP2KP Kemendag RI via Satu Data Indonesia" |
 | `sipashorti` | https://11ap.pertanian.go.id/sipashorti/ | `unconfirmed` (harga butuh login operator; tidak ada registrasi mandiri) | harian | "Sumber: SIPASHORTI Ditjen Hortikultura, Kementan" |
 
 `access_status=unconfirmed/denied` ⇒ adapter tidak boleh aktif (#42 hanya boleh

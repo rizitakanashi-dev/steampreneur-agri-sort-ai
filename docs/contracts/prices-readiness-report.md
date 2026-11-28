@@ -9,7 +9,7 @@
 | Isu | Deliverable | Status |
 |---|---|---|
 | #38 | Investigasi SIPASHORTI | Selesai (keputusan: tidak ada API publik; butuh akses resmi) |
-| #39 | Investigasi SP2KP | Selesai (keputusan: tidak ada API publik; data.go.id historis perlu cek lisensi; Terung tak diterbitkan) |
+| #39 | Investigasi SP2KP | Selesai → **akses terkonfirmasi (28 Nov 2026)**: dataset "Tingkat Harga Daerah" di data.go.id menerbitkan resource XLSX harian resmi `api-sp2kp.kemendag.go.id/kld/api/list-harga-harian/{YYYY}/{MM}` (publik, tanpa login). Terung tak diterbitkan dataset |
 | #40 | Arsitektur | Selesai (`03aca83` — extend FastAPI existing, dokumentasi di isu) |
 | #41 | Kontrak API | Selesai (`03aca83` — OpenAPI + pemetaan frontend) |
 | #42 | Adapter + API | Selesai (`b0938ce` — adapter terkunci access-unconfirmed, migrasi SQL, 53 test) |
@@ -69,9 +69,24 @@ State `actual/historical/cached` via smoke **nyata** akan tersedia setelah:
 (1) migrasi SQL diterapkan ke Supabase, (2) akses provider resmi, (3) adapter
 diaktifkan lewat flag. State tersebut sudah tercakup test fixture (#43).
 
+## Pembaruan 28 Nov 2026 — SP2KP importer dataset resmi
+
+- Akses SP2KP terkonfirmasi (dataset resmi data.go.id — bukan scraping, bukan
+  login otomatis); importer `sp2kp_dataset.py` + 9 test baru, total harga 91 test ✓.
+- **End-to-end nyata terverifikasi**: cron refresh lokal mengunduh dataset asli
+  → 1.280–2.688 observasi Sumbar; kontrak `/latest` mengembalikan
+  **Cabai Rawit Hijau Rp 58.000/kg — Kota Payakumbuh (1376), observed 27 Nov 2026**
+  berlabel `historical` + provenance `official_api`; Terung tetap `unavailable`.
+- UI mode live terverifikasi (screenshot): "Data historis — bukan harga hari ini",
+  observed ≠ fetched, tren 20 titik tanpa interpolasi, health `healthy`.
+- Koreksi wilayah: kode BPS Kota Payakumbuh **1376** (bukan 1375 = Sawahlunto)
+  — kontrak, frontend, dan smoke ikut diperbaiki.
+- SIPASHORTI tetap BLOKIR: butuh kredensial operator resmi (#38).
+
 ## Checklist blocked (deploy produksi)
 
-- [ ] **BLOKIR — keputusan akses** #38 (SIPASHORTI) dan #39 (SP2KP) belum ada bukti resmi
+- [x] **Keputusan akses SP2KP (#39)** — terkonfirmasi via dataset resmi; importer aktif di belakang flag
+- [ ] **BLOKIR — keputusan akses SIPASHORTI (#38)** — masih butuh akses operator resmi
 - [ ] Migrasi `20261127000100_price_observations.sql` + `20261127000200_price_freshness.sql`: **diterapkan & di-rollback di staging-lokal** (`test_price_migrations`, cluster Postgres disposable) — eksekusi di staging Supabase nyata masih menunggu akses dashboard
 - [ ] Sandbox credentials opt-in + smoke `actual/historical/cached/stale/unavailable` end-to-end (state fixture sudah tercakup test #43)
 - [ ] Monitoring/alerting produksi (runbook #43 ada; alert channel belum terpasang)

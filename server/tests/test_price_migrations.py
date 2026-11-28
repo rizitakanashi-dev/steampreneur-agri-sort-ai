@@ -161,7 +161,7 @@ class TestDisposablePriceMigrations(unittest.TestCase):
               price_value, unit_raw, normalized_price_per_kg, region_level, region_code,
               observed_at, fetched_at, data_status, is_official, provenance_method)
             VALUES ('sp2kp','{record_id}','cabai_rawit_hijau','consumer',44800,'kg',44800,
-              'kabupaten','1375','2026-11-27T08:00:00+07:00', now(), 'actual', true, 'official_api');
+              'kabupaten','1376','2026-11-27T08:00:00+07:00', now(), 'actual', true, 'official_api');
         """
 
     def test_idempotent_upsert_same_source_record(self):
@@ -174,7 +174,7 @@ class TestDisposablePriceMigrations(unittest.TestCase):
               price_value, unit_raw, normalized_price_per_kg, region_level, region_code,
               observed_at, fetched_at, data_status, is_official, provenance_method)
             VALUES ('sp2kp','SRC-1','cabai_rawit_hijau','consumer',45000,'kg',45000,
-              'kabupaten','1375','2026-11-27T08:00:00+07:00', now(), 'actual', true, 'official_api')
+              'kabupaten','1376','2026-11-27T08:00:00+07:00', now(), 'actual', true, 'official_api')
             ON CONFLICT (source_id, source_record_id) DO UPDATE SET price_value = EXCLUDED.price_value;
         """)
         count = self._sql("SELECT count(*) FROM price_observations;").stdout.strip()

@@ -47,6 +47,25 @@ Aturan penyajian:
 - Idempoten: unik `(source_id, source_record_id)` — re-run tidak menduplikasi.
 - Dilarang memundurkan `observed_at` ke waktu ingest.
 
+## Importer dataset resmi SP2KP (akses terkonfirmasi — Nov 2026)
+
+Akses SP2KP **sudah terkonfirmasi** via dataset resmi di Satu Data Indonesia:
+"Tingkat Harga Daerah" (Kemendag) menerbitkan resource bulanan
+`{SP2KP_DATASET_BASE_URL|https://api-sp2kp.kemendag.go.id}/kld/api/list-harga-harian/{YYYY}/{MM}`
+— XLSX harian per kabupaten/kota, unduhan publik **tanpa login/CAPTCHA**
+(hanya header Referer/Origin standar). Bukan scraping SPA; bukan feed live.
+
+- Publikasi **retrospektif bulanan** → SEMUA observasi berlabel
+  `data_status=historical`, `is_live=false`, provenance `official_api` + lisensi
+  dataset. Frontend live tetap menampilkan "Data historis — bukan harga hari ini".
+- `SP2KP_DATASET_MONTHS_BACK` (default 1): bulan berjalan sering belum
+  dipublikasikan (skip, bukan gagal); set 0 di production bila anggaran waktu
+  serverless 60s ketat (unduh+parse 1 bulan ≈ 40–60s lokal).
+- Filter: provinsi `SP2KP_DATASET_PROVINCE` (default 13 Sumbar), varian eksak
+  terverifikasi: Cabai Rawit Hijau/Merah, Cabai Merah Keriting, Tomat.
+  Terung TIDAK diterbitkan dataset → `unavailable` + `SOURCE_DOES_NOT_PUBLISH_COMMODITY`.
+- SIPASHORTI tetap terkunci (butuh kredensial operator, isu #38).
+
 ## Rollback
 
 - Matikan scheduler (berhenti memanggil cron) — data cache tidak berbahaya karena

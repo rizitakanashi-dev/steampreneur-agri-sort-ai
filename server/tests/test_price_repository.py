@@ -26,7 +26,7 @@ def _obs(record_id: str, commodity: str = "cabai_rawit_hijau", observed: str = "
         "normalized_price_per_kg": value,
         "normalization_method": "unit_factor",
         "region_level": "kabupaten",
-        "region_code": "1375",
+        "region_code": "1376",
         "region_name": "Kota Payakumbuh",
         "market_name": None,
         "observed_at": observed,
@@ -79,27 +79,27 @@ class TestReadQueries(unittest.TestCase):
         )
 
     def test_latest_picks_newest_observation(self):
-        row = self.repo.latest("cabai_rawit_hijau", "consumer", "kabupaten", "1375", "sp2kp")
+        row = self.repo.latest("cabai_rawit_hijau", "consumer", "kabupaten", "1376", "sp2kp")
         self.assertEqual(row["source_record_id"], "SRC-2")
         self.assertEqual(row["price_value"], 45000.0)
 
     def test_latest_missing_commodity_is_none(self):
         # Terung tersimpan hanya bila sumber menerbitkannya — bukan pengganti komoditas.
-        row = self.repo.latest("cabai_merah_keriting", "consumer", "kabupaten", "1375", "sp2kp")
+        row = self.repo.latest("cabai_merah_keriting", "consumer", "kabupaten", "1376", "sp2kp")
         self.assertIsNone(row)
 
     def test_history_range_and_cursor(self):
-        page = self.repo.history("cabai_rawit_hijau", "consumer", "kabupaten", "1375", limit=1)
+        page = self.repo.history("cabai_rawit_hijau", "consumer", "kabupaten", "1376", limit=1)
         self.assertEqual(len(page["rows"]), 1)
         self.assertIsNotNone(page["next_cursor"])
         page2 = self.repo.history(
-            "cabai_rawit_hijau", "consumer", "kabupaten", "1375", limit=10, cursor=page["next_cursor"]
+            "cabai_rawit_hijau", "consumer", "kabupaten", "1376", limit=10, cursor=page["next_cursor"]
         )
         self.assertEqual(len(page2["rows"]), 1)
 
     def test_history_date_bounds(self):
         page = self.repo.history(
-            "cabai_rawit_hijau", "consumer", "kabupaten", "1375",
+            "cabai_rawit_hijau", "consumer", "kabupaten", "1376",
             from_date="2026-11-27", to_date="2026-11-27",
         )
         self.assertEqual(len(page["rows"]), 1)

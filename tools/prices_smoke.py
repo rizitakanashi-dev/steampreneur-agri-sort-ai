@@ -49,34 +49,42 @@ def main():
     check("commodities 200 + envelope", status == 200 and body.get("meta", {}).get("request_id"))
     check("Terung first-class + available:false di SP2KP", sp2kp is not None and sp2kp.get("available") is False)
 
-    # 2. Metadata sumber — akses jujur unconfirmed
+    # 2. Metadata sumber — akses jujur: SP2KP authorized (dataset resmi data.go.id),
+    #    SIPASHORTI tetap unconfirmed (butuh kredensial operator, isu #38).
     status, body = call("GET", "/api/v1/prices/sources")
     sources = body.get("data", [])
-    check("sources 200 + 2 sumber", status == 200 and {s.get("id") for s in sources} == {"sp2kp", "sipashorti"})
-    check("semua access_status unconfirmed", all(s.get("access_status") == "unconfirmed" for s in sources))
+    status_by_id = {s.get("id"): s.get("access_status") for s in sources}
+    check("sources 200 + 2 sumber", status == 200 and set(status_by_id) == {"sp2kp", "sipashorti"})
+    check("sp2kp authorized + sipashorti unconfirmed", status_by_id.get("sp2kp") == "authorized" and status_by_id.get("sipashorti") == "unconfirmed")
 
-    # 3. Health
+    # 3. Health — state jujur tergantung flag (tidak pernah mengarang sukses)
     status, body = call("GET", "/api/v1/prices/sources/sp2kp/health")
-    check("health sp2kp never_fetched", status == 200 and body.get("data", {}).get("state") == "never_fetched")
+    state = body.get("data", {}).get("state")
+    check("health sp2kp state jujur", status == 200 and state in {"never_fetched", "enabled_dataset_importer", "healthy"}, f"state={state}")
 
     # 4. latest Terung -> unavailable + warning eksplisit, tanpa angka
     status, body = call(
         "GET",
-        "/api/v1/prices/latest?commodity=terung&price_type=consumer&region_level=kabupaten&region_code=1375&source_id=sp2kp",
+        "/api/v1/prices/latest?commodity=terung&price_type=consumer&region_level=kabupaten&region_code=1376&source_id=sp2kp",
     )
     obs = body.get("data", {})
     warnings = obs.get("warnings", [])
     check("latest terung 200 unavailable", status == 200 and obs.get("data_status") == "unavailable")
     check("price_value null (bukan 0)", obs.get("price_value") is None)
     check("warning SOURCE_DOES_NOT_PUBLISH_COMMODITY", "SOURCE_DOES_NOT_PUBLISH_COMMODITY" in warnings)
-    check("warning SOURCE_ACCESS_UNCONFIRMED", "SOURCE_ACCESS_UNCONFIRMED" in warnings)
+    check("warning access jujur (SP2KP/SIPASHORTI)", "SOURCE_ACCESS_UNCONFIRMED" in warnings or obs.get("source", {}).get("access_status") == "authorized")
 
     # 5. latest komoditas didukung pun jujur unavailable (flag off)
     status, body = call(
         "GET",
-        "/api/v1/prices/latest?commodity=tomat&price_type=consumer&region_level=kabupaten&region_code=1375",
+        "/api/v1/prices/latest?commodity=tomat&price_type=consumer&region_level=kabupaten&region_code=1376",
     )
-    check("latest tomat unavailable (flag off)", status == 200 and body.get("data", {}).get("data_status") == "unavailable")
+    ds_tomat = body.get("data", {}).get("data_status")
+    check(
+        "latest tomat jujur (unavailable bila flag off; historical/cached bila importer aktif)",
+        status == 200 and ds_tomat in {"unavailable", "historical", "cached"},
+        f"data_status={ds_tomat}",
+    )
 
     # 6. kontrak error
     status, body = call("GET", "/api/v1/prices/latest?commodity=durian&price_type=consumer&region_level=nasional")

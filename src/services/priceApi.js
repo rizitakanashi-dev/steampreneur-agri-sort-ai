@@ -15,7 +15,7 @@ const API_BASE = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_PR
 const RAW_MODE = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_PRICE_DATA_MODE) || 'off'
 export const PRICE_DATA_MODE = ['live', 'demo', 'off'].includes(RAW_MODE) ? RAW_MODE : 'off'
 
-export const DEFAULT_REGION = { level: 'kabupaten', code: '1375' } // Payakumbuh
+export const DEFAULT_REGION = { level: 'kabupaten', code: '1376' } // Payakumbuh
 export const DEFAULT_SOURCE_ID = 'sp2kp'
 
 /** Nama kanonik komoditas katalog -> ID kanonik kontrak (pemetaan eksak, tanpa tebak). */

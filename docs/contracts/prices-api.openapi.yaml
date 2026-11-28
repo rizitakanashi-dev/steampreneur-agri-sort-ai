@@ -167,8 +167,8 @@ components:
       name: region_code
       in: query
       required: true
-      schema: { type: string, examples: ['1375'] }
-      description: Kode wilayah (kabupaten/kota, contoh 1375 = Payakumbuh). Wajib bersama region_level.
+      schema: { type: string, examples: ['1376'] }
+      description: Kode wilayah (kabupaten/kota, contoh 1376 = Kota Payakumbuh). Wajib bersama region_level.
     SourceId:
       name: source_id
       in: query
@@ -421,7 +421,7 @@ components:
       required: [level, code, name]
       properties:
         level: { $ref: '#/components/schemas/RegionLevel' }
-        code: { type: [string, 'null'], examples: ['1375'] }
+        code: { type: [string, 'null'], examples: ['1376'] }
         name: { type: string, examples: ['Kota Payakumbuh'] }
         parent:
           type: [object, 'null']
@@ -519,7 +519,7 @@ components:
       properties:
         id: { $ref: '#/components/schemas/SourceId' }
         name: { type: string, examples: ['SP2KP — Kementerian Perdagangan RI'] }
-        url: { type: string, examples: ['https://sp2kp.kemendag.go.id/'] }
+        url: { type: string, examples: ['https://data.go.id/dataset/dataset/tingkat-harga-daerah'] }
         access_status:
           type: string
           enum: [authorized, unconfirmed, denied]
@@ -571,7 +571,7 @@ components:
       value:
         data:
           commodity: { id: cabai_rawit_hijau, name: 'Cabai Rawit Hijau', raw_label: 'C Rawit Hijau' }
-          region: { level: kabupaten, code: '1375', name: 'Kota Payakumbuh', parent: { level: provinsi, code: '13', name: 'Sumatera Barat' } }
+          region: { level: kabupaten, code: '1376', name: 'Kota Payakumbuh', parent: { level: provinsi, code: '13', name: 'Sumatera Barat' } }
           price_type: consumer
           currency: IDR
           unit_raw: kg
@@ -581,7 +581,7 @@ components:
           data_status: actual
           is_live: true
           is_official: true
-          source: { id: sp2kp, name: 'SP2KP — Kementerian Perdagangan RI', url: 'https://sp2kp.kemendag.go.id/', access_status: authorized, license: 'Perlu konfirmasi (lihat #39)', attribution: 'Sumber: SP2KP Kemendag RI', expected_cadence: daily }
+          source: { id: sp2kp, name: 'SP2KP — Kementerian Perdagangan RI', url: 'https://data.go.id/dataset/dataset/tingkat-harga-daerah', access_status: authorized, license: "Satu Data Indonesia — dataset 'Tingkat Harga Daerah' (Kementerian Perdagangan)", attribution: 'Sumber: SP2KP Kemendag RI via Satu Data Indonesia', expected_cadence: 'daily (publikasi dataset retrospektif bulanan)' }
           observed_at: '2026-11-27T08:00:00+07:00'
           published_at: '2026-11-27T09:30:00+07:00'
           fetched_at: '2026-11-27T02:31:12Z'
@@ -593,7 +593,7 @@ components:
       value:
         data:
           commodity: { id: tomat, name: 'Tomat (Tomato)', raw_label: 'Tomat' }
-          region: { level: kabupaten, code: '1375', name: 'Kota Payakumbuh', parent: null }
+          region: { level: kabupaten, code: '1376', name: 'Kota Payakumbuh', parent: null }
           price_type: consumer
           currency: IDR
           unit_raw: kg
@@ -603,7 +603,7 @@ components:
           data_status: historical
           is_live: false
           is_official: true
-          source: { id: sp2kp, name: 'SP2KP — Kementerian Perdagangan RI', url: 'https://sp2kp.kemendag.go.id/', access_status: authorized, license: null, attribution: 'Sumber: SP2KP Kemendag RI', expected_cadence: daily }
+          source: { id: sp2kp, name: 'SP2KP — Kementerian Perdagangan RI', url: 'https://data.go.id/dataset/dataset/tingkat-harga-daerah', access_status: authorized, license: "Satu Data Indonesia — dataset 'Tingkat Harga Daerah' (Kementerian Perdagangan)", attribution: 'Sumber: SP2KP Kemendag RI via Satu Data Indonesia', expected_cadence: 'daily (publikasi dataset retrospektif bulanan)' }
           observed_at: '2026-11-10T08:00:00+07:00'
           published_at: null
           fetched_at: '2026-11-27T02:00:00Z'
@@ -615,7 +615,7 @@ components:
       value:
         data:
           commodity: { id: cabai_rawit_hijau, name: 'Cabai Rawit Hijau', raw_label: 'C Rawit Hijau' }
-          region: { level: kabupaten, code: '1375', name: 'Kota Payakumbuh', parent: null }
+          region: { level: kabupaten, code: '1376', name: 'Kota Payakumbuh', parent: null }
           price_type: consumer
           currency: IDR
           unit_raw: kg
@@ -625,7 +625,7 @@ components:
           data_status: cached
           is_live: false
           is_official: true
-          source: { id: sp2kp, name: 'SP2KP — Kementerian Perdagangan RI', url: 'https://sp2kp.kemendag.go.id/', access_status: authorized, license: null, attribution: 'Sumber: SP2KP Kemendag RI', expected_cadence: daily }
+          source: { id: sp2kp, name: 'SP2KP — Kementerian Perdagangan RI', url: 'https://data.go.id/dataset/dataset/tingkat-harga-daerah', access_status: authorized, license: "Satu Data Indonesia — dataset 'Tingkat Harga Daerah' (Kementerian Perdagangan)", attribution: 'Sumber: SP2KP Kemendag RI via Satu Data Indonesia', expected_cadence: 'daily (publikasi dataset retrospektif bulanan)' }
           observed_at: '2026-11-26T08:00:00+07:00'
           published_at: null
           fetched_at: '2026-11-26T02:00:00Z'
@@ -647,7 +647,7 @@ components:
           data_status: simulated
           is_live: false
           is_official: false
-          source: { id: sp2kp, name: 'SP2KP — Kementerian Perdagangan RI', url: 'https://sp2kp.kemendag.go.id/', access_status: unconfirmed, license: null, attribution: null, expected_cadence: daily }
+          source: { id: sp2kp, name: 'SP2KP — Kementerian Perdagangan RI', url: 'https://data.go.id/dataset/dataset/tingkat-harga-daerah', access_status: authorized, license: "Satu Data Indonesia — dataset 'Tingkat Harga Daerah' (Kementerian Perdagangan)", attribution: 'Sumber: SP2KP Kemendag RI via Satu Data Indonesia', expected_cadence: 'daily (publikasi dataset retrospektif bulanan)' }
           observed_at: null
           published_at: null
           fetched_at: null
@@ -663,7 +663,7 @@ components:
       value:
         data:
           commodity: { id: terung, name: 'Terung (Eggplant)', raw_label: null }
-          region: { level: kabupaten, code: '1375', name: 'Kota Payakumbuh', parent: null }
+          region: { level: kabupaten, code: '1376', name: 'Kota Payakumbuh', parent: null }
           price_type: consumer
           currency: IDR
           unit_raw: kg
@@ -673,7 +673,7 @@ components:
           data_status: unavailable
           is_live: false
           is_official: true
-          source: { id: sp2kp, name: 'SP2KP — Kementerian Perdagangan RI', url: 'https://sp2kp.kemendag.go.id/', access_status: authorized, license: null, attribution: null, expected_cadence: daily }
+          source: { id: sp2kp, name: 'SP2KP — Kementerian Perdagangan RI', url: 'https://data.go.id/dataset/dataset/tingkat-harga-daerah', access_status: authorized, license: "Satu Data Indonesia — dataset 'Tingkat Harga Daerah' (Kementerian Perdagangan)", attribution: 'Sumber: SP2KP Kemendag RI via Satu Data Indonesia', expected_cadence: 'daily (publikasi dataset retrospektif bulanan)' }
           observed_at: null
           published_at: null
           fetched_at: '2026-11-27T02:00:00Z'

@@ -24,11 +24,16 @@ class TestExactCommodityMapping(unittest.TestCase):
         self.assertEqual(price_type, "consumer")
 
     def test_rawit_merah_and_rawit_hijau_never_merge(self):
-        # Label rawit merah TIDAK ada di pemetaan SP2KP => ditolak, bukan dipetakan ke hijau.
+        # Label 'Cabai Rawit Merah' TERVERIFIKASI di kolom Nama Varian dataset SP2KP
+        # resmi — dipetakan EKSAK ke rawit merah, TIDAK PERNAH digabung ke hijau.
         commodity_id, price_type, supported = resolve_commodity("Cabai Rawit Merah", "sp2kp")
-        self.assertFalse(supported)
-        self.assertIsNone(commodity_id)
-        self.assertIsNone(price_type)
+        self.assertTrue(supported)
+        self.assertEqual(commodity_id, "cabai_rawit_merah")
+        self.assertEqual(price_type, "consumer")
+        self.assertNotEqual(
+            resolve_commodity("Cabai Rawit Merah", "sp2kp")[0],
+            resolve_commodity("Cabai Rawit Hijau", "sp2kp")[0],
+        )
 
     def test_terung_not_published_by_sp2kp(self):
         # Terung tidak ada di daftar nasional SP2KP (#39) => None, bukan pengganti komoditas.
@@ -95,9 +100,9 @@ class TestUnitNormalization(unittest.TestCase):
 
 class TestRegionResolution(unittest.TestCase):
     def test_kabupaten_with_parent_province(self):
-        region = resolve_region("kabupaten", "1375", "Pasar Ibuh")
+        region = resolve_region("kabupaten", "1376", "Pasar Ibuh")
         self.assertEqual(region["level"], "kabupaten")
-        self.assertEqual(region["code"], "1375")
+        self.assertEqual(region["code"], "1376")
         self.assertEqual(region["parent"]["code"], "13")
 
     def test_nasional_has_no_code(self):

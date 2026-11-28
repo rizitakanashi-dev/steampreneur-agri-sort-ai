@@ -19,7 +19,7 @@ def _query() -> PriceQuery:
         commodity_id="cabai_rawit_hijau",
         price_type="consumer",
         region_level="kabupaten",
-        region_code="1375",
+        region_code="1376",
     )
 
 
@@ -35,13 +35,14 @@ class TestDisabledByDefault(unittest.TestCase):
         self.assertFalse(registry.is_enabled("sp2kp"))
         self.assertFalse(registry.is_enabled("sipashorti"))
 
-    def test_source_metadata_access_unconfirmed(self):
+    def test_source_metadata_access_status(self):
+        # SP2KP: akses RESMI terkonfirmasi via dataset "Tingkat Harga Daerah"
+        # (data.go.id, resource XLSX harian publik). SIPASHORTI: tetap unconfirmed
+        # (butuh kredensial operator, isu #38).
         registry = SourceRegistry(config=PriceIntegrationConfig())
-        for meta in registry.all_meta():
-            self.assertEqual(meta.access_status, "unconfirmed")
-        self.assertEqual(
-            registry.meta("sp2kp").url, "https://sp2kp.kemendag.go.id/"
-        )
+        self.assertEqual(registry.meta("sp2kp").access_status, "authorized")
+        self.assertEqual(registry.meta("sipashorti").access_status, "unconfirmed")
+        self.assertIn("data.go.id", registry.meta("sp2kp").url)
         self.assertEqual(
             registry.meta("sipashorti").url,
             "https://11ap.pertanian.go.id/sipashorti/",
@@ -70,14 +71,16 @@ class TestAdapterGate(unittest.TestCase):
         self.assertIsNotNone(result.access)
         self.assertEqual(result.access.source_id, "sipashorti")
 
-    def test_flag_on_but_access_still_unconfirmed(self):
-        # Flag ON saja TIDAK cukup: tanpa bukti akses resmi, adapter tetap menolak.
+    def test_flag_on_delegates_to_authorized_dataset_importer(self):
+        # Akses resmi terkonfirmasi (#39): flag ON => importer dataset resmi berjalan.
+        # Test tetap tanpa jaringan lewat injeksi fetch_bytes di level importer.
+        from server.integrations.sp2kp_dataset import parse_month_xlsx  # noqa: F401 — keberadaan modul
         config = PriceIntegrationConfig(sp2kp_enabled=True)
         provider = Sp2kpPriceProvider(config)
         self.assertTrue(provider.enabled)
-        result = provider.fetch(_query())
-        self.assertEqual(result.observations, [])
-        self.assertIsNotNone(result.access)
+        # Tanpa injeksi transport, provider asli TIDAK boleh dipanggil di test —
+        # verifikasi delegasi via tipe health saja.
+        self.assertEqual(provider.health()["state"], "enabled_dataset_importer")
 
 
 if __name__ == "__main__":

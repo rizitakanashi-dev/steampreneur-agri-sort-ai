@@ -279,7 +279,7 @@ function DashboardPreview({ onNavigate, batches = [], onSelectBatch }) {
                 </Stack>
                 <Typography color="text.secondary" sx={{ display: 'block', mt: 0.5 }} variant="caption">
                   {isLivePriceMode
-                    ? 'Kontrak /api/v1/prices • Kabupaten 1375 (Pasar Ibuh Payakumbuh)'
+                    ? 'Kontrak /api/v1/prices • Kota Payakumbuh 1376 (Pasar Ibuh)'
                     : bapanasData
                     ? `Panel SP2KP • ${bapanasData.market_center}`
                     : `Acuan Pasar • Diperbarui ${PRICE_REFERENCE_SOURCE.updatedAt}${bapanasOffline ? ' (gagal sinkron, menampilkan acuan lokal)' : ''}`}

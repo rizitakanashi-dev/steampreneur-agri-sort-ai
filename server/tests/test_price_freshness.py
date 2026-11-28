@@ -35,7 +35,9 @@ from server.services.price_query_service import PriceQueryService
 from server.services.price_single_flight import InMemorySingleFlight
 
 
-NOW = datetime(2026, 11, 27, 9, 0, 0, tzinfo=timezone.utc)
+# NOW dinamis terhadap jam nyata — test umur (fresh/stale/expired) tidak boleh
+# drift ketika kalender bergeser (kegagalan semu yang muncul setelah 27 Nov 2026).
+NOW = datetime.now(timezone.utc)
 
 
 def _ts(**kwargs) -> datetime:
@@ -130,7 +132,7 @@ class _FakeProvider:
                         unit_raw="kg",
                         normalized_price_per_kg=None,
                         region_level="kabupaten",
-                        region_code="1375",
+                        region_code="1376",
                         region_raw="x",
                         observed_at="2026-11-27T08:00:00+07:00",
                         published_at=None,
@@ -199,7 +201,7 @@ class TestSingleFlightAndNegativeCache(_Harness):
         result = service.run_ingest("sp2kp")
         self.assertEqual(result["status"], "success")
         self.assertEqual(result["inserted"], 0)  # rekaman di luar pemetaan ditolak, tanpa duplikat
-        self.assertIsNone(self.repo.latest("tomat", "consumer", "kabupaten", "1375", "sp2kp"))
+        self.assertIsNone(self.repo.latest("tomat", "consumer", "kabupaten", "1376", "sp2kp"))
 
 
 class TestColdWarmCache(_Harness):
@@ -222,7 +224,7 @@ class TestColdWarmCache(_Harness):
                     "normalized_price_per_kg": value,
                     "normalization_method": "unit_factor",
                     "region_level": "kabupaten",
-                    "region_code": "1375",
+                    "region_code": "1376",
                     "region_name": "Kota Payakumbuh",
                     "market_name": None,
                     "observed_at": observed.isoformat(),
@@ -243,20 +245,20 @@ class TestColdWarmCache(_Harness):
 
     def test_cold_cache_returns_unavailable(self):
         qs = self._query_service()
-        obs = qs.latest("cabai_rawit_hijau", "consumer", "kabupaten", "1375", None, "sp2kp")
+        obs = qs.latest("cabai_rawit_hijau", "consumer", "kabupaten", "1376", None, "sp2kp")
         self.assertEqual(obs.data_status, "unavailable")
         self.assertIsNone(obs.price_value)
 
     def test_warm_fresh_observation(self):
         self._store_observation(age_hours=12)
-        obs = self._query_service().latest("cabai_rawit_hijau", "consumer", "kabupaten", "1375", None, "sp2kp")
+        obs = self._query_service().latest("cabai_rawit_hijau", "consumer", "kabupaten", "1376", None, "sp2kp")
         self.assertEqual(obs.freshness.state, "fresh")
         self.assertEqual(obs.data_status, "actual")
         self.assertEqual(obs.price_value, 44800.0)
 
     def test_stale_served_only_labeled_cached(self):
         self._store_observation(age_hours=60)
-        obs = self._query_service().latest("cabai_rawit_hijau", "consumer", "kabupaten", "1375", None, "sp2kp")
+        obs = self._query_service().latest("cabai_rawit_hijau", "consumer", "kabupaten", "1376", None, "sp2kp")
         self.assertEqual(obs.freshness.state, "stale")
         self.assertEqual(obs.data_status, "cached")  # BUKAN actual
         self.assertFalse(obs.is_live)
@@ -265,7 +267,7 @@ class TestColdWarmCache(_Harness):
 
     def test_expired_not_served_as_current(self):
         self._store_observation(age_hours=96)
-        obs = self._query_service().latest("cabai_rawit_hijau", "consumer", "kabupaten", "1375", None, "sp2kp")
+        obs = self._query_service().latest("cabai_rawit_hijau", "consumer", "kabupaten", "1376", None, "sp2kp")
         self.assertEqual(obs.data_status, "unavailable")
         self.assertIsNone(obs.price_value)
         self.assertIn("STALE_OBSERVATION", [w.value for w in obs.warnings])

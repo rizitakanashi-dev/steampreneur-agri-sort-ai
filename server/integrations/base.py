@@ -87,11 +87,15 @@ SOURCE_REGISTRY: Dict[str, PriceSourceMeta] = {
     "sp2kp": PriceSourceMeta(
         id="sp2kp",
         name="SP2KP — Kementerian Perdagangan RI",
-        url="https://sp2kp.kemendag.go.id/",
-        access_status="unconfirmed",
-        license=None,
-        attribution="Sumber: SP2KP Kemendag RI",
-        expected_cadence="daily",
+        # Akses terkonfirmasi via dataset resmi (isu #39, diverifikasi):
+        # "Tingkat Harga Daerah" di data.go.id menerbitkan resource unduhan
+        # api-sp2kp.kemendag.go.id/kld/api/list-harga-harian/{YYYY}/{MM} (XLSX
+        # harian, publik tanpa login). Retrospektif bulanan — BUKAN feed live.
+        url="https://data.go.id/dataset/dataset/tingkat-harga-daerah",
+        access_status="authorized",
+        license="Satu Data Indonesia — dataset 'Tingkat Harga Daerah' (Kementerian Perdagangan)",
+        attribution="Sumber: SP2KP Kemendag RI via Satu Data Indonesia",
+        expected_cadence="daily (publikasi dataset retrospektif bulanan)",
     ),
     "sipashorti": PriceSourceMeta(
         id="sipashorti",

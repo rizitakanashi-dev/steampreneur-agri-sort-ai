@@ -61,8 +61,9 @@ class TestCatalogAndSources(PricesApiTestBase):
         self.assertEqual(res.status_code, 200)
         data = res.json()["data"]
         self.assertEqual({s["id"] for s in data}, {"sp2kp", "sipashorti"})
-        for s in data:
-            self.assertEqual(s["access_status"], "unconfirmed")
+        statuses = {s["id"]: s["access_status"] for s in data}
+        self.assertEqual(statuses["sp2kp"], "authorized")  # dataset resmi data.go.id
+        self.assertEqual(statuses["sipashorti"], "unconfirmed")
 
     def test_source_health_never_fetched(self):
         res = self.client.get(f"{BASE}/sources/sp2kp/health")
@@ -83,7 +84,7 @@ class TestLatest(PricesApiTestBase):
                 "commodity": "terung",
                 "price_type": "consumer",
                 "region_level": "kabupaten",
-                "region_code": "1375",
+                "region_code": "1376",
                 "source_id": "sp2kp",
             },
         )
@@ -103,7 +104,7 @@ class TestLatest(PricesApiTestBase):
                 "commodity": "cabai_rawit_hijau",
                 "price_type": "consumer",
                 "region_level": "kabupaten",
-                "region_code": "1375",
+                "region_code": "1376",
             },
         )
         self.assertEqual(res.status_code, 200)
@@ -119,7 +120,7 @@ class TestLatest(PricesApiTestBase):
                 "commodity": "durian",
                 "price_type": "consumer",
                 "region_level": "kabupaten",
-                "region_code": "1375",
+                "region_code": "1376",
             },
         )
         self.assertEqual(res.status_code, 404)
@@ -132,7 +133,7 @@ class TestLatest(PricesApiTestBase):
                 "commodity": "tomat",
                 "price_type": "eceran",
                 "region_level": "kabupaten",
-                "region_code": "1375",
+                "region_code": "1376",
             },
         )
         self.assertEqual(res.status_code, 422)
@@ -168,7 +169,7 @@ class TestHistory(PricesApiTestBase):
                 "commodity": "tomat",
                 "price_type": "consumer",
                 "region_level": "kabupaten",
-                "region_code": "1375",
+                "region_code": "1376",
             },
         )
         self.assertEqual(res.status_code, 200)

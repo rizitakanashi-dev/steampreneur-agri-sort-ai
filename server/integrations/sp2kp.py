@@ -1,14 +1,19 @@
 """
 Adapter SP2KP (Kementerian Perdagangan RI) — MATI secara default (isu #39).
 
-Status akses: unconfirmed. Tidak ada API publik terdokumentasi; jalur data.go.id
-adalah dataset historis (bukan feed live) dan lisensinya belum dikonfirmasi.
-Adapter ini tidak boleh memanggil, scraping, atau mengarang nilai sampai #39
-memutuskan akses resmi. Ketika diaktifkan (flag + akses approved), implementasi
-fetch yang sebenarnya menggantikan `AccessUnconfirmed` ini.
+Status akses: terkonfirmasi via dataset resmi "Tingkat Harga Daerah" di
+Satu Data Indonesia (data.go.id) yang menerbitkan resource unduhan XLSX harian
+resmi `api-sp2kp.kemendag.go.id/kld/api/list-harga-harian/{YYYY}/{MM}` — publik,
+tanpa login, tanpa CAPTCHA. Bukan scraping SPA dan bukan feed live; publikasi
+retrospektif bulanan.
+
+Gerbang tetap berlaku: flag `PRICE_SP2KP_ENABLED=false` (default) => provider
+TIDAK memanggil jaringan dan mengembalikan `AccessUnconfirmed`. Saat flag ON,
+implementasi `Sp2kpDatasetPriceProvider` yang menjalankan unduhan resminya
+(isu #42). SIPASHORTI tetap terkunci (butuh kredensial operator, isu #38).
 """
 
-from typing import Dict, Optional
+from typing import Dict
 
 from server.config.price_config import PriceIntegrationConfig
 from server.integrations.base import AccessUnconfirmed, PriceFetchResult, PriceQuery
@@ -16,7 +21,7 @@ from server.models.price import SOURCE_ID
 
 
 class Sp2kpPriceProvider:
-    """PriceProvider untuk SP2KP — disabled by default, tanpa panggilan jaringan."""
+    """PriceProvider SP2KP — gerbang flag, delegasi ke importer dataset resmi."""
 
     source_id: SOURCE_ID = "sp2kp"
 
@@ -28,19 +33,24 @@ class Sp2kpPriceProvider:
         return bool(self._config.sp2kp_enabled)
 
     def fetch(self, query: PriceQuery) -> PriceFetchResult:
-        # GERBANG AKSES: jangan pernah memanggil jaringan saat akses belum resmi.
-        return PriceFetchResult(
-            source_id=self.source_id,
-            observations=[],
-            error_category=None,
-            request_id=None,
-            access=AccessUnconfirmed(self.source_id),
-        )
+        # GERBANG AKSES: flag OFF => tanpa panggilan jaringan, tanpa nilai karangan.
+        if not self.enabled:
+            return PriceFetchResult(
+                source_id=self.source_id,
+                observations=[],
+                error_category=None,
+                request_id=None,
+                access=AccessUnconfirmed(self.source_id),
+            )
+        # Flag ON: akses resmi dataset sudah terkonfirmasi — jalankan importer.
+        from server.integrations.sp2kp_dataset import Sp2kpDatasetPriceProvider
+
+        return Sp2kpDatasetPriceProvider(self._config).fetch(query)
 
     def health(self) -> Dict[str, object]:
         return {
             "source": self.source_id,
-            "state": "never_fetched",
+            "state": "enabled_dataset_importer" if self.enabled else "never_fetched",
             "last_error_category": None,
             "last_success_age_seconds": None,
             "last_success_at": None,

@@ -25,12 +25,16 @@ CANONICAL_COMMODITIES: Dict[str, str] = {
 }
 
 # Pemetaan EKSAK label sumber -> (commodity_id, price_type) per sumber.
-# Hanya berisi label yang DOKUMENTASINYA sudah dikonfirmasi (temuan #39: daftar
-# komoditas SP2KP memuat 'C Rawit Hijau' dan 'Tomat'; Terung tidak ada).
+# Label SP2KP di bawah ini DIVERIFIKASI LANGSUNG dari kolom `Nama Varian` berkas
+# XLSX resmi bulanan dataset SP2KP "Tingkat Harga Daerah" (data.go.id, Sep 2025):
+# daftar varian memuat 'Cabai Rawit Hijau', 'Cabai Rawit Merah',
+# 'Cabai Merah Keriting', 'Tomat' — dan TIDAK memuat 'Terung'.
 SOURCE_LABEL_MAP: Dict[str, Dict[str, Tuple[str, PRICE_TYPE]]] = {
     "sp2kp": {
         "c rawit hijau": ("cabai_rawit_hijau", "consumer"),
         "cabai rawit hijau": ("cabai_rawit_hijau", "consumer"),
+        "cabai rawit merah": ("cabai_rawit_merah", "consumer"),
+        "cabai merah keriting": ("cabai_merah_keriting", "consumer"),
         "tomat": ("tomat", "consumer"),
     },
     "sipashorti": {

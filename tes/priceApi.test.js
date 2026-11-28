@@ -34,7 +34,7 @@ function okEnvelope(data) {
 
 const baseObservation = {
   commodity: { id: 'cabai_rawit_hijau', name: 'Cabai Rawit Hijau', raw_label: 'C Rawit Hijau' },
-  region: { level: 'kabupaten', code: '1375', name: 'Kota Payakumbuh' },
+  region: { level: 'kabupaten', code: '1376', name: 'Kota Payakumbuh' },
   price_type: 'consumer',
   currency: 'IDR',
   unit_raw: 'kg',
@@ -68,7 +68,7 @@ test('fetchLatestPrice membangun query kontrak dengan benar', async () => {
   assert.ok(captured.includes('commodity=cabai_rawit_hijau'))
   assert.ok(captured.includes('price_type=consumer'))
   assert.ok(captured.includes('region_level=kabupaten'))
-  assert.ok(captured.includes('region_code=1375'))
+  assert.ok(captured.includes('region_code=1376'))
   assert.ok(captured.includes('source_id=sp2kp'))
   assert.equal(observation.price_value, 44800)
   assert.equal(requestId, 'req_test123')
@@ -192,6 +192,6 @@ test('formatObservedAt memakai zona Asia/Jakarta', () => {
 })
 
 test('konstanta wilayah default = Payakumbuh & sumber sp2kp', () => {
-  assert.deepEqual(DEFAULT_REGION, { level: 'kabupaten', code: '1375' })
+  assert.deepEqual(DEFAULT_REGION, { level: 'kabupaten', code: '1376' })
   assert.equal(DEFAULT_SOURCE_ID, 'sp2kp')
 })

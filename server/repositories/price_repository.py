@@ -317,8 +317,17 @@ class SupabasePriceRepository:
         return rows[0] if rows else None
 
 
+_shared_in_memory_repo: Optional[InMemoryPriceRepository] = None
+
+
 def build_default_repository() -> PriceRepository:
-    """Pilih repository sesuai env. DB belum diterapkan => fallback memori yang jujur."""
+    """
+    Pilih repository sesuai env. DB belum diterapkan => fallback memori yang jujur.
+
+    Fallback in-memory dibagi SATU instance per proses: hasil ingest (mis. cron
+    refresh) harus terbaca oleh request baca berikutnya di proses yang sama.
+    Production tetap wajib DB (Supabase) — in-memory hanya dev/demo.
+    """
     import os
 
     if os.environ.get("PRICE_DB_ENABLED", "").strip().lower() in {"1", "true", "yes", "on"}:
@@ -326,7 +335,10 @@ def build_default_repository() -> PriceRepository:
         key = os.environ.get("SUPABASE_SERVICE_ROLE_KEY")
         if url and key:
             return SupabasePriceRepository(url, key)
-    return InMemoryPriceRepository()
+    global _shared_in_memory_repo
+    if _shared_in_memory_repo is None:
+        _shared_in_memory_repo = InMemoryPriceRepository()
+    return _shared_in_memory_repo
 
 
 # Antisipasi type-checker: PriceObservation dipakai oleh pemanggil untuk serialisasi

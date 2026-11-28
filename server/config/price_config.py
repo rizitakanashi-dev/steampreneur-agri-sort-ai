@@ -42,6 +42,14 @@ class PriceIntegrationConfig:
     sipashorti_base_url: Optional[str] = None
     sipashorti_api_key: Optional[str] = None
 
+    # Importer dataset resmi SP2KP (data.go.id "Tingkat Harga Daerah"):
+    # resource XLSX bulanan api-sp2kp.kemendag.go.id/kld/api/list-harga-harian.
+    # Tidak ada kredensial — unduhan publik. months_back = berapa bulan lampau
+    # ikut diunduh (selain bulan berjalan); 0 = bulan berjalan saja.
+    sp2kp_dataset_base_url: Optional[str] = None
+    sp2kp_dataset_months_back: int = 1
+    sp2kp_dataset_province: str = "13"  # Sumatera Barat (Payakumbuh = 1376)
+
     http_timeout_seconds: int = 8
     http_max_retries: int = 2
     # Total anggaran waktu per panggilan provider — harus di bawah limit Vercel 60s
@@ -71,6 +79,9 @@ def load_price_config() -> PriceIntegrationConfig:
         http_timeout_seconds=_env_int("PRICE_HTTP_TIMEOUT_SECONDS", 8, minimum=1, maximum=20),
         http_max_retries=_env_int("PRICE_MAX_RETRIES", 2, minimum=0, maximum=5),
         http_total_budget_seconds=_env_int("PRICE_TOTAL_BUDGET_SECONDS", 45, minimum=5, maximum=55),
+        sp2kp_dataset_base_url=os.environ.get("SP2KP_DATASET_BASE_URL") or None,
+        sp2kp_dataset_months_back=_env_int("SP2KP_DATASET_MONTHS_BACK", 1, minimum=0, maximum=3),
+        sp2kp_dataset_province=(os.environ.get("SP2KP_DATASET_PROVINCE") or "13").strip(),
         cron_secret=os.environ.get("PRICE_CRON_SECRET") or None,
         failure_cooldown_seconds=_env_int("PRICE_FAILURE_COOLDOWN_SECONDS", 300, minimum=30, maximum=3600),
     )

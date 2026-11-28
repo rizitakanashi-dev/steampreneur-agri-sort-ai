@@ -471,7 +471,7 @@ export function PricingDashboard({ canSyncPrices = false }) {
             <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} sx={{ justifyContent: 'space-between', alignItems: { xs: 'flex-start', sm: 'center' }, mb: 2 }}>
               <Box>
                 <Typography fontWeight={800} variant="subtitle2">Sumber Data Acuan Harga Pasar</Typography>
-                <Typography color="text.secondary" variant="caption">Kontrak harga resmi — Kabupaten 1375 (Pasar Ibuh Payakumbuh)</Typography>
+                <Typography color="text.secondary" variant="caption">Kontrak harga resmi — Kota Payakumbuh 1376 (Pasar Ibuh)</Typography>
               </Box>
               <FormControl size="small" sx={{ minWidth: 220 }}>
                 <Select onChange={(event) => { setCommodity(event.target.value); setLiveObservation(null) }} value={commodity}>
