@@ -601,21 +601,18 @@ function App() {
   useEffect(() => {
     if (scannerImmersiveActive) {
       bodyLockRef.current = true
-      const previousOverflow = document.body.style.overflow
-      const previousBg = document.body.style.backgroundColor
       document.body.style.overflow = 'hidden'
       document.body.style.backgroundColor = '#17191C'
-      return () => {
-        bodyLockRef.current = false
-        document.body.style.overflow = previousOverflow
-        document.body.style.backgroundColor = previousBg
-      }
+      return undefined
     }
-    if (bodyLockRef.current) {
-      bodyLockRef.current = false
-      document.body.style.removeProperty('overflow')
-      document.body.style.removeProperty('background-color')
-    }
+    // Keluar mode: JANGAN restore nilai overflow lama — kalau body keburu
+    // terkunci 'hidden' oleh lock lain (modal/drawer) saat masuk kamera,
+    // me-restore 'hidden' justru membuat halaman mati scroll (laporan HP).
+    // Selalu lepas inline style secara paksa; lock lain yang masih aktif
+    // akan mengatur ulang overflow sendiri lewat manajer modalnya.
+    bodyLockRef.current = false
+    document.body.style.removeProperty('overflow')
+    document.body.style.removeProperty('background-color')
     return undefined
   }, [scannerImmersiveActive])
 
