@@ -183,3 +183,17 @@ Karya siswa **SMKN 4 Payakumbuh** — Bidang Lomba *STEAMPreneur* Tingkat Nasion
 * **Ahmad Afif** — Analis Bisnis & Dokumentator
 
 Lisensi: [MIT License](LICENSE).
+
+## Deploy lewat Coolify
+
+Repo menyediakan `compose.yaml` untuk menjalankan frontend Nginx dan backend FastAPI sebagai satu aplikasi Compose. Di Coolify, pilih build pack **Docker Compose**, gunakan file `compose.yaml`, lalu arahkan domain publik ke service `web` pada port internal `80`. Service `api` hanya diakses melalui jaringan internal Compose; Nginx meneruskan rute `/api/` ke backend.
+
+Tambahkan variabel berikut di environment produksi Coolify, jangan masukkan nilainya ke Git:
+
+- `SUPABASE_URL` dan `SUPABASE_ANON_KEY` — project Supabase produksi.
+- `SUPABASE_SERVICE_ROLE_KEY` — hanya untuk backend; jangan pernah gunakan sebagai `VITE_*`.
+- `EXPORT_HMAC_KEY` — nilai acak minimal 32 byte, misalnya dibuat dengan `openssl rand -hex 32`.
+- `SUPABASE_EXPORT_BUCKET` — opsional, default `account-exports`; bucket harus sudah disiapkan di Supabase.
+- `VITE_GOOGLE_CLIENT_ID` — opsional, hanya bila Google sign-in telah dikonfigurasi.
+
+Compose mengunci `APP_ENV=production` dan `AUTH_MODE=supabase`, memerlukan secrets Supabase/HMAC saat deployment, mengaktifkan healthcheck, dan menyimpan file runtime backend pada volume Docker. Riwayat scan memakai Supabase; volume ini bukan pengganti backup database. Terapkan serta verifikasi migrasi dan RLS Supabase sebelum menerima data nyata. Model QC saat ini berstatus candidate dan inferensi produksi ditolak sampai model tervalidasi.
