@@ -471,8 +471,11 @@ export function PricingDashboard({ canSyncPrices = false }) {
     return (
       <Stack spacing={3}>
         <Alert severity="success" icon={<VerifiedRoundedIcon />} sx={{ borderRadius: 2 }}>
-          <Typography fontWeight={700} variant="body2">Mode data LIVE — kontrak /api/v1/prices/* (isu #41).</Typography>
-          <Typography variant="body2">Sumber statis demo disembunyikan; tidak ada fallback nilai lokal. Proyeksi memakai harga kontrak bila tersedia.</Typography>
+          <Typography fontWeight={700} variant="body2">Harga resmi SP2KP Kemendag RI aktif.</Typography>
+          <Typography variant="body2">
+            Harga ditarik otomatis dari panel harga resmi SP2KP (data.go.id) dan diperbarui berkala.
+            Yang tampil adalah harga historis terakhir yang dipublikasikan sumber — bukan realtime.
+          </Typography>
         </Alert>
         <Card elevation={0} sx={{ borderRadius: 2.5, border: '1px solid', borderColor: 'divider' }}>
           <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
