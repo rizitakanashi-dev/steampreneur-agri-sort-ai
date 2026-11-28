@@ -41,3 +41,27 @@ test('calculateRevenueProjection menolak komoditas yang tidak memiliki harga ref
     /harga referensi/,
   )
 })
+
+test('calculateRevenueProjection: allowStaticFallback=false menolak fallback statis (mode live, isu #44)', () => {
+  // customPricePerKg valid -> dipakai (harga kontrak), bukan statis
+  const kontrak = calculateRevenueProjection({
+    komoditas: 'Cabai Rawit Hijau', volumeKg: 100, persenA: 72, persenB: 18, persenC: 10,
+    customPricePerKg: 58000, allowStaticFallback: false,
+  })
+  assert.equal(kontrak.hargaAcuanPerKg, 58000)
+
+  // kontrak kosong -> GAGAL dengan pesan jujur, TIDAK diam-diam memakai harga statis
+  assert.throws(
+    () => calculateRevenueProjection({
+      komoditas: 'Cabai Rawit Hijau', volumeKg: 100, persenA: 72, persenB: 18, persenC: 10,
+      customPricePerKg: null, allowStaticFallback: false,
+    }),
+    /tanpa fallback statis/,
+  )
+  // sedangkan perilaku lama (fallback) tetap utuk mode non-live
+  const legacy = calculateRevenueProjection({
+    komoditas: 'Cabai Rawit Hijau', volumeKg: 100, persenA: 72, persenB: 18, persenC: 10,
+    customPricePerKg: null,
+  })
+  assert.equal(legacy.hargaAcuanPerKg, REFERENCE_PRICES_PER_KG['Cabai Rawit Hijau'])
+})

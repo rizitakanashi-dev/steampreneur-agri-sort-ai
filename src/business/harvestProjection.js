@@ -18,12 +18,19 @@ export function calculateRevenueProjection({
   persenC,
   includeReject = true,
   customPricePerKg = null,
+  allowStaticFallback = true,
 }) {
+  // Isu #44: di mode live, harga statis lokal TIDAK BOLEH dijadikan fallback
+  // diam-diam — kalkulasi wajib gagal dengan pesan jujur bila kontrak kosong.
   const hargaAcuanPerKg = (typeof customPricePerKg === 'number' && Number.isFinite(customPricePerKg) && customPricePerKg > 0)
     ? customPricePerKg
-    : getReferencePricePerKg(komoditas)
+    : (allowStaticFallback ? getReferencePricePerKg(komoditas) : null)
   if (hargaAcuanPerKg === null) {
-    throw new RangeError('Komoditas ini belum memiliki harga referensi di konfigurasi harga.')
+    throw new RangeError(
+      allowStaticFallback
+        ? 'Komoditas ini belum memiliki harga referensi di konfigurasi harga.'
+        : 'Harga acuan kontrak belum tersedia untuk komoditas ini — tanpa fallback statis.'
+    )
   }
 
   const volume = parseNumeric(volumeKg)

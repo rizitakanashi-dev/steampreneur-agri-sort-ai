@@ -181,9 +181,14 @@ export function PricingDashboard({ canSyncPrices = false }) {
     (c) => c.commodity_key === bKey || c.commodity_name?.toLowerCase() === commodity.toLowerCase()
   )
 
-  const referencePrice = isTriangulasiActive
-    ? (triangulasiItem?.composite_fair_price || (activeItem ? activeItem.price_per_kg : getReferencePricePerKg(commodity)))
-    : (activeItem ? activeItem.price_per_kg : getReferencePricePerKg(commodity))
+  // Isu #44: di mode live, harga acuan WAJIB dari kontrak — angka statis lokal
+  // tidak pernah dipakai sebagai nilai proyeksi (penyamaran demo = dilarang).
+  const liveContractPrice = priceDataMode === 'live' ? (liveObservation?.price_value ?? null) : null
+  const referencePrice = priceDataMode === 'live'
+    ? liveContractPrice
+    : isTriangulasiActive
+      ? (triangulasiItem?.composite_fair_price || (activeItem ? activeItem.price_per_kg : getReferencePricePerKg(commodity)))
+      : (activeItem ? activeItem.price_per_kg : getReferencePricePerKg(commodity))
 
   const handleSelectTriangulationCommodity = (row) => {
     const matched = mapComparisonKeyToCommodity(row.commodity_key, row.commodity_name)
@@ -228,13 +233,14 @@ export function PricingDashboard({ canSyncPrices = false }) {
           persenC: 100 - parsedA - parsedB,
           includeReject,
           customPricePerKg: referencePrice,
+          allowStaticFallback: priceDataMode !== 'live',
         }),
         validationError: '',
       }
     } catch (calculationError) {
       return { projection: null, validationError: calculationError.message }
     }
-  }, [commodity, volumeKg, persenA, persenB, includeReject, referencePrice])
+  }, [commodity, volumeKg, persenA, persenB, includeReject, referencePrice, priceDataMode])
 
   const weightedPrice = projection ? calculateWeightedPricePerKg(projection) : null
 
@@ -283,8 +289,8 @@ export function PricingDashboard({ canSyncPrices = false }) {
                     helperText={`Harga acuan: ${formatRupiah(referencePrice)} / kg${
                       priceDataMode === 'live'
                         ? liveObservation?.price_value != null
-                          ? ' (kontrak live)'
-                          : ' (acuan lokal demo — kontrak tidak tersedia)'
+                          ? ' (kontrak SP2KP — historis)'
+                          : ' (belum tersedia dari kontrak)'
                         : ' (acuan lokal demo)'
                     }`}
                     slotProps={{ input: { endAdornment: <InputAdornment position="end">kg</InputAdornment> } }}
