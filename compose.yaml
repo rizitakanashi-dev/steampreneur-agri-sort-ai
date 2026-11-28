@@ -18,6 +18,14 @@ services:
       RATE_LIMIT_AUTH_PER_MINUTE: ${RATE_LIMIT_AUTH_PER_MINUTE:-30}
       RATE_LIMIT_SCAN_PER_MINUTE: ${RATE_LIMIT_SCAN_PER_MINUTE:-60}
       TRUST_PROXY_HEADERS: "false"
+      # Integrasi harga SP2KP (isu #39/#42) — flag tetap di-env Coolify,
+      # default OFF supaya deploy baru tidak menyala tanpa keputusan.
+      PRICE_SP2KP_ENABLED: ${PRICE_SP2KP_ENABLED:-false}
+      PRICE_INGEST_ENABLED: ${PRICE_INGEST_ENABLED:-false}
+      PRICE_CRON_SECRET: ${PRICE_CRON_SECRET:-}
+      PRICE_DB_ENABLED: ${PRICE_DB_ENABLED:-false}
+      SP2KP_DATASET_MONTHS_BACK: ${SP2KP_DATASET_MONTHS_BACK:-1}
+      SP2KP_DATASET_PROVINCE: ${SP2KP_DATASET_PROVINCE:-13}
     expose:
       - "8000"
     volumes:
@@ -39,6 +47,9 @@ services:
       dockerfile: Dockerfile
       args:
         VITE_GOOGLE_CLIENT_ID: ${VITE_GOOGLE_CLIENT_ID:-}
+        # Mode data harga adalah PUBLIC env build-time (isu #44).
+        # Wajib rebuild web setelah mengubah nilai ini di Coolify.
+        VITE_PRICE_DATA_MODE: ${VITE_PRICE_DATA_MODE:-off}
     restart: unless-stopped
     depends_on:
       api:
@@ -51,6 +62,32 @@ services:
       timeout: 5s
       retries: 3
       start_period: 10s
+
+  # Scheduler refresh harga SP2KP (isu #43): POST /cron/refresh bersecret
+  # tiap 6 jam + sekali 2 menit setelah API siap. Image ~6MB, tanpa state.
+  price-cron:
+    image: alpine/curl:8.12.1
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    environment:
+      PRICE_CRON_SECRET: ${PRICE_CRON_SECRET:-}
+    command:
+      - /bin/sh
+      - -c
+      - |
+        SECRET="$${PRICE_CRON_SECRET}"
+        if [ -z "$$SECRET" ]; then echo "PRICE_CRON_SECRET kosong - cron tidak aktif"; sleep infinity; fi
+        first=0
+        while true; do
+          if [ "$$first" -eq 0 ]; then sleep 120; first=1; fi
+          echo "[$(date -u +%FT%TZ)] POST /api/v1/prices/cron/refresh"
+          curl -s -m 180 -X POST "http://api:8000/api/v1/prices/cron/refresh?source_id=sp2kp" \
+            -H "X-Price-Cron-Secret: $$SECRET" | head -c 300
+          echo
+          sleep 21600
+        done
 
 volumes:
   agrisort-data:
