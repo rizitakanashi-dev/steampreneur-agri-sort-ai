@@ -1,5 +1,5 @@
 import { Box, Grid, Stack, Typography } from '@mui/material'
-import AgricultureRoundedIcon from '@mui/icons-material/AgricultureRounded'
+import BrandLogo from '../BrandLogo.jsx'
 import HomeRoundedIcon from '@mui/icons-material/HomeRounded'
 import GridViewRoundedIcon from '@mui/icons-material/GridViewRounded'
 import QrCodeScannerRoundedIcon from '@mui/icons-material/QrCodeScannerRounded'
@@ -13,7 +13,6 @@ import LocalShippingRoundedIcon from '@mui/icons-material/LocalShippingRounded'
 import AutoAwesomeRoundedIcon from '@mui/icons-material/AutoAwesomeRounded'
 import TrendingUpRoundedIcon from '@mui/icons-material/TrendingUpRounded'
 import VisibilityOutlinedIcon from '@mui/icons-material/VisibilityOutlined'
-import SpaRoundedIcon from '@mui/icons-material/SpaRounded'
 import { AGRI_COLORS, AGRI_FONTS, AGRI_SHADOWS } from './tokens.js'
 
 const WORKSPACE_MENU = [
@@ -155,20 +154,7 @@ export function HeroMockupComposite({ onOpenApp, isConverged, trackRef }) {
             <Stack spacing={2}>
               {/* Brand Header */}
               <Stack direction="row" spacing={1.25} sx={{alignItems: 'center',  px: 0.5 }}>
-                <Box
-                  sx={{
-                    width: 36,
-                    height: 36,
-                    borderRadius: '50%',
-                    bgcolor: '#036E45',
-                    color: '#FFFFFF',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}
-                >
-                  <AgricultureRoundedIcon sx={{ fontSize: 20 }} />
-                </Box>
+                <BrandLogo size={36} />
                 <Box>
                   <Typography sx={{ fontFamily: AGRI_FONTS.sans, fontSize: '0.92rem', fontWeight: 700, color: '#1D2326', lineHeight: 1.15 }}>
                     Agri-Sort AI
@@ -445,7 +431,7 @@ export function HeroMockupComposite({ onOpenApp, isConverged, trackRef }) {
                     mr: { md: 4 },
                   }}
                 >
-                  <SpaRoundedIcon sx={{ fontSize: 38, color: '#8BE2B5' }} />
+                  <BrandLogo size={44} />
                   <Typography sx={{ fontFamily: AGRI_FONTS.sans, fontSize: '0.72rem', color: 'rgba(255,255,255,0.85)' }}>
                     Precision Agriculture
                   </Typography>

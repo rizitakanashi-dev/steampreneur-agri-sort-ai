@@ -1,5 +1,5 @@
 import { Box, Button, Divider, Stack, Typography } from '@mui/material'
-import AgricultureRoundedIcon from '@mui/icons-material/AgricultureRounded'
+import BrandLogo from './BrandLogo.jsx'
 import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded'
 import PrintRoundedIcon from '@mui/icons-material/PrintRounded'
 import QrCode2RoundedIcon from '@mui/icons-material/QrCode2Rounded'
@@ -75,21 +75,7 @@ export function QCPrintCertificate({ batch, showPrintButton = false, onPrint }) 
       {/* KOP SURAT RESMI */}
       <Box sx={{ borderBottom: '3px double #111827', pb: 2, mb: 3 }}>
         <Stack direction="row" spacing={2.5} sx={{ alignItems: 'center' }}>
-          <Box
-            sx={{
-              alignItems: 'center',
-              border: '2px solid #036e45',
-              borderRadius: 2,
-              color: '#036e45',
-              display: 'flex',
-              height: 56,
-              justifyContent: 'center',
-              width: 56,
-              flexShrink: 0,
-            }}
-          >
-            <AgricultureRoundedIcon sx={{ fontSize: 36 }} />
-          </Box>
+          <BrandLogo size={44} />
           <Box sx={{ flex: 1, textAlign: 'center' }}>
             <Typography
               sx={{

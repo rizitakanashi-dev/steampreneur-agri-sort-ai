@@ -16,7 +16,6 @@ import {
   useMediaQuery,
   useTheme,
 } from '@mui/material'
-import AgricultureRoundedIcon from '@mui/icons-material/AgricultureRounded'
 import ArrowBackRoundedIcon from '@mui/icons-material/ArrowBackRounded'
 import AssessmentRoundedIcon from '@mui/icons-material/AssessmentRounded'
 import CloseRoundedIcon from '@mui/icons-material/CloseRounded'
@@ -24,6 +23,7 @@ import DashboardRoundedIcon from '@mui/icons-material/DashboardRounded'
 import HomeRoundedIcon from '@mui/icons-material/HomeRounded'
 import MenuRoundedIcon from '@mui/icons-material/MenuRounded'
 import LogoutRoundedIcon from '@mui/icons-material/LogoutRounded'
+import BrandLogo from './BrandLogo.jsx'
 import PriceCheckRoundedIcon from '@mui/icons-material/PriceCheckRounded'
 import QrCodeScannerRoundedIcon from '@mui/icons-material/QrCodeScannerRounded'
 import SettingsRoundedIcon from '@mui/icons-material/SettingsRounded'
@@ -67,9 +67,7 @@ export function AppShell({ activePage, activeUser, showAdministration = false, o
         <Box
           sx={{
             alignItems: 'center',
-            bgcolor: 'primary.main',
             borderRadius: 2,
-            color: 'common.white',
             display: 'flex',
             height: 34,
             justifyContent: 'center',
@@ -77,7 +75,7 @@ export function AppShell({ activePage, activeUser, showAdministration = false, o
             width: 34,
           }}
         >
-          <AgricultureRoundedIcon fontSize="small" />
+          <BrandLogo size={34} />
         </Box>
         <Box>
           <Typography color="text.primary" fontWeight={800} sx={{ lineHeight: 1 }} variant="subtitle1">

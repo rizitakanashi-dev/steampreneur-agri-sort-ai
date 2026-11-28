@@ -15,7 +15,7 @@ import {
 } from '@mui/material'
 import MenuRoundedIcon from '@mui/icons-material/MenuRounded'
 import CloseRoundedIcon from '@mui/icons-material/CloseRounded'
-import SpaRoundedIcon from '@mui/icons-material/SpaRounded'
+import BrandLogo from '../BrandLogo.jsx'
 import HomeRoundedIcon from '@mui/icons-material/HomeRounded'
 import AppsRoundedIcon from '@mui/icons-material/AppsRounded'
 import HelpOutlineRoundedIcon from '@mui/icons-material/HelpOutlineRounded'
@@ -191,20 +191,7 @@ export function Navbar({ onOpenApp }) {
               onClick={(e) => handleNavClick(e, '#beranda')}
               sx={{ display: 'flex', alignItems: 'center', gap: 1.25, textDecoration: 'none' }}
             >
-              <Box
-                sx={{
-                  width: 30,
-                  height: 30,
-                  borderRadius: AGRI_RADII.buttons,
-                  bgcolor: AGRI_COLORS.ink,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: AGRI_COLORS.paperWhite,
-                }}
-              >
-                <SpaRoundedIcon sx={{ fontSize: 17 }} />
-              </Box>
+              <BrandLogo size={30} />
               <Typography
                 sx={{
                   fontFamily: AGRI_FONTS.serif,
@@ -297,20 +284,7 @@ export function Navbar({ onOpenApp }) {
       >
         <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center' }}>
           <Stack direction="row" spacing={1.25} useFlexGap sx={{ alignItems: 'center' }}>
-            <Box
-              sx={{
-                width: 30,
-                height: 30,
-                borderRadius: AGRI_RADII.buttons,
-                bgcolor: AGRI_COLORS.ink,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: AGRI_COLORS.paperWhite,
-              }}
-            >
-              <SpaRoundedIcon sx={{ fontSize: 17 }} />
-            </Box>
+            <BrandLogo size={30} />
             <Typography sx={{ fontFamily: AGRI_FONTS.serif, fontWeight: 400, fontSize: '1.25rem', color: AGRI_COLORS.ink }}>
               Agri-Sort AI
             </Typography>

@@ -20,7 +20,7 @@ import EmailOutlinedIcon from '@mui/icons-material/EmailOutlined'
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined'
 import LockResetRoundedIcon from '@mui/icons-material/LockResetRounded'
 import MarkEmailReadOutlinedIcon from '@mui/icons-material/MarkEmailReadOutlined'
-import SpaRoundedIcon from '@mui/icons-material/SpaRounded'
+import BrandLogo from '../components/BrandLogo.jsx'
 import VisibilityOffOutlinedIcon from '@mui/icons-material/VisibilityOffOutlined'
 import VisibilityOutlinedIcon from '@mui/icons-material/VisibilityOutlined'
 import { AGRI_COLORS, AGRI_FONTS, AGRI_RADII, AGRI_SHADOWS } from '../components/landing/tokens.js'
@@ -219,20 +219,7 @@ export function LoginPage({ onLoginSuccess, onSwitchToRegister, onBackToLanding 
             onClick={onBackToLanding}
             sx={{alignItems: 'center',  cursor: 'pointer' }}
           >
-            <Box
-              sx={{
-                width: 32,
-                height: 32,
-                borderRadius: AGRI_RADII.buttons,
-                bgcolor: AGRI_COLORS.ink,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: AGRI_COLORS.paperWhite,
-              }}
-            >
-              <SpaRoundedIcon sx={{ fontSize: 18 }} />
-            </Box>
+            <BrandLogo size={32} />
             <Typography
               sx={{
                 fontFamily: AGRI_FONTS.serif,
